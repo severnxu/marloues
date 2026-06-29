@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit Tests
+        run: npm run test:unit
+
+      - name: Runtime Contract Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Critical E2E
+        run: npm run test:e2e --ignore-scripts
+
+      - name: Package Smoke
+        run: npm run package:dir -- --publish=never

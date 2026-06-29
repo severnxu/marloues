@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Build output
+out/
+dist/
+release/
+*.tsbuildinfo
+
+# Environment variables
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test artifacts
+playwright-report/
+test-results/
+playwright/.cache/
+tests/
+
+# Native build temp
+build/
+
+# Packages
+*.tgz
+
+# Recordings / screenshots
+recordings/

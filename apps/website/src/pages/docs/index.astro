@@ -1,0 +1,52 @@
+---
+/* PRD 9.3 — 文档站首页 */
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>marloues 文档</title>
+  </head>
+  <body>
+    <nav class="docs-nav">
+      <a href="/">← marloues</a>
+      <strong>文档</strong>
+    </nav>
+    <main class="docs-content">
+      <h1>快速开始</h1>
+      <ol>
+        <li><a href="/docs/runtime">选择 Runtime</a> — Binary / SDK / 自建</li>
+        <li><a href="/docs/mcp">配置 MCP Server</a> — 扩展 Agent 能力</li>
+        <li>发送第一条消息</li>
+      </ol>
+
+      <h2>核心概念</h2>
+      <ul>
+        <li><a href="/docs/runtime">Runtime 配置详解</a></li>
+        <li><a href="/docs/mcp">MCP Server 配置示例</a></li>
+        <li><a href="/docs/skills">Skills 编写指南</a></li>
+        <li><a href="/docs/intranet">内网部署指南</a></li>
+      </ul>
+    </main>
+  </body>
+</html>
+
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 24px;
+    color: #1A1A2E;
+    line-height: 1.7;
+  }
+  .docs-nav { margin-bottom: 32px; }
+  .docs-nav a { color: #534AB7; text-decoration: none; }
+  h1 { margin-bottom: 16px; }
+  h2 { margin: 32px 0 12px; }
+  ol, ul { padding-left: 24px; margin-bottom: 16px; }
+  li { margin-bottom: 8px; }
+  a { color: #534AB7; }
+</style>
