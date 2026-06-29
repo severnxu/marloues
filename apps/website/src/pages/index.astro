@@ -1,0 +1,272 @@
+---
+/* PRD 9.2 — marloues 官网单页结构 */
+const features = [
+  {
+    title: "多内核切换",
+    subtitle: "Binary · SDK · 自建",
+    desc: "同一界面，自由切换，不锁供应商。",
+  },
+  {
+    title: "工具生态",
+    subtitle: "MCP · Skills · Shell · 文件",
+    desc: "你的工具，由你掌控。",
+  },
+  {
+    title: "内外网一体",
+    subtitle: "同一份代码，配置决定一切",
+    desc: "外网开所有，内网加护栏。",
+  },
+  {
+    title: "本地优先",
+    subtitle: "数据在你电脑上",
+    desc: "隐私不是承诺，是架构。",
+  },
+];
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>marloues — AI 桌面工作台</title>
+    <meta name="description" content="One workbench, any agent. 可切换 Agent 内核的 AI 桌面工作台。" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <!-- PRD 9.1 品牌：主色 #534AB7 深紫 -->
+    <nav class="nav">
+      <div class="nav-logo">marloues</div>
+      <div class="nav-links">
+        <a href="#download">下载</a>
+        <a href="https://github.com">GitHub</a>
+      </div>
+    </nav>
+
+    <!-- Hero -->
+    <header class="hero">
+      <h1 class="hero-title">marloues</h1>
+      <p class="hero-slogan-en">One workbench, any agent.</p>
+      <p class="hero-slogan-zh">一个工作台，任意 Agent。</p>
+      <div class="hero-actions">
+        <a href="#download" class="btn btn-primary">免费下载</a>
+        <a href="https://github.com" class="btn btn-secondary">查看源码</a>
+      </div>
+    </header>
+
+    <!-- Features -->
+    <main class="features">
+      {features.map((feature) => (
+        <section class="feature">
+          <h2>{feature.title}</h2>
+          <p class="feature-subtitle">{feature.subtitle}</p>
+          <p class="feature-desc">{feature.desc}</p>
+        </section>
+      ))}
+    </main>
+
+    <!-- Download -->
+    <section id="download" class="download">
+      <h2>下载 marloues</h2>
+      <div class="download-platforms">
+        <a href="#" class="download-platform">
+          <strong>macOS</strong>
+          <small>Universal · dmg</small>
+        </a>
+        <a href="#" class="download-platform">
+          <strong>Windows</strong>
+          <small>x64 · exe</small>
+        </a>
+        <a href="#" class="download-platform">
+          <strong>Linux</strong>
+          <small>x64 · AppImage</small>
+        </a>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span>marloues © 2026</span>
+      <a href="#">隐私</a>
+      <a href="#">条款</a>
+    </footer>
+  </body>
+</html>
+
+<style>
+  :root {
+    --brand: #534AB7;
+    --brand-dark: #26215C;
+    --bg: #FAFAFC;
+    --text: #1A1A2E;
+    --muted: #6B6B80;
+    --border: #E4E4EC;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  .nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 48px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-logo {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--brand);
+  }
+
+  .nav-links { display: flex; gap: 24px; }
+  .nav-links a { color: var(--muted); text-decoration: none; font-size: 14px; }
+  .nav-links a:hover { color: var(--brand); }
+
+  .hero {
+    text-align: center;
+    padding: 96px 24px 64px;
+  }
+
+  .hero-title {
+    font-size: 56px;
+    font-weight: 700;
+    color: var(--brand);
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+
+  .hero-slogan-en {
+    font-size: 22px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .hero-slogan-zh {
+    font-size: 16px;
+    color: var(--muted);
+    margin-bottom: 32px;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+
+  .btn {
+    padding: 12px 28px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: opacity 0.15s ease;
+  }
+
+  .btn:hover { opacity: 0.9; }
+
+  .btn-primary {
+    background: var(--brand);
+    color: #fff;
+  }
+
+  .btn-secondary {
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .features {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 32px 24px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px;
+  }
+
+  .feature {
+    padding: 32px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+
+  .feature h2 {
+    font-size: 20px;
+    margin-bottom: 8px;
+    color: var(--brand);
+  }
+
+  .feature-subtitle {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .feature-desc {
+    font-size: 15px;
+    color: var(--text);
+  }
+
+  .download {
+    text-align: center;
+    padding: 64px 24px;
+    background: var(--brand-dark);
+    color: #fff;
+  }
+
+  .download h2 {
+    font-size: 28px;
+    margin-bottom: 32px;
+  }
+
+  .download-platforms {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .download-platform {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 20px 32px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    text-decoration: none;
+    color: #fff;
+    transition: border-color 0.15s ease;
+  }
+
+  .download-platform:hover {
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+
+  .download-platform strong { font-size: 16px; }
+  .download-platform small { font-size: 12px; opacity: 0.7; }
+
+  .footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 32px 24px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .footer a { color: var(--muted); text-decoration: none; }
+  .footer a:hover { color: var(--brand); }
+
+  @media (max-width: 640px) {
+    .features { grid-template-columns: 1fr; }
+    .hero-title { font-size: 40px; }
+  }
+</style>
