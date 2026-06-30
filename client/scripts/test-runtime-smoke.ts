@@ -7,7 +7,7 @@
  * 用法： npx tsx scripts/test-runtime-smoke.ts
  */
 
-import { queryClaude } from "../src/main/core/sdk/claude-sdk";
+import { queryClaude } from "../main/core/sdk/claude-sdk";
 import { readFileSync, renameSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";

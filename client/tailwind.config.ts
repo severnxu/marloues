@@ -6,7 +6,7 @@ const hslVar = (name: string) => `hsl(var(${name}) / <alpha-value>)`;
 
 const config: Config = {
   darkMode: ["class"],
-  content: ["./src/renderer/index.html", "./src/renderer/src/**/*.{ts,tsx}"],
+  content: ["./renderer/index.html", "./renderer/src/**/*.{ts,tsx}"],
   prefix: "",
   theme: {
     container: {

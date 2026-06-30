@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { RuntimeEvent } from "../src/shared/agent-runtime";
+import type { RuntimeEvent } from "../shared/agent-runtime";
 
 process.env.MARLOUES_HOME = mkdtempSync(join(tmpdir(), "marloues-runtime-contract-"));
 let cleanupEventLog: (() => void) | undefined;
@@ -9,14 +9,14 @@ let cleanupModelServer: (() => Promise<void>) | undefined;
 let cleanupRemoteMcpServer: (() => Promise<void>) | undefined;
 
 async function main(): Promise<void> {
-  const { getAgentSettings, saveAgentSettings } = await import("../src/main/services/config-service");
-  const { setClaudeQueryOverrideForTests } = await import("../src/main/core/sdk/claude-sdk");
-  const { listEndpointModels, testEndpointModel, testEndpointProfile } = await import("../src/main/services/endpoint-models");
-  const { probeMcpServer } = await import("../src/main/services/mcp-probe");
+  const { getAgentSettings, saveAgentSettings } = await import("./main/services/config-service");
+  const { setClaudeQueryOverrideForTests } = await import("./main/core/sdk/claude-sdk");
+  const { listEndpointModels, testEndpointModel, testEndpointProfile } = await import("./main/services/endpoint-models");
+  const { probeMcpServer } = await import("./main/services/mcp-probe");
   const { destroyRuntime, getRuntime, getRuntimeState, initRuntime, switchRuntime } = await import(
-    "../src/main/core/runtime/manager"
+    "../main/core/runtime/manager"
   );
-  const { eventLog } = await import("../src/main/codex/event-log");
+  const { eventLog } = await import("../main/codex/event-log");
   cleanupEventLog = () => eventLog.destroy();
 
   mkdirSync(process.env.MARLOUES_HOME!, { recursive: true });

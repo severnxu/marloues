@@ -1,9 +1,9 @@
 {
   "include": [
     "electron.vite.config.ts",
-    "src/main/**/*.ts",
-    "src/preload/**/*.ts",
-    "src/shared/**/*.ts"
+    "main/**/*.ts",
+    "preload/**/*.ts",
+    "shared/**/*.ts"
   ],
   "compilerOptions": {
     "composite": true,
@@ -20,7 +20,7 @@
     "types": ["node"],
     "baseUrl": ".",
     "paths": {
-      "@shared/*": ["src/shared/*"]
+      "@shared/*": ["shared/*"]
     }
   }
 }
