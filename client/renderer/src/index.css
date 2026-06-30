@@ -369,7 +369,16 @@ html.theme-transitioning *::after {
 
 :root.platform-darwin {
   --traffic-light-safe-area: 76px;
-  --titlebar-collapse-width: 228px;
+  --titlebar-collapse-width: 236px;
+}
+
+.platform-layout-macos .main-panel {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.platform-layout-macos .main-panel.settings-paper-main {
+  padding-top: 0;
 }
 
 * {
@@ -619,21 +628,22 @@ button {
 
 .auth-loading-screen,
 .login-page {
-  --login-bg: hsl(220 24% 7%);
-  --login-panel: hsl(218 22% 10% / 0.88);
-  --login-border: hsl(186 78% 54% / 0.22);
-  --login-text: hsl(210 22% 96%);
-  --login-muted: hsl(215 13% 68%);
-  --login-subtle: hsl(214 18% 78%);
-  --login-accent: hsl(186 78% 54%);
-  --login-mint: hsl(148 64% 56%);
-  --login-ink: hsl(215 28% 8%);
+  /* Login palette follows the active theme (dark/light/warm) instead of a fixed dark navy. */
+  --login-bg: var(--bg);
+  --login-panel: var(--panel-soft);
+  --login-border: color-mix(in srgb, var(--accent) 24%, transparent);
+  --login-text: var(--text);
+  --login-muted: var(--muted);
+  --login-subtle: color-mix(in srgb, var(--text) 55%, var(--muted));
+  --login-accent: var(--accent);
+  --login-mint: var(--accent-2);
+  --login-ink: #fff;
   width: 100vw;
   height: 100vh;
   background:
-    radial-gradient(circle at 20% 18%, hsl(186 78% 54% / 0.15), transparent 32%),
-    radial-gradient(circle at 82% 76%, hsl(148 64% 56% / 0.11), transparent 30%),
-    linear-gradient(180deg, hsl(220 24% 7%) 0%, hsl(222 20% 9%) 100%);
+    radial-gradient(circle at 20% 18%, color-mix(in srgb, var(--accent) 15%, transparent), transparent 32%),
+    radial-gradient(circle at 82% 76%, color-mix(in srgb, var(--accent-2) 11%, transparent), transparent 30%),
+    linear-gradient(180deg, var(--bg) 0%, var(--panel) 100%);
   color: var(--login-text);
 }
 
@@ -688,7 +698,7 @@ button {
 }
 
 .login-window-actions button:hover {
-  background: hsl(218 20% 13% / 0.76);
+  background: var(--hover);
   color: var(--login-text);
 }
 
@@ -705,11 +715,11 @@ button {
   gap: 18px;
   border: 1px solid var(--login-border);
   border-radius: 14px;
-  background: linear-gradient(135deg, hsl(186 78% 54% / 0.09), transparent 38%), var(--login-panel);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 9%, transparent), transparent 38%), var(--login-panel);
   box-shadow:
-    0 22px 80px hsl(220 40% 2% / 0.48),
-    0 0 0 1px hsl(186 78% 54% / 0.18),
-    0 18px 52px hsl(186 78% 54% / 0.1);
+    0 22px 80px color-mix(in srgb, var(--bg) 80%, #0000),
+    0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent),
+    0 18px 52px color-mix(in srgb, var(--accent) 10%, transparent);
   padding: 24px;
 }
 
@@ -719,9 +729,9 @@ button {
   bottom: -72px;
   width: 180px;
   height: 180px;
-  border: 1px solid hsl(186 78% 54% / 0.12);
+  border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
   border-radius: 50%;
-  background: hsl(148 64% 56% / 0.06);
+  background: color-mix(in srgb, var(--accent-2) 6%, transparent);
   content: "";
 }
 
@@ -742,7 +752,7 @@ button {
   width: 28px;
   height: 28px;
   place-items: center;
-  border: 1px solid hsl(186 78% 54% / 0.35);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
   border-radius: 8px;
   background: linear-gradient(135deg, var(--login-accent), var(--login-mint));
   color: var(--login-ink);
@@ -955,7 +965,7 @@ button {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid transparent;
-  background: var(--rail);
+  background: var(--bg);
   padding: 0 8px 0 calc(8px + var(--traffic-light-safe-area));
   z-index: 30;
 }
@@ -966,7 +976,8 @@ button {
   position: absolute;
   top: 0;
   left: 0;
-  background: var(--rail);
+  right: auto;
+  background: transparent;
   border-bottom: 0;
   box-shadow: none;
 }
@@ -981,7 +992,7 @@ button {
 
 :root.platform-darwin.light .title-bar,
 :root.platform-darwin.warm .title-bar {
-  background: var(--traffic-light-contrast-surface);
+  background: transparent;
 }
 
 .title-left {
@@ -1555,11 +1566,6 @@ button {
   flex: 1;
   overflow: hidden;
   padding: 8px 0 8px 0;
-}
-
-:root.platform-darwin .main-panel {
-  padding-top: 0;
-  padding-bottom: 0;
 }
 
 .main-panel.settings-paper-main {
@@ -3228,7 +3234,11 @@ body.resizing-columns .frame-resize-handle {
 }
 
 .settings-side-top {
-  padding: 16px 12px 10px;
+  padding: 0 12px 10px;
+}
+
+:root.platform-darwin .settings-side-top {
+  padding-top: calc(var(--titlebar-height) + 4px);
 }
 
 .settings-side-top button,
@@ -12990,10 +13000,6 @@ body.resizing-columns .frame-resize-handle {
 :root[data-theme="light"] .settings-sidebar {
   border-right: 0;
   background: hsl(0 0% 100%);
-}
-
-:root[data-theme="light"] .settings-side-top {
-  padding-top: 16px;
 }
 
 :root[data-theme="light"] .settings-side-top button {

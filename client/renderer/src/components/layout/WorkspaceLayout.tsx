@@ -55,6 +55,7 @@ export function WorkspaceLayout({
   const inspectorOpenRef = useRef(inspectorOpen);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const inspectorRef = useRef<HTMLDivElement>(null);
+  const contentFrameRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     sidebarOpenRef.current = sidebarOpen;
@@ -95,7 +96,7 @@ export function WorkspaceLayout({
   useEffect(() => {
     let rafId: number | null = null;
 
-    const onMouseMove = (event: MouseEvent) => {
+    const onPointerMove = (event: PointerEvent) => {
       if (rafId) cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
         if (resizingRef.current === "left") {
@@ -110,8 +111,11 @@ export function WorkspaceLayout({
           setSidebarWidth(Math.max(SIDEBAR_MIN, nextWidth));
         }
         if (resizingRef.current === "right") {
-          const maxWidth = window.innerWidth - (sidebarOpenRef.current ? DEFAULT_SIDEBAR_WIDTH : 0) - MAIN_MIN;
-          const nextWidth = Math.min(INSPECTOR_MAX, maxWidth, window.innerWidth - event.clientX);
+          const frameRect = contentFrameRef.current?.getBoundingClientRect();
+          const frameRight = frameRect?.right ?? window.innerWidth;
+          const frameWidth = frameRect?.width ?? window.innerWidth;
+          const maxWidth = Math.max(0, frameWidth - MAIN_MIN - INSPECTOR_DIVIDER_WIDTH);
+          const nextWidth = Math.min(INSPECTOR_MAX, maxWidth, frameRight - event.clientX);
           if (nextWidth < INSPECTOR_COLLAPSE) {
             setInspectorOpen(false);
             setInspectorWidth(DEFAULT_INSPECTOR_WIDTH);
@@ -124,14 +128,16 @@ export function WorkspaceLayout({
       });
     };
 
-    const onMouseUp = () => endResize();
+    const onPointerUp = () => endResize();
 
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
     };
   }, []);
 
@@ -142,7 +148,9 @@ export function WorkspaceLayout({
     if (inspectorRef.current) inspectorRef.current.style.transition = "";
   };
 
-  const startResize = (target: ResizeTarget) => {
+  const startResize = (target: ResizeTarget, event: React.PointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
     resizingRef.current = target;
     document.body.classList.add("resizing-columns");
     if (sidebarRef.current) sidebarRef.current.style.transition = "none";
@@ -169,12 +177,14 @@ export function WorkspaceLayout({
     onPage("settings");
   };
   const isMacOS = window.marloues.app.platform === "darwin";
+  const settingsPage = page === "settings";
+  const sidebarVisible = sidebarOpen || settingsPage;
 
   return (
-    <div className={`app-shell ${isMacOS ? "platform-layout-macos" : "platform-layout-standard"} ${sidebarOpen ? "sidebar-expanded" : "sidebar-collapsed"}`}>
+    <div className={`app-shell ${isMacOS ? "platform-layout-macos" : "platform-layout-standard"} ${sidebarVisible ? "sidebar-expanded" : "sidebar-collapsed"}`}>
       {!isMacOS ? (
         <TitleBar
-          sidebarOpen={sidebarOpen}
+          sidebarOpen={sidebarVisible}
           page={page}
           isDark={isDark}
           themeMode={themeMode}
@@ -187,7 +197,7 @@ export function WorkspaceLayout({
         />
       ) : (
         <TitleBar
-          sidebarOpen={sidebarOpen}
+          sidebarOpen={sidebarVisible}
           page={page}
           isDark={isDark}
           themeMode={themeMode}
@@ -197,14 +207,14 @@ export function WorkspaceLayout({
           onToggleSidebar={toggleSidebar}
           onToggleTheme={onToggleTheme}
           onCloseSearch={() => setGlobalSearchOpen(false)}
-          style={sidebarOpen ? { width: sidebarWidth } : undefined}
+          style={sidebarVisible ? { width: sidebarWidth } : undefined}
         />
       )}
       <div className={`workspace ${page === "settings" ? "settings-paper-workspace" : ""}`}>
         <div
           ref={sidebarRef}
-          className={`sidebar-region ${sidebarOpen ? "open" : "closed"}`}
-          style={{ width: sidebarOpen ? sidebarWidth : 0 }}
+          className={`sidebar-region ${sidebarVisible ? "open" : "closed"}`}
+          style={{ width: sidebarVisible ? sidebarWidth : 0 }}
         >
           <div className="sidebar-size-lock" style={{ width: sidebarWidth }}>
             <Sidebar
@@ -218,8 +228,8 @@ export function WorkspaceLayout({
           </div>
         </div>
         <main className={`main-panel ${page === "settings" ? "settings-paper-main" : ""}`}>
-          <div className="content-frame">
-            {sidebarOpen ? <div className="frame-resize-handle left" onMouseDown={() => startResize("left")} /> : null}
+          <div className="content-frame" ref={contentFrameRef}>
+            {sidebarVisible && !settingsPage ? <div className="frame-resize-handle left" onPointerDown={(event) => startResize("left", event)} /> : null}
             {page === "chat" ? (
               <>
                 <div className="chat-region">
@@ -232,7 +242,7 @@ export function WorkspaceLayout({
                   />
                 </div>
                 {inspectorVisible ? (
-                  <div className="frame-resize-handle right" onMouseDown={() => startResize("right")} />
+                  <div className="frame-resize-handle right" onPointerDown={(event) => startResize("right", event)} />
                 ) : null}
                 <div
                   ref={inspectorRef}
