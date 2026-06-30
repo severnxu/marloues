@@ -1,164 +1,20 @@
 {
-  "name": "marloues",
-  "version": "0.1.0",
+  "name": "marloues-workspace",
   "private": true,
-  "description": "Multi-kernel Agent desktop workspace.",
-  "author": "Marloues",
-  "main": "./out/main/index.js",
   "scripts": {
-    "dev": "electron-vite dev --config client/electron.vite.config.ts",
-    "build": "electron-vite build --config client/electron.vite.config.ts",
-    "package:dir": "npm run build && electron-builder --dir --publish=never",
-    "package:mac": "npm run build && electron-builder --mac --publish=never",
-    "package:win": "npm run build && electron-builder --win --publish=never",
-    "package:linux": "npm run build && electron-builder --linux --publish=never",
-    "release": "npm run build && electron-builder --publish=always",
-    "start": "electron-vite preview --config client/electron.vite.config.ts",
-    "rebuild:native": "electron-rebuild -f -w better-sqlite3",
-    "typecheck:node": "tsc --noEmit -p client/tsconfig.node.json",
-    "typecheck:web": "tsc --noEmit -p client/tsconfig.web.json",
-    "typecheck": "npm run typecheck:node && npm run typecheck:web",
-    "test": "tsx client/scripts/test-runtime-contract.ts",
-    "test:unit": "vitest run --config client/vitest.config.ts",
-    "test:unit:watch": "vitest --config client/vitest.config.ts",
-    "test:runtime": "tsx client/scripts/test-runtime-contract.ts",
-    "test:redaction-rules": "tsx client/scripts/test-redaction-rules.ts",
-    "verify:workflow-visual": "node client/scripts/verify-workflow-visual-suite.mjs",
-    "changeset": "changeset",
-    "version": "changeset version",
-    "test:runtime:smoke": "tsx client/scripts/test-runtime-smoke.ts",
-    "pretest:e2e": "npm run build",
-    "test:e2e": "playwright test --config client/playwright.config.ts --project=critical",
-    "lint": "eslint --config client/eslint.config.mjs client/",
-    "format": "prettier --write \"client/**/*.{ts,tsx,css,json}\""
-  },
-  "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.3.170",
-    "@electron-toolkit/preload": "^3.0.1",
-    "@electron-toolkit/utils": "^2.0.0",
-    "@pierre/diffs": "^1.2.10",
-    "better-sqlite3": "^11.8.1",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "electron-updater": "^6.8.9",
-    "framer-motion": "^12.40.0",
-    "highlight.js": "^11.11.1",
-    "loge": "^1.0.5",
-    "lucide-react": "^0.468.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-markdown": "^10.1.0",
-    "rehype-highlight": "^7.0.2",
-    "remark-gfm": "^4.0.1",
-    "sonner": "^2.0.7",
-    "tailwind-merge": "^2.6.0",
-    "zustand": "^5.0.3"
-  },
-  "devDependencies": {
-    "@changesets/cli": "^2.31.0",
-    "@eslint/js": "^10.0.1",
-    "@playwright/test": "^1.61.0",
-    "@tailwindcss/typography": "^0.5.19",
-    "@types/better-sqlite3": "^7.6.12",
-    "@types/node": "^22.10.2",
-    "@types/react": "^18.3.18",
-    "@types/react-dom": "^18.3.5",
-    "@vitejs/plugin-react": "^4.3.4",
-    "autoprefixer": "^10.5.0",
-    "electron": "^33.4.11",
-    "electron-builder": "^26.8.1",
-    "electron-vite": "^3.1.0",
-    "eslint": "^10.4.1",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.6",
-    "postcss": "^8.5.15",
-    "prettier": "^3.8.4",
-    "tailwindcss": "^3.4.19",
-    "tailwindcss-animate": "^1.0.7",
-    "tsx": "^4.20.5",
-    "typescript": "~5.6.2",
-    "typescript-eslint": "^8.61.0",
-    "vite": "^6.0.7",
-    "vitest": "^2.1.9"
-  },
-  "build": {
-    "appId": "com.marloues.desktop",
-    "productName": "Marloues",
-    "directories": {
-      "output": "release"
-    },
-    "electronDist": "node_modules/electron/dist",
-    "files": [
-      "out/**/*",
-      "package.json"
-    ],
-    "asar": true,
-    "publish": [
-      {
-        "provider": "github"
-      }
-    ],
-    "mac": {
-      "category": "public.app-category.developer-tools",
-      "hardenedRuntime": true,
-      "gatekeeperAssess": false,
-      "afterSign": "./client/scripts/notarize.cjs",
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ],
-      "artifactName": "Marloues-${version}-${arch}.${ext}"
-    },
-    "win": {
-      "icon": "build/icon.ico",
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "artifactName": "Marloues-${version}-${arch}-Setup.${ext}"
-    },
-    "linux": {
-      "category": "Development",
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "deb",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "artifactName": "Marloues-${version}-${arch}.${ext}"
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowElevation": true,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Marloues"
-    }
+    "dev": "cd client && npm run dev",
+    "build": "cd client && npm run build",
+    "start": "cd client && npm start",
+    "typecheck": "cd client && npm run typecheck",
+    "test": "cd client && npm test",
+    "test:e2e": "cd client && npm run test:e2e",
+    "lint": "cd client && npm run lint",
+    "format": "cd client && npm run format",
+    "rebuild:native": "cd client && npm run rebuild:native",
+    "package:dir": "cd client && npm run package:dir",
+    "package:mac": "cd client && npm run package:mac",
+    "package:win": "cd client && npm run package:win",
+    "package:linux": "cd client && npm run package:linux",
+    "release": "cd client && npm run release"
   }
 }

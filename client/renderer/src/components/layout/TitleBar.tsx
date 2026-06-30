@@ -7,7 +7,7 @@ import type { ThemeMode } from "@/stores/theme-store";
 
 export function TitleBar({
   sidebarOpen,
-  page: _page,
+  page,
   isDark: _isDark,
   themeMode: _themeMode,
   globalSearchOpen,
@@ -34,14 +34,16 @@ export function TitleBar({
   return (
     <header className="title-bar" style={style}>
       <div className="title-left">
-        <button onClick={onToggleSidebar} title={sidebarOpen ? "隐藏侧边栏" : "显示侧边栏"}>
-          {sidebarOpen ? <Columns2 size={16} /> : <PanelLeft size={16} />}
-        </button>
+        {page !== "settings" ? (
+          <button onClick={onToggleSidebar} title={sidebarOpen ? "隐藏侧边栏" : "显示侧边栏"}>
+            {sidebarOpen ? <Columns2 size={16} /> : <PanelLeft size={16} />}
+          </button>
+        ) : null}
         <span className="title-product-lockup" aria-hidden="true">
           <span className="title-product-mark">N</span>
           <span className="title-product-name">Marloues</span>
         </span>
-        {!sidebarOpen ? (
+        {!sidebarOpen && page === "chat" ? (
           <button onClick={() => { void createSession(); }} title="新对话" aria-label="新对话">
             <SquarePen size={16} />
           </button>
