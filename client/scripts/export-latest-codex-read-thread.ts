@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { parseSessionLog } from '../src/main/codex/session-log'
+import { parseSessionLog } from '../main/codex/session-log'
 
 const sessionsRoot = join(homedir(), '.codex', 'sessions')
 const snapshot = latestUsefulSnapshot()

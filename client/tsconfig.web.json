@@ -1,8 +1,8 @@
 {
   "include": [
-    "src/renderer/src/**/*.ts",
-    "src/renderer/src/**/*.tsx",
-    "src/shared/**/*.ts"
+    "renderer/src/**/*.ts",
+    "renderer/src/**/*.tsx",
+    "shared/**/*.ts"
   ],
   "compilerOptions": {
     "composite": true,
@@ -19,8 +19,8 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/renderer/src/*"],
-      "@shared/*": ["src/shared/*"]
+      "@/*": ["renderer/src/*"],
+      "@shared/*": ["shared/*"]
     }
   }
 }

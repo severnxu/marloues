@@ -30,8 +30,8 @@ export default tseslint.config(
   },
   {
     files: [
-      "src/main/codex/**",
-      "src/main/gateway/**",
+      "main/codex/**",
+      "main/gateway/**",
     ],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
