@@ -67,6 +67,6 @@ Renderer 只认 `UIEvent`，再将其整理为：
 
 ## 7. 下一步代码入口
 
-- `src/main/ipc/handlers.ts`：接入统一 adapter
-- `src/shared/ui-protocol.ts`：作为 renderer 稳定协议
-- `src/renderer/src/components/workflow-chat/*`：消费统一消息模型
+- `client/main/ipc/handlers.ts`：接入统一 adapter
+- `client/shared/ui-protocol.ts`：作为 renderer 稳定协议
+- `client/renderer/src/components/workflow-chat/*`：消费统一消息模型

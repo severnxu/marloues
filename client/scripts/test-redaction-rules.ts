@@ -29,9 +29,8 @@ function assert(condition: unknown, message: string): asserts condition {
 async function main(): Promise<void> {
   console.log("redaction rules — module layer");
   {
-    const { setRedactionRules, redactSensitiveText, redactSensitiveValue } = await import(
-      "../main/core/security/redaction"
-    );
+    const { setRedactionRules, redactSensitiveText, redactSensitiveValue } =
+      await import("../main/core/security/redaction");
 
     // Start from a clean state.
     setRedactionRules(undefined);
@@ -66,7 +65,8 @@ async function main(): Promise<void> {
     );
 
     assert(
-      redactSensitiveText("should-not-match stays") === "should-not-match stays",
+      redactSensitiveText("should-not-match stays") ===
+        "should-not-match stays",
       "disabled rule is skipped",
     );
 
@@ -107,10 +107,19 @@ async function main(): Promise<void> {
       note: "call 13912345678",
       nested: { deep: "again 13800000000" },
     }) as Record<string, unknown>;
-    assert(redactedValue.api_key === "[redacted]", "sensitive key still redacted by built-in rule");
-    assert(redactedValue.note === "call [phone]", "enterprise rule applies at top-level string");
+    assert(
+      redactedValue.api_key === "[redacted]",
+      "sensitive key still redacted by built-in rule",
+    );
+    assert(
+      redactedValue.note === "call [phone]",
+      "enterprise rule applies at top-level string",
+    );
     const nested = redactedValue.nested as Record<string, unknown>;
-    assert(nested.deep === "again [phone]", "enterprise rule applies to nested strings");
+    assert(
+      nested.deep === "again [phone]",
+      "enterprise rule applies to nested strings",
+    );
     setRedactionRules(undefined);
   }
 
@@ -143,17 +152,23 @@ async function main(): Promise<void> {
     );
 
     // Dynamic import after env is set so app-paths resolves to the temp home.
-    const { getAgentSettings } = await import("./main/services/config-service");
-    const { redactSensitiveText } = await import("../main/core/security/redaction");
+    const { getAgentSettings } =
+      await import("../main/services/config-service");
+    const { redactSensitiveText } =
+      await import("../main/core/security/redaction");
 
     // Reading settings triggers applyEnterprisePolicy, which injects the rules.
     const settings = getAgentSettings();
     const rules = settings.enterprisePolicy?.redactionRules ?? [];
-    assert(rules.length === 1, "enterprise redactionRules surfaced via getAgentSettings");
+    assert(
+      rules.length === 1,
+      "enterprise redactionRules surfaced via getAgentSettings",
+    );
     assert(rules[0]?.id === "id-card", "enterprise rule id propagated");
 
     assert(
-      redactSensitiveText("证件号 110101199003071234 已记录") === "证件号 [id] 已记录",
+      redactSensitiveText("证件号 110101199003071234 已记录") ===
+        "证件号 [id] 已记录",
       "enterprise rule from config file is applied by redactSensitiveText",
     );
 

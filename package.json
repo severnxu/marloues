@@ -1,20 +1,46 @@
 {
   "name": "marloues-workspace",
   "private": true,
+  "packageManager": "npm@10.9.7",
+  "workspaces": [
+    "client",
+    "site"
+  ],
+  "engines": {
+    "node": ">=22.22.1 <23",
+    "npm": ">=10 <11"
+  },
   "scripts": {
-    "dev": "cd client && npm run dev",
-    "build": "cd client && npm run build",
-    "start": "cd client && npm start",
-    "typecheck": "cd client && npm run typecheck",
-    "test": "cd client && npm test",
-    "test:e2e": "cd client && npm run test:e2e",
-    "lint": "cd client && npm run lint",
-    "format": "cd client && npm run format",
-    "rebuild:native": "cd client && npm run rebuild:native",
-    "package:dir": "cd client && npm run package:dir",
-    "package:mac": "cd client && npm run package:mac",
-    "package:win": "cd client && npm run package:win",
-    "package:linux": "cd client && npm run package:linux",
-    "release": "cd client && npm run release"
+    "dev": "npm run dev --workspace marloues",
+    "build": "npm run build --workspace marloues",
+    "start": "npm run start --workspace marloues",
+    "typecheck": "npm run typecheck --workspace marloues",
+    "test": "npm run test:unit --workspace marloues",
+    "test:e2e": "npm run test:e2e --workspace marloues",
+    "test:runtime": "npm run test:runtime --workspace marloues",
+    "test:redaction-rules": "npm run test:redaction-rules --workspace marloues",
+    "lint": "npm run lint --workspace marloues",
+    "format": "npm run format --workspace marloues",
+    "rebuild:native": "npm run rebuild:native --workspace marloues",
+    "package:dir": "npm run package:dir --workspace marloues",
+    "package:smoke": "npm run package:smoke --workspace marloues",
+    "package:mac": "npm run package:mac --workspace marloues",
+    "package:win": "npm run package:win --workspace marloues",
+    "package:linux": "npm run package:linux --workspace marloues",
+    "release": "npm run release --workspace marloues",
+    "site:dev": "npm run dev --workspace @marloues/website",
+    "site:build": "npm run build --workspace @marloues/website",
+    "verify": "npm run lint && npm run typecheck && npm run test && npm run test:redaction-rules && npm run test:runtime && npm run build",
+    "verify:push": "npm run lint && npm run typecheck && npm run test",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "client/**/*.{ts,tsx}": "node client/node_modules/eslint/bin/eslint.js --config client/eslint.config.mjs --fix",
+    "client/**/*.{ts,tsx,css,json}": "node client/node_modules/prettier/bin/prettier.cjs --write"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.3.0",
+    "turbo": "^2.5.8"
   }
 }

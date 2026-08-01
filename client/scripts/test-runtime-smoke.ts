@@ -4,58 +4,163 @@
  * 关键：临时移走 ~/.claude/settings.json，确保 SDK 只用 marloues 传的 env，
  * 证明不是蹭 Claude Code 的已有配置。
  *
- * 用法： npx tsx scripts/test-runtime-smoke.ts
+ * 用法：
+ *   npx tsx scripts/test-runtime-smoke.ts
+ *   DEEPSEEK_API_KEY=sk-xxx npx tsx scripts/test-runtime-smoke.ts --bootstrap
+ *
+ * 说明：
+ *   - 需要真实 API Key 与网络，CI 中不会运行；
+ *   - 首次运行若尚无配置文件（~/.marloues-dev/config/settings.json），
+ *     先启动一次应用，或带 --bootstrap 用环境变量生成最小配置。
  */
 
 import { queryClaude } from "../main/core/sdk/claude-sdk";
-import { readFileSync, renameSync, existsSync } from "node:fs";
+import { renameSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { getSettingsPath } from "../main/app-paths";
 
-// 读取 marloues 自己的 settings.json
-const settingsPath = join(homedir(), ".marloues-dev", "config", "settings.json");
-const raw = readFileSync(settingsPath, "utf-8");
-const settings = JSON.parse(raw);
+const wantsBootstrap = process.argv.includes("--bootstrap");
 
-const provider = settings.agentSettings.providers.find(
-  (p: { id: string; enabled: boolean }) => p.id === "deepseek" && p.enabled,
-);
+// 读取 marloues 自己的配置（走 config-service，避免直接解析磁盘上可能加密的 settings.json）
+const settingsPath = getSettingsPath();
 
-if (!provider) {
-  console.error("❌ DeepSeek provider not found in marloues settings.json");
-  process.exit(1);
+let provider:
+  | {
+      id: string;
+      enabled: boolean;
+      name?: string;
+      baseUrl?: string;
+      apiKey?: string;
+    }
+  | undefined;
+let model: string | undefined;
+
+async function prepare(): Promise<void> {
+  if (!existsSync(settingsPath) && wantsBootstrap) {
+    await bootstrapConfig();
+  }
+
+  if (!existsSync(settingsPath)) {
+    console.error("❌ 未找到 marloues 配置文件：" + settingsPath);
+    console.error(
+      "   首次使用请先启动一次应用（npm run dev）自动生成，或运行：",
+    );
+    console.error(
+      "     DEEPSEEK_API_KEY=sk-xxx npx tsx scripts/test-runtime-smoke.ts --bootstrap",
+    );
+    console.error("   冒烟测试需要真实 API Key 与网络，CI 中不会运行。");
+    process.exit(2);
+  }
+
+  const { getAgentSettings } = await import("../main/services/config-service");
+  const agentSettings = getAgentSettings();
+
+  provider = agentSettings.providers?.find(
+    (p: { id: string; enabled: boolean }) => p.id === "deepseek" && p.enabled,
+  );
+
+  if (!provider) {
+    console.error(
+      '❌ 配置中没有启用的 DeepSeek provider（providers[].id === "deepseek" 且 enabled）',
+    );
+    console.error("   可在应用设置中添加 DeepSeek 端点，或运行：");
+    console.error(
+      "     DEEPSEEK_API_KEY=sk-xxx npx tsx scripts/test-runtime-smoke.ts --bootstrap",
+    );
+    process.exit(2);
+  }
+
+  model = agentSettings.defaultModel?.modelId;
+  if (!model) {
+    console.error(
+      "❌ 配置中没有 defaultModel.modelId，请在应用设置中配置默认模型。",
+    );
+    process.exit(2);
+  }
 }
 
-const model = settings.agentSettings.defaultModel.modelId;
-
-console.log("=== marloues Runtime 冒烟测试（隔离模式）===");
-console.log(`Provider:     ${provider.name}`);
-console.log(`Base URL:     ${provider.baseUrl}`);
-console.log(`API Key:      ${provider.apiKey?.slice(0, 10)}...${provider.apiKey?.slice(-4)}`);
-console.log(`Model:        ${model}`);
-console.log("");
-
-// 关键：临时移走 ~/.claude/settings.json，确保不蹭已有配置
-const claudeSettingsPath = join(homedir(), ".claude", "settings.json");
-const claudeSettingsBackup = join(homedir(), ".claude", "settings.json.marloues-backup");
-let movedSettings = false;
-
-if (existsSync(claudeSettingsPath)) {
-  console.log("⚠️  检测到 ~/.claude/settings.json，临时移走以隔离测试");
-  renameSync(claudeSettingsPath, claudeSettingsBackup);
-  movedSettings = true;
+async function bootstrapConfig(): Promise<void> {
+  const apiKey =
+    process.env.DEEPSEEK_API_KEY?.trim() ||
+    process.env.ANTHROPIC_API_KEY?.trim();
+  if (!apiKey) {
+    console.error("❌ --bootstrap 需要 API Key 环境变量：");
+    console.error(
+      "   DEEPSEEK_API_KEY=sk-xxx npx tsx scripts/test-runtime-smoke.ts --bootstrap",
+    );
+    process.exit(2);
+  }
+  mkdirSync(join(settingsPath, ".."), { recursive: true });
+  const baseUrl =
+    process.env.DEEPSEEK_BASE_URL?.trim() || "https://api.deepseek.com";
+  const modelId = process.env.DEEPSEEK_MODEL?.trim() || "deepseek-chat";
+  const { getAgentSettings, saveAgentSettings } =
+    await import("../main/services/config-service");
+  saveAgentSettings({
+    ...getAgentSettings(),
+    activeRuntimeId: "sdk",
+    providers: [
+      {
+        id: "deepseek",
+        name: "DeepSeek",
+        type: "openai-compatible",
+        enabled: true,
+        baseUrl,
+        apiKey,
+        models: [{ id: modelId, label: "DeepSeek Chat", enabled: true }],
+      },
+    ],
+    defaultModel: { providerId: "deepseek", modelId },
+  });
+  console.log("✅ 已生成最小配置：" + settingsPath);
+  console.log("   基址/模型可用 DEEPSEEK_BASE_URL / DEEPSEEK_MODEL 覆盖。");
   console.log("");
 }
 
-// 确保测试结束后恢复
+// 关键：临时移走 ~/.claude/settings.json，确保不蹭已有配置
+const claudeSettingsPath = join(homedir(), ".claude", "settings.json");
+const claudeSettingsBackup = join(
+  homedir(),
+  ".claude",
+  "settings.json.marloues-backup",
+);
+let movedSettings = false;
+
+// 确保测试结束后恢复（含被 kill / Ctrl+C 中断的场景）
 function restore() {
   if (movedSettings && existsSync(claudeSettingsBackup)) {
     renameSync(claudeSettingsBackup, claudeSettingsPath);
     console.log("✅ ~/.claude/settings.json 已恢复");
   }
 }
+process.once("exit", restore);
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.once(signal, () => {
+    restore();
+    process.exit(130);
+  });
+}
 
 async function main() {
+  await prepare();
+
+  console.log("=== marloues Runtime 冒烟测试（隔离模式）===");
+  console.log(`Provider:     ${provider.name}`);
+  console.log(`Base URL:     ${provider.baseUrl}`);
+  console.log(
+    `API Key:      ${provider.apiKey?.slice(0, 10)}...${provider.apiKey?.slice(-4)}`,
+  );
+  console.log(`Model:        ${model}`);
+  console.log("");
+
+  if (existsSync(claudeSettingsPath)) {
+    console.log("⚠️  检测到 ~/.claude/settings.json，临时移走以隔离测试");
+    renameSync(claudeSettingsPath, claudeSettingsBackup);
+    movedSettings = true;
+    console.log("");
+  }
+
   const prompt = "你是什么模型？请只回答模型名称和厂商，不要说其他内容。";
 
   // 完全用 marloues 的配置，不依赖 process.env 里的 ANTHROPIC_ 变量

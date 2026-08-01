@@ -1,13 +1,10 @@
 import type { RuntimeEvent, Thread } from "../../../shared/agent-runtime";
 import type {
   WorkflowAgentMessageItem,
-  WorkflowCommandExecutionItem,
   WorkflowMcpToolCallItem,
   WorkflowReasoningItem,
   WorkflowTextOutput,
-  WorkflowThreadInfo,
   WorkflowUserMessageContent,
-  WorkflowTurn,
   WorkflowTurnItem,
 } from "../../../shared/workflow-read-thread-contract";
 import type {
@@ -43,24 +40,50 @@ function now(): number {
 function defaultTitle(): string {
   return "New chat";
 }
-function userContentFromInput(text: string, attachments: unknown[] | undefined): WorkflowUserMessageContent[] {
+function userContentFromInput(
+  text: string,
+  attachments: unknown[] | undefined,
+): WorkflowUserMessageContent[] {
   const content: WorkflowUserMessageContent[] = [];
   if (text.trim()) content.push({ type: "text", text });
   for (const attachment of attachments ?? []) {
-    const record = attachment && typeof attachment === "object" ? attachment as Record<string, unknown> : null;
+    const record =
+      attachment && typeof attachment === "object"
+        ? (attachment as Record<string, unknown>)
+        : null;
     if (!record) continue;
-    if (record.type === "localImage" && typeof record.path === "string" && record.path.trim()) {
+    if (
+      record.type === "localImage" &&
+      typeof record.path === "string" &&
+      record.path.trim()
+    ) {
       content.push({ type: "localImage", path: record.path });
       continue;
     }
-    const imageUrl = typeof record.url === "string" ? record.url : typeof record.dataUrl === "string" ? record.dataUrl : "";
+    const imageUrl =
+      typeof record.url === "string"
+        ? record.url
+        : typeof record.dataUrl === "string"
+          ? record.dataUrl
+          : "";
     if ((record.type === "image" || record.dataUrl) && imageUrl.trim()) {
       content.push({ type: "image", url: imageUrl });
       continue;
     }
-    if ((record.type === "skill" || record.type === "mention") && typeof record.name === "string" && record.name.trim()) {
-      const path = typeof record.path === "string" && record.path.trim() ? record.path : undefined;
-      content.push(record.type === "skill" ? { type: "skill", name: record.name, path } : { type: "mention", name: record.name, path });
+    if (
+      (record.type === "skill" || record.type === "mention") &&
+      typeof record.name === "string" &&
+      record.name.trim()
+    ) {
+      const path =
+        typeof record.path === "string" && record.path.trim()
+          ? record.path
+          : undefined;
+      content.push(
+        record.type === "skill"
+          ? { type: "skill", name: record.name, path }
+          : { type: "mention", name: record.name, path },
+      );
     }
   }
   return content;
@@ -86,7 +109,10 @@ class WorkflowThreadStore {
       }));
   }
 
-  ensureThread(threadId: string, options: Partial<Pick<WorkflowThreadStoreThread, "title" | "cwd">> = {}) {
+  ensureThread(
+    threadId: string,
+    options: Partial<Pick<WorkflowThreadStoreThread, "title" | "cwd">> = {},
+  ) {
     let thread = this.threads.get(threadId);
     const timestamp = now();
     if (!thread) {
@@ -146,17 +172,30 @@ class WorkflowThreadStore {
   cloneThread(
     sourceThreadId: string,
     targetThreadId: string,
-    options: { title?: string; upToTurnId?: string; upToMessageId?: string } = {},
+    options: {
+      title?: string;
+      upToTurnId?: string;
+      upToMessageId?: string;
+    } = {},
   ): WorkflowThreadStoreThread {
     const source = this.ensureThread(sourceThreadId);
     const target = this.ensureThread(targetThreadId, {
       title: options.title ?? `Forked: ${source.title}`,
       cwd: source.cwd,
     });
-    const endIndex = findForkEndIndex(source, options.upToTurnId, options.upToMessageId);
-    const turnIds = endIndex >= 0 ? source.turnOrder.slice(0, endIndex + 1) : [...source.turnOrder];
+    const endIndex = findForkEndIndex(
+      source,
+      options.upToTurnId,
+      options.upToMessageId,
+    );
+    const turnIds =
+      endIndex >= 0
+        ? source.turnOrder.slice(0, endIndex + 1)
+        : [...source.turnOrder];
     target.turnOrder = [...turnIds];
-    target.turns = new Map(turnIds.map((turnId) => [turnId, cloneTurn(source.turns.get(turnId)!)]));
+    target.turns = new Map(
+      turnIds.map((turnId) => [turnId, cloneTurn(source.turns.get(turnId)!)]),
+    );
     target.preview = previewFromThread(target);
     target.status = { type: "idle" };
     target.updatedAt = now();
@@ -164,12 +203,18 @@ class WorkflowThreadStore {
     return target;
   }
 
-  truncateFromUserMessage(threadId: string, userMessageId: string, includeMessage = false): void {
+  truncateFromUserMessage(
+    threadId: string,
+    userMessageId: string,
+    includeMessage = false,
+  ): void {
     const thread = this.threads.get(threadId);
     if (!thread) return;
     const turnIndex = thread.turnOrder.findIndex((turnId) => {
       const turn = thread.turns.get(turnId);
-      return turn?.itemOrder.some((itemId) => turn.items.get(itemId)?.item.id === userMessageId);
+      return turn?.itemOrder.some(
+        (itemId) => turn.items.get(itemId)?.item.id === userMessageId,
+      );
     });
     if (turnIndex < 0) return;
     const end = includeMessage ? turnIndex + 1 : turnIndex;
@@ -214,17 +259,25 @@ class WorkflowThreadStore {
     };
     thread.turns.set(input.turnId, turn);
     thread.preview = input.content.trim().slice(0, 160) || thread.preview;
-    if (thread.title === defaultTitle()) thread.title = input.content.trim().slice(0, 50) || thread.title;
+    if (thread.title === defaultTitle())
+      thread.title = input.content.trim().slice(0, 50) || thread.title;
     this.emit(input.threadId);
   }
 
-  applyRuntimeEvent(threadId: string, turnId: string, event: RuntimeEvent, timestamp = now()): void {
+  applyRuntimeEvent(
+    threadId: string,
+    turnId: string,
+    event: RuntimeEvent,
+    timestamp = now(),
+  ): void {
     const thread = this.ensureThread(threadId);
     const turn = this.ensureTurn(thread, turnId, timestamp);
 
     if (event.kind === "text-chunk") {
       this.appendAgentText(turn, event.payload.content, timestamp);
-      thread.preview = event.payload.content.trim() ? event.payload.content.trim().slice(0, 160) : thread.preview;
+      thread.preview = event.payload.content.trim()
+        ? event.payload.content.trim().slice(0, 160)
+        : thread.preview;
     } else if (event.kind === "thinking-chunk") {
       this.appendReasoning(turn, event.payload.content, timestamp);
     } else if (event.kind === "tool-start" || event.kind === "tool-progress") {
@@ -235,12 +288,20 @@ class WorkflowThreadStore {
         id: payload.toolId,
         tool: payload.toolName,
         arguments: "input" in payload ? payload.input : {},
-        status: event.kind === "tool-progress" && event.payload.isReady === false ? "pending" : "running",
+        status:
+          event.kind === "tool-progress" && event.payload.isReady === false
+            ? "pending"
+            : "running",
       };
-      this.upsertItem(turn, existing?.type === "mcpToolCall" ? { ...existing, ...item } : item);
+      this.upsertItem(
+        turn,
+        existing?.type === "mcpToolCall" ? { ...existing, ...item } : item,
+      );
     } else if (event.kind === "tool-complete") {
       const existing = turn.items.get(event.payload.toolId)?.item;
-      const economy = compressToolResult(event.payload.output, { maxModelChars: 6_000 });
+      const economy = compressToolResult(event.payload.output, {
+        maxModelChars: 6_000,
+      });
       const output = textOutput(economy.rawText);
       const modelOutput = textOutput(economy.modelText);
       if (existing?.type === "mcpToolCall") {
@@ -272,14 +333,25 @@ class WorkflowThreadStore {
     } else if (event.kind === "token-usage") {
       turn.usage = event.payload.usage;
     } else if (event.kind === "turn-complete") {
-      turn.status = event.payload.result === "success" ? "completed" : event.payload.result === "aborted" ? "cancelled" : "failed";
+      turn.status =
+        event.payload.result === "success"
+          ? "completed"
+          : event.payload.result === "aborted"
+            ? "cancelled"
+            : "failed";
       turn.completedAt = timestamp;
-      turn.durationMs = typeof turn.startedAt === "number" ? timestamp - turn.startedAt : null;
-      turn.error = event.payload.error ? { message: event.payload.error } : null;
+      turn.durationMs =
+        typeof turn.startedAt === "number" ? timestamp - turn.startedAt : null;
+      turn.error = event.payload.error
+        ? { message: event.payload.error }
+        : null;
       thread.status = { type: "idle" };
     } else if (event.kind === "error") {
       turn.status = "failed";
-      turn.error = { message: event.payload.message, additionalDetails: event.payload };
+      turn.error = {
+        message: event.payload.message,
+        additionalDetails: event.payload,
+      };
       thread.status = { type: "systemError" };
     }
 
@@ -288,40 +360,48 @@ class WorkflowThreadStore {
   }
 
   readThread(input: WorkflowReadThreadInput) {
-    return serializeWorkflowThread(this.ensureThread(input.threadId ?? "default"), input);
+    return serializeWorkflowThread(
+      this.ensureThread(input.threadId ?? "default"),
+      input,
+    );
   }
 
-  subscribeThread(input: WorkflowSubscribeThreadInput): AsyncIterable<WorkflowThreadPatch> {
-    const threadId = input.threadId ?? "default";
-    const self = this;
+  subscribeThread(
+    input: WorkflowSubscribeThreadInput,
+  ): AsyncIterable<WorkflowThreadPatch> {
     return {
-      async *[Symbol.asyncIterator]() {
-        const queue: WorkflowThreadPatch[] = [];
-        let wake: (() => void) | null = null;
-        const listener: ThreadListener = (changedThreadId) => {
-          if (changedThreadId !== threadId) return;
-          queue.push({ type: "snapshot", snapshot: self.readThread(input) });
-          wake?.();
-        };
-        self.listeners.add(listener);
-        try {
-          queue.push({ type: "snapshot", snapshot: self.readThread(input) });
-          while (!input.signal?.aborted) {
-            const next = queue.shift();
-            if (next) {
-              yield next;
-              continue;
-            }
-            await new Promise<void>((resolve) => {
-              wake = resolve;
-            });
-            wake = null;
-          }
-        } finally {
-          self.listeners.delete(listener);
-        }
-      },
+      [Symbol.asyncIterator]: () => this.threadSubscriptionIterator(input),
     };
+  }
+
+  private async *threadSubscriptionIterator(
+    input: WorkflowSubscribeThreadInput,
+  ): AsyncGenerator<WorkflowThreadPatch> {
+    const threadId = input.threadId ?? "default";
+    const queue: WorkflowThreadPatch[] = [];
+    let wake: (() => void) | null = null;
+    const listener: ThreadListener = (changedThreadId) => {
+      if (changedThreadId !== threadId) return;
+      queue.push({ type: "snapshot", snapshot: this.readThread(input) });
+      wake?.();
+    };
+    this.listeners.add(listener);
+    try {
+      queue.push({ type: "snapshot", snapshot: this.readThread(input) });
+      while (!input.signal?.aborted) {
+        const next = queue.shift();
+        if (next) {
+          yield next;
+          continue;
+        }
+        await new Promise<void>((resolve) => {
+          wake = resolve;
+        });
+        wake = null;
+      }
+    } finally {
+      this.listeners.delete(listener);
+    }
   }
 
   addListener(listener: ThreadListener): () => void {
@@ -333,7 +413,11 @@ class WorkflowThreadStore {
     for (const listener of this.listeners) listener(threadId);
   }
 
-  private ensureTurn(thread: WorkflowThreadStoreThread, turnId: string, timestamp: number): WorkflowThreadStoreTurn {
+  private ensureTurn(
+    thread: WorkflowThreadStoreThread,
+    turnId: string,
+    timestamp: number,
+  ): WorkflowThreadStoreTurn {
     let turn = thread.turns.get(turnId);
     if (!turn) {
       turn = {
@@ -352,16 +436,26 @@ class WorkflowThreadStore {
     return turn;
   }
 
-  private upsertItem(turn: WorkflowThreadStoreTurn, item: WorkflowTurnItem): void {
+  private upsertItem(
+    turn: WorkflowThreadStoreTurn,
+    item: WorkflowTurnItem,
+  ): void {
     if (!turn.items.has(item.id)) turn.itemOrder.push(item.id);
     turn.items.set(item.id, { item });
   }
 
-  private appendAgentText(turn: WorkflowThreadStoreTurn, delta: string, timestamp: number): void {
+  private appendAgentText(
+    turn: WorkflowThreadStoreTurn,
+    delta: string,
+    timestamp: number,
+  ): void {
     const id = currentAgentItemId(turn);
     const existing = turn.items.get(id)?.item;
     const existingText = existing?.type === "agentMessage" ? existing.text : "";
-    const text = existingText && delta.startsWith(existingText) ? delta : existingText + delta;
+    const text =
+      existingText && delta.startsWith(existingText)
+        ? delta
+        : existingText + delta;
     const item: WorkflowAgentMessageItem = {
       type: "agentMessage",
       id,
@@ -372,10 +466,15 @@ class WorkflowThreadStore {
     updateItemTime(item, timestamp);
   }
 
-  private appendReasoning(turn: WorkflowThreadStoreTurn, delta: string, _timestamp: number): void {
+  private appendReasoning(
+    turn: WorkflowThreadStoreTurn,
+    delta: string,
+    _timestamp: number,
+  ): void {
     const id = `reasoning-${turn.id}`;
     const existing = turn.items.get(id)?.item;
-    const content = existing?.type === "reasoning" ? existing.content ?? [] : [];
+    const content =
+      existing?.type === "reasoning" ? (existing.content ?? []) : [];
     const previous = content[0]?.text ?? "";
     const item: WorkflowReasoningItem = {
       type: "reasoning",
@@ -395,15 +494,24 @@ function currentAgentItemId(turn: WorkflowThreadStoreTurn): string {
   const lastItemId = turn.itemOrder[turn.itemOrder.length - 1];
   const lastItem = lastItemId ? turn.items.get(lastItemId)?.item : undefined;
   if (lastItem?.type === "agentMessage") return lastItem.id;
-  const agentCount = turn.itemOrder.filter((itemId) => turn.items.get(itemId)?.item.type === "agentMessage").length;
-  return agentCount === 0 ? `agent-${turn.id}` : `agent-${turn.id}-${agentCount + 1}`;
+  const agentCount = turn.itemOrder.filter(
+    (itemId) => turn.items.get(itemId)?.item.type === "agentMessage",
+  ).length;
+  return agentCount === 0
+    ? `agent-${turn.id}`
+    : `agent-${turn.id}-${agentCount + 1}`;
 }
 
 function cloneTurn(turn: WorkflowThreadStoreTurn): WorkflowThreadStoreTurn {
   return {
     ...turn,
     itemOrder: [...turn.itemOrder],
-    items: new Map([...turn.items.entries()].map(([id, item]) => [id, { item: structuredClone(item.item) }])),
+    items: new Map(
+      [...turn.items.entries()].map(([id, item]) => [
+        id,
+        { item: structuredClone(item.item) },
+      ]),
+    ),
   };
 }
 
@@ -419,7 +527,9 @@ function findForkEndIndex(
   if (!upToMessageId) return -1;
   return source.turnOrder.findIndex((turnId) => {
     const turn = source.turns.get(turnId);
-    return turn?.itemOrder.some((itemId) => turn.items.get(itemId)?.item.id === upToMessageId);
+    return turn?.itemOrder.some(
+      (itemId) => turn.items.get(itemId)?.item.id === upToMessageId,
+    );
   });
 }
 
@@ -427,11 +537,18 @@ function previewFromThread(thread: WorkflowThreadStoreThread): string {
   for (let index = thread.turnOrder.length - 1; index >= 0; index -= 1) {
     const turn = thread.turns.get(thread.turnOrder[index]);
     if (!turn) continue;
-    for (let itemIndex = turn.itemOrder.length - 1; itemIndex >= 0; itemIndex -= 1) {
+    for (
+      let itemIndex = turn.itemOrder.length - 1;
+      itemIndex >= 0;
+      itemIndex -= 1
+    ) {
       const item = turn.items.get(turn.itemOrder[itemIndex])?.item;
-      if (item?.type === "agentMessage" && item.text.trim()) return item.text.trim().slice(0, 160);
+      if (item?.type === "agentMessage" && item.text.trim())
+        return item.text.trim().slice(0, 160);
       if (item?.type === "userMessage") {
-        const text = item.content.find((content) => content.type === "text")?.text.trim();
+        const text = item.content
+          .find((content) => content.type === "text")
+          ?.text.trim();
         if (text) return text.slice(0, 160);
       }
     }

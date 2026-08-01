@@ -3,43 +3,78 @@ name: CI
 on:
   pull_request:
   push:
-    branches:
-      - main
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  verify:
-    name: Verify
-    runs-on: macos-latest
+  quality:
+    name: Quality gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version-file: .nvmrc
           cache: npm
 
-      - name: Install
+      - name: Install dependencies
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
+      - name: Audit dependencies
+        run: npm audit --audit-level=moderate --registry=https://registry.npmjs.org
 
-      - name: Typecheck
-        run: npm run typecheck
+      - name: Verify application
+        run: npm run verify
 
-      - name: Unit Tests
-        run: npm run test:unit
+      - name: Build website
+        run: npm run site:build
 
-      - name: Runtime Contract Test
-        run: npm test
+  electron-smoke:
+    name: Electron smoke tests (xvfb)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
 
-      - name: Build
-        run: npm run build
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
 
-      - name: Critical E2E
-        run: npm run test:e2e --ignore-scripts
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Package Smoke
-        run: npm run package:dir -- --publish=never
+      - name: Verify xvfb support
+        run: |
+          command -v xvfb-run
+          xvfb-run -a sh -c 'test -n "$DISPLAY"'
+
+      - name: Test Electron application
+        run: xvfb-run -a npm run test:e2e
+
+      - name: Test packaged application
+        run: xvfb-run -a npm run package:smoke
+
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-diagnostics-${{ github.run_id }}
+          path: |
+            client/playwright-report/
+            client/test-results/
+          if-no-files-found: ignore
+          retention-days: 7

@@ -24,6 +24,7 @@
 ### 1.1 为什么需要 SPI
 
 marloues 的核心价值是"不锁供应商"。三种 Agent 内核：
+
 - **WorkflowRuntime** — spawn external workflow 二进制，JSON-RPC 通信
 - **SdkRuntime** — import `@vendor/agent-sdk`，调用 `query()`
 - **SelfBuiltRuntime** — 自建 agent loop
@@ -32,7 +33,7 @@ marloues 的核心价值是"不锁供应商"。三种 Agent 内核：
 
 ### 1.2 SPI TypeScript 接口
 
-**文件**：`src/shared/agent-runtime.ts`
+**文件**：`client/shared/agent-runtime.ts`
 
 ```ts
 export type RuntimeKind = "binary" | "sdk" | "self-built";
@@ -65,27 +66,86 @@ export interface AgentRuntime {
   setPermissionMode(mode: PermissionMode): Promise<void>;
 
   // 审批响应
-  respondApproval(requestId: string, approved: boolean, scope: "once" | "session"): void;
+  respondApproval(
+    requestId: string,
+    approved: boolean,
+    scope: "once" | "session",
+  ): void;
 }
 ```
 
 ### 1.3 RuntimeEvent（统一事件类型）
 
-**文件**：`src/shared/agent-runtime.ts`
+**文件**：`client/shared/agent-runtime.ts`
 
 ```ts
 export type RuntimeEvent =
   | { kind: "turn-start"; payload: { turnId: string; timestamp: number } }
   | { kind: "text-chunk"; payload: { turnId: string; content: string } }
   | { kind: "thinking-chunk"; payload: { turnId: string; content: string } }
-  | { kind: "tool-start"; payload: { turnId: string; toolId: string; toolName: string; input: unknown } }
-  | { kind: "tool-progress"; payload: { turnId: string; toolId: string; toolName: string; partialInput?: string; input?: unknown; isReady?: boolean } }
-  | { kind: "tool-complete"; payload: { turnId: string; toolId: string; output: unknown; isError: boolean } }
-  | { kind: "turn-complete"; payload: { turnId: string; result: "success" | "error" | "aborted"; error?: string } }
-  | { kind: "approval-request"; payload: { requestId: string; toolName: string; reason: string; timeout: number } }
-  | { kind: "context-usage"; payload: { turnId: string; percentage: number; limit: number } }
-  | { kind: "runtime-status"; payload: { turnId: string; label: string; detail?: string; status?: string } }
-  | { kind: "error"; payload: { code: string; message: string; recoverable: boolean } };
+  | {
+      kind: "tool-start";
+      payload: {
+        turnId: string;
+        toolId: string;
+        toolName: string;
+        input: unknown;
+      };
+    }
+  | {
+      kind: "tool-progress";
+      payload: {
+        turnId: string;
+        toolId: string;
+        toolName: string;
+        partialInput?: string;
+        input?: unknown;
+        isReady?: boolean;
+      };
+    }
+  | {
+      kind: "tool-complete";
+      payload: {
+        turnId: string;
+        toolId: string;
+        output: unknown;
+        isError: boolean;
+      };
+    }
+  | {
+      kind: "turn-complete";
+      payload: {
+        turnId: string;
+        result: "success" | "error" | "aborted";
+        error?: string;
+      };
+    }
+  | {
+      kind: "approval-request";
+      payload: {
+        requestId: string;
+        toolName: string;
+        reason: string;
+        timeout: number;
+      };
+    }
+  | {
+      kind: "context-usage";
+      payload: { turnId: string; percentage: number; limit: number };
+    }
+  | {
+      kind: "runtime-status";
+      payload: {
+        turnId: string;
+        label: string;
+        detail?: string;
+        status?: string;
+      };
+    }
+  | {
+      kind: "error";
+      payload: { code: string; message: string; recoverable: boolean };
+    };
 ```
 
 ### 1.4 设计要点
@@ -102,17 +162,17 @@ export type RuntimeEvent =
 
 **不要猜 SDK API 形状，直接看跑通的代码。**
 
-marloues 项目的 `src/main/core/sdk/sdk-loader.ts` 是跑通的，关键发现：
+marloues 项目的 `client/main/core/sdk/sdk-loader.ts` 是跑通的，关键发现：
 
-| 之前错误假设 | 实际跑通的（marloues） |
-|---|---|
-| `import * as sdk from "..."` 静态导入 | **动态 `import()`** 延迟加载（避免 Electron 预加载问题） |
-| `sdk.query({ prompt, options })` | `querySDK(prompt, options)` wrapper，内部包成 `{ prompt, options }` 传给 SDK |
-| 手写事件归一化（阉割版） | `SdkEventNormalizer` 处理 30+ 种 `SDKMessage` 类型 |
+| 之前错误假设                          | 实际跑通的（marloues）                                                       |
+| ------------------------------------- | ---------------------------------------------------------------------------- |
+| `import * as sdk from "..."` 静态导入 | **动态 `import()`** 延迟加载（避免 Electron 预加载问题）                     |
+| `sdk.query({ prompt, options })`      | `querySDK(prompt, options)` wrapper，内部包成 `{ prompt, options }` 传给 SDK |
+| 手写事件归一化（阉割版）              | `SdkEventNormalizer` 处理 30+ 种 `SDKMessage` 类型                           |
 
 ### 2.2 SDK 调用方式
 
-**文件**：`src/main/core/sdk/sdk-loader.ts`
+**文件**：`client/main/core/sdk/sdk-loader.ts`
 
 ```ts
 // 动态 import，避免 Electron 预加载阶段加载 SDK（会导致打包问题）
@@ -127,24 +187,24 @@ export async function querySDK(
   options: SDKQueryOptions,
 ): Promise<SDKQuery> {
   const sdk = await loadSDKSdk();
-  return sdk.query({ prompt, options });  // 注意：两个参数包成一个对象
+  return sdk.query({ prompt, options }); // 注意：两个参数包成一个对象
 }
 ```
 
 ### 2.3 事件归一化（SDKMessage → RuntimeEvent）
 
-**文件**：`src/main/core/runtime/sdk-runtime.ts` 中的 `normalizeSdkMessage()`
+**文件**：`client/main/core/runtime/sdk-runtime.ts` 中的 `normalizeSdkMessage()`
 
-| SDKMessage.type | SDKMessage.subtype / event.type | RuntimeEvent.kind |
-|---|---|---|
-| `system` | subtype=`init` | `turn-start` |
-| `stream_event` | event.type=`content_block_delta`, delta.type=`text_delta` | `text-chunk` |
-| `stream_event` | event.type=`content_block_delta`, delta.type=`thinking_delta` | `thinking-chunk` |
-| `stream_event` | event.type=`content_block_start`, block.type=`tool_use` | `tool-start` |
-| `stream_event` | event.type=`content_block_delta`, delta.type=`input_json_delta` | `tool-progress` |
-| `user` | content[].type=`tool_result` | `tool-complete` |
-| `result` | — | `turn-complete` |
-| `system` | subtype=`status` | `runtime-status` |
+| SDKMessage.type | SDKMessage.subtype / event.type                                 | RuntimeEvent.kind |
+| --------------- | --------------------------------------------------------------- | ----------------- |
+| `system`        | subtype=`init`                                                  | `turn-start`      |
+| `stream_event`  | event.type=`content_block_delta`, delta.type=`text_delta`       | `text-chunk`      |
+| `stream_event`  | event.type=`content_block_delta`, delta.type=`thinking_delta`   | `thinking-chunk`  |
+| `stream_event`  | event.type=`content_block_start`, block.type=`tool_use`         | `tool-start`      |
+| `stream_event`  | event.type=`content_block_delta`, delta.type=`input_json_delta` | `tool-progress`   |
+| `user`          | content[].type=`tool_result`                                    | `tool-complete`   |
+| `result`        | —                                                               | `turn-complete`   |
+| `system`        | subtype=`status`                                                | `runtime-status`  |
 
 ### 2.4 当前实现状态
 
@@ -171,7 +231,7 @@ API Key 等敏感信息通过 Electron `safeStorage` 加密后存储在配置文
 ~/.marloues-dev/config/settings.json
 ```
 
-路径由 `src/main/app-paths.ts` 中的 `getSettingsPath()` 决定。
+路径由 `client/main/app-paths.ts` 中的 `getSettingsPath()` 决定。
 
 ### 3.3 配置结构
 
@@ -187,11 +247,18 @@ API Key 等敏感信息通过 Electron `safeStorage` 加密后存储在配置文
         "apiKey": "enc:safe:v1:xxxx",
         "baseUrl": "https://models.example.internal",
         "models": [
-          { "id": "default-sdk-model", "label": "Default SDK Model", "enabled": true }
+          {
+            "id": "default-sdk-model",
+            "label": "Default SDK Model",
+            "enabled": true
+          }
         ]
       }
     ],
-    "defaultModel": { "providerId": "enterprise-sdk", "modelId": "default-sdk-model" },
+    "defaultModel": {
+      "providerId": "enterprise-sdk",
+      "modelId": "default-sdk-model"
+    },
     "maxTurns": 50,
     "permissionMode": "default",
     "thinkingEnabled": true,
@@ -206,7 +273,7 @@ API Key 等敏感信息通过 Electron `safeStorage` 加密后存储在配置文
 
 ### 3.4 API Key 加密方案
 
-**文件**：`src/main/services/secure-storage.service.ts`
+**文件**：`client/main/services/secure-storage.service.ts`
 
 ```
 明文 API Key
@@ -219,6 +286,7 @@ API Key 等敏感信息通过 Electron `safeStorage` 加密后存储在配置文
 读取时反向操作：`decryptSecret(value)` 自动识别前缀并解密。
 
 **加密前缀说明**：
+
 - `enc:safe:v1:` — 用 `safeStorage` 加密（推荐，硬件安全模块）
 - `enc:fallback:v1:` — 回退方案（Base64 编码，无硬件加密时）
 
@@ -233,9 +301,10 @@ settings.json
 ```
 
 **文件**：
-- `src/main/services/config-service.ts` — 读写 settings.json
-- `src/main/core/config/model-provider.ts` — 解析 provider 配置
-- `src/main/core/runtime/sdk-runtime.ts` — 调用 `getAgentSettings()` + `buildSdkEnv()`
+
+- `client/main/services/config-service.ts` — 读写 settings.json
+- `client/main/core/config/model-provider.ts` — 解析 provider 配置
+- `client/main/core/runtime/sdk-runtime.ts` — 调用 `getAgentSettings()` + `buildSdkEnv()`
 
 ---
 
@@ -251,19 +320,19 @@ Renderer (UI) ──── IPC ────> Main (Runtime)
 
 ### 4.2 IPC Channel 定义
 
-**文件**：`src/shared/types.ts` 中的 `IPC` 常量对象
+**文件**：`client/shared/types.ts` 中的 `IPC` 常量对象
 
-| Channel | 方向 | 用途 |
-|---|---|---|
-| `chat:send` | Renderer → Main | 发送用户消息 |
-| `chat:event` | Main → Renderer | Runtime 事件流（RuntimeEvent → UIEvent） |
-| `chat:abort` | Renderer → Main | 中断当前生成 |
-| `chat:list-sessions` | Renderer → Main | 获取会话列表 |
-| `chat:create-session` | Renderer → Main | 创建新会话 |
-| `config:get-agent-settings` | Renderer → Main | 读取配置 |
-| `config:save-agent-settings` | Renderer → Main | 保存配置 |
-| `workspace:select` | Renderer → Main | 选择工作区 |
-| `mcp:list-servers` | Renderer → Main | 获取 MCP Server 列表 |
+| Channel                      | 方向            | 用途                                     |
+| ---------------------------- | --------------- | ---------------------------------------- |
+| `chat:send`                  | Renderer → Main | 发送用户消息                             |
+| `chat:event`                 | Main → Renderer | Runtime 事件流（RuntimeEvent → UIEvent） |
+| `chat:abort`                 | Renderer → Main | 中断当前生成                             |
+| `chat:list-sessions`         | Renderer → Main | 获取会话列表                             |
+| `chat:create-session`        | Renderer → Main | 创建新会话                               |
+| `config:get-agent-settings`  | Renderer → Main | 读取配置                                 |
+| `config:save-agent-settings` | Renderer → Main | 保存配置                                 |
+| `workspace:select`           | Renderer → Main | 选择工作区                               |
+| `mcp:list-servers`           | Renderer → Main | 获取 MCP Server 列表                     |
 
 ### 4.3 事件流传输方案
 
@@ -274,7 +343,7 @@ Renderer (UI) ──── IPC ────> Main (Runtime)
 ```ts
 // Main: ipc/handlers.ts
 for await (const runtimeEvent of runtime.sendMessage(req)) {
-  const uiEvent = translateEvent(runtimeEvent);  // RuntimeEvent → UIEvent
+  const uiEvent = translateEvent(runtimeEvent); // RuntimeEvent → UIEvent
   win.webContents.send("chat:event", uiEvent);
 }
 ```
@@ -286,6 +355,7 @@ for await (const runtimeEvent of runtime.sendMessage(req)) {
 ### 5.1 问题
 
 三种 Runtime 产生的事件形状不同：
+
 - **厂商 SDK**：`SDKMessage`（30+ 种 subtype）
 - **Workflow**：JSON-RPC 消息（待定义）
 - **Self-built**：Self-built StreamEvent（待定义）
@@ -299,21 +369,34 @@ SDKMessage → translateEvent() → UIEvent → IPC → Renderer
 ```
 
 **当前进度**：
+
 - [x] SDK Runtime: `normalizeSdkMessage()` 已完成
 - [ ] Workflow Runtime: 待实现
 - [ ] Self-built Runtime: 待实现
 
 ### 5.3 UIEvent 类型
 
-**文件**：`src/shared/ui-protocol.ts`
+**文件**：`client/shared/ui-protocol.ts`
 
 ```ts
 export type UIEvent =
   | { kind: "turn_start"; sessionId: string; turnId: string }
   | { kind: "text_delta"; sessionId: string; turnId: string; delta: string }
   | { kind: "thinking_delta"; sessionId: string; turnId: string; delta: string }
-  | { kind: "tool_start"; sessionId: string; turnId: string; id: string; name: string }
-  | { kind: "tool_result"; sessionId: string; turnId: string; id: string; output: unknown }
+  | {
+      kind: "tool_start";
+      sessionId: string;
+      turnId: string;
+      id: string;
+      name: string;
+    }
+  | {
+      kind: "tool_result";
+      sessionId: string;
+      turnId: string;
+      id: string;
+      output: unknown;
+    }
   | { kind: "turn_done"; sessionId: string; turnId: string; reason: string }
   | { kind: "error"; sessionId: string; turnId: string; error: string };
 ```
@@ -324,14 +407,14 @@ export type UIEvent =
 
 ### 6.1 技术栈
 
-| 类别 | 选型 | 版本 |
-|---|---|---|
-| 桌面框架 | Electron | ≥33 |
-| 前端框架 | React | 18.x |
+| 类别     | 选型          | 版本   |
+| -------- | ------------- | ------ |
+| 桌面框架 | Electron      | ≥33    |
+| 前端框架 | React         | 18.x   |
 | 构建工具 | electron-vite | latest |
-| 样式 | Tailwind CSS | 3.x |
-| 语言 | TypeScript | strict |
-| 包管理 | npm | 11.x |
+| 样式     | Tailwind CSS  | 3.x    |
+| 语言     | TypeScript    | strict |
+| 包管理   | npm           | 11.x   |
 
 ### 6.2 项目结构
 
@@ -373,11 +456,11 @@ npm run typecheck  # TypeScript 类型检查
 
 ## 7. 当前实现状态
 
-> 最后更新：2026-06-25（基于实际代码与测试运行结果）
+> 最后更新：2026-08-01（基于实际代码、打包与测试运行结果）
 
 ### 7.1 已完成
 
-- ✅ AgentRuntime SPI 定义（`src/shared/agent-runtime.ts`）
+- ✅ AgentRuntime SPI 定义（`client/shared/agent-runtime.ts`）
 - ✅ SDK (Claude) Runtime — `claude-runtime.ts` (1169 行)，完整事件归一化
 - ✅ Binary Runtime — `binary-runtime.ts` (328 行)，通过 codex 二进制 JSON-RPC 通信，含自动重连
 - ✅ Self-built Runtime — `self-built-runtime.ts` (690 行)，完整 agent loop + 文件操作 + undo + sandbox
@@ -392,36 +475,40 @@ npm run typecheck  # TypeScript 类型检查
 - ✅ 工作区快照与 Rewind — 文件变更回退
 - ✅ 企业安全 — 网络白名单、敏感信息脱敏、审计日志
 - ✅ HTTP Gateway — 协议转换 (Anthropic ↔ OpenAI Chat)，8080 端口
-- ✅ CI/CD — lint / typecheck / 单元测试 / E2E / 三平台打包 / nightly release
-- ✅ 单元测试 — 28 个文件，163 个测试，全部通过
+- ✅ CI/CD — GitHub Actions（`.github/workflows/`）+ husky 本地质量门，待 GitHub 首次运行验证
+- ✅ 单元测试 — 12 个文件，96 个测试，全部通过（`tests/unit/`，2026-08 重建）
 - ✅ TypeScript 类型检查 — node + web 双 tsconfig，零错误
-- ✅ E2E 关键路径测试 — 6 个 test case，覆盖 chat / 快捷键 / 主题 / 编辑重发 / 审批 / IPC 全链路
+- ✅ E2E 冒烟 — 源码构建与 packaged app 均通过 2 个关键用例（应用启动 + 设置页）
 - ✅ 契约测试 — Runtime SPI 契约验证（Self-built + SDK），覆盖 tool / approval / interrupt / edit / MCP
 
-### 7.2 测试结果 (2026-06-25)
+### 7.2 测试结果 (2026-08)
 
-| 测试类型 | 命令 | 结果 |
-|---------|------|------|
-| 单元测试 | npm run test:unit | 28 文件 / 163 测试 ✓ |
-| 类型检查 | npm run typecheck | node + web 零错误 ✓ |
-| Runtime 契约 | npm run test:runtime | 1 项已知失败（MCP stdio Windows 偶发超时） |
-| E2E | npm run test:e2e | 6 个 critical 用例，需 Electron 环境 |
+| 测试类型     | 命令                         | 结果                                   |
+| ------------ | ---------------------------- | -------------------------------------- |
+| 单元测试     | npm test                     | 12 文件 / 96 测试 ✓                    |
+| 脱敏规则     | npm run test:redaction-rules | 12 项断言 ✓                            |
+| 类型检查     | npm run typecheck            | node + web 零错误 ✓                    |
+| Runtime 契约 | npm run test:runtime         | ✓（HTTP / SSE / stdio MCP probe 全过） |
+| E2E          | npm run test:e2e             | 2 个用例，需 Electron 显示环境         |
+| 打包冒烟     | npm run package:smoke        | Windows unpacked app 2 个用例 ✓        |
+| 冒烟         | npm run test:runtime:smoke   | 需真实 API Key 与网络，CI 不跑         |
 
 ### 7.3 已知问题
 
-1. **契约测试 mock /v1/messages 端点已修复** (2026-06-25)  已添加 mock 端点，testEndpointModel 现在通过。
-2. **契约测试 stdio MCP 探测在 Windows 偶发失败**  probeStdioMcp 通过 child_process.spawn 启动子进程，在 Windows 上 stdio 管道通信偶发超时。此前被 testEndpointModel 提前退出掩盖。
-3. **SDK 动态 import 在打包后可能失败**  需在 electron-builder 配置中处理 @anthropic-ai/claude-agent-sdk 原生依赖
-4. **safeStorage 在 Linux 上可能不可用**  已有 fallbackEncode 回退
-5. **持久 query 优化**  当前每次 sendMessage 创建新 SDK query 实例（非阻塞性问题）
-
+1. **契约测试 mock /v1/messages 端点已修复** (2026-06-25) 已添加 mock 端点，testEndpointModel 现在通过。
+2. **契约测试 stdio MCP 探测已修复** (2026-08) 根因是契约夹具的 mock MCP server 未实现 `tools/call` handler，而 probe 会调用无必需参数的 tool——补充 handler 后不再超时，属确定性问题而非 Windows 偶发。
+3. **SDK 真实 API 打包冒烟尚未自动化** packaged app 已验证启动与设置页，真实 Claude 请求仍需凭据与网络
+4. **safeStorage 在 Linux 上可能不可用** 已有 fallbackEncode 回退
+5. **持久 query 优化** 当前每次 sendMessage 创建新 SDK query 实例（非阻塞性问题）
+6. **发布签名凭据未配置** packaged app 已默认使用 prod 且禁止降级到 dev；三平台构建与制品发布已接入 GitHub Actions，正式发布前仍需配置 Apple / Windows 签名 secrets
+7. **GitHub 远程尚未配置** Actions 与 xvfb 验证工作流已就绪；当前 `origin` 仍指向 Gitee，需要添加 GitHub 仓库并首次推送验证
 
 ---
 
 ## 附录：参考项目
 
-| 项目 | 路径 | 说明 |
-|---|---|---|
-| marloues | `C:/workspace/marloues` | 厂商 SDK 接入参考（跑通） |
-| workflow-web | `C:/workspace/workflow-web` | Workflow 二进制接入参考（跑通） |
-| personal-claw | `C:/workspace/personal-claw` | Self-built 自建 loop 参考（跑通） |
+| 项目          | 路径                         | 说明                              |
+| ------------- | ---------------------------- | --------------------------------- |
+| marloues      | `C:/workspace/marloues`      | 厂商 SDK 接入参考（跑通）         |
+| workflow-web  | `C:/workspace/workflow-web`  | Workflow 二进制接入参考（跑通）   |
+| personal-claw | `C:/workspace/personal-claw` | Self-built 自建 loop 参考（跑通） |

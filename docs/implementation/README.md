@@ -3,34 +3,58 @@
 > 本文档跟踪 marloues 项目的实现进度，按优先级排列。
 > 与 `../prd/README.md`（产品需求）和 `../architecture/README.md`（技术设计）互补。
 
-更新时间：2026-06-25（基于实际代码与测试运行结果）
+更新时间：2026-08（基于实际代码与测试运行结果）
 
 ---
 
 ## 当前状态
 
-| 模块 | 状态 | 说明 |
-|---|---|---|
-| AgentRuntime SPI 定义 | ✅ 完成 | `src/shared/agent-runtime.ts` |
-| SDK Runtime 实现 | ✅ 完成（可跑） | `src/main/core/runtime/claude-runtime.ts` + `claude-sdk.ts` |
-| Binary Runtime 实现 | ✅ 完成（可跑） | `src/main/core/runtime/binary-runtime.ts` + `src/main/codex/**` |
-| Self-built Runtime 实现 | ✅ 完成（可跑） | `src/main/core/runtime/self-built-runtime.ts`（plan→execute→verify loop） |
-| Runtime 管理器 | ✅ 完成 | `src/main/core/runtime/manager.ts` |
-| 配置系统（API Key） | ✅ 完成 | `services/config-service.ts` + `secure-storage.service.ts` |
-| IPC handlers | ✅ 完成 | `src/main/ipc/handlers.ts` |
-| UI 渲染进程 — Chat | ✅ 完成 | `src/renderer/src/components/workflow-chat/**` |
-| UI 渲染进程 — Sidebar | ✅ 完成 | `src/renderer/src/components/layout/Sidebar.tsx` |
-| UI 渲染进程 — Settings | ✅ 完成 | `src/renderer/src/components/settings/**` |
-| UI 渲染进程 — Tool Panel | ✅ 完成 | RightSidebar 含 tool 调用历史 + JSON 详情 |
-| UI 渲染进程 — Onboarding | ✅ 完成 | `src/renderer/src/components/onboarding/**` |
-| 主题系统 | ✅ 完成 | light/dark/warm + system，品牌色深紫 #534AB7 |
-| 模型选择 | ✅ 完成 | `runtime:list-models` + `runtime:set-model` + ModelSelector |
-| MCP probe | ✅ 完成 | `services/mcp-probe.ts`（stdio/http/sse） |
-| Token 用量 | ✅ 完成 | Runtime 契约 + UI badge + StatusBar |
-| E2E 测试 | ✅ 完成 | 6 个关键路径（chat/快捷键/主题/编辑/审批/IPC） |
-| 契约测试 | ✅ 完成 | `scripts/test-runtime-contract.ts` |
-| CI/CD | ✅ 完成 | `.github/workflows/ci.yml` + `release.yml` |
-| 自动更新 | ✅ 完成 | electron-updater + auto-update service |
+| 模块                     | 状态                          | 说明                                                                         |
+| ------------------------ | ----------------------------- | ---------------------------------------------------------------------------- |
+| AgentRuntime SPI 定义    | ✅ 完成                       | `client/shared/agent-runtime.ts`                                             |
+| SDK Runtime 实现         | ✅ 完成（可跑）               | `client/main/core/runtime/claude-runtime.ts` + `claude-sdk.ts`               |
+| Binary Runtime 实现      | ✅ 完成（可跑）               | `client/main/core/runtime/binary-runtime.ts` + `client/main/codex/**`        |
+| Self-built Runtime 实现  | ✅ 完成（可跑）               | `client/main/core/runtime/self-built-runtime.ts`（plan→execute→verify loop） |
+| Runtime 管理器           | ✅ 完成                       | `client/main/core/runtime/manager.ts`                                        |
+| 配置系统（API Key）      | ✅ 完成                       | `client/main/services/config-service.ts` + `secure-storage.service.ts`       |
+| IPC handlers             | ✅ 完成                       | `client/main/ipc/handlers.ts`                                                |
+| UI 渲染进程 — Chat       | ✅ 完成                       | `client/renderer/src/components/workflow-chat/**`                            |
+| UI 渲染进程 — Sidebar    | ✅ 完成                       | `client/renderer/src/components/layout/Sidebar.tsx`                          |
+| UI 渲染进程 — Settings   | ✅ 完成                       | `client/renderer/src/components/settings/**`                                 |
+| UI 渲染进程 — Tool Panel | ✅ 完成                       | RightSidebar 含 tool 调用历史 + JSON 详情                                    |
+| UI 渲染进程 — Onboarding | ✅ 完成                       | `client/renderer/src/components/onboarding/**`                               |
+| 主题系统                 | ✅ 完成                       | light/dark/warm + system，品牌色深紫 #534AB7                                 |
+| 模型选择                 | ✅ 完成                       | `runtime:list-models` + `runtime:set-model` + ModelSelector                  |
+| MCP probe                | ✅ 完成                       | `client/main/services/mcp-probe.ts`（stdio/http/sse）                        |
+| Token 用量               | ✅ 完成                       | Runtime 契约 + UI badge + StatusBar                                          |
+| 单元测试                 | ✅ 完成                       | vitest，12 文件 / 96 用例全绿（`tests/unit/`）                               |
+| 契约测试                 | ✅ 完成                       | `client/scripts/test-runtime-contract.ts`（含 MCP stdio tools/call 修复）    |
+| 脱敏规则测试             | ✅ 完成                       | `client/scripts/test-redaction-rules.ts`，12 项断言                          |
+| E2E 冒烟                 | ✅ 完成（需显示环境）         | 源码构建与 packaged app 共用 2 个关键用例                                    |
+| CI/CD                    | ✅ 就绪（待 GitHub 首次运行） | `.github/workflows/`（GitHub Actions）+ `.husky/` 本地质量门                 |
+| 自动更新                 | ✅ 完成                       | electron-updater + auto-update service                                       |
+
+---
+
+## 测试矩阵（2026-08 实测，Node 22.22.2）
+
+| 命令（仓库根目录）             | 内容                    | 结果                             | CI 可跑    |
+| ------------------------------ | ----------------------- | -------------------------------- | ---------- |
+| `npm test`                     | vitest 单元测试         | 12 文件 / 96 用例 ✓              | ✅         |
+| `npm run test:redaction-rules` | 企业脱敏规则            | 12 项断言 ✓                      | ✅         |
+| `npm run test:runtime`         | Runtime SPI 契约        | ✓（含 HTTP/SSE/stdio MCP probe） | ✅         |
+| `npm run test:runtime:smoke`   | 真实 DeepSeek API 冒烟  | 需真实 Key 与网络                | ❌         |
+| `npm run test:e2e`             | Electron 冒烟（2 用例） | 2/2 ✓                            | ✅（xvfb） |
+| `npm run package:smoke`        | unpacked 应用打包后冒烟 | 2/2 ✓（Windows）                 | ✅（xvfb） |
+| `npm run typecheck`            | node + web 双 tsconfig  | 零错误 ✓                         | ✅         |
+| `npm run build`                | electron-vite 构建      | ✓                                | ✅         |
+
+本地质量门（husky）：
+
+- `pre-commit`：lint-staged 对暂存文件执行 eslint --fix + prettier --write
+- `pre-push`：lint + typecheck + test:unit 全量
+
+CI（GitHub Actions，`.github/workflows/`）：quality 与 Electron smoke 并行；Ubuntu 运行器显式验证 xvfb 后执行 E2E 与 packaged smoke，`v*` tag 触发三平台打包和 GitHub Release。
 
 ---
 
@@ -40,7 +64,7 @@
 
 ### 核心能力
 
-- [x] AgentRuntime SPI（`src/shared/agent-runtime.ts`）
+- [x] AgentRuntime SPI（`client/shared/agent-runtime.ts`）
 - [x] 三种 Runtime 实现（SDK / Binary / Self-built）
 - [x] Runtime 切换（`runtime:switch` IPC + settings store）
 - [x] Chat 流式渲染（MessageBubble / CodeBlock / ToolCard）
@@ -61,6 +85,8 @@
 - [x] ESLint + Prettier
 - [x] Conventional Commits 强制（`.commitlintrc.json` + CI 校验）
 - [x] Changesets 版本管理（`.changeset/` + `npm run changeset`）
+- [x] npm workspaces + 单一根 lockfile + Node 版本锁定
+- [x] 打包后应用冒烟测试与 packaged fail-secure 策略
 
 ### 2.2 安全与合规（内网版）
 

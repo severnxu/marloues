@@ -1,32 +1,23 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Bot,
   ChevronRight,
   CircleDotDashed,
-  Download,
   FileText,
   Folder,
   FolderOpen,
-  GitBranch,
-  LogOut,
   MonitorCog,
   MoreHorizontal,
   Package,
-  Pencil,
-  Pin,
   PlugZap,
   Plus,
-  RefreshCcw,
   Search,
   ServerCog,
   Settings,
   ShieldCheck,
   ShieldOff,
   SquarePen,
-  Trash2,
-  UserRound,
   Wrench,
   LoaderCircle,
 } from "lucide-react";
@@ -34,12 +25,18 @@ import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { notify } from "@/lib/notifications";
 import { useAuthStore } from "@/stores/auth-store";
 import { useUnifiedChatStore } from "@/stores/unified-chat-store";
-import { useThemeStore, type ThemeMode } from "@/stores/theme-store";
+import { useThemeStore } from "@/stores/theme-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import type { Page, SettingsSection } from "@/components/layout/types";
-import type { AuthSession, ChatSessionRecord, WorkspaceInfo } from "@shared/types";
+import type { ChatSessionRecord, WorkspaceInfo } from "@shared/types";
 import { workspacePathsEqual } from "@shared/workspace-path";
-import { ProjectContextMenu, SessionContextMenu, SessionRow, UserInfoPopover, formatSessionTitle } from "@/components/layout/SidebarParts";
+import {
+  ProjectContextMenu,
+  SessionContextMenu,
+  SessionRow,
+  UserInfoPopover,
+  formatSessionTitle,
+} from "@/components/layout/SidebarParts";
 
 export function Sidebar({
   page,
@@ -58,8 +55,16 @@ export function Sidebar({
 }) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; sessionId: string } | null>(null);
-  const [projectMenu, setProjectMenu] = useState<{ x: number; y: number; projectId: string } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    sessionId: string;
+  } | null>(null);
+  const [projectMenu, setProjectMenu] = useState<{
+    x: number;
+    y: number;
+    projectId: string;
+  } | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [projectOrder, setProjectOrder] = useState<string[]>([]);
   const { showConfirm, DialogComponent } = useConfirmDialog();
@@ -67,12 +72,18 @@ export function Sidebar({
   const sessions = useUnifiedChatStore((state) => state.sessions);
   const activeSessionId = useUnifiedChatStore((state) => state.activeSessionId);
   const liveTurns = useUnifiedChatStore((state) => state.liveTurns);
-  const setActiveSession = useUnifiedChatStore((state) => state.setActiveSession);
+  const setActiveSession = useUnifiedChatStore(
+    (state) => state.setActiveSession,
+  );
   const createSession = useUnifiedChatStore((state) => state.createSession);
   const loadChats = useUnifiedChatStore((state) => state.load);
   const deleteSession = useUnifiedChatStore((state) => state.deleteSession);
-  const updateSessionTitle = useUnifiedChatStore((state) => state.updateSessionTitle);
-  const toggleSessionPinned = useUnifiedChatStore((state) => state.toggleSessionPinned);
+  const updateSessionTitle = useUnifiedChatStore(
+    (state) => state.updateSessionTitle,
+  );
+  const toggleSessionPinned = useUnifiedChatStore(
+    (state) => state.toggleSessionPinned,
+  );
   const forkSession = useUnifiedChatStore((state) => state.forkSession);
   const workspace = useWorkspaceStore((state) => state.current);
   const workspaces = useWorkspaceStore((state) => state.settings.workspaces);
@@ -85,20 +96,29 @@ export function Sidebar({
   const logout = useAuthStore((state) => state.logout);
   const themeMode = useThemeStore((state) => state.mode);
   const setThemeMode = useThemeStore((state) => state.setMode);
-  const displayName = session?.displayName || session?.username || session?.email || "Marloues User";
+  const displayName =
+    session?.displayName ||
+    session?.username ||
+    session?.email ||
+    "Marloues User";
   const displayDetail = session?.email || workspace?.name || "未选择工作区";
   const avatarInitial = displayName.trim()[0]?.toUpperCase() || "N";
   const currentSessions = useMemo(
     () =>
-      [...sessions]
-        .sort(
-          (a, b) => Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned)) || b.updatedAt - a.updatedAt,
-        ),
+      [...sessions].sort(
+        (a, b) =>
+          Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned)) ||
+          b.updatedAt - a.updatedAt,
+      ),
     [sessions],
   );
   const workspaceItems = useMemo(() => {
     if (!workspace) return workspaces;
-    return workspaces.some((item) => item.id === workspace.id || workspacePathsEqual(item.path, workspace.path))
+    return workspaces.some(
+      (item) =>
+        item.id === workspace.id ||
+        workspacePathsEqual(item.path, workspace.path),
+    )
       ? workspaces
       : [workspace, ...workspaces];
   }, [workspace, workspaces]);
@@ -110,22 +130,33 @@ export function Sidebar({
       const known = current.filter((id) => ids.includes(id));
       const added = ids.filter((id) => !known.includes(id));
       const next = [...known, ...added];
-      return next.length === current.length && next.every((id, index) => id === current[index]) ? current : next;
+      return next.length === current.length &&
+        next.every((id, index) => id === current[index])
+        ? current
+        : next;
     });
   }, [workspaceItems]);
 
   const projectList = useMemo(() => {
-    const order = projectOrder.length ? projectOrder : workspaceItems.map((item) => item.id);
+    const order = projectOrder.length
+      ? projectOrder
+      : workspaceItems.map((item) => item.id);
     return [...workspaceItems].sort((a, b) => {
       const left = order.indexOf(a.id);
       const right = order.indexOf(b.id);
-      return (left === -1 ? Number.MAX_SAFE_INTEGER : left) - (right === -1 ? Number.MAX_SAFE_INTEGER : right);
+      return (
+        (left === -1 ? Number.MAX_SAFE_INTEGER : left) -
+        (right === -1 ? Number.MAX_SAFE_INTEGER : right)
+      );
     });
   }, [projectOrder, workspaceItems]);
   const runningSessionIds = useMemo(() => {
     return new Set(
       Object.entries(liveTurns)
-        .filter(([, turn]) => turn?.status === "pending" || turn?.status === "running")
+        .filter(
+          ([, turn]) =>
+            turn?.status === "pending" || turn?.status === "running",
+        )
         .map(([sessionId]) => sessionId),
     );
   }, [liveTurns]);
@@ -157,7 +188,8 @@ export function Sidebar({
 
     const close = (event: MouseEvent) => {
       if (userMenuRef.current?.contains(event.target as Node)) return;
-      if ((event.target as HTMLElement).closest("[data-sidebar-theme-menu]")) return;
+      if ((event.target as HTMLElement).closest("[data-sidebar-theme-menu]"))
+        return;
       setUserMenuOpen(false);
     };
 
@@ -200,7 +232,11 @@ export function Sidebar({
     try {
       await forkSession(session.id);
       onPage("chat");
-      notify({ title: "已分叉会话", description: formatSessionTitle(session.title), tone: "success" });
+      notify({
+        title: "已分叉会话",
+        description: formatSessionTitle(session.title),
+        tone: "success",
+      });
     } catch (error) {
       notify({
         title: "分叉失败",
@@ -215,7 +251,11 @@ export function Sidebar({
     try {
       const filePath = await window.marloues.chat.exportSession(session.id);
       if (!filePath) return;
-      notify({ title: "Chat exported", description: filePath, tone: "success" });
+      notify({
+        title: "Chat exported",
+        description: filePath,
+        tone: "success",
+      });
     } catch (error) {
       notify({
         title: "Export failed",
@@ -232,7 +272,11 @@ export function Sidebar({
   };
 
   const createProjectSession = async (project: WorkspaceInfo) => {
-    if (!workspace || (project.id !== workspace.id && !workspacePathsEqual(project.path, workspace.path))) {
+    if (
+      !workspace ||
+      (project.id !== workspace.id &&
+        !workspacePathsEqual(project.path, workspace.path))
+    ) {
       await switchWorkspace(project.id);
       await loadChats();
     }
@@ -248,7 +292,11 @@ export function Sidebar({
   const copyProjectPath = async (project: WorkspaceInfo) => {
     try {
       await navigator.clipboard.writeText(project.path);
-      notify({ title: "Path copied", description: project.path, tone: "success" });
+      notify({
+        title: "Path copied",
+        description: project.path,
+        tone: "success",
+      });
     } catch (error) {
       notify({
         title: "Copy failed",
@@ -263,7 +311,11 @@ export function Sidebar({
     if (!nextName || nextName === project.name) return;
     try {
       await renameWorkspace(project.id, nextName);
-      notify({ title: "Workspace renamed", description: nextName, tone: "success" });
+      notify({
+        title: "Workspace renamed",
+        description: nextName,
+        tone: "success",
+      });
     } catch (error) {
       notify({
         title: "Rename failed",
@@ -282,11 +334,19 @@ export function Sidebar({
     });
     if (!approved) return;
     try {
-      const wasActive = Boolean(workspace && (project.id === workspace.id || workspacePathsEqual(project.path, workspace.path)));
+      const wasActive = Boolean(
+        workspace &&
+        (project.id === workspace.id ||
+          workspacePathsEqual(project.path, workspace.path)),
+      );
       await removeWorkspace(project.id);
       setProjectOrder((current) => current.filter((id) => id !== project.id));
       if (wasActive) await loadChats();
-      notify({ title: "Workspace removed", description: project.name, tone: "success" });
+      notify({
+        title: "Workspace removed",
+        description: project.name,
+        tone: "success",
+      });
     } catch (error) {
       notify({
         title: "Remove failed",
@@ -304,7 +364,9 @@ export function Sidebar({
 
   const moveProjectToTop = (projectId: string) => {
     setProjectOrder((current) => {
-      const order = current.length ? current : workspaceItems.map((item) => item.id);
+      const order = current.length
+        ? current
+        : workspaceItems.map((item) => item.id);
       return [projectId, ...order.filter((id) => id !== projectId)];
     });
     setProjectMenu(null);
@@ -316,15 +378,60 @@ export function Sidebar({
 
   if (page === "settings") {
     const navItems = [
-      { id: "general" as const, label: "通用", description: "运行行为与通知", icon: <Wrench size={16} /> },
-      { id: "personalization" as const, label: "个性化", description: "回复风格与指令", icon: <Bot size={16} /> },
-      { id: "appearance" as const, label: "外观", description: "主题和强调色", icon: <MonitorCog size={16} /> },
-      { id: "providers" as const, label: "提供商", description: "端点与模型", icon: <ServerCog size={16} /> },
-      { id: "mcp" as const, label: "MCP", description: "Server JSON", icon: <PlugZap size={16} /> },
-      { id: "skills" as const, label: "Skills", description: "导入与详情", icon: <Package size={16} /> },
-      { id: "audit" as const, label: "审计", description: "工具调用", icon: <FileText size={16} /> },
-      { id: "runtime" as const, label: "Runtime", description: "运行限制", icon: <ShieldCheck size={16} /> },
-      { id: "security" as const, label: "安全", description: "网络与脱敏", icon: <ShieldOff size={16} /> },
+      {
+        id: "general" as const,
+        label: "通用",
+        description: "运行行为与通知",
+        icon: <Wrench size={16} />,
+      },
+      {
+        id: "personalization" as const,
+        label: "个性化",
+        description: "回复风格与指令",
+        icon: <Bot size={16} />,
+      },
+      {
+        id: "appearance" as const,
+        label: "外观",
+        description: "主题和强调色",
+        icon: <MonitorCog size={16} />,
+      },
+      {
+        id: "providers" as const,
+        label: "提供商",
+        description: "端点与模型",
+        icon: <ServerCog size={16} />,
+      },
+      {
+        id: "mcp" as const,
+        label: "MCP",
+        description: "Server JSON",
+        icon: <PlugZap size={16} />,
+      },
+      {
+        id: "skills" as const,
+        label: "Skills",
+        description: "导入与详情",
+        icon: <Package size={16} />,
+      },
+      {
+        id: "audit" as const,
+        label: "审计",
+        description: "工具调用",
+        icon: <FileText size={16} />,
+      },
+      {
+        id: "runtime" as const,
+        label: "Runtime",
+        description: "运行限制",
+        icon: <ShieldCheck size={16} />,
+      },
+      {
+        id: "security" as const,
+        label: "安全",
+        description: "网络与脱敏",
+        icon: <ShieldOff size={16} />,
+      },
     ];
 
     return (
@@ -402,26 +509,44 @@ export function Sidebar({
               <Plus size={14} />
             </button>
           </div>
-          {projectList.length === 0 ? <p className="session-empty">还没有项目</p> : null}
+          {projectList.length === 0 ? (
+            <p className="session-empty">还没有项目</p>
+          ) : null}
           {projectList.map((project) => {
             const activeProject = Boolean(
-              workspace && (project.id === workspace.id || workspacePathsEqual(project.path, workspace.path)),
+              workspace &&
+              (project.id === workspace.id ||
+                workspacePathsEqual(project.path, workspace.path)),
             );
-            const projectRunning = [...runningWorkspacePaths].some((path) => workspacePathsEqual(path, project.path));
+            const projectRunning = [...runningWorkspacePaths].some((path) =>
+              workspacePathsEqual(path, project.path),
+            );
             return (
-              <div className={`project-row ${activeProject ? "active" : ""} ${projectRunning ? "running" : ""}`} title={project.path} key={project.id}>
+              <div
+                className={`project-row ${activeProject ? "active" : ""} ${projectRunning ? "running" : ""}`}
+                title={project.path}
+                key={project.id}
+              >
                 <button
                   className="project-row-main"
                   type="button"
                   onClick={() => void switchProject(project.id)}
                   aria-current={activeProject ? "page" : undefined}
                 >
-                  {activeProject ? <FolderOpen size={15} /> : <Folder size={15} />}
+                  {activeProject ? (
+                    <FolderOpen size={15} />
+                  ) : (
+                    <Folder size={15} />
+                  )}
                   <span className="project-row-name">{project.name}</span>
                 </button>
                 <div className="project-row-actions">
                   {projectRunning ? (
-                    <span className="runtime-spinner project-runtime-spinner" title="空间内有运行中的会话" aria-label="空间内有运行中的会话">
+                    <span
+                      className="runtime-spinner project-runtime-spinner"
+                      title="空间内有运行中的会话"
+                      aria-label="空间内有运行中的会话"
+                    >
                       <LoaderCircle size={14} />
                     </span>
                   ) : null}
@@ -430,7 +555,11 @@ export function Sidebar({
                     onClick={(event) => {
                       event.stopPropagation();
                       const rect = event.currentTarget.getBoundingClientRect();
-                      setProjectMenu({ x: rect.left, y: rect.bottom + 4, projectId: project.id });
+                      setProjectMenu({
+                        x: rect.left,
+                        y: rect.bottom + 4,
+                        projectId: project.id,
+                      });
                     }}
                     title="项目操作"
                     aria-label="项目操作"
@@ -467,9 +596,9 @@ export function Sidebar({
               <Plus size={14} />
             </button>
           </div>
-          {currentSessions.length === 0
-            ? <p className="session-empty">还没有对话</p>
-            : null}
+          {currentSessions.length === 0 ? (
+            <p className="session-empty">还没有对话</p>
+          ) : null}
           {currentSessions.map((session) => (
             <SessionRow
               key={session.id}
@@ -486,7 +615,9 @@ export function Sidebar({
                 onPage("chat");
               }}
               onTogglePinned={() => void togglePinned(session)}
-              onOpenMenu={(x, y) => setContextMenu({ x, y, sessionId: session.id })}
+              onOpenMenu={(x, y) =>
+                setContextMenu({ x, y, sessionId: session.id })
+              }
             />
           ))}
         </div>
