@@ -25,18 +25,51 @@ import type {
   SkillDetail,
   SkillInfo,
 } from "@shared/types";
-import { getRuntime, getRuntimeState, listRuntimeModels, setRuntimeModel, switchRuntime } from "../core/runtime/manager";
-import { estimateSessionTokens, evaluateContextPolicy } from "../core/context/context-policy";
+import {
+  getRuntime,
+  getRuntimeState,
+  listRuntimeModels,
+  setRuntimeModel,
+  switchRuntime,
+} from "../core/runtime/manager";
+import {
+  estimateSessionTokens,
+  evaluateContextPolicy,
+} from "../core/context/context-policy";
 import { translateRuntimeEventToUIEvent } from "@shared/runtime-event-adapter";
-import { getAgentSettings, saveAgentSettings } from "../services/config-service";
+import {
+  getAgentSettings,
+  saveAgentSettings,
+} from "../services/config-service";
 import { resolveModelProvider } from "../core/config/model-provider";
-import { compactAndRecordSessionState, prependStatePackToPrompt } from "../services/context-compaction-service";
+import {
+  compactAndRecordSessionState,
+  prependStatePackToPrompt,
+} from "../services/context-compaction-service";
 import { exportDiagnostics } from "../services/diagnostics-service";
 import { getAuthStatus, logout, openAuthPage } from "../services/auth-service";
-import { listEndpointModels, testEndpointModel, testEndpointProfile } from "../services/endpoint-models";
-import { listWorkspaceDir, readWorkspaceFile, statWorkspaceFile } from "../services/file-service";
-import { listMemoryFiles as listMemoryFilesFromService, readMemoryFile, writeMemoryFile } from "../services/memory-service";
-import { listMcpServers, listRuntimeMcpTools, refreshMcpServerStatuses, saveMcpServers, testMcpServer } from "../services/mcp-service";
+import {
+  listEndpointModels,
+  testEndpointModel,
+  testEndpointProfile,
+} from "../services/endpoint-models";
+import {
+  listWorkspaceDir,
+  readWorkspaceFile,
+  statWorkspaceFile,
+} from "../services/file-service";
+import {
+  listMemoryFiles as listMemoryFilesFromService,
+  readMemoryFile,
+  writeMemoryFile,
+} from "../services/memory-service";
+import {
+  listMcpServers,
+  listRuntimeMcpTools,
+  refreshMcpServerStatuses,
+  saveMcpServers,
+  testMcpServer,
+} from "../services/mcp-service";
 import {
   getCurrentWorkspace as currentWorkspace,
   getWorkspaceSettings,
@@ -61,16 +94,27 @@ import type { WorkflowReadThreadResponse } from "@shared/workflow-read-thread-co
 import { workspacePathsEqual } from "@shared/workspace-path";
 import { store, type StoredSession } from "../store";
 import { workflowThreadStore } from "../core/runtime/workflow-thread-store";
-import { listAuditEvents, recordAuditEvent, recordWorkspaceRewindEvent } from "../services/session-store";
-import { applyWorkspaceRewind, captureWorkspaceCheckpoint, previewWorkspaceRewind } from "../services/workspace-checkpoint-service";
+import {
+  listAuditEvents,
+  recordAuditEvent,
+  recordWorkspaceRewindEvent,
+} from "../services/session-store";
+import {
+  applyWorkspaceRewind,
+  captureWorkspaceCheckpoint,
+  previewWorkspaceRewind,
+} from "../services/workspace-checkpoint-service";
 
-const pendingApprovalItems = new Map<string, {
-  sessionId: string;
-  turnId: string;
-  toolName: string;
-  reason: string;
-  timeoutMs?: number;
-}>();
+const pendingApprovalItems = new Map<
+  string,
+  {
+    sessionId: string;
+    turnId: string;
+    toolName: string;
+    reason: string;
+    timeoutMs?: number;
+  }
+>();
 
 const RENDERER_TEXT_LIMIT = 120_000;
 const RENDERER_ITEM_TEXT_LIMIT = 24_000;
@@ -79,20 +123,28 @@ const RENDERER_OBJECT_DEPTH_LIMIT = 6;
 const RENDERER_OBJECT_ARRAY_LIMIT = 200;
 const RENDERER_OBJECT_KEYS_LIMIT = 100;
 
-type RendererWorkflowTurnItem = WorkflowReadThreadResponse["turns"][number]["items"][number];
+type RendererWorkflowTurnItem =
+  WorkflowReadThreadResponse["turns"][number]["items"][number];
 
-async function readRuntimeThreadSnapshot(threadId: string): Promise<WorkflowReadThreadResponse | null> {
+async function readRuntimeThreadSnapshot(
+  threadId: string,
+): Promise<WorkflowReadThreadResponse | null> {
   const runtime = getRuntime();
   if (!runtime.readThread) return null;
   const snapshot = await runtime.readThread({ threadId, limit: 100 });
-  return snapshot.turns.length > 0 ? sanitizeReadThreadForRenderer(snapshot) : null;
+  return snapshot.turns.length > 0
+    ? sanitizeReadThreadForRenderer(snapshot)
+    : null;
 }
 
 async function sendReadThreadUpdate(threadId: string): Promise<void> {
   const mainWindow = getMainWindow();
   if (!mainWindow) return;
   try {
-    mainWindow.webContents.send(IPC.CHAT_READ_THREAD_UPDATE, await readRuntimeThreadSnapshot(threadId));
+    mainWindow.webContents.send(
+      IPC.CHAT_READ_THREAD_UPDATE,
+      await readRuntimeThreadSnapshot(threadId),
+    );
   } catch {
     mainWindow.webContents.send(IPC.CHAT_READ_THREAD_UPDATE, null);
   }
@@ -108,7 +160,6 @@ function registerReadThreadBroadcast(): void {
   });
 }
 
-
 function getMainWindow(): BrowserWindow | null {
   const wins = BrowserWindow.getAllWindows();
   return wins.find((w) => !w.isDestroyed()) ?? null;
@@ -123,19 +174,25 @@ function titleFromText(text: string): string {
   return title || "New chat";
 }
 
-function chatMessageFromRuntimeMessage(message: Message): ChatSessionRecord["messages"][number] {
+function chatMessageFromRuntimeMessage(
+  message: Message,
+): ChatSessionRecord["messages"][number] {
   return {
     id: message.id,
     role: message.role,
     content: message.content,
-    blocks: message.content ? [{ id: `${message.id}-text`, type: "text", text: message.content }] : [],
+    blocks: message.content
+      ? [{ id: `${message.id}-text`, type: "text", text: message.content }]
+      : [],
     createdAt: message.timestamp,
     items: [],
     startedAt: message.timestamp,
   };
 }
 
-function storedMessageFromChatMessage(message: ChatSessionRecord["messages"][number]): StoredSession["messages"][number] {
+function storedMessageFromChatMessage(
+  message: ChatSessionRecord["messages"][number],
+): StoredSession["messages"][number] {
   return {
     id: message.id,
     role: message.role === "system" ? "assistant" : message.role,
@@ -152,13 +209,17 @@ function storedMessageFromChatMessage(message: ChatSessionRecord["messages"][num
   };
 }
 
-function chatMessageFromStoredMessage(message: StoredSession["messages"][number]): ChatSessionRecord["messages"][number] {
+function chatMessageFromStoredMessage(
+  message: StoredSession["messages"][number],
+): ChatSessionRecord["messages"][number] {
   return {
     id: message.id,
     role: message.role,
     content: message.content,
     userContent: message.userContent,
-    blocks: message.content ? [{ id: `${message.id}-text`, type: "text", text: message.content }] : [],
+    blocks: message.content
+      ? [{ id: `${message.id}-text`, type: "text", text: message.content }]
+      : [],
     createdAt: message.timestamp,
     items: message.items,
     startedAt: message.startedAt,
@@ -170,7 +231,9 @@ function chatMessageFromStoredMessage(message: StoredSession["messages"][number]
   };
 }
 
-function sanitizeSessionForRenderer(session: ChatSessionRecord): ChatSessionRecord {
+function sanitizeSessionForRenderer(
+  session: ChatSessionRecord,
+): ChatSessionRecord {
   return {
     ...session,
     title: truncateText(session.title, 1_000),
@@ -178,13 +241,19 @@ function sanitizeSessionForRenderer(session: ChatSessionRecord): ChatSessionReco
   };
 }
 
-function sanitizeChatMessageForRenderer(message: ChatSessionRecord["messages"][number]): ChatSessionRecord["messages"][number] {
+function sanitizeChatMessageForRenderer(
+  message: ChatSessionRecord["messages"][number],
+): ChatSessionRecord["messages"][number] {
   const content = truncateText(message.content, RENDERER_TEXT_LIMIT);
   return {
     ...message,
     content,
     blocks: message.blocks.map((block) => {
-      if (block.type === "text" || block.type === "thinking") return { ...block, text: truncateText(block.text, RENDERER_TEXT_LIMIT) };
+      if (block.type === "text" || block.type === "thinking")
+        return {
+          ...block,
+          text: truncateText(block.text, RENDERER_TEXT_LIMIT),
+        };
       if (block.type === "tool_result") {
         return {
           ...block,
@@ -203,7 +272,11 @@ function sanitizeChatMessageForRenderer(message: ChatSessionRecord["messages"][n
           },
         };
       }
-      if (block.type === "error") return { ...block, message: truncateText(block.message, RENDERER_ITEM_TEXT_LIMIT) };
+      if (block.type === "error")
+        return {
+          ...block,
+          message: truncateText(block.message, RENDERER_ITEM_TEXT_LIMIT),
+        };
       return block;
     }),
     items: message.items.map(sanitizeMessageItemForRenderer),
@@ -214,17 +287,34 @@ function sanitizeChatMessageForRenderer(message: ChatSessionRecord["messages"][n
 function sanitizeMessageItemForRenderer(item: MessageItem): MessageItem {
   return {
     ...item,
-    text: item.text === undefined ? undefined : truncateText(item.text, RENDERER_TEXT_LIMIT),
-    command: item.command === undefined ? undefined : truncateText(item.command, RENDERER_ITEM_TEXT_LIMIT),
+    text:
+      item.text === undefined
+        ? undefined
+        : truncateText(item.text, RENDERER_TEXT_LIMIT),
+    command:
+      item.command === undefined
+        ? undefined
+        : truncateText(item.command, RENDERER_ITEM_TEXT_LIMIT),
     shell: item.shell === undefined ? undefined : truncateText(item.shell, 80),
-    aggregated_output: item.aggregated_output === undefined ? undefined : truncateText(item.aggregated_output, RENDERER_ITEM_TEXT_LIMIT),
-    message: item.message === undefined ? undefined : truncateText(item.message, RENDERER_ITEM_TEXT_LIMIT),
-    reason: item.reason === undefined ? undefined : truncateText(item.reason, RENDERER_ITEM_TEXT_LIMIT),
+    aggregated_output:
+      item.aggregated_output === undefined
+        ? undefined
+        : truncateText(item.aggregated_output, RENDERER_ITEM_TEXT_LIMIT),
+    message:
+      item.message === undefined
+        ? undefined
+        : truncateText(item.message, RENDERER_ITEM_TEXT_LIMIT),
+    reason:
+      item.reason === undefined
+        ? undefined
+        : truncateText(item.reason, RENDERER_ITEM_TEXT_LIMIT),
     args: sanitizeUnknownForRenderer(item.args, 0),
     arguments: sanitizeUnknownForRenderer(item.arguments, 0),
     result: sanitizeUnknownForRenderer(item.result, 0),
     rawItem: sanitizeUnknownForRenderer(item.rawItem, 0),
-    error: item.error ? { message: truncateText(item.error.message, RENDERER_ITEM_TEXT_LIMIT) } : undefined,
+    error: item.error
+      ? { message: truncateText(item.error.message, RENDERER_ITEM_TEXT_LIMIT) }
+      : undefined,
   };
 }
 
@@ -232,13 +322,18 @@ function sanitizeTimelineItemForRenderer(item: TimelineItem): TimelineItem {
   return {
     ...item,
     label: truncateText(item.label, 1_000),
-    detail: item.detail === undefined ? undefined : truncateText(item.detail, RENDERER_ITEM_TEXT_LIMIT),
+    detail:
+      item.detail === undefined
+        ? undefined
+        : truncateText(item.detail, RENDERER_ITEM_TEXT_LIMIT),
     toolInput: sanitizeUnknownForRenderer(item.toolInput, 0),
     toolOutput: sanitizeUnknownForRenderer(item.toolOutput, 0),
   };
 }
 
-function sanitizeReadThreadForRenderer(snapshot: WorkflowReadThreadResponse): WorkflowReadThreadResponse {
+function sanitizeReadThreadForRenderer(
+  snapshot: WorkflowReadThreadResponse,
+): WorkflowReadThreadResponse {
   return {
     ...snapshot,
     thread: {
@@ -252,7 +347,10 @@ function sanitizeReadThreadForRenderer(snapshot: WorkflowReadThreadResponse): Wo
         ? {
             ...turn.error,
             message: truncateText(turn.error.message, RENDERER_ITEM_TEXT_LIMIT),
-            additionalDetails: sanitizeUnknownForRenderer(turn.error.additionalDetails, 0),
+            additionalDetails: sanitizeUnknownForRenderer(
+              turn.error.additionalDetails,
+              0,
+            ),
           }
         : null,
       items: turn.items.map(sanitizeWorkflowTurnItemForRenderer),
@@ -260,12 +358,21 @@ function sanitizeReadThreadForRenderer(snapshot: WorkflowReadThreadResponse): Wo
   };
 }
 
-function sanitizeWorkflowTurnItemForRenderer(item: RendererWorkflowTurnItem): RendererWorkflowTurnItem {
+function sanitizeWorkflowTurnItemForRenderer(
+  item: RendererWorkflowTurnItem,
+): RendererWorkflowTurnItem {
   switch (item.type) {
     case "userMessage":
       return {
         ...item,
-        content: item.content.map((content) => content.type === "text" ? { ...content, text: truncateText(content.text, RENDERER_TEXT_LIMIT) } : content),
+        content: item.content.map((content) =>
+          content.type === "text"
+            ? {
+                ...content,
+                text: truncateText(content.text, RENDERER_TEXT_LIMIT),
+              }
+            : content,
+        ),
       };
     case "agentMessage":
     case "plan":
@@ -274,20 +381,26 @@ function sanitizeWorkflowTurnItemForRenderer(item: RendererWorkflowTurnItem): Re
       return {
         ...item,
         summary: truncateText(item.summary, RENDERER_ITEM_TEXT_LIMIT),
-        content: item.content?.map((output) => sanitizeWorkflowTextOutput(output, RENDERER_ITEM_TEXT_LIMIT)),
+        content: item.content?.map((output) =>
+          sanitizeWorkflowTextOutput(output, RENDERER_ITEM_TEXT_LIMIT),
+        ),
       };
     case "commandExecution":
       return {
         ...item,
         command: truncateText(item.command, RENDERER_ITEM_TEXT_LIMIT),
-        output: item.output ? sanitizeWorkflowTextOutput(item.output, RENDERER_ITEM_TEXT_LIMIT) : undefined,
+        output: item.output
+          ? sanitizeWorkflowTextOutput(item.output, RENDERER_ITEM_TEXT_LIMIT)
+          : undefined,
       };
     case "fileChange":
       return {
         ...item,
         changes: item.changes.map((change) => ({
           ...change,
-          diff: change.diff ? sanitizeWorkflowTextOutput(change.diff, RENDERER_ITEM_TEXT_LIMIT) : undefined,
+          diff: change.diff
+            ? sanitizeWorkflowTextOutput(change.diff, RENDERER_ITEM_TEXT_LIMIT)
+            : undefined,
         })),
       };
     case "mcpToolCall":
@@ -295,19 +408,32 @@ function sanitizeWorkflowTurnItemForRenderer(item: RendererWorkflowTurnItem): Re
       return {
         ...item,
         arguments: sanitizeUnknownForRenderer(item.arguments, 0),
-        output: item.output ? sanitizeWorkflowTextOutput(item.output, RENDERER_ITEM_TEXT_LIMIT) : undefined,
-        modelOutput: item.modelOutput ? sanitizeWorkflowTextOutput(item.modelOutput, RENDERER_ITEM_TEXT_LIMIT) : undefined,
+        output: item.output
+          ? sanitizeWorkflowTextOutput(item.output, RENDERER_ITEM_TEXT_LIMIT)
+          : undefined,
+        modelOutput: item.modelOutput
+          ? sanitizeWorkflowTextOutput(
+              item.modelOutput,
+              RENDERER_ITEM_TEXT_LIMIT,
+            )
+          : undefined,
       };
     case "webSearch":
       return {
         ...item,
-        query: item.query === undefined ? undefined : truncateText(item.query, RENDERER_ITEM_TEXT_LIMIT),
+        query:
+          item.query === undefined
+            ? undefined
+            : truncateText(item.query, RENDERER_ITEM_TEXT_LIMIT),
         action: sanitizeUnknownForRenderer(item.action, 0),
       };
     case "imageGeneration":
       return {
         ...item,
-        revisedPrompt: item.revisedPrompt === undefined ? undefined : truncateText(item.revisedPrompt, RENDERER_ITEM_TEXT_LIMIT),
+        revisedPrompt:
+          item.revisedPrompt === undefined
+            ? undefined
+            : truncateText(item.revisedPrompt, RENDERER_ITEM_TEXT_LIMIT),
         result: sanitizeUnknownForRenderer(item.result, 0),
       };
     case "permissionRequest":
@@ -326,7 +452,9 @@ function sanitizeWorkflowTurnItemForRenderer(item: RendererWorkflowTurnItem): Re
   }
 }
 
-function sanitizeWorkflowTextOutput<T extends { text: string; truncated?: boolean; originalChars?: number }>(output: T, limit: number): T {
+function sanitizeWorkflowTextOutput<
+  T extends { text: string; truncated?: boolean; originalChars?: number },
+>(output: T, limit: number): T {
   if (output.text.length <= limit) return output;
   return {
     ...output,
@@ -337,21 +465,41 @@ function sanitizeWorkflowTextOutput<T extends { text: string; truncated?: boolea
 }
 
 function sanitizeUnknownForRenderer(value: unknown, depth: number): unknown {
-  if (typeof value === "string") return truncateText(value, depth === 0 ? RENDERER_ITEM_TEXT_LIMIT : RENDERER_OBJECT_STRING_LIMIT);
-  if (value === null || value === undefined || typeof value === "number" || typeof value === "boolean") return value;
-  if (depth >= RENDERER_OBJECT_DEPTH_LIMIT) return "[truncated: object depth limit]";
+  if (typeof value === "string")
+    return truncateText(
+      value,
+      depth === 0 ? RENDERER_ITEM_TEXT_LIMIT : RENDERER_OBJECT_STRING_LIMIT,
+    );
+  if (
+    value === null ||
+    value === undefined ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  )
+    return value;
+  if (depth >= RENDERER_OBJECT_DEPTH_LIMIT)
+    return "[truncated: object depth limit]";
   if (Array.isArray(value)) {
-    const next = value.slice(0, RENDERER_OBJECT_ARRAY_LIMIT).map((item) => sanitizeUnknownForRenderer(item, depth + 1));
-    if (value.length > RENDERER_OBJECT_ARRAY_LIMIT) next.push(`[truncated: ${value.length - RENDERER_OBJECT_ARRAY_LIMIT} more items]`);
+    const next = value
+      .slice(0, RENDERER_OBJECT_ARRAY_LIMIT)
+      .map((item) => sanitizeUnknownForRenderer(item, depth + 1));
+    if (value.length > RENDERER_OBJECT_ARRAY_LIMIT)
+      next.push(
+        `[truncated: ${value.length - RENDERER_OBJECT_ARRAY_LIMIT} more items]`,
+      );
     return next;
   }
   if (typeof value === "object") {
     const entries = Object.entries(value as Record<string, unknown>);
     const next: Record<string, unknown> = {};
-    for (const [key, entryValue] of entries.slice(0, RENDERER_OBJECT_KEYS_LIMIT)) {
+    for (const [key, entryValue] of entries.slice(
+      0,
+      RENDERER_OBJECT_KEYS_LIMIT,
+    )) {
       next[key] = sanitizeUnknownForRenderer(entryValue, depth + 1);
     }
-    if (entries.length > RENDERER_OBJECT_KEYS_LIMIT) next.__truncatedKeys = entries.length - RENDERER_OBJECT_KEYS_LIMIT;
+    if (entries.length > RENDERER_OBJECT_KEYS_LIMIT)
+      next.__truncatedKeys = entries.length - RENDERER_OBJECT_KEYS_LIMIT;
     return next;
   }
   return String(value);
@@ -363,8 +511,12 @@ function truncateText(text: string, limit: number): string {
   return `${text.slice(0, limit)}\n\n[truncated ${omitted} chars for renderer stability]`;
 }
 
-function sessionRecordFromStoredSession(session: StoredSession): ChatSessionRecord {
-  const workspace = getWorkspaceSettings().workspaces.find((item) => item.path === session.cwd);
+function sessionRecordFromStoredSession(
+  session: StoredSession,
+): ChatSessionRecord {
+  const workspace = getWorkspaceSettings().workspaces.find(
+    (item) => item.path === session.cwd,
+  );
   return {
     id: session.id,
     title: session.title,
@@ -379,7 +531,10 @@ function sessionRecordFromStoredSession(session: StoredSession): ChatSessionReco
   };
 }
 
-function storedSessionFromRecord(record: ChatSessionRecord, existing?: StoredSession): StoredSession {
+function storedSessionFromRecord(
+  record: ChatSessionRecord,
+  existing?: StoredSession,
+): StoredSession {
   const runtimeThreadIds = {
     ...(existing?.runtimeThreadIds ?? {}),
     ...(record.runtimeThreadIds ?? {}),
@@ -415,12 +570,19 @@ function sessionRecordFromThread(thread: Thread): ChatSessionRecord {
 }
 
 function persistSessionRecord(record: ChatSessionRecord): void {
-  store.saveSession(storedSessionFromRecord(record, store.getSession(record.id)));
+  store.saveSession(
+    storedSessionFromRecord(record, store.getSession(record.id)),
+  );
 }
 
-function mergeRuntimeAndStoredSessions(threads: Thread[], workspacePath?: string): ChatSessionRecord[] {
+function mergeRuntimeAndStoredSessions(
+  threads: Thread[],
+  workspacePath?: string,
+): ChatSessionRecord[] {
   const byId = new Map<string, ChatSessionRecord>();
-  for (const saved of store.getSessions().filter((session) => shouldIncludeStoredSession(session, workspacePath))) {
+  for (const saved of store
+    .getSessions()
+    .filter((session) => shouldIncludeStoredSession(session, workspacePath))) {
     byId.set(saved.id, sessionRecordFromStoredSession(saved));
   }
   for (const thread of threads) {
@@ -429,11 +591,18 @@ function mergeRuntimeAndStoredSessions(threads: Thread[], workspacePath?: string
     byId.set(thread.id, sessionRecordFromThread(thread));
   }
   return Array.from(byId.values())
-    .sort((a, b) => Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned)) || b.updatedAt - a.updatedAt)
+    .sort(
+      (a, b) =>
+        Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned)) ||
+        b.updatedAt - a.updatedAt,
+    )
     .map(sanitizeSessionForRenderer);
 }
 
-function shouldIncludeStoredSession(session: StoredSession | undefined, workspacePath?: string): boolean {
+function shouldIncludeStoredSession(
+  session: StoredSession | undefined,
+  workspacePath?: string,
+): boolean {
   if (session?.archived) return false;
   if (!workspacePath) return true;
   return workspacePathsEqual(session?.cwd, workspacePath);
@@ -474,7 +643,9 @@ function renderSessionMarkdown(session: ChatSessionRecord): string {
   ];
 
   if (session.workspaceName || session.workspacePath) {
-    lines.push(`- Workspace: ${session.workspaceName ?? "Unknown"}${session.workspacePath ? ` (${session.workspacePath})` : ""}`);
+    lines.push(
+      `- Workspace: ${session.workspaceName ?? "Unknown"}${session.workspacePath ? ` (${session.workspacePath})` : ""}`,
+    );
   }
 
   lines.push("");
@@ -485,9 +656,23 @@ function renderSessionMarkdown(session: ChatSessionRecord): string {
 }
 
 function renderMessageMarkdown(message: ChatMessageRecord): string {
-  const title = message.role === "user" ? "User" : message.role === "system" ? "System" : "Marloues";
-  const content = message.content.trim() || assistantTextFromMessageItems(message) || "_No content_";
-  const lines = [`## ${title}`, "", `_${new Date(message.createdAt).toISOString()}_`, "", content];
+  const title =
+    message.role === "user"
+      ? "User"
+      : message.role === "system"
+        ? "System"
+        : "Marloues";
+  const content =
+    message.content.trim() ||
+    assistantTextFromMessageItems(message) ||
+    "_No content_";
+  const lines = [
+    `## ${title}`,
+    "",
+    `_${new Date(message.createdAt).toISOString()}_`,
+    "",
+    content,
+  ];
 
   if (message.timeline?.length) {
     lines.push("", "<details>", "<summary>Runtime events</summary>", "");
@@ -524,8 +709,12 @@ function renderTimelineMarkdown(item: TimelineItem): string {
 }
 
 function toSafeFileName(value: string): string {
-  return (value.trim() || "marloues-chat")
-    .replace(/[<>:"/\\|?*\x00-\x1F]/g, "-")
+  const withoutControls = Array.from(
+    value.trim() || "marloues-chat",
+    (character) => (character.charCodeAt(0) <= 31 ? "-" : character),
+  ).join("");
+  return withoutControls
+    .replace(/[<>:"/\\|?*]/g, "-")
     .replace(/\s+/g, " ")
     .slice(0, 80);
 }
@@ -538,12 +727,16 @@ function appendStoredMessage(
 ): void {
   const existing = store.getSession(sessionId);
   const now = Date.now();
-  const title = existing?.title && !isDefaultSessionTitle(existing.title)
-    ? existing.title
-    : titleSeed
-      ? titleFromText(titleSeed)
-      : existing?.title ?? "New chat";
-  const messages = [...(existing?.messages ?? []).filter((item) => item.id !== message.id), message];
+  const title =
+    existing?.title && !isDefaultSessionTitle(existing.title)
+      ? existing.title
+      : titleSeed
+        ? titleFromText(titleSeed)
+        : (existing?.title ?? "New chat");
+  const messages = [
+    ...(existing?.messages ?? []).filter((item) => item.id !== message.id),
+    message,
+  ];
   const runtimeThreadIds = { ...(existing?.runtimeThreadIds ?? {}) };
   if (runtimeThreadId && runtimeId) {
     runtimeThreadIds[runtimeId] = runtimeThreadId;
@@ -563,9 +756,13 @@ function appendStoredMessage(
   });
 }
 
-function modelSnapshotFromProvider(modelProvider: ReturnType<typeof resolveModelProvider>): { modelId: string; modelName: string } {
+function modelSnapshotFromProvider(
+  modelProvider: ReturnType<typeof resolveModelProvider>,
+): { modelId: string; modelName: string } {
   const modelId = modelProvider.selection.modelId || modelProvider.model;
-  const model = modelProvider.provider?.models.find((item) => item.id === modelId);
+  const model = modelProvider.provider?.models.find(
+    (item) => item.id === modelId,
+  );
   return {
     modelId,
     modelName: model?.label || modelId,
@@ -576,36 +773,68 @@ function userContentFromAttachments(
   text: string,
   attachments: unknown[] | undefined,
 ): import("@shared/workflow-read-thread-contract").WorkflowUserMessageContent[] {
-  const content: import("@shared/workflow-read-thread-contract").WorkflowUserMessageContent[] = [];
+  const content: import("@shared/workflow-read-thread-contract").WorkflowUserMessageContent[] =
+    [];
   if (text.trim()) content.push({ type: "text", text });
   for (const attachment of attachments ?? []) {
-    const record = attachment && typeof attachment === "object" ? attachment as Record<string, unknown> : null;
+    const record =
+      attachment && typeof attachment === "object"
+        ? (attachment as Record<string, unknown>)
+        : null;
     if (!record) continue;
-    if (record.type === "localImage" && typeof record.path === "string" && record.path.trim()) {
+    if (
+      record.type === "localImage" &&
+      typeof record.path === "string" &&
+      record.path.trim()
+    ) {
       content.push({ type: "localImage", path: record.path });
       continue;
     }
-    const imageUrl = typeof record.url === "string" ? record.url : typeof record.dataUrl === "string" ? record.dataUrl : "";
+    const imageUrl =
+      typeof record.url === "string"
+        ? record.url
+        : typeof record.dataUrl === "string"
+          ? record.dataUrl
+          : "";
     if ((record.type === "image" || record.dataUrl) && imageUrl.trim()) {
       content.push({ type: "image", url: imageUrl });
       continue;
     }
-    if ((record.type === "skill" || record.type === "mention") && typeof record.name === "string" && record.name.trim()) {
-      const path = typeof record.path === "string" && record.path.trim() ? record.path : undefined;
-      content.push(record.type === "skill" ? { type: "skill", name: record.name, path } : { type: "mention", name: record.name, path });
+    if (
+      (record.type === "skill" || record.type === "mention") &&
+      typeof record.name === "string" &&
+      record.name.trim()
+    ) {
+      const path =
+        typeof record.path === "string" && record.path.trim()
+          ? record.path
+          : undefined;
+      content.push(
+        record.type === "skill"
+          ? { type: "skill", name: record.name, path }
+          : { type: "mention", name: record.name, path },
+      );
     }
   }
   return content;
 }
 
-function titleSeedFromUserContent(content: import("@shared/workflow-read-thread-contract").WorkflowUserMessageContent[]): string {
-  const image = content.find((item) => item.type === "localImage" || item.type === "image");
-  if (image?.type === "localImage") return image.path.split(/[\\/]/).pop() || "Image message";
+function titleSeedFromUserContent(
+  content: import("@shared/workflow-read-thread-contract").WorkflowUserMessageContent[],
+): string {
+  const image = content.find(
+    (item) => item.type === "localImage" || item.type === "image",
+  );
+  if (image?.type === "localImage")
+    return image.path.split(/[\\/]/).pop() || "Image message";
   if (image?.type === "image") return "Image message";
   return "New chat";
 }
 
-function appendAttachmentSummaryToPrompt(text: string, attachments: unknown[] | undefined): string {
+function appendAttachmentSummaryToPrompt(
+  text: string,
+  attachments: unknown[] | undefined,
+): string {
   const summaries = attachmentPromptSummaries(attachments);
   if (summaries.length === 0) return text;
   const base = text.trim() ? text : "(No text message.)";
@@ -618,26 +847,51 @@ function appendAttachmentSummaryToPrompt(text: string, attachments: unknown[] | 
   ].join("\n");
 }
 
-function attachmentPromptSummaries(attachments: unknown[] | undefined): string[] {
+function attachmentPromptSummaries(
+  attachments: unknown[] | undefined,
+): string[] {
   const summaries: string[] = [];
   for (const attachment of attachments ?? []) {
-    const record = attachment && typeof attachment === "object" ? attachment as Record<string, unknown> : null;
+    const record =
+      attachment && typeof attachment === "object"
+        ? (attachment as Record<string, unknown>)
+        : null;
     if (!record) continue;
     const type = typeof record.type === "string" ? record.type : "";
-    if (type === "localImage" && typeof record.path === "string" && record.path.trim()) {
-      summaries.push(`${summaries.length + 1}. ${record.path.split(/[\\/]/).pop() || "local image"} (local path: ${record.path})`);
+    if (
+      type === "localImage" &&
+      typeof record.path === "string" &&
+      record.path.trim()
+    ) {
+      summaries.push(
+        `${summaries.length + 1}. ${record.path.split(/[\\/]/).pop() || "local image"} (local path: ${record.path})`,
+      );
       continue;
     }
-    const imageUrl = typeof record.url === "string" ? record.url : typeof record.dataUrl === "string" ? record.dataUrl : "";
+    const imageUrl =
+      typeof record.url === "string"
+        ? record.url
+        : typeof record.dataUrl === "string"
+          ? record.dataUrl
+          : "";
     if ((type === "image" || record.dataUrl) && imageUrl.trim()) {
-      const name = typeof record.name === "string" && record.name.trim() ? record.name.trim() : `image-${summaries.length + 1}`;
-      const mediaType = typeof record.mimeType === "string" && record.mimeType.trim()
-        ? record.mimeType.trim()
-        : mediaTypeFromImageUrl(imageUrl);
-      const size = typeof record.size === "number" && Number.isFinite(record.size) && record.size > 0
-        ? `, ${Math.round(record.size / 1024)} KB`
-        : "";
-      summaries.push(`${summaries.length + 1}. ${name} (${mediaType || "image"}${size})`);
+      const name =
+        typeof record.name === "string" && record.name.trim()
+          ? record.name.trim()
+          : `image-${summaries.length + 1}`;
+      const mediaType =
+        typeof record.mimeType === "string" && record.mimeType.trim()
+          ? record.mimeType.trim()
+          : mediaTypeFromImageUrl(imageUrl);
+      const size =
+        typeof record.size === "number" &&
+        Number.isFinite(record.size) &&
+        record.size > 0
+          ? `, ${Math.round(record.size / 1024)} KB`
+          : "";
+      summaries.push(
+        `${summaries.length + 1}. ${name} (${mediaType || "image"}${size})`,
+      );
     }
   }
   return summaries;
@@ -651,10 +905,16 @@ function mediaTypeFromImageUrl(value: string): string {
   return "image";
 }
 
-function truncateStoredSession(sessionId: string, fromMessageId: string, includeMessage = false): ChatSessionRecord {
+function truncateStoredSession(
+  sessionId: string,
+  fromMessageId: string,
+  includeMessage = false,
+): ChatSessionRecord {
   const existing = store.getSession(sessionId);
   if (!existing) throw new Error(`Session not found: ${sessionId}`);
-  const index = existing.messages.findIndex((message) => message.id === fromMessageId);
+  const index = existing.messages.findIndex(
+    (message) => message.id === fromMessageId,
+  );
   if (index < 0) throw new Error(`Message not found: ${fromMessageId}`);
   const end = includeMessage ? index + 1 : index;
   const messages = existing.messages.slice(0, end);
@@ -686,10 +946,14 @@ async function sendChatTurn(request: ChatSendRequest): Promise<string> {
   const turnModelSnapshot = modelSnapshotFromProvider(turnModelProvider);
   const activeRuntimeId = getRuntimeState().activeRuntimeId;
   const savedSession = store.getSession(threadId);
-  const nativeRuntimeThreadId = savedSession?.runtimeThreadIds?.[activeRuntimeId] ?? (
-    activeRuntimeId === "sdk" ? savedSession?.runtimeThreadId : undefined
-  );
-  logInfo("chat.turnStarted", { sessionId: threadId, model: turnModelSnapshot.modelName, runtime: runtime.name });
+  const nativeRuntimeThreadId =
+    savedSession?.runtimeThreadIds?.[activeRuntimeId] ??
+    (activeRuntimeId === "sdk" ? savedSession?.runtimeThreadId : undefined);
+  logInfo("chat.turnStarted", {
+    sessionId: threadId,
+    model: turnModelSnapshot.modelName,
+    runtime: runtime.name,
+  });
 
   const userContent = userContentFromAttachments(content, request.attachments);
 
@@ -737,7 +1001,12 @@ async function sendChatTurn(request: ChatSendRequest): Promise<string> {
         completedAt,
       };
       items.set(lastAgentId, item);
-      mainWindow.webContents.send(IPC.CHAT_ITEM_EVENT, { type: "item.updated", sessionId: threadId, turnId, item });
+      mainWindow.webContents.send(IPC.CHAT_ITEM_EVENT, {
+        type: "item.updated",
+        sessionId: threadId,
+        turnId,
+        item,
+      });
       lastAgentId = "";
     };
 
@@ -745,7 +1014,10 @@ async function sendChatTurn(request: ChatSendRequest): Promise<string> {
       if (!content) return;
       if (!lastAgentId || !items.has(lastAgentId)) {
         agentSequence += 1;
-        lastAgentId = agentSequence === 1 ? `agent-${turnId}` : `agent-${turnId}-${agentSequence}`;
+        lastAgentId =
+          agentSequence === 1
+            ? `agent-${turnId}`
+            : `agent-${turnId}-${agentSequence}`;
         const item: MessageItem = {
           id: lastAgentId,
           type: "agent_message",
@@ -756,7 +1028,12 @@ async function sendChatTurn(request: ChatSendRequest): Promise<string> {
           updatedAt,
         };
         items.set(lastAgentId, item);
-        mainWindow.webContents.send(IPC.CHAT_ITEM_EVENT, { type: "item.updated", sessionId: threadId, turnId, item });
+        mainWindow.webContents.send(IPC.CHAT_ITEM_EVENT, {
+          type: "item.updated",
+          sessionId: threadId,
+          turnId,
+          item,
+        });
         return;
       }
 
@@ -768,7 +1045,12 @@ async function sendChatTurn(request: ChatSendRequest): Promise<string> {
       if (nextText === existingText) return;
       const item = { ...existing, text: nextText, updatedAt };
       items.set(lastAgentId, item);
-      mainWindow.webContents.send(IPC.CHAT_ITEM_EVENT, { type: "item.updated", sessionId: threadId, turnId, item });
+      mainWindow.webContents.send(IPC.CHAT_ITEM_EVENT, {
+        type: "item.updated",
+        sessionId: threadId,
+        turnId,
+        item,
+      });
     };
 
     try {
@@ -802,7 +1084,10 @@ async function sendChatTurn(request: ChatSendRequest): Promise<string> {
           limit: decision.contextWindowTokens,
           usage: {
             total: { tokens: contextTokens },
-            limit: { tokens: decision.contextWindowTokens, source: decision.source },
+            limit: {
+              tokens: decision.contextWindowTokens,
+              source: decision.source,
+            },
             percentage: decision.percentage ?? 0,
           },
         });
@@ -837,7 +1122,10 @@ async function sendChatTurn(request: ChatSendRequest): Promise<string> {
             contextWindowTokens: decision.contextWindowTokens,
             createdAt: Date.now(),
           });
-          runtimeContent = prependStatePackToPrompt(compacted.statePack, content);
+          runtimeContent = prependStatePackToPrompt(
+            compacted.statePack,
+            content,
+          );
           mainWindow.webContents.send(IPC.CHAT_EVENT, {
             type: "context.compaction",
             sessionId: threadId,
@@ -863,7 +1151,12 @@ async function sendChatTurn(request: ChatSendRequest): Promise<string> {
               title: "Context window is nearly full",
               detail: `Estimated ${contextTokens} tokens / ${decision.contextWindowTokens} token context window.`,
               largerModel: decision.fallback?.largerModel,
-              actions: Array.from(new Set([...(decision.fallback?.actions ?? ["new_session"]), "continue_anyway"])),
+              actions: Array.from(
+                new Set([
+                  ...(decision.fallback?.actions ?? ["new_session"]),
+                  "continue_anyway",
+                ]),
+              ),
             },
           });
           mainWindow.webContents.send(IPC.CHAT_ITEM_EVENT, {
@@ -871,13 +1164,15 @@ async function sendChatTurn(request: ChatSendRequest): Promise<string> {
             sessionId: threadId,
             turnId,
             result: "error",
-            error: "Context window is nearly full. Start a new session or choose a larger context model.",
+            error:
+              "Context window is nearly full. Start a new session or choose a larger context model.",
             completedAt,
           });
           appendStoredMessage(threadId, {
             id: `assistant-${turnId}`,
             role: "assistant",
-            content: "Context window is nearly full. Start a new session or choose a larger context model.",
+            content:
+              "Context window is nearly full. Start a new session or choose a larger context model.",
             timestamp: startedAt,
             status: "failed",
             startedAt,
@@ -889,7 +1184,10 @@ async function sendChatTurn(request: ChatSendRequest): Promise<string> {
           return;
         }
       }
-      runtimeContent = appendAttachmentSummaryToPrompt(runtimeContent, request.attachments);
+      runtimeContent = appendAttachmentSummaryToPrompt(
+        runtimeContent,
+        request.attachments,
+      );
       const eventStream = await runtime.sendMessage({
         threadId,
         turnId,
@@ -928,7 +1226,12 @@ async function sendChatTurn(request: ChatSendRequest): Promise<string> {
             updatedAt: ts,
           };
           items.set(id, item);
-          mainWindow.webContents.send(IPC.CHAT_ITEM_EVENT, { type: "item.updated", sessionId: threadId, turnId, item });
+          mainWindow.webContents.send(IPC.CHAT_ITEM_EVENT, {
+            type: "item.updated",
+            sessionId: threadId,
+            turnId,
+            item,
+          });
           continue;
         }
 
@@ -946,14 +1249,25 @@ async function sendChatTurn(request: ChatSendRequest): Promise<string> {
             startedAt: ts,
           };
           items.set(uiEvent.toolId, item);
-          mainWindow.webContents.send(IPC.CHAT_ITEM_EVENT, { type: "item.updated", sessionId: threadId, turnId, item });
+          mainWindow.webContents.send(IPC.CHAT_ITEM_EVENT, {
+            type: "item.updated",
+            sessionId: threadId,
+            turnId,
+            item,
+          });
           continue;
         }
 
         if (uiEvent.type === "tool.complete") {
           const existing = items.get(uiEvent.toolId);
           const item: MessageItem = {
-            ...(existing ?? { id: uiEvent.toolId, type: "mcp_tool_call" as const, tool: "tool", args: {}, arguments: {} }),
+            ...(existing ?? {
+              id: uiEvent.toolId,
+              type: "mcp_tool_call" as const,
+              tool: "tool",
+              args: {},
+              arguments: {},
+            }),
             id: uiEvent.toolId,
             type: "mcp_tool_call",
             rawType: "tool_result",
@@ -963,7 +1277,12 @@ async function sendChatTurn(request: ChatSendRequest): Promise<string> {
             completedAt: ts,
           };
           items.set(uiEvent.toolId, item);
-          mainWindow.webContents.send(IPC.CHAT_ITEM_EVENT, { type: "item.updated", sessionId: threadId, turnId, item });
+          mainWindow.webContents.send(IPC.CHAT_ITEM_EVENT, {
+            type: "item.updated",
+            sessionId: threadId,
+            turnId,
+            item,
+          });
           continue;
         }
 
@@ -989,7 +1308,12 @@ async function sendChatTurn(request: ChatSendRequest): Promise<string> {
             reason: uiEvent.reason,
             timeoutMs: uiEvent.timeout,
           });
-          mainWindow.webContents.send(IPC.CHAT_ITEM_EVENT, { type: "item.updated", sessionId: threadId, turnId, item });
+          mainWindow.webContents.send(IPC.CHAT_ITEM_EVENT, {
+            type: "item.updated",
+            sessionId: threadId,
+            turnId,
+            item,
+          });
           getMainWindow()?.webContents.send(IPC.CHAT_PERMISSION_REQUEST, {
             id: uiEvent.requestId,
             requestId: uiEvent.requestId,
@@ -1029,25 +1353,35 @@ async function sendChatTurn(request: ChatSendRequest): Promise<string> {
             usage: tokenUsage,
             completedAt,
           });
-          appendStoredMessage(threadId, {
-            id: `assistant-${turnId}`,
-            role: "assistant",
-            content: fullAgentText() || uiEvent.error || "",
-            timestamp: startedAt,
-            status: uiEvent.result === "error" ? "failed" : "completed",
-            startedAt,
-            completedAt,
-            modelId: turnModelSnapshot.modelId,
-            modelName: turnModelSnapshot.modelName,
-            usage: tokenUsage,
-            items: Array.from(items.values()),
-          }, undefined, uiEvent.sdkSessionId, activeRuntimeId);
+          appendStoredMessage(
+            threadId,
+            {
+              id: `assistant-${turnId}`,
+              role: "assistant",
+              content: fullAgentText() || uiEvent.error || "",
+              timestamp: startedAt,
+              status: uiEvent.result === "error" ? "failed" : "completed",
+              startedAt,
+              completedAt,
+              modelId: turnModelSnapshot.modelId,
+              modelName: turnModelSnapshot.modelName,
+              usage: tokenUsage,
+              items: Array.from(items.values()),
+            },
+            undefined,
+            uiEvent.sdkSessionId,
+            activeRuntimeId,
+          );
           const usageInput = tokenUsage?.inputTokens;
           const usageOutput = tokenUsage?.outputTokens;
-          const usageStr = usageInput != null && usageOutput != null
-            ? `${usageInput}+${usageOutput}` : null;
+          const usageStr =
+            usageInput != null && usageOutput != null
+              ? `${usageInput}+${usageOutput}`
+              : null;
           logInfo("chat.turnCompleted", {
-            sessionId: threadId, result: uiEvent.result, elapsedMs: Date.now() - startedAt,
+            sessionId: threadId,
+            result: uiEvent.result,
+            elapsedMs: Date.now() - startedAt,
             ...(usageStr ? { usage: usageStr } : {}),
           });
           continue;
@@ -1133,7 +1467,9 @@ export function registerHandlers(): void {
 
   // ---------- Window ----------
 
-  ipcMain.on(IPC.WINDOW_MINIMIZE, () => BrowserWindow.getFocusedWindow()?.minimize());
+  ipcMain.on(IPC.WINDOW_MINIMIZE, () =>
+    BrowserWindow.getFocusedWindow()?.minimize(),
+  );
   ipcMain.on(IPC.WINDOW_MAXIMIZE, () => {
     const win = BrowserWindow.getFocusedWindow();
     if (win?.isMaximized()) win.unmaximize();
@@ -1189,7 +1525,10 @@ export function registerHandlers(): void {
       workspaceName: workspace?.name,
     } as ChatSessionRecord;
     persistSessionRecord(record);
-    logInfo("chat.sessionCreated", { sessionId: thread.id, title: thread.title });
+    logInfo("chat.sessionCreated", {
+      sessionId: thread.id,
+      title: thread.title,
+    });
     return record;
   });
 
@@ -1200,98 +1539,144 @@ export function registerHandlers(): void {
     logInfo("chat.sessionDeleted", { sessionId });
   });
 
-  ipcMain.handle(IPC.CHAT_UPDATE_SESSION_TITLE, async (_e, sessionId: string, title: string) => {
-    const nextTitle = title.trim();
-    if (!nextTitle) return;
-    store.renameSession(sessionId, nextTitle);
-  });
+  ipcMain.handle(
+    IPC.CHAT_UPDATE_SESSION_TITLE,
+    async (_e, sessionId: string, title: string) => {
+      const nextTitle = title.trim();
+      if (!nextTitle) return;
+      store.renameSession(sessionId, nextTitle);
+    },
+  );
 
-  ipcMain.handle(IPC.CHAT_TOGGLE_SESSION_PINNED, async (_e, sessionId: string) => {
-    const existing = store.getSession(sessionId);
-    if (existing) {
-      store.saveSession({ ...existing, pinned: !existing.pinned, updatedAt: Date.now() });
-      return;
-    }
-    const runtime = getRuntime();
-    const thread = (await runtime.listThreads()).find((item) => item.id === sessionId);
-    if (!thread) return;
-    const record = { ...sessionRecordFromThread(thread), isPinned: true, updatedAt: Date.now() };
-    persistSessionRecord(record);
-  });
-
-  ipcMain.handle(IPC.CHAT_FORK_SESSION, async (_e, request: ChatForkRequest) => {
-    const runtime = getRuntime();
-    if (!runtime.capabilities.forkThread || !runtime.forkThread) return null;
-    const newThread = await runtime.forkThread(request.sessionId, request.upToMessageId);
-    const record = {
-      id: newThread.id,
-      title: request.title?.trim() || newThread.title,
-      createdAt: newThread.createdAt,
-      updatedAt: newThread.updatedAt,
-      isPinned: false,
-      messages: newThread.messages.map(chatMessageFromRuntimeMessage),
-    } as ChatSessionRecord;
-    persistSessionRecord(record);
-    logInfo("chat.sessionForked", { parentSessionId: request.sessionId, newSessionId: newThread.id });
-    return record;
-  });
-
-  ipcMain.handle(IPC.CHAT_REWIND_FILES, async (_e, request: ChatRewindRequest): Promise<ChatRewindResult> => {
-    const dryRun = request.dryRun !== false;
-    const result = dryRun
-      ? previewWorkspaceRewind({
-          sessionId: request.sessionId,
-          targetMessageId: request.userMessageId,
-        })
-      : await applyWorkspaceRewind({
-          sessionId: request.sessionId,
-          targetMessageId: request.userMessageId,
-          confirmedFiles: request.confirmedFiles ?? [],
+  ipcMain.handle(
+    IPC.CHAT_TOGGLE_SESSION_PINNED,
+    async (_e, sessionId: string) => {
+      const existing = store.getSession(sessionId);
+      if (existing) {
+        store.saveSession({
+          ...existing,
+          pinned: !existing.pinned,
+          updatedAt: Date.now(),
         });
+        return;
+      }
+      const runtime = getRuntime();
+      const thread = (await runtime.listThreads()).find(
+        (item) => item.id === sessionId,
+      );
+      if (!thread) return;
+      const record = {
+        ...sessionRecordFromThread(thread),
+        isPinned: true,
+        updatedAt: Date.now(),
+      };
+      persistSessionRecord(record);
+    },
+  );
 
-    recordWorkspaceRewindEvent({
-      sessionId: request.sessionId,
-      targetMessageId: request.userMessageId,
-      dryRun,
-      status: result.error ? "error" : result.canRewind === false ? "blocked" : "ready",
-      files: result.filesChanged,
-      result,
-      createdAt: Date.now(),
-    });
-    return result;
-  });
+  ipcMain.handle(
+    IPC.CHAT_FORK_SESSION,
+    async (_e, request: ChatForkRequest) => {
+      const runtime = getRuntime();
+      if (!runtime.capabilities.forkThread || !runtime.forkThread) return null;
+      const newThread = await runtime.forkThread(
+        request.sessionId,
+        request.upToMessageId,
+      );
+      const record = {
+        id: newThread.id,
+        title: request.title?.trim() || newThread.title,
+        createdAt: newThread.createdAt,
+        updatedAt: newThread.updatedAt,
+        isPinned: false,
+        messages: newThread.messages.map(chatMessageFromRuntimeMessage),
+      } as ChatSessionRecord;
+      persistSessionRecord(record);
+      logInfo("chat.sessionForked", {
+        parentSessionId: request.sessionId,
+        newSessionId: newThread.id,
+      });
+      return record;
+    },
+  );
 
-  ipcMain.handle(IPC.CHAT_EXPORT_SESSION, async (_e, sessionId: string): Promise<string | null> => {
-    return exportChatSession(sessionId);
-  });
+  ipcMain.handle(
+    IPC.CHAT_REWIND_FILES,
+    async (_e, request: ChatRewindRequest): Promise<ChatRewindResult> => {
+      const dryRun = request.dryRun !== false;
+      const result = dryRun
+        ? previewWorkspaceRewind({
+            sessionId: request.sessionId,
+            targetMessageId: request.userMessageId,
+          })
+        : await applyWorkspaceRewind({
+            sessionId: request.sessionId,
+            targetMessageId: request.userMessageId,
+            confirmedFiles: request.confirmedFiles ?? [],
+          });
+
+      recordWorkspaceRewindEvent({
+        sessionId: request.sessionId,
+        targetMessageId: request.userMessageId,
+        dryRun,
+        status: result.error
+          ? "error"
+          : result.canRewind === false
+            ? "blocked"
+            : "ready",
+        files: result.filesChanged,
+        result,
+        createdAt: Date.now(),
+      });
+      return result;
+    },
+  );
+
+  ipcMain.handle(
+    IPC.CHAT_EXPORT_SESSION,
+    async (_e, sessionId: string): Promise<string | null> => {
+      return exportChatSession(sessionId);
+    },
+  );
 
   // Send a chat message and normalize it into MessageItem events.
-  ipcMain.handle(IPC.CHAT_SEND, async (_event, request: ChatSendRequest) => sendChatTurn(request));
+  ipcMain.handle(IPC.CHAT_SEND, async (_event, request: ChatSendRequest) =>
+    sendChatTurn(request),
+  );
 
-  ipcMain.handle(IPC.CHAT_RESEND_FROM_MESSAGE, async (_event, request: ChatResendRequest) => {
-    const runtime = getRuntime();
-    if (!runtime.capabilities.editMessage || !runtime.truncateThread) {
-      throw new Error(`${runtime.name} does not support editing or regeneration`);
-    }
+  ipcMain.handle(
+    IPC.CHAT_RESEND_FROM_MESSAGE,
+    async (_event, request: ChatResendRequest) => {
+      const runtime = getRuntime();
+      if (!runtime.capabilities.editMessage || !runtime.truncateThread) {
+        throw new Error(
+          `${runtime.name} does not support editing or regeneration`,
+        );
+      }
 
-    const trimmedText = request.text.trim();
-    if (!trimmedText) throw new Error("Message text cannot be empty");
+      const trimmedText = request.text.trim();
+      if (!trimmedText) throw new Error("Message text cannot be empty");
 
-    await runtime.truncateThread(request.sessionId, { fromMessageId: request.fromMessageId, includeMessage: false });
-    truncateStoredSession(request.sessionId, request.fromMessageId, false);
-    const requestId = await sendChatTurn({
-      sessionId: request.sessionId,
-      text: trimmedText,
-      clientMessageId: request.fromMessageId,
-    });
-    const session = store.getSession(request.sessionId);
-    if (!session) throw new Error(`Session not found after resend: ${request.sessionId}`);
+      await runtime.truncateThread(request.sessionId, {
+        fromMessageId: request.fromMessageId,
+        includeMessage: false,
+      });
+      truncateStoredSession(request.sessionId, request.fromMessageId, false);
+      const requestId = await sendChatTurn({
+        sessionId: request.sessionId,
+        text: trimmedText,
+        clientMessageId: request.fromMessageId,
+      });
+      const session = store.getSession(request.sessionId);
+      if (!session)
+        throw new Error(`Session not found after resend: ${request.sessionId}`);
 
-    return {
-      ...sessionRecordFromStoredSession(session),
-      requestId,
-    };
-  });
+      return {
+        ...sessionRecordFromStoredSession(session),
+        requestId,
+      };
+    },
+  );
 
   ipcMain.handle(IPC.CHAT_ABORT, async (_e, requestId: string) => {
     try {
@@ -1302,7 +1687,9 @@ export function registerHandlers(): void {
     }
   });
 
-  ipcMain.handle(IPC.CHAT_READ_THREAD, async (_e, sessionId: string) => readRuntimeThreadSnapshot(sessionId));
+  ipcMain.handle(IPC.CHAT_READ_THREAD, async (_e, sessionId: string) =>
+    readRuntimeThreadSnapshot(sessionId),
+  );
 
   ipcMain.handle(IPC.CHAT_CANCEL_TOOL, async (_e, toolCallId: string) => {
     const runtime = getRuntime();
@@ -1312,53 +1699,63 @@ export function registerHandlers(): void {
     await runtime.cancelTool(toolCallId);
   });
 
-  ipcMain.on(IPC.CHAT_PERMISSION_RESPONSE, (_e, { requestId, approved, scope, reason }) => {
-    const runtime = getRuntime();
-    runtime.respondApproval(requestId, approved, scope, reason);
-    const pending = pendingApprovalItems.get(requestId);
-    if (pending) {
-      pendingApprovalItems.delete(requestId);
-      const item: MessageItem = {
-        id: requestId,
-        type: "permission_request",
-        rawType: "approval_request",
-        phase: "completed",
-        toolName: pending.toolName,
-        tool: pending.toolName,
-        reason: reason ?? pending.reason,
-        message: reason ?? pending.reason,
-        status: approved ? "completed" : "denied",
-        timeoutMs: pending.timeoutMs,
-        completedAt: Date.now(),
-      };
-      getMainWindow()?.webContents.send(IPC.CHAT_ITEM_EVENT, {
-        type: "item.updated",
-        sessionId: pending.sessionId,
-        turnId: pending.turnId,
-        item,
-      });
-    }
-  });
+  ipcMain.on(
+    IPC.CHAT_PERMISSION_RESPONSE,
+    (_e, { requestId, approved, scope, reason }) => {
+      const runtime = getRuntime();
+      runtime.respondApproval(requestId, approved, scope, reason);
+      const pending = pendingApprovalItems.get(requestId);
+      if (pending) {
+        pendingApprovalItems.delete(requestId);
+        const item: MessageItem = {
+          id: requestId,
+          type: "permission_request",
+          rawType: "approval_request",
+          phase: "completed",
+          toolName: pending.toolName,
+          tool: pending.toolName,
+          reason: reason ?? pending.reason,
+          message: reason ?? pending.reason,
+          status: approved ? "completed" : "denied",
+          timeoutMs: pending.timeoutMs,
+          completedAt: Date.now(),
+        };
+        getMainWindow()?.webContents.send(IPC.CHAT_ITEM_EVENT, {
+          type: "item.updated",
+          sessionId: pending.sessionId,
+          turnId: pending.turnId,
+          item,
+        });
+      }
+    },
+  );
 
   // ---------- Config ----------
 
   ipcMain.handle(IPC.CONFIG_GET_AGENT_SETTINGS, async () => getAgentSettings());
 
-  ipcMain.handle(IPC.CONFIG_SAVE_AGENT_SETTINGS, async (_e, settings: AgentSettings) => {
-    saveAgentSettings(settings);
-    return settings;
-  });
-
-  ipcMain.handle(IPC.CONFIG_TEST_ENDPOINT_PROFILE, async (_e, profile: ModelProviderConfig) =>
-    testEndpointProfile(profile),
+  ipcMain.handle(
+    IPC.CONFIG_SAVE_AGENT_SETTINGS,
+    async (_e, settings: AgentSettings) => {
+      saveAgentSettings(settings);
+      return settings;
+    },
   );
 
-  ipcMain.handle(IPC.CONFIG_TEST_ENDPOINT_MODEL, async (_e, profile: ModelProviderConfig, modelId: string) =>
-    testEndpointModel(profile, modelId),
+  ipcMain.handle(
+    IPC.CONFIG_TEST_ENDPOINT_PROFILE,
+    async (_e, profile: ModelProviderConfig) => testEndpointProfile(profile),
   );
 
-  ipcMain.handle(IPC.CONFIG_LIST_ENDPOINT_MODELS, async (_e, profile: ModelProviderConfig) =>
-    listEndpointModels(profile),
+  ipcMain.handle(
+    IPC.CONFIG_TEST_ENDPOINT_MODEL,
+    async (_e, profile: ModelProviderConfig, modelId: string) =>
+      testEndpointModel(profile, modelId),
+  );
+
+  ipcMain.handle(
+    IPC.CONFIG_LIST_ENDPOINT_MODELS,
+    async (_e, profile: ModelProviderConfig) => listEndpointModels(profile),
   );
 
   ipcMain.handle(IPC.RUNTIME_GET_STATE, async () => getRuntimeState());
@@ -1370,7 +1767,11 @@ export function registerHandlers(): void {
   });
 
   ipcMain.handle(IPC.RUNTIME_LIST_MODELS, async () => listRuntimeModels());
-  ipcMain.handle(IPC.RUNTIME_SET_MODEL, async (_e, providerId: string, modelId: string) => setRuntimeModel(providerId, modelId));
+  ipcMain.handle(
+    IPC.RUNTIME_SET_MODEL,
+    async (_e, providerId: string, modelId: string) =>
+      setRuntimeModel(providerId, modelId),
+  );
 
   // ---------- Workspace ----------
 
@@ -1378,62 +1779,78 @@ export function registerHandlers(): void {
     return currentWorkspace();
   });
 
-  ipcMain.handle(IPC.WORKSPACE_GET_SETTINGS, (): WorkspaceSettings => getWorkspaceSettings());
+  ipcMain.handle(IPC.WORKSPACE_GET_SETTINGS, (): WorkspaceSettings =>
+    getWorkspaceSettings(),
+  );
 
-  ipcMain.handle(IPC.WORKSPACE_SELECT, async (): Promise<WorkspaceInfo | null> => {
-    const workspace = await selectWorkspace();
-    if (!workspace) return null;
-    recordAuditEvent({
-      workspacePath: workspace.path,
-      toolName: "workspace.select",
-      inputSummary: workspace.path,
-      status: "completed",
-    });
-    return workspace;
-  });
-
-  ipcMain.handle(IPC.WORKSPACE_SWITCH, (_e, id: string): WorkspaceInfo | null => {
-    const ws = switchWorkspace(id);
-    if (ws) {
+  ipcMain.handle(
+    IPC.WORKSPACE_SELECT,
+    async (): Promise<WorkspaceInfo | null> => {
+      const workspace = await selectWorkspace();
+      if (!workspace) return null;
       recordAuditEvent({
-        workspacePath: ws.path,
-        toolName: "workspace.switch",
-        inputSummary: id,
-        outputSummary: ws.path,
+        workspacePath: workspace.path,
+        toolName: "workspace.select",
+        inputSummary: workspace.path,
         status: "completed",
       });
-    }
-    return ws;
-  });
+      return workspace;
+    },
+  );
 
-  ipcMain.handle(IPC.WORKSPACE_RENAME, (_e, id: string, name: string): WorkspaceInfo | null => {
-    const ws = renameWorkspace(id, name);
-    if (ws) {
-      recordAuditEvent({
-        workspacePath: ws.path,
-        toolName: "workspace.rename",
-        inputSummary: id,
-        outputSummary: ws.name,
-        status: "completed",
-      });
-    }
-    return ws;
-  });
+  ipcMain.handle(
+    IPC.WORKSPACE_SWITCH,
+    (_e, id: string): WorkspaceInfo | null => {
+      const ws = switchWorkspace(id);
+      if (ws) {
+        recordAuditEvent({
+          workspacePath: ws.path,
+          toolName: "workspace.switch",
+          inputSummary: id,
+          outputSummary: ws.path,
+          status: "completed",
+        });
+      }
+      return ws;
+    },
+  );
 
-  ipcMain.handle(IPC.WORKSPACE_REMOVE, (_e, id: string): WorkspaceInfo | null => {
-    const previous = getWorkspaceSettings().workspaces.find((w) => w.id === id);
-    const current = removeWorkspace(id);
-    if (previous) {
-      recordAuditEvent({
-        workspacePath: previous.path,
-        toolName: "workspace.remove",
-        inputSummary: id,
-        outputSummary: "Removed from workspace list",
-        status: "completed",
-      });
-    }
-    return current;
-  });
+  ipcMain.handle(
+    IPC.WORKSPACE_RENAME,
+    (_e, id: string, name: string): WorkspaceInfo | null => {
+      const ws = renameWorkspace(id, name);
+      if (ws) {
+        recordAuditEvent({
+          workspacePath: ws.path,
+          toolName: "workspace.rename",
+          inputSummary: id,
+          outputSummary: ws.name,
+          status: "completed",
+        });
+      }
+      return ws;
+    },
+  );
+
+  ipcMain.handle(
+    IPC.WORKSPACE_REMOVE,
+    (_e, id: string): WorkspaceInfo | null => {
+      const previous = getWorkspaceSettings().workspaces.find(
+        (w) => w.id === id,
+      );
+      const current = removeWorkspace(id);
+      if (previous) {
+        recordAuditEvent({
+          workspacePath: previous.path,
+          toolName: "workspace.remove",
+          inputSummary: id,
+          outputSummary: "Removed from workspace list",
+          status: "completed",
+        });
+      }
+      return current;
+    },
+  );
 
   ipcMain.handle(IPC.WORKSPACE_OPEN_IN_EXPLORER, (_e, id: string) => {
     const ws = getWorkspaceSettings().workspaces.find((w) => w.id === id);
@@ -1483,58 +1900,90 @@ export function registerHandlers(): void {
 
   // ---------- Memory ----------
 
-  ipcMain.handle(IPC.MEMORY_LIST, async () => listMemoryFilesFromService(currentWorkspace()));
-  ipcMain.handle(IPC.MEMORY_READ, async (_e, fileId: string) => readMemoryFile(fileId, currentWorkspace()));
-  ipcMain.handle(IPC.MEMORY_WRITE, async (_e, fileId: string, content: string) => {
-    const updated = await writeMemoryFile(fileId, content, currentWorkspace());
-    recordAuditEvent({
-      workspacePath: currentWorkspace()?.path,
-      toolName: "memory.write",
-      inputSummary: fileId,
-      outputSummary: `${Buffer.byteLength(content, "utf-8")} bytes`,
-      status: "completed",
-    });
-    return updated;
-  });
+  ipcMain.handle(IPC.MEMORY_LIST, async () =>
+    listMemoryFilesFromService(currentWorkspace()),
+  );
+  ipcMain.handle(IPC.MEMORY_READ, async (_e, fileId: string) =>
+    readMemoryFile(fileId, currentWorkspace()),
+  );
+  ipcMain.handle(
+    IPC.MEMORY_WRITE,
+    async (_e, fileId: string, content: string) => {
+      const updated = await writeMemoryFile(
+        fileId,
+        content,
+        currentWorkspace(),
+      );
+      recordAuditEvent({
+        workspacePath: currentWorkspace()?.path,
+        toolName: "memory.write",
+        inputSummary: fileId,
+        outputSummary: `${Buffer.byteLength(content, "utf-8")} bytes`,
+        status: "completed",
+      });
+      return updated;
+    },
+  );
   // ---------- MCP ----------
 
   ipcMain.handle(IPC.MCP_LIST_SERVERS, async (): Promise<McpServerConfig[]> => {
     return listMcpServers();
   });
 
-  ipcMain.handle(IPC.MCP_SAVE_SERVERS, async (_e, servers: McpServerConfig[]): Promise<McpServerConfig[]> => {
-    const saved = await saveMcpServers(servers);
-    recordAuditEvent({
-      toolName: "mcp.saveServers",
-      inputSummary: `${servers.length} servers`,
-      status: "completed",
-    });
-    return saved;
-  });
+  ipcMain.handle(
+    IPC.MCP_SAVE_SERVERS,
+    async (_e, servers: McpServerConfig[]): Promise<McpServerConfig[]> => {
+      const saved = await saveMcpServers(servers);
+      recordAuditEvent({
+        toolName: "mcp.saveServers",
+        inputSummary: `${servers.length} servers`,
+        status: "completed",
+      });
+      return saved;
+    },
+  );
 
-  ipcMain.handle(IPC.MCP_TEST_SERVER, async (_e, server: McpServerConfig): Promise<McpServerConfig> => {
-    const tested = await testMcpServer(server);
-    recordAuditEvent({
-      toolName: "mcp.testServer",
-      inputSummary: tested.name,
-      outputSummary: tested.lastProbeResult ?? tested.lastError,
-      status: tested.lastStatus === "ok" ? "completed" : "error",
-      isError: tested.lastStatus === "error",
-    });
-    return tested;
-  });
+  ipcMain.handle(
+    IPC.MCP_TEST_SERVER,
+    async (_e, server: McpServerConfig): Promise<McpServerConfig> => {
+      const tested = await testMcpServer(server);
+      recordAuditEvent({
+        toolName: "mcp.testServer",
+        inputSummary: tested.name,
+        outputSummary: tested.lastProbeResult ?? tested.lastError,
+        status: tested.lastStatus === "ok" ? "completed" : "error",
+        isError: tested.lastStatus === "error",
+      });
+      return tested;
+    },
+  );
 
-  ipcMain.handle(IPC.MCP_REFRESH_STATUS, async (): Promise<McpServerConfig[]> => {
-    const refreshed = await refreshMcpServerStatuses();
-    recordAuditEvent({
-      toolName: "mcp.refreshStatus",
-      inputSummary: `${refreshed.filter((server) => server.enabled).length} enabled servers`,
-      outputSummary: refreshed.map((server) => `${server.name}:${server.lastStatus ?? "untested"}`).join(", "),
-      status: refreshed.some((server) => server.lastStatus === "error" || server.lastStatus === "disconnected") ? "error" : "completed",
-      isError: refreshed.some((server) => server.lastStatus === "error" || server.lastStatus === "disconnected"),
-    });
-    return refreshed;
-  });
+  ipcMain.handle(
+    IPC.MCP_REFRESH_STATUS,
+    async (): Promise<McpServerConfig[]> => {
+      const refreshed = await refreshMcpServerStatuses();
+      recordAuditEvent({
+        toolName: "mcp.refreshStatus",
+        inputSummary: `${refreshed.filter((server) => server.enabled).length} enabled servers`,
+        outputSummary: refreshed
+          .map((server) => `${server.name}:${server.lastStatus ?? "untested"}`)
+          .join(", "),
+        status: refreshed.some(
+          (server) =>
+            server.lastStatus === "error" ||
+            server.lastStatus === "disconnected",
+        )
+          ? "error"
+          : "completed",
+        isError: refreshed.some(
+          (server) =>
+            server.lastStatus === "error" ||
+            server.lastStatus === "disconnected",
+        ),
+      });
+      return refreshed;
+    },
+  );
 
   ipcMain.handle(IPC.MCP_LIST_TOOLS, async (): Promise<string[]> => {
     return listRuntimeMcpTools();
@@ -1542,49 +1991,74 @@ export function registerHandlers(): void {
 
   // ---------- Audit ----------
 
-  ipcMain.handle(IPC.AUDIT_LIST, async (_e, limit?: number) => listAuditEvents(limit));
+  ipcMain.handle(IPC.AUDIT_LIST, async (_e, limit?: number) =>
+    listAuditEvents(limit),
+  );
 
   // ---------- Skill ----------
 
-  ipcMain.handle(IPC.SKILL_LIST, async (): Promise<SkillInfo[]> => listInstalledSkillsFromService());
+  ipcMain.handle(IPC.SKILL_LIST, async (): Promise<SkillInfo[]> =>
+    listInstalledSkillsFromService(),
+  );
 
-  ipcMain.handle(IPC.SKILL_IMPORT_FOLDER, async (): Promise<SkillInfo | null> => {
-    const skill = await importSkillFolderFromService();
-    if (!skill) return null;
-    recordAuditEvent({
-      toolName: "skill.importFolder",
-      inputSummary: skill.path,
-      outputSummary: skill.name,
-      status: "completed",
-    });
-    return skill;
-  });
+  ipcMain.handle(
+    IPC.SKILL_IMPORT_FOLDER,
+    async (): Promise<SkillInfo | null> => {
+      const skill = await importSkillFolderFromService();
+      if (!skill) return null;
+      recordAuditEvent({
+        toolName: "skill.importFolder",
+        inputSummary: skill.path,
+        outputSummary: skill.name,
+        status: "completed",
+      });
+      return skill;
+    },
+  );
 
-  ipcMain.handle(IPC.SKILL_TOGGLE, async (_e, skillId: string, enabled: boolean): Promise<SkillInfo[]> => {
-    const skills = toggleSkillFromService(skillId, enabled);
-    recordAuditEvent({
-      toolName: "skill.toggle",
-      inputSummary: `${skillId} -> ${enabled ? "enabled" : "disabled"}`,
-      status: "completed",
-    });
-    return skills;
-  });
+  ipcMain.handle(
+    IPC.SKILL_TOGGLE,
+    async (_e, skillId: string, enabled: boolean): Promise<SkillInfo[]> => {
+      const skills = toggleSkillFromService(skillId, enabled);
+      recordAuditEvent({
+        toolName: "skill.toggle",
+        inputSummary: `${skillId} -> ${enabled ? "enabled" : "disabled"}`,
+        status: "completed",
+      });
+      return skills;
+    },
+  );
 
-  ipcMain.handle(IPC.SKILL_REMOVE, async (_e, skillId: string): Promise<SkillInfo[]> => {
-    const before = listInstalledSkillsFromService().find((item) => item.id === skillId);
-    const skills = removeSkillFromService(skillId);
-    recordAuditEvent({
-      toolName: "skill.remove",
-      inputSummary: skillId,
-      outputSummary: before?.path,
-      status: "completed",
-    });
-    return skills;
-  });
+  ipcMain.handle(
+    IPC.SKILL_REMOVE,
+    async (_e, skillId: string): Promise<SkillInfo[]> => {
+      const before = listInstalledSkillsFromService().find(
+        (item) => item.id === skillId,
+      );
+      const skills = removeSkillFromService(skillId);
+      recordAuditEvent({
+        toolName: "skill.remove",
+        inputSummary: skillId,
+        outputSummary: before?.path,
+        status: "completed",
+      });
+      return skills;
+    },
+  );
 
-  ipcMain.handle(IPC.SKILL_GET_DETAIL, async (_e, skillId: string): Promise<SkillDetail> => getSkillDetailFromService(skillId));
+  ipcMain.handle(
+    IPC.SKILL_GET_DETAIL,
+    async (_e, skillId: string): Promise<SkillDetail> =>
+      getSkillDetailFromService(skillId),
+  );
 
-  ipcMain.handle(IPC.SKILL_MARKETPLACE_LIST, async () => listMarketplaceSkills());
-  ipcMain.handle(IPC.SKILL_MARKETPLACE_DETAIL, async (_e, slug: string) => getMarketplaceSkillDetail(slug));
-  ipcMain.handle(IPC.SKILL_MARKETPLACE_INSTALL, async () => installMarketplaceSkill());
+  ipcMain.handle(IPC.SKILL_MARKETPLACE_LIST, async () =>
+    listMarketplaceSkills(),
+  );
+  ipcMain.handle(IPC.SKILL_MARKETPLACE_DETAIL, async (_e, slug: string) =>
+    getMarketplaceSkillDetail(slug),
+  );
+  ipcMain.handle(IPC.SKILL_MARKETPLACE_INSTALL, async () =>
+    installMarketplaceSkill(),
+  );
 }

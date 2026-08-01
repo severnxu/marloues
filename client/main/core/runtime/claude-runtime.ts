@@ -15,13 +15,18 @@ import type {
   PermissionMode,
   RuntimeCapabilities,
 } from "@shared/agent-runtime";
-import type { AgentSettings, MemoryRecallRecord, ModelOption, TokenUsage } from "@shared/types";
+import type {
+  AgentSettings,
+  MemoryRecallRecord,
+  ModelOption,
+  TokenUsage,
+} from "@shared/types";
 import { queryClaude, type ClaudeQuery } from "../sdk/claude-sdk";
 import { getAgentSettings, buildSdkEnv } from "../../services/config-service";
 import { recordMcpRuntimeStatus } from "../../services/mcp-service";
 import { evaluateContextPolicy } from "../context/context-policy";
 import { resolveModelProvider } from "../config/model-provider";
-import { buildClaudeRuntimeOptions, type ClaudeCanUseTool } from "../config/options-builder";
+import { buildClaudeRuntimeOptions } from "../config/options-builder";
 import { configuredMcpTools } from "./mcp-tools";
 import { configuredRuntimeModels } from "./runtime-models";
 import { workflowThreadStore } from "./workflow-thread-store";
@@ -41,10 +46,15 @@ function now(): number {
   return Date.now();
 }
 
-function modelSnapshotFromSettings(settings: AgentSettings): { modelId: string; modelName: string } {
+function modelSnapshotFromSettings(settings: AgentSettings): {
+  modelId: string;
+  modelName: string;
+} {
   const modelProvider = resolveModelProvider(settings);
   const modelId = modelProvider.selection.modelId || modelProvider.model;
-  const model = modelProvider.provider?.models.find((item) => item.id === modelId);
+  const model = modelProvider.provider?.models.find(
+    (item) => item.id === modelId,
+  );
   return {
     modelId,
     modelName: model?.label || modelId,
@@ -61,7 +71,11 @@ const streamingToolBlocks = new Map<string, StreamingToolBlock>();
 const turnsWithStreamedText = new Set<string>();
 const turnsWithStreamedThinking = new Set<string>();
 
-function streamingToolKey(sessionId: string, turnId: string, index: unknown): string {
+function streamingToolKey(
+  sessionId: string,
+  turnId: string,
+  index: unknown,
+): string {
   return `${sessionId}:${turnId}:${String(index ?? 0)}`;
 }
 
@@ -85,7 +99,12 @@ function stringifyToolInput(value: unknown): string {
 }
 
 function isEmptyObject(value: unknown): boolean {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length === 0);
+  return Boolean(
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.keys(value).length === 0,
+  );
 }
 
 function appendToolInputDelta(current: string, delta: string): string {
@@ -94,7 +113,9 @@ function appendToolInputDelta(current: string, delta: string): string {
 }
 
 function stringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 function stringifyStatusDetail(value: unknown): string | undefined {
@@ -113,23 +134,33 @@ function isClosedQueryContextUsageError(error: unknown): boolean {
 }
 
 function isLikelyClaudeSessionId(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    value,
+  );
 }
 
-function normalizeMemoryRecall(message: Record<string, unknown>): MemoryRecallRecord[] {
+function normalizeMemoryRecall(
+  message: Record<string, unknown>,
+): MemoryRecallRecord[] {
   const memories = message.memories;
   if (!Array.isArray(memories)) return [];
   return memories
-    .filter((memory): memory is Record<string, unknown> => Boolean(memory && typeof memory === "object"))
+    .filter((memory): memory is Record<string, unknown> =>
+      Boolean(memory && typeof memory === "object"),
+    )
     .map((memory) => ({
       path: typeof memory.path === "string" ? memory.path : "",
-      scope: (memory.scope === "team" ? "team" : "personal") as MemoryRecallRecord["scope"],
+      scope: (memory.scope === "team"
+        ? "team"
+        : "personal") as MemoryRecallRecord["scope"],
       content: typeof memory.content === "string" ? memory.content : undefined,
     }))
     .filter((memory) => memory.path.trim());
 }
 
-function normalizeRuntimeStatus(message: Record<string, unknown>): Extract<RuntimeEvent, { kind: "runtime-status" }>["payload"] | null {
+function normalizeRuntimeStatus(
+  message: Record<string, unknown>,
+): Extract<RuntimeEvent, { kind: "runtime-status" }>["payload"] | null {
   const subtype = message.subtype as string | undefined;
   if (subtype === "status") {
     return {
@@ -152,7 +183,12 @@ function normalizeRuntimeStatus(message: Record<string, unknown>): Extract<Runti
     return {
       turnId: "",
       label: `Session ${String(message.state ?? "state changed")}`,
-      status: message.state === "running" ? "running" : message.state === "requires_action" ? "pending" : "completed",
+      status:
+        message.state === "running"
+          ? "running"
+          : message.state === "requires_action"
+            ? "pending"
+            : "completed",
     };
   }
   if (subtype === "notification") {
@@ -160,28 +196,45 @@ function normalizeRuntimeStatus(message: Record<string, unknown>): Extract<Runti
       turnId: "",
       label: `Notification: ${String(message.key ?? "SDK")}`,
       detail: typeof message.text === "string" ? message.text : undefined,
-      status: message.priority === "high" || message.priority === "immediate" ? "pending" : "completed",
+      status:
+        message.priority === "high" || message.priority === "immediate"
+          ? "pending"
+          : "completed",
     };
   }
   if (subtype === "permission_denied") {
     return {
       turnId: "",
       label: `Permission denied: ${String(message.tool_name ?? "tool")}`,
-      detail: typeof message.decision_reason === "string" ? message.decision_reason : typeof message.message === "string" ? message.message : undefined,
+      detail:
+        typeof message.decision_reason === "string"
+          ? message.decision_reason
+          : typeof message.message === "string"
+            ? message.message
+            : undefined,
       status: "error",
     };
   }
   return null;
 }
 
-function normalizeTaskRuntimeStatus(message: Record<string, unknown>): Extract<RuntimeEvent, { kind: "runtime-status" }>["payload"] | null {
+function normalizeTaskRuntimeStatus(
+  message: Record<string, unknown>,
+): Extract<RuntimeEvent, { kind: "runtime-status" }>["payload"] | null {
   const subtype = message.subtype as string | undefined;
-  const id = String(message.task_id ?? message.tool_use_id ?? `task-${Date.now()}`);
+  const id = String(
+    message.task_id ?? message.tool_use_id ?? `task-${Date.now()}`,
+  );
   if (subtype === "task_started") {
     return {
       turnId: "",
       id,
-      label: typeof message.description === "string" ? message.description : typeof message.workflow_name === "string" ? message.workflow_name : "Task started",
+      label:
+        typeof message.description === "string"
+          ? message.description
+          : typeof message.workflow_name === "string"
+            ? message.workflow_name
+            : "Task started",
       detail: typeof message.prompt === "string" ? message.prompt : undefined,
       status: "running",
     };
@@ -190,18 +243,32 @@ function normalizeTaskRuntimeStatus(message: Record<string, unknown>): Extract<R
     return {
       turnId: "",
       id,
-      label: typeof message.summary === "string" ? message.summary : typeof message.description === "string" ? message.description : "Task progress",
-      detail: typeof message.last_tool_name === "string" ? `Last tool: ${message.last_tool_name}` : undefined,
+      label:
+        typeof message.summary === "string"
+          ? message.summary
+          : typeof message.description === "string"
+            ? message.description
+            : "Task progress",
+      detail:
+        typeof message.last_tool_name === "string"
+          ? `Last tool: ${message.last_tool_name}`
+          : undefined,
       status: "running",
     };
   }
   if (subtype === "task_updated") {
-    const patch = message.patch && typeof message.patch === "object" ? (message.patch as Record<string, unknown>) : {};
+    const patch =
+      message.patch && typeof message.patch === "object"
+        ? (message.patch as Record<string, unknown>)
+        : {};
     const status = patch.status;
     return {
       turnId: "",
       id,
-      label: typeof patch.description === "string" ? patch.description : "Task updated",
+      label:
+        typeof patch.description === "string"
+          ? patch.description
+          : "Task updated",
       detail: typeof patch.error === "string" ? patch.error : undefined,
       status:
         status === "failed" || status === "killed"
@@ -217,14 +284,22 @@ function normalizeTaskRuntimeStatus(message: Record<string, unknown>): Extract<R
     return {
       turnId: "",
       id,
-      label: typeof message.summary === "string" ? message.summary : "Task completed",
-      detail: typeof message.output_file === "string" ? message.output_file : undefined,
-      status: message.status === "failed" || message.status === "stopped" ? "error" : "completed",
+      label:
+        typeof message.summary === "string"
+          ? message.summary
+          : "Task completed",
+      detail:
+        typeof message.output_file === "string"
+          ? message.output_file
+          : undefined,
+      status:
+        message.status === "failed" || message.status === "stopped"
+          ? "error"
+          : "completed",
     };
   }
   return null;
 }
-
 
 // ========================
 // SDK message normalization helpers.
@@ -275,7 +350,11 @@ export function normalizeSdkMessage(
     if (Array.isArray(msg.mcp_servers)) {
       events.push({
         kind: "mcp-status",
-        payload: { turnId, servers: msg.mcp_servers, tools: stringArray(msg.tools) },
+        payload: {
+          turnId,
+          servers: msg.mcp_servers,
+          tools: stringArray(msg.tools),
+        },
       });
     }
 
@@ -303,7 +382,9 @@ export function normalizeSdkMessage(
       kind: "runtime-status",
       payload: {
         turnId,
-        id: String(msg.task_id ?? msg.tool_use_id ?? `tool-progress-${Date.now()}`),
+        id: String(
+          msg.task_id ?? msg.tool_use_id ?? `tool-progress-${Date.now()}`,
+        ),
         label: `${String(msg.tool_name ?? "Tool")} running`,
         detail: `${String(msg.elapsed_time_seconds ?? 0)}s elapsed`,
         status: "running",
@@ -315,7 +396,12 @@ export function normalizeSdkMessage(
   if (msg.type === "tool_use_summary") {
     events.push({
       kind: "runtime-status",
-      payload: { turnId, label: "Tool use summary", detail: typeof msg.summary === "string" ? msg.summary : undefined, status: "completed" },
+      payload: {
+        turnId,
+        label: "Tool use summary",
+        detail: typeof msg.summary === "string" ? msg.summary : undefined,
+        status: "completed",
+      },
     });
     return events;
   }
@@ -323,7 +409,10 @@ export function normalizeSdkMessage(
   if (msg.type === "prompt_suggestion") {
     events.push({
       kind: "prompt-suggestion",
-      payload: { turnId, suggestion: typeof msg.suggestion === "string" ? msg.suggestion : "" },
+      payload: {
+        turnId,
+        suggestion: typeof msg.suggestion === "string" ? msg.suggestion : "",
+      },
     });
     return events;
   }
@@ -353,9 +442,14 @@ export function normalizeSdkMessage(
       }
       // tool input delta
       if (delta?.type === "input_json_delta") {
-        const block = streamingToolBlocks.get(streamingToolKey(sessionId, turnId, event.index));
+        const block = streamingToolBlocks.get(
+          streamingToolKey(sessionId, turnId, event.index),
+        );
         if (!block) return events;
-        block.partialInput = appendToolInputDelta(block.partialInput, String((delta as Record<string, unknown>).partial_json ?? ""));
+        block.partialInput = appendToolInputDelta(
+          block.partialInput,
+          String((delta as Record<string, unknown>).partial_json ?? ""),
+        );
         events.push({
           kind: "tool-progress",
           payload: {
@@ -376,11 +470,14 @@ export function normalizeSdkMessage(
         const toolId = String(block.id ?? `tool-${Date.now()}`);
         const toolName = String(block.name ?? "unknown");
         const initialInput = stringifyToolInput(block.input);
-        streamingToolBlocks.set(streamingToolKey(sessionId, turnId, event.index), {
-          id: toolId,
-          name: toolName,
-          partialInput: initialInput,
-        });
+        streamingToolBlocks.set(
+          streamingToolKey(sessionId, turnId, event.index),
+          {
+            id: toolId,
+            name: toolName,
+            partialInput: initialInput,
+          },
+        );
         events.push({
           kind: "tool-start",
           payload: {
@@ -396,7 +493,9 @@ export function normalizeSdkMessage(
     // content_block_stop finalizes the current content block.
     if (event.type === "content_block_stop") {
       // Some SDK versions emit final text on block stop.
-      const block = streamingToolBlocks.get(streamingToolKey(sessionId, turnId, event.index));
+      const block = streamingToolBlocks.get(
+        streamingToolKey(sessionId, turnId, event.index),
+      );
       if (block) {
         events.push({
           kind: "tool-progress",
@@ -409,7 +508,9 @@ export function normalizeSdkMessage(
             isReady: true,
           },
         });
-        streamingToolBlocks.delete(streamingToolKey(sessionId, turnId, event.index));
+        streamingToolBlocks.delete(
+          streamingToolKey(sessionId, turnId, event.index),
+        );
       }
     }
 
@@ -424,13 +525,21 @@ export function normalizeSdkMessage(
     const streamKey = turnStreamKey(sessionId, turnId);
     if (Array.isArray(content)) {
       for (const block of content as Array<Record<string, unknown>>) {
-        if (block.type === "text" && block.text && !turnsWithStreamedText.has(streamKey)) {
+        if (
+          block.type === "text" &&
+          block.text &&
+          !turnsWithStreamedText.has(streamKey)
+        ) {
           events.push({
             kind: "text-chunk",
             payload: { turnId, content: String(block.text) },
           });
         }
-        if (block.type === "thinking" && block.thinking && !turnsWithStreamedThinking.has(streamKey)) {
+        if (
+          block.type === "thinking" &&
+          block.thinking &&
+          !turnsWithStreamedThinking.has(streamKey)
+        ) {
           events.push({
             kind: "thinking-chunk",
             payload: { turnId, content: String(block.thinking) },
@@ -464,7 +573,9 @@ export function normalizeSdkMessage(
             kind: "tool-complete",
             payload: {
               turnId,
-              toolId: String((block as Record<string, unknown>).tool_use_id ?? "unknown"),
+              toolId: String(
+                (block as Record<string, unknown>).tool_use_id ?? "unknown",
+              ),
               output: block.content ?? "",
               isError: Boolean((block as Record<string, unknown>).is_error),
             },
@@ -477,7 +588,8 @@ export function normalizeSdkMessage(
 
   // ---------- Result messages ----------
   if (msg.type === "result") {
-    const isError = Boolean(msg.is_error) ||
+    const isError =
+      Boolean(msg.is_error) ||
       (msg.subtype as string) === "error_during_execution" ||
       (msg.subtype as string) === "error_max_turns";
     const usage = normalizeTokenUsage(msg.usage);
@@ -510,7 +622,8 @@ export function normalizeSdkMessage(
           turnId,
           result: "success",
           content: typeof msg.result === "string" ? msg.result : undefined,
-          sdkSessionId: typeof msg.session_id === "string" ? msg.session_id : undefined,
+          sdkSessionId:
+            typeof msg.session_id === "string" ? msg.session_id : undefined,
         },
       });
     }
@@ -522,7 +635,6 @@ export function normalizeSdkMessage(
   return events;
 }
 
-
 function resultErrorMessage(msg: Record<string, unknown>): string {
   if (typeof msg.result === "string" && msg.result.trim()) {
     return msg.result;
@@ -530,18 +642,26 @@ function resultErrorMessage(msg: Record<string, unknown>): string {
   if ((msg.subtype as string) === "error_max_turns") {
     return "Reached the maximum turn limit. Send another message to continue.";
   }
-  return stringifyStatusDetail(msg.errors) ?? "Model response interrupted unexpectedly.";
+  return (
+    stringifyStatusDetail(msg.errors) ??
+    "Model response interrupted unexpectedly."
+  );
 }
 
 function normalizeTokenUsage(usage: unknown): TokenUsage | undefined {
   if (!usage || typeof usage !== "object") return undefined;
   const record = usage as Record<string, unknown>;
   const normalized: TokenUsage = {
-    inputTokens: readNumber(record.input_tokens) ?? readNumber(record.inputTokens),
-    outputTokens: readNumber(record.output_tokens) ?? readNumber(record.outputTokens),
+    inputTokens:
+      readNumber(record.input_tokens) ?? readNumber(record.inputTokens),
+    outputTokens:
+      readNumber(record.output_tokens) ?? readNumber(record.outputTokens),
     cacheCreationInputTokens:
-      readNumber(record.cache_creation_input_tokens) ?? readNumber(record.cacheCreationInputTokens),
-    cacheReadInputTokens: readNumber(record.cache_read_input_tokens) ?? readNumber(record.cacheReadInputTokens),
+      readNumber(record.cache_creation_input_tokens) ??
+      readNumber(record.cacheCreationInputTokens),
+    cacheReadInputTokens:
+      readNumber(record.cache_read_input_tokens) ??
+      readNumber(record.cacheReadInputTokens),
     limitTokens:
       readNumber(record.limit_tokens) ??
       readNumber(record.limitTokens) ??
@@ -562,10 +682,18 @@ function normalizeTokenUsage(usage: unknown): TokenUsage | undefined {
 }
 
 function readNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
 }
 
-export function normalizeContextUsage(value: unknown): { usage: import("@shared/types").ContextUsageRecord; percentage: number; limit: number } | null {
+export function normalizeContextUsage(
+  value: unknown,
+): {
+  usage: import("@shared/types").ContextUsageRecord;
+  percentage: number;
+  limit: number;
+} | null {
   if (!value || typeof value !== "object") return null;
   const record = value as Record<string, unknown>;
   const usage = {
@@ -579,11 +707,14 @@ export function normalizeContextUsage(value: unknown): { usage: import("@shared/
     raw: value,
   };
   const limit = usage.maxTokens ?? 0;
-  const percentage = usage.percentage ?? (usage.totalTokens !== undefined && limit > 0 ? (usage.totalTokens / limit) * 100 : undefined);
+  const percentage =
+    usage.percentage ??
+    (usage.totalTokens !== undefined && limit > 0
+      ? (usage.totalTokens / limit) * 100
+      : undefined);
   if (percentage === undefined && limit <= 0) return null;
   return { usage, percentage: percentage ?? 0, limit };
 }
-
 
 export function buildContextPolicyWarningEvent(
   settings: AgentSettings,
@@ -602,7 +733,12 @@ export function buildContextPolicyWarningEvent(
     reason: "turn_end",
   });
   if (decision.level === "ok") return null;
-  const level = decision.level === "warning" ? "medium" : decision.level === "compact" ? "high" : "critical";
+  const level =
+    decision.level === "warning"
+      ? "medium"
+      : decision.level === "compact"
+        ? "high"
+        : "critical";
   const source = contextSourceLabel(decision.source);
   const percentage = decision.percentage ?? usage.percentage;
   const rounded = percentage !== undefined ? Math.round(percentage) : undefined;
@@ -623,7 +759,9 @@ export function buildContextPolicyWarningEvent(
   };
 }
 
-function resolveContextTotalTokens(usage: import("@shared/types").ContextUsageRecord): number | undefined {
+function resolveContextTotalTokens(
+  usage: import("@shared/types").ContextUsageRecord,
+): number | undefined {
   if (usage.totalTokens !== undefined) return usage.totalTokens;
   if (usage.percentage !== undefined && usage.maxTokens !== undefined) {
     return Math.round((usage.percentage / 100) * usage.maxTokens);
@@ -631,12 +769,16 @@ function resolveContextTotalTokens(usage: import("@shared/types").ContextUsageRe
   return undefined;
 }
 
-function contextSourceLabel(source: "model_config" | "runtime_limit" | "default"): string {
+function contextSourceLabel(
+  source: "model_config" | "runtime_limit" | "default",
+): string {
   if (source === "model_config") return "the configured model context";
   if (source === "runtime_limit") return "the SDK runtime budget";
   return "the default context window";
 }
-function readContextCategories(value: unknown): import("@shared/types").ContextUsageRecord["categories"] {
+function readContextCategories(
+  value: unknown,
+): import("@shared/types").ContextUsageRecord["categories"] {
   if (!Array.isArray(value)) return undefined;
   return value.flatMap((item) => {
     if (!item || typeof item !== "object") return [];
@@ -644,11 +786,22 @@ function readContextCategories(value: unknown): import("@shared/types").ContextU
     const name = typeof record.name === "string" ? record.name : undefined;
     const tokens = readNumber(record.tokens);
     if (!name || tokens === undefined) return [];
-    return [{ name, tokens, isDeferred: typeof record.isDeferred === "boolean" ? record.isDeferred : undefined }];
+    return [
+      {
+        name,
+        tokens,
+        isDeferred:
+          typeof record.isDeferred === "boolean"
+            ? record.isDeferred
+            : undefined,
+      },
+    ];
   });
 }
 
-function readContextMemoryFiles(value: unknown): import("@shared/types").ContextUsageRecord["memoryFiles"] {
+function readContextMemoryFiles(
+  value: unknown,
+): import("@shared/types").ContextUsageRecord["memoryFiles"] {
   if (!Array.isArray(value)) return undefined;
   return value.flatMap((item) => {
     if (!item || typeof item !== "object") return [];
@@ -661,22 +814,41 @@ function readContextMemoryFiles(value: unknown): import("@shared/types").Context
   });
 }
 
-function readContextMcpTools(value: unknown): import("@shared/types").ContextUsageRecord["mcpTools"] {
+function readContextMcpTools(
+  value: unknown,
+): import("@shared/types").ContextUsageRecord["mcpTools"] {
   if (!Array.isArray(value)) return undefined;
   return value.flatMap((item) => {
     if (!item || typeof item !== "object") return [];
     const record = item as Record<string, unknown>;
     const name = typeof record.name === "string" ? record.name : undefined;
-    const serverName = typeof record.serverName === "string" ? record.serverName : typeof record.server_name === "string" ? record.server_name : "unknown";
+    const serverName =
+      typeof record.serverName === "string"
+        ? record.serverName
+        : typeof record.server_name === "string"
+          ? record.server_name
+          : "unknown";
     const tokens = readNumber(record.tokens);
     if (!name || tokens === undefined) return [];
-    return [{ name, serverName, tokens, isLoaded: typeof record.isLoaded === "boolean" ? record.isLoaded : undefined }];
+    return [
+      {
+        name,
+        serverName,
+        tokens,
+        isLoaded:
+          typeof record.isLoaded === "boolean" ? record.isLoaded : undefined,
+      },
+    ];
   });
 }
 
 function sumNumbers(...values: Array<number | undefined>): number | undefined {
-  const present = values.filter((value): value is number => typeof value === "number");
-  return present.length ? present.reduce((sum, value) => sum + value, 0) : undefined;
+  const present = values.filter(
+    (value): value is number => typeof value === "number",
+  );
+  return present.length
+    ? present.reduce((sum, value) => sum + value, 0)
+    : undefined;
 }
 function tryParseJson(text: string): unknown {
   if (!text || text.trim() === "") return {};
@@ -733,7 +905,10 @@ export class ClaudeRuntime implements AgentRuntime {
 
   private activeQuery: ClaudeQuery | null = null;
   private activeTurnId: string | null = null;
-  private pendingApprovals = new Map<string, { resolve: (approved: boolean) => void; toolName: string }>();
+  private pendingApprovals = new Map<
+    string,
+    { resolve: (approved: boolean) => void; toolName: string }
+  >();
   private toolStormBreaker = new ToolStormBreaker();
   private sessionApprovedTools = new Set<string>();
 
@@ -759,7 +934,9 @@ export class ClaudeRuntime implements AgentRuntime {
   // ---------- Thread API ----------
 
   async listThreads(): Promise<Thread[]> {
-    return Array.from(threads.values()).sort((a, b) => b.updatedAt - a.updatedAt);
+    return Array.from(threads.values()).sort(
+      (a, b) => b.updatedAt - a.updatedAt,
+    );
   }
 
   async createThread(title?: string): Promise<Thread> {
@@ -791,19 +968,31 @@ export class ClaudeRuntime implements AgentRuntime {
       updatedAt: now(),
     };
     threads.set(t.id, t);
-    workflowThreadStore.cloneThread(threadId, t.id, { title: t.title, upToMessageId });
+    workflowThreadStore.cloneThread(threadId, t.id, {
+      title: t.title,
+      upToMessageId,
+    });
     return t;
   }
 
-  async truncateThread(threadId: string, opts: { fromMessageId: string; includeMessage?: boolean }): Promise<Thread> {
+  async truncateThread(
+    threadId: string,
+    opts: { fromMessageId: string; includeMessage?: boolean },
+  ): Promise<Thread> {
     const thread = threads.get(threadId);
     if (!thread) throw new Error(`Thread not found: ${threadId}`);
-    const index = thread.messages.findIndex((message) => message.id === opts.fromMessageId);
+    const index = thread.messages.findIndex(
+      (message) => message.id === opts.fromMessageId,
+    );
     if (index < 0) throw new Error(`Message not found: ${opts.fromMessageId}`);
     const end = opts.includeMessage ? index + 1 : index;
     thread.messages = thread.messages.slice(0, end);
     thread.updatedAt = now();
-    workflowThreadStore.truncateFromUserMessage(threadId, opts.fromMessageId, opts.includeMessage);
+    workflowThreadStore.truncateFromUserMessage(
+      threadId,
+      opts.fromMessageId,
+      opts.includeMessage,
+    );
     return thread;
   }
 
@@ -857,8 +1046,13 @@ export class ClaudeRuntime implements AgentRuntime {
       settings,
       cwd: opts.cwd || process.cwd(),
       env: sdkEnv,
-      canUseTool: async (toolName: string, input: Record<string, unknown>, context: Record<string, unknown>) => {
-        const toolUseId = typeof context.toolUseID === "string" ? context.toolUseID : genId();
+      canUseTool: async (
+        toolName: string,
+        input: Record<string, unknown>,
+        context: Record<string, unknown>,
+      ) => {
+        const toolUseId =
+          typeof context.toolUseID === "string" ? context.toolUseID : genId();
         const requestId = `sdk-approval-${toolUseId}`;
         const storm = this.toolStormBreaker.check(turnId, toolName, input);
         if (storm.action === "deny") {
@@ -872,7 +1066,8 @@ export class ClaudeRuntime implements AgentRuntime {
         const decision = evaluateToolPermission({
           toolName,
           input,
-          permissionMode: settings.workMode === "plan" ? "plan" : settings.permissionMode,
+          permissionMode:
+            settings.workMode === "plan" ? "plan" : settings.permissionMode,
           policy: settings.toolPermissionPolicy,
           sessionAllowedTools: this.sessionApprovedTools,
         });
@@ -887,17 +1082,34 @@ export class ClaudeRuntime implements AgentRuntime {
             toolUseID: toolUseId,
           };
         }
-        const reason = JSON.stringify({
-          decision: decision.reason,
-          matchedRule: decision.matchedRule,
-          toolStorm: storm.action === "warn" ? storm.message : undefined,
-          title: typeof context.title === "string" ? context.title : undefined,
-          displayName: typeof context.displayName === "string" ? context.displayName : undefined,
-          description: typeof context.description === "string" ? context.description : undefined,
-          blockedPath: typeof context.blockedPath === "string" ? context.blockedPath : undefined,
-          decisionReason: typeof context.decisionReason === "string" ? context.decisionReason : undefined,
-          input,
-        }, null, 2);
+        const reason = JSON.stringify(
+          {
+            decision: decision.reason,
+            matchedRule: decision.matchedRule,
+            toolStorm: storm.action === "warn" ? storm.message : undefined,
+            title:
+              typeof context.title === "string" ? context.title : undefined,
+            displayName:
+              typeof context.displayName === "string"
+                ? context.displayName
+                : undefined,
+            description:
+              typeof context.description === "string"
+                ? context.description
+                : undefined,
+            blockedPath:
+              typeof context.blockedPath === "string"
+                ? context.blockedPath
+                : undefined,
+            decisionReason:
+              typeof context.decisionReason === "string"
+                ? context.decisionReason
+                : undefined,
+            input,
+          },
+          null,
+          2,
+        );
         queue.push({
           kind: "approval-request",
           payload: {
@@ -907,7 +1119,11 @@ export class ClaudeRuntime implements AgentRuntime {
             timeout: settings.permissionApprovalTimeoutMs,
           },
         });
-        const approved = await this.waitForApproval(requestId, toolName, settings.permissionApprovalTimeoutMs);
+        const approved = await this.waitForApproval(
+          requestId,
+          toolName,
+          settings.permissionApprovalTimeoutMs,
+        );
         if (approved) return { behavior: "allow", toolUseID: toolUseId };
         return {
           behavior: "deny",
@@ -921,7 +1137,10 @@ export class ClaudeRuntime implements AgentRuntime {
       logInfo("claude.resume", { runtimeThreadId: opts.runtimeThreadId });
       options.resume = opts.runtimeThreadId;
     } else if (opts.runtimeThreadId) {
-      logWarn("claude.resumeSkipped", { reason: "invalid_session_id", runtimeThreadId: opts.runtimeThreadId });
+      logWarn("claude.resumeSkipped", {
+        reason: "invalid_session_id",
+        runtimeThreadId: opts.runtimeThreadId,
+      });
     }
 
     // Emit the user message before the SDK response starts.
@@ -939,10 +1158,14 @@ export class ClaudeRuntime implements AgentRuntime {
       let assistantText = "";
       let sawTurnComplete = false;
 
-      async function getContextUsageEvent(phase: "turn_start" | "turn_end"): Promise<RuntimeEvent | null> {
+      async function getContextUsageEvent(
+        phase: "turn_start" | "turn_end",
+      ): Promise<RuntimeEvent | null> {
         if (!query.getContextUsage) return null;
         try {
-          const normalized = normalizeContextUsage(await query.getContextUsage());
+          const normalized = normalizeContextUsage(
+            await query.getContextUsage(),
+          );
           if (!normalized) return null;
           return {
             kind: "context-usage",
@@ -978,7 +1201,11 @@ export class ClaudeRuntime implements AgentRuntime {
 
           if (result.source === "queue") {
             nextQueue = queue.next();
-            workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, result.value);
+            workflowThreadStore.applyRuntimeEvent(
+              opts.threadId,
+              turnId,
+              result.value,
+            );
             yield result.value;
             continue;
           }
@@ -997,12 +1224,20 @@ export class ClaudeRuntime implements AgentRuntime {
             workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, event);
             yield event;
             if (event.kind === "mcp-status") {
-              recordMcpRuntimeStatus(event.payload.servers, event.payload.tools);
+              recordMcpRuntimeStatus(
+                event.payload.servers,
+                event.payload.tools,
+              );
             }
             if (event.kind === "session-info") {
-              const contextUsageEvent = await getContextUsageEvent("turn_start");
+              const contextUsageEvent =
+                await getContextUsageEvent("turn_start");
               if (contextUsageEvent) {
-                workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, contextUsageEvent);
+                workflowThreadStore.applyRuntimeEvent(
+                  opts.threadId,
+                  turnId,
+                  contextUsageEvent,
+                );
                 yield contextUsageEvent;
               }
             }
@@ -1010,12 +1245,27 @@ export class ClaudeRuntime implements AgentRuntime {
               sawTurnComplete = true;
               const contextUsageEvent = await getContextUsageEvent("turn_end");
               if (contextUsageEvent) {
-                workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, contextUsageEvent);
+                workflowThreadStore.applyRuntimeEvent(
+                  opts.threadId,
+                  turnId,
+                  contextUsageEvent,
+                );
                 yield contextUsageEvent;
-                if (contextUsageEvent.kind === "context-usage" && contextUsageEvent.payload.usage) {
-                  const policyEvent = buildContextPolicyWarningEvent(settings, turnId, contextUsageEvent.payload.usage);
+                if (
+                  contextUsageEvent.kind === "context-usage" &&
+                  contextUsageEvent.payload.usage
+                ) {
+                  const policyEvent = buildContextPolicyWarningEvent(
+                    settings,
+                    turnId,
+                    contextUsageEvent.payload.usage,
+                  );
                   if (policyEvent) {
-                    workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, policyEvent);
+                    workflowThreadStore.applyRuntimeEvent(
+                      opts.threadId,
+                      turnId,
+                      policyEvent,
+                    );
                     yield policyEvent;
                   }
                 }
@@ -1027,14 +1277,22 @@ export class ClaudeRuntime implements AgentRuntime {
         if (!sawTurnComplete) {
           const contextUsageEvent = await getContextUsageEvent("turn_end");
           if (contextUsageEvent) {
-            workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, contextUsageEvent);
+            workflowThreadStore.applyRuntimeEvent(
+              opts.threadId,
+              turnId,
+              contextUsageEvent,
+            );
             yield contextUsageEvent;
           }
           const completeEvent: RuntimeEvent = {
             kind: "turn-complete",
             payload: { turnId, result: "success" },
           };
-          workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, completeEvent);
+          workflowThreadStore.applyRuntimeEvent(
+            opts.threadId,
+            turnId,
+            completeEvent,
+          );
           yield completeEvent;
         }
       } catch (err) {
@@ -1048,13 +1306,25 @@ export class ClaudeRuntime implements AgentRuntime {
             recoverable: false,
           },
         };
-        workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, errorEvent);
+        workflowThreadStore.applyRuntimeEvent(
+          opts.threadId,
+          turnId,
+          errorEvent,
+        );
         yield errorEvent;
         const completeEvent: RuntimeEvent = {
           kind: "turn-complete",
-          payload: { turnId, result: "error", error: err instanceof Error ? err.message : String(err) },
+          payload: {
+            turnId,
+            result: "error",
+            error: err instanceof Error ? err.message : String(err),
+          },
         };
-        workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, completeEvent);
+        workflowThreadStore.applyRuntimeEvent(
+          opts.threadId,
+          turnId,
+          completeEvent,
+        );
         yield completeEvent;
       }
 
@@ -1107,29 +1377,48 @@ export class ClaudeRuntime implements AgentRuntime {
     return configuredMcpTools();
   }
 
-  registerTool(_tool: ToolDefinition, _handler: (args: unknown) => Promise<unknown>): void {
-    throw new Error("ClaudeRuntime does not support dynamic tool registration. Configure tools through MCP or Settings.");
+  registerTool(
+    _tool: ToolDefinition,
+    _handler: (args: unknown) => Promise<unknown>,
+  ): void {
+    throw new Error(
+      "ClaudeRuntime does not support dynamic tool registration. Configure tools through MCP or Settings.",
+    );
   }
 
-  async readThread(input: import("@shared/workflow-thread-data-source").WorkflowReadThreadInput) {
+  async readThread(
+    input: import("@shared/workflow-thread-data-source").WorkflowReadThreadInput,
+  ) {
     return workflowThreadStore.readThread(input);
   }
 
-  subscribeThread(input: import("@shared/workflow-thread-data-source").WorkflowSubscribeThreadInput) {
+  subscribeThread(
+    input: import("@shared/workflow-thread-data-source").WorkflowSubscribeThreadInput,
+  ) {
     return workflowThreadStore.subscribeThread(input);
   }
 
   // ---------- Approval handling ----------
 
-  respondApproval(requestId: string, approved: boolean, scope: "once" | "session", _reason?: string): void {
+  respondApproval(
+    requestId: string,
+    approved: boolean,
+    scope: "once" | "session",
+    _reason?: string,
+  ): void {
     const pending = this.pendingApprovals.get(requestId);
     if (!pending) return;
     this.pendingApprovals.delete(requestId);
-    if (approved && scope === "session") this.sessionApprovedTools.add(pending.toolName);
+    if (approved && scope === "session")
+      this.sessionApprovedTools.add(pending.toolName);
     pending.resolve(approved);
   }
 
-  private waitForApproval(requestId: string, toolName: string, timeoutMs: number): Promise<boolean> {
+  private waitForApproval(
+    requestId: string,
+    toolName: string,
+    timeoutMs: number,
+  ): Promise<boolean> {
     return new Promise((resolve) => {
       const timeout = setTimeout(() => {
         this.pendingApprovals.delete(requestId);

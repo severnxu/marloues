@@ -12,5 +12,9 @@ export default defineConfig({
       name: "critical",
       testMatch: /.*\.critical\.spec\.ts/,
     },
+    {
+      name: "packaged",
+      testMatch: /.*\.critical\.spec\.ts/,
+    },
   ],
 });

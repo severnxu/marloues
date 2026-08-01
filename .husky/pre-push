@@ -1,0 +1,2 @@
+# 推送前全量质量门：lint + typecheck + 单元测试
+npm run verify:push

@@ -102,6 +102,6 @@ UIEvent
 
 ## 5. 可开始写代码的入口
 
-- `src/renderer/src/components/workflow-chat/workflow-message-adapter.ts`
-- `src/renderer/src/components/workflow-chat/WorkflowTurnList.tsx`
-- `src/renderer/src/components/workflow-chat/WorkflowTurnView.tsx`
+- `client/renderer/src/components/workflow-chat/workflow-message-adapter.ts`
+- `client/renderer/src/components/workflow-chat/WorkflowTurnList.tsx`
+- `client/renderer/src/components/workflow-chat/WorkflowTurnView.tsx`

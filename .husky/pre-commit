@@ -1,0 +1,2 @@
+# 暂存文件：eslint --fix + prettier --write
+npx lint-staged

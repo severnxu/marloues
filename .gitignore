@@ -5,6 +5,7 @@ node_modules/
 out/
 dist/
 release/
+site/.astro/
 *.tsbuildinfo
 
 # Environment variables
@@ -29,7 +30,6 @@ npm-debug.log*
 playwright-report/
 test-results/
 playwright/.cache/
-tests/
 
 # Native build temp
 build/

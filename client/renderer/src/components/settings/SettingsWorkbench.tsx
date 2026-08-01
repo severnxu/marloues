@@ -30,7 +30,11 @@ import {
   SkillsSettings,
 } from "@/components/settings/sections/SkillAuditRuntimeSettings";
 import { SecuritySettings } from "@/components/settings/sections/SecuritySettings";
-import { EmptySettingsState, SettingsCard, SettingsStat } from "@/components/settings/shared";
+import {
+  EmptySettingsState,
+  SettingsCard,
+  SettingsStat,
+} from "@/components/settings/shared";
 import type { SettingsSection } from "@/components/layout/types";
 import type {
   AuditEventRecord,
@@ -41,7 +45,6 @@ import type {
   SkillInfo,
   SkillMarketplaceDetail,
   SkillMarketplaceItem,
-  TimelineItem,
 } from "@shared/types";
 
 import {
@@ -88,42 +91,79 @@ export function SettingsWorkbench({
   const liveTurns = useUnifiedChatStore((state) => state.liveTurns);
   const [draft, setDraft] = useState(settings);
   const [skills, setSkills] = useState<SkillInfo[]>([]);
-  const [skillTab, setSkillTab] = useState<"installed" | "market" | "import">("installed");
+  const [skillTab, setSkillTab] = useState<"installed" | "market" | "import">(
+    "installed",
+  );
   const [skillDetail, setSkillDetail] = useState<SkillDetail | null>(null);
-  const [marketplaceSkills, setMarketplaceSkills] = useState<SkillMarketplaceItem[]>([]);
+  const [marketplaceSkills, setMarketplaceSkills] = useState<
+    SkillMarketplaceItem[]
+  >([]);
   const [marketplaceQuery, setMarketplaceQuery] = useState("");
   const [marketplaceLoading, setMarketplaceLoading] = useState(false);
   const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
-  const [marketplaceDetail, setMarketplaceDetail] = useState<SkillMarketplaceDetail | null>(null);
-  const [marketplaceCursor, setMarketplaceCursor] = useState<string | undefined>();
+  const [marketplaceDetail, setMarketplaceDetail] =
+    useState<SkillMarketplaceDetail | null>(null);
+  const [marketplaceCursor, setMarketplaceCursor] = useState<
+    string | undefined
+  >();
   const [marketplaceHasMore, setMarketplaceHasMore] = useState(false);
-  const [marketplaceTotal, setMarketplaceTotal] = useState<number | undefined>();
-  const [marketplaceView, setMarketplaceView] = useState<"grid" | "list">("grid");
+  const [marketplaceTotal, setMarketplaceTotal] = useState<
+    number | undefined
+  >();
+  const [marketplaceView, setMarketplaceView] = useState<"grid" | "list">(
+    "grid",
+  );
   const [auditEvents, setAuditEvents] = useState<AuditEventRecord[]>([]);
   const [mcpAddMode, setMcpAddMode] = useState<McpAddMode>("stdio");
-  const [mcpAddDraft, setMcpAddDraft] = useState<McpAddDraft>(() => emptyMcpAddDraft());
-  const [mcpEditArgDrafts, setMcpEditArgDrafts] = useState<Record<string, string[]>>({});
+  const [mcpAddDraft, setMcpAddDraft] = useState<McpAddDraft>(() =>
+    emptyMcpAddDraft(),
+  );
+  const [mcpEditArgDrafts, setMcpEditArgDrafts] = useState<
+    Record<string, string[]>
+  >({});
   const [selectedMcpId, setSelectedMcpId] = useState<string | null>(null);
-  const [expandedMcpIds, setExpandedMcpIds] = useState<Set<string>>(() => new Set());
-  const [_status, setStatusState] = useState<{ message: string; tone: "info" | "ok" | "error" } | null>(null);
-  const [checkingEndpointIds, setCheckingEndpointIds] = useState<Set<string>>(() => new Set());
-  const [checkingModelIds, setCheckingModelIds] = useState<Set<string>>(() => new Set());
-  const [fetchingModelIds, setFetchingModelIds] = useState<Set<string>>(() => new Set());
-  const [checkingMcpIds, setCheckingMcpIds] = useState<Set<string>>(() => new Set());
+  const [expandedMcpIds, setExpandedMcpIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [_status, setStatusState] = useState<{
+    message: string;
+    tone: "info" | "ok" | "error";
+  } | null>(null);
+  const [checkingEndpointIds, setCheckingEndpointIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [checkingModelIds, setCheckingModelIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [fetchingModelIds, setFetchingModelIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [checkingMcpIds, setCheckingMcpIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [refreshingMcpStatus, setRefreshingMcpStatus] = useState(false);
-  const [expandedProviderIds, setExpandedProviderIds] = useState<Set<string>>(() => new Set());
-  const [visibleApiKeyProviderIds, setVisibleApiKeyProviderIds] = useState<Set<string>>(() => new Set());
+  const [expandedProviderIds, setExpandedProviderIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [visibleApiKeyProviderIds, setVisibleApiKeyProviderIds] = useState<
+    Set<string>
+  >(() => new Set());
   const [newProviderId, setNewProviderId] = useState<string | null>(null);
   const [modelImportDraft, setModelImportDraft] = useState<{
     providerId: string;
     models: ModelOption[];
     selectedIds: Set<string>;
   } | null>(null);
-  const [manualModelDraft, setManualModelDraft] = useState<{ providerId: string; modelId: string } | null>(null);
+  const [manualModelDraft, setManualModelDraft] = useState<{
+    providerId: string;
+    modelId: string;
+  } | null>(null);
   const manualModelRef = useRef<HTMLDivElement | null>(null);
   const providerEditRef = useRef<HTMLDivElement | null>(null);
   const [preventSleep, setPreventSleep] = useState(true);
-  const [detailLevel, setDetailLevel] = useState<"default" | "coding">("default");
+  const [detailLevel, setDetailLevel] = useState<"default" | "coding">(
+    "default",
+  );
 
   useEffect(() => setDraft(settings), [settings]);
   useEffect(() => {
@@ -135,7 +175,9 @@ export function SettingsWorkbench({
       return;
     }
     setSelectedMcpId((current) =>
-      current && draft.mcpServers.some((server) => server.id === current) ? current : (draft.mcpServers[0]?.id ?? null),
+      current && draft.mcpServers.some((server) => server.id === current)
+        ? current
+        : (draft.mcpServers[0]?.id ?? null),
     );
   }, [draft?.mcpServers]);
   useEffect(() => {
@@ -147,35 +189,48 @@ export function SettingsWorkbench({
     if (!manualModelDraft) return undefined;
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target;
-      if (target instanceof Node && manualModelRef.current?.contains(target)) return;
+      if (target instanceof Node && manualModelRef.current?.contains(target))
+        return;
       setManualModelDraft(null);
     };
     window.addEventListener("pointerdown", handlePointerDown, true);
-    return () => window.removeEventListener("pointerdown", handlePointerDown, true);
+    return () =>
+      window.removeEventListener("pointerdown", handlePointerDown, true);
   }, [manualModelDraft]);
   useEffect(() => {
     if (!draft || !newProviderId) return undefined;
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target;
-      if (target instanceof Node && providerEditRef.current?.contains(target)) return;
+      if (target instanceof Node && providerEditRef.current?.contains(target))
+        return;
 
       discardNewProviderDraft(newProviderId);
     };
     window.addEventListener("pointerdown", handlePointerDown, true);
-    return () => window.removeEventListener("pointerdown", handlePointerDown, true);
+    return () =>
+      window.removeEventListener("pointerdown", handlePointerDown, true);
   }, [draft, newProviderId]);
 
   if (!draft) return <div className="settings-page">正在加载设置...</div>;
 
   const enterprisePolicy = draft.enterprisePolicy ?? {};
-  const enterpriseControlledSettings = new Set(draft.enterpriseControlledSettings ?? []);
-  const canEditEndpointProfiles = enterprisePolicy.allowLocalEndpointProfiles !== false;
+  const enterpriseControlledSettings = new Set(
+    draft.enterpriseControlledSettings ?? [],
+  );
+  const canEditEndpointProfiles =
+    enterprisePolicy.allowLocalEndpointProfiles !== false;
   const canEditMcpServers = enterprisePolicy.allowLocalMcpServers !== false;
   const canToggleSkills = enterprisePolicy.allowLocalSkillDisable !== false;
   const enabledSkillCount = skills.filter((skill) => skill.enabled).length;
-  const hasEnterpriseConfig = Boolean(draft.enterprisePolicy) || enterpriseControlledSettings.size > 0;
-  const isPermissionTimeoutManaged = enterpriseControlledSettings.has("permissionApprovalTimeoutMs");
-  const setStatus = (message: string, tone: "info" | "ok" | "error" = "info") => {
+  const hasEnterpriseConfig =
+    Boolean(draft.enterprisePolicy) || enterpriseControlledSettings.size > 0;
+  const isPermissionTimeoutManaged = enterpriseControlledSettings.has(
+    "permissionApprovalTimeoutMs",
+  );
+  const setStatus = (
+    message: string,
+    tone: "info" | "ok" | "error" = "info",
+  ) => {
     setStatusState({ message, tone });
     notify({
       title: statusToastTitle(message, tone),
@@ -183,7 +238,11 @@ export function SettingsWorkbench({
       tone: tone === "ok" ? "success" : tone,
     });
   };
-  const commitDraft = async (nextDraft: typeof draft, message?: string, tone: "info" | "ok" | "error" = "ok") => {
+  const commitDraft = async (
+    nextDraft: typeof draft,
+    message?: string,
+    tone: "info" | "ok" | "error" = "ok",
+  ) => {
     setDraft(nextDraft);
     await save(nextDraft);
     if (message) setStatus(message, tone);
@@ -216,10 +275,17 @@ export function SettingsWorkbench({
       setStatus("至少需要保留一个模型端点 Profile。", "error");
       return;
     }
-    const removedProvider = draft.providers.find((provider) => provider.id === providerId);
-    const providers = draft.providers.filter((provider) => provider.id !== providerId);
+    const removedProvider = draft.providers.find(
+      (provider) => provider.id === providerId,
+    );
+    const providers = draft.providers.filter(
+      (provider) => provider.id !== providerId,
+    );
     const fallback = providers[0];
-    const fallbackModelId = fallback?.models.find((model) => model.enabled)?.id ?? fallback?.models[0]?.id ?? "";
+    const fallbackModelId =
+      fallback?.models.find((model) => model.enabled)?.id ??
+      fallback?.models[0]?.id ??
+      "";
     await commitDraft(
       {
         ...draft,
@@ -237,9 +303,14 @@ export function SettingsWorkbench({
   };
 
   const discardNewProviderDraft = (providerId: string) => {
-    const providers = draft.providers.filter((provider) => provider.id !== providerId);
+    const providers = draft.providers.filter(
+      (provider) => provider.id !== providerId,
+    );
     const fallback = providers[0];
-    const fallbackModelId = fallback?.models.find((model) => model.enabled)?.id ?? fallback?.models[0]?.id ?? "";
+    const fallbackModelId =
+      fallback?.models.find((model) => model.enabled)?.id ??
+      fallback?.models[0]?.id ??
+      "";
     setDraft({
       ...draft,
       providers,
@@ -305,14 +376,20 @@ export function SettingsWorkbench({
 
   const applyModelImport = async () => {
     if (!modelImportDraft) return;
-    const provider = draft.providers.find((item) => item.id === modelImportDraft.providerId);
+    const provider = draft.providers.find(
+      (item) => item.id === modelImportDraft.providerId,
+    );
     if (!provider) {
       setModelImportDraft(null);
       return;
     }
     const currentIds = new Set(provider.models.map((model) => model.id));
     const selectedModels = modelImportDraft.models
-      .filter((model) => modelImportDraft.selectedIds.has(model.id) && !currentIds.has(model.id))
+      .filter(
+        (model) =>
+          modelImportDraft.selectedIds.has(model.id) &&
+          !currentIds.has(model.id),
+      )
       .map((model) => withModelMetadataDefaults({ ...model, enabled: true }));
 
     if (selectedModels.length === 0) {
@@ -323,17 +400,24 @@ export function SettingsWorkbench({
     const nextDraft = {
       ...draft,
       providers: draft.providers.map((item) =>
-        item.id === provider.id ? { ...item, models: [...item.models, ...selectedModels] } : item,
+        item.id === provider.id
+          ? { ...item, models: [...item.models, ...selectedModels] }
+          : item,
       ),
     };
     setModelImportDraft(null);
-    await commitDraft(nextDraft, `${provider.name}: 已添加并启用 ${selectedModels.length} 个模型。`);
+    await commitDraft(
+      nextDraft,
+      `${provider.name}: 已添加并启用 ${selectedModels.length} 个模型。`,
+    );
   };
 
   const applyManualModel = async () => {
     if (!manualModelDraft) return;
     const modelId = manualModelDraft.modelId.trim();
-    const provider = draft.providers.find((item) => item.id === manualModelDraft.providerId);
+    const provider = draft.providers.find(
+      (item) => item.id === manualModelDraft.providerId,
+    );
     if (!provider) {
       setManualModelDraft(null);
       return;
@@ -352,13 +436,23 @@ export function SettingsWorkbench({
         item.id === provider.id
           ? {
               ...item,
-              models: [...item.models, withModelMetadataDefaults({ id: modelId, label: modelId, enabled: true })],
+              models: [
+                ...item.models,
+                withModelMetadataDefaults({
+                  id: modelId,
+                  label: modelId,
+                  enabled: true,
+                }),
+              ],
             }
           : item,
       ),
     };
     setManualModelDraft(null);
-    await commitDraft(nextDraft, `${provider.name}: 已手动添加并启用 ${modelId}。`);
+    await commitDraft(
+      nextDraft,
+      `${provider.name}: 已手动添加并启用 ${modelId}。`,
+    );
   };
 
   const fetchProviderModels = async (providerId: string) => {
@@ -369,7 +463,10 @@ export function SettingsWorkbench({
     setStatus(`正在获取 ${provider.name} 的模型列表...`);
     try {
       if (typeof window.marloues.config.listEndpointModels !== "function") {
-        setStatus("当前窗口的 preload 还没刷新，新增的获取模型接口尚未注入。请重启应用窗口后再试。", "error");
+        setStatus(
+          "当前窗口的 preload 还没刷新，新增的获取模型接口尚未注入。请重启应用窗口后再试。",
+          "error",
+        );
         return;
       }
       const result = await window.marloues.config.listEndpointModels(provider);
@@ -390,7 +487,9 @@ export function SettingsWorkbench({
           `${provider.name}: 没有发现新的模型。${result.latencyMs !== undefined ? ` (${result.latencyMs}ms)` : ""}`,
           "ok",
         );
-        setModelImportDraft((current) => (current?.providerId === providerId ? null : current));
+        setModelImportDraft((current) =>
+          current?.providerId === providerId ? null : current,
+        );
         return;
       }
 
@@ -422,10 +521,19 @@ export function SettingsWorkbench({
     await commitDraft(
       {
         ...draft,
-        providers: draft.providers.map((item) => (item.id === providerId ? { ...item, models } : item)),
+        providers: draft.providers.map((item) =>
+          item.id === providerId ? { ...item, models } : item,
+        ),
         defaultModel:
-          draft.defaultModel.providerId === providerId && draft.defaultModel.modelId === modelId
-            ? { providerId, modelId: models.find((model) => model.enabled)?.id ?? models[0]?.id ?? "" }
+          draft.defaultModel.providerId === providerId &&
+          draft.defaultModel.modelId === modelId
+            ? {
+                providerId,
+                modelId:
+                  models.find((model) => model.enabled)?.id ??
+                  models[0]?.id ??
+                  "",
+              }
             : draft.defaultModel,
       },
       `${provider.name}: 已删除模型 ${modelId}。`,
@@ -448,7 +556,9 @@ export function SettingsWorkbench({
           ? {
               ...item,
               models: item.models.map((current) =>
-                current.id === modelId ? normalizeModelMetadataPatch({ ...current, ...patch }) : current,
+                current.id === modelId
+                  ? normalizeModelMetadataPatch({ ...current, ...patch })
+                  : current,
               ),
             }
           : item,
@@ -457,16 +567,25 @@ export function SettingsWorkbench({
     await commitDraft(nextDraft, message);
   };
 
-  const testProviderModel = async (provider: ModelProviderConfig, modelId: string) => {
+  const testProviderModel = async (
+    provider: ModelProviderConfig,
+    modelId: string,
+  ) => {
     const checkId = `${provider.id}:${modelId}`;
     setCheckingModelIds((ids) => new Set(ids).add(checkId));
     setStatus(`正在探测 ${modelId}...`);
     try {
       if (typeof window.marloues.config.testEndpointModel !== "function") {
-        setStatus("当前窗口的 preload 还没刷新，新增的模型探测接口尚未注入。请重启应用窗口后再试。", "error");
+        setStatus(
+          "当前窗口的 preload 还没刷新，新增的模型探测接口尚未注入。请重启应用窗口后再试。",
+          "error",
+        );
         return;
       }
-      const result = await window.marloues.config.testEndpointModel(provider, modelId);
+      const result = await window.marloues.config.testEndpointModel(
+        provider,
+        modelId,
+      );
       setStatus(
         `${provider.name}: ${result.message}${result.latencyMs !== undefined ? ` (${result.latencyMs}ms)` : ""}`,
         result.ok ? "ok" : "error",
@@ -491,12 +610,19 @@ export function SettingsWorkbench({
   const updateMcpDraftArg = (index: number, value: string) => {
     setMcpAddDraft((current) => ({
       ...current,
-      args: updateArrayValue(current.args.length ? current.args : [""], index, value),
+      args: updateArrayValue(
+        current.args.length ? current.args : [""],
+        index,
+        value,
+      ),
     }));
   };
 
   const removeMcpDraftArg = (index: number) => {
-    setMcpAddDraft((current) => ({ ...current, args: current.args.filter((_, argIndex) => argIndex !== index) }));
+    setMcpAddDraft((current) => ({
+      ...current,
+      args: current.args.filter((_, argIndex) => argIndex !== index),
+    }));
   };
 
   const createMcpServerFromDraft = () => {
@@ -512,7 +638,10 @@ export function SettingsWorkbench({
         : typeof configRecord.url === "string"
           ? configRecord.url
           : "";
-    const name = mcpAddDraft.name.trim() || commandOrUrl || `server-${draft.mcpServers.length + 1}`;
+    const name =
+      mcpAddDraft.name.trim() ||
+      commandOrUrl ||
+      `server-${draft.mcpServers.length + 1}`;
     if (!name.trim()) {
       setStatus("MCP 服务名称不能为空。", "error");
       return;
@@ -535,15 +664,22 @@ export function SettingsWorkbench({
     setStatus(`${name} 已加入草稿，保存后生效。`, "ok");
   };
 
-  const updateMcpServer = (serverId: string, patch: Partial<McpServerConfig>) => {
+  const updateMcpServer = (
+    serverId: string,
+    patch: Partial<McpServerConfig>,
+  ) => {
     setDraft({
       ...draft,
-      mcpServers: draft.mcpServers.map((item) => (item.id === serverId ? { ...item, ...patch } : item)),
+      mcpServers: draft.mcpServers.map((item) =>
+        item.id === serverId ? { ...item, ...patch } : item,
+      ),
     });
   };
 
   const removeMcpServer = (server: McpServerConfig) => {
-    const nextServers = draft.mcpServers.filter((item) => item.id !== server.id);
+    const nextServers = draft.mcpServers.filter(
+      (item) => item.id !== server.id,
+    );
     setDraft({ ...draft, mcpServers: nextServers });
     setSelectedMcpId(nextServers[0]?.id ?? null);
     setExpandedMcpIds((ids) => {
@@ -573,7 +709,9 @@ export function SettingsWorkbench({
         current
           ? {
               ...current,
-              mcpServers: current.mcpServers.map((item) => (item.id === server.id ? tested : item)),
+              mcpServers: current.mcpServers.map((item) =>
+                item.id === server.id ? tested : item,
+              ),
             }
           : current,
       );
@@ -597,8 +735,13 @@ export function SettingsWorkbench({
     setStatus("正在刷新 MCP 服务状态...");
     try {
       const refreshed = await window.marloues.mcp.refreshStatus();
-      setDraft((current) => current ? { ...current, mcpServers: refreshed } : current);
-      const failed = refreshed.filter((server) => server.lastStatus === "error" || server.lastStatus === "disconnected");
+      setDraft((current) =>
+        current ? { ...current, mcpServers: refreshed } : current,
+      );
+      const failed = refreshed.filter(
+        (server) =>
+          server.lastStatus === "error" || server.lastStatus === "disconnected",
+      );
       setStatus(
         failed.length
           ? `MCP 状态已刷新，${failed.length} 个服务异常或断开。`
@@ -610,15 +753,27 @@ export function SettingsWorkbench({
     }
   };
 
-  const activeSession = sessions.find((session) => session.id === activeSessionId);
-  const runtimeSnapshot = buildRuntimeSnapshot(
-    liveTurns[activeSessionId ?? ""]?.timeline ?? activeSession?.messages.at(-1)?.timeline ?? [],
+  const activeSession = sessions.find(
+    (session) => session.id === activeSessionId,
   );
-  const enabledMcpCount = draft.mcpServers.filter((server) => server.enabled).length;
-  const discoveredMcpToolCount = new Set(draft.mcpServers.flatMap((server) => server.tools ?? [])).size;
+  const runtimeSnapshot = buildRuntimeSnapshot(
+    liveTurns[activeSessionId ?? ""]?.timeline ??
+      activeSession?.messages.at(-1)?.timeline ??
+      [],
+  );
+  const enabledMcpCount = draft.mcpServers.filter(
+    (server) => server.enabled,
+  ).length;
+  const discoveredMcpToolCount = new Set(
+    draft.mcpServers.flatMap((server) => server.tools ?? []),
+  ).size;
   const selectedMcpServer =
-    draft.mcpServers.find((server) => server.id === selectedMcpId) ?? draft.mcpServers[0] ?? null;
-  const _selectedMcpChecking = selectedMcpServer ? checkingMcpIds.has(selectedMcpServer.id) : false;
+    draft.mcpServers.find((server) => server.id === selectedMcpId) ??
+    draft.mcpServers[0] ??
+    null;
+  const _selectedMcpChecking = selectedMcpServer
+    ? checkingMcpIds.has(selectedMcpServer.id)
+    : false;
   const _selectedMcpStatus = selectedMcpServer
     ? selectedMcpServer.lastStatus === "error"
       ? formatMcpError(selectedMcpServer.lastError)
@@ -628,7 +783,9 @@ export function SettingsWorkbench({
     : "未选择";
 
   return (
-    <section className={`settings-page settings-section-${section} scrollbar-thin`}>
+    <section
+      className={`settings-page settings-section-${section} scrollbar-thin`}
+    >
       <div className="settings-shell">
         <div className="settings-content">
           {hasEnterpriseConfig ? (
@@ -642,10 +799,18 @@ export function SettingsWorkbench({
                 </small>
               </div>
               <div className="settings-chip-row">
-                {!canEditEndpointProfiles ? <span className="settings-chip">端点受限</span> : null}
-                {!canEditMcpServers ? <span className="settings-chip">MCP 受限</span> : null}
-                {!canToggleSkills ? <span className="settings-chip">Skills 受限</span> : null}
-                {isPermissionTimeoutManaged ? <span className="settings-chip ok">审批超时受控</span> : null}
+                {!canEditEndpointProfiles ? (
+                  <span className="settings-chip">端点受限</span>
+                ) : null}
+                {!canEditMcpServers ? (
+                  <span className="settings-chip">MCP 受限</span>
+                ) : null}
+                {!canToggleSkills ? (
+                  <span className="settings-chip">Skills 受限</span>
+                ) : null}
+                {isPermissionTimeoutManaged ? (
+                  <span className="settings-chip ok">审批超时受控</span>
+                ) : null}
               </div>
             </div>
           ) : null}
@@ -656,8 +821,14 @@ export function SettingsWorkbench({
               detailLevel={detailLevel}
               onDesktopNotificationsChange={() =>
                 void commitDraft(
-                  { ...draft, desktopNotificationsEnabled: !draft.desktopNotificationsEnabled },
-                  draft.desktopNotificationsEnabled ? "桌面通知已关闭。" : "桌面通知已开启。",
+                  {
+                    ...draft,
+                    desktopNotificationsEnabled:
+                      !draft.desktopNotificationsEnabled,
+                  },
+                  draft.desktopNotificationsEnabled
+                    ? "桌面通知已关闭。"
+                    : "桌面通知已开启。",
                 )
               }
               onDetailLevelChange={setDetailLevel}
@@ -670,11 +841,15 @@ export function SettingsWorkbench({
             <PersonalizationSettings
               customInstructions={draft.customInstructions ?? ""}
               friendlyTone={draft.friendlyTone !== false}
-              onCustomInstructionsChange={(value) => void commitDraft({ ...draft, customInstructions: value })}
+              onCustomInstructionsChange={(value) =>
+                void commitDraft({ ...draft, customInstructions: value })
+              }
               onFriendlyToneChange={() =>
                 void commitDraft(
                   { ...draft, friendlyTone: draft.friendlyTone === false },
-                  draft.friendlyTone === false ? "友好语气已开启" : "友好语气已关闭",
+                  draft.friendlyTone === false
+                    ? "友好语气已开启"
+                    : "友好语气已关闭",
                 )
               }
             />
@@ -694,7 +869,10 @@ export function SettingsWorkbench({
           {section === "providers" ? (
             <>
               <div className="settings-stat-grid">
-                <SettingsStat label="供应商" value={String(draft.providers.length)} />
+                <SettingsStat
+                  label="供应商"
+                  value={String(draft.providers.length)}
+                />
                 <SettingsStat
                   label="启用模型"
                   value={`${draft.providers.reduce((count, provider) => count + provider.models.filter((model) => model.enabled).length, 0)}/${draft.providers.reduce((count, provider) => count + provider.models.length, 0)}`}
@@ -703,7 +881,9 @@ export function SettingsWorkbench({
                   label="可用模型"
                   value={String(
                     draft.providers.reduce(
-                      (count, provider) => count + provider.models.filter((model) => model.enabled).length,
+                      (count, provider) =>
+                        count +
+                        provider.models.filter((model) => model.enabled).length,
                       0,
                     ),
                   )}
@@ -717,7 +897,11 @@ export function SettingsWorkbench({
                   <button
                     disabled={!canEditEndpointProfiles}
                     onClick={addEndpointProfile}
-                    title={canEditEndpointProfiles ? "新增 Profile" : "企业策略禁止新增或修改本地端点 Profile"}
+                    title={
+                      canEditEndpointProfiles
+                        ? "新增 Profile"
+                        : "企业策略禁止新增或修改本地端点 Profile"
+                    }
                   >
                     <Plus size={14} />
                     添加供应商
@@ -735,13 +919,19 @@ export function SettingsWorkbench({
                     <div
                       className="provider-row"
                       key={provider.id}
-                      ref={newProviderId === provider.id ? providerEditRef : null}
+                      ref={
+                        newProviderId === provider.id ? providerEditRef : null
+                      }
                     >
                       <div className="provider-row-head">
                         <button
                           className="provider-expand-button"
                           onClick={() => toggleProviderExpanded(provider.id)}
-                          title={expandedProviderIds.has(provider.id) ? "收起供应商" : "展开供应商"}
+                          title={
+                            expandedProviderIds.has(provider.id)
+                              ? "收起供应商"
+                              : "展开供应商"
+                          }
                         >
                           {expandedProviderIds.has(provider.id) ? (
                             <ChevronDown size={16} />
@@ -762,17 +952,26 @@ export function SettingsWorkbench({
                         <div className="settings-row-actions provider-actions">
                           <label
                             className="settings-inline-check provider-enable-check"
-                            title={provider.enabled ? "供应商已启用" : "供应商已停用"}
+                            title={
+                              provider.enabled ? "供应商已启用" : "供应商已停用"
+                            }
                           >
                             <input
                               type="checkbox"
                               checked={provider.enabled}
-                              disabled={provider.locked || !canEditEndpointProfiles}
+                              disabled={
+                                provider.locked || !canEditEndpointProfiles
+                              }
                               onChange={(event) => {
                                 const nextDraft = {
                                   ...draft,
                                   providers: draft.providers.map((item) =>
-                                    item.id === provider.id ? { ...item, enabled: event.target.checked } : item,
+                                    item.id === provider.id
+                                      ? {
+                                          ...item,
+                                          enabled: event.target.checked,
+                                        }
+                                      : item,
                                   ),
                                 };
                                 void commitDraft(
@@ -787,10 +986,15 @@ export function SettingsWorkbench({
                             className="icon-button"
                             disabled={checkingEndpointIds.has(provider.id)}
                             onClick={async () => {
-                              setCheckingEndpointIds((ids) => new Set(ids).add(provider.id));
+                              setCheckingEndpointIds((ids) =>
+                                new Set(ids).add(provider.id),
+                              );
                               setStatus(`正在测试 ${provider.name}...`);
                               try {
-                                const result = await window.marloues.config.testEndpointProfile(provider);
+                                const result =
+                                  await window.marloues.config.testEndpointProfile(
+                                    provider,
+                                  );
                                 setStatus(
                                   `${provider.name}: ${result.message}${result.latencyMs !== undefined ? ` (${result.latencyMs}ms)` : ""}`,
                                   result.ok ? "ok" : "error",
@@ -803,14 +1007,26 @@ export function SettingsWorkbench({
                                 });
                               }
                             }}
-                            title={checkingEndpointIds.has(provider.id) ? "测试中" : "测试连接"}
+                            title={
+                              checkingEndpointIds.has(provider.id)
+                                ? "测试中"
+                                : "测试连接"
+                            }
                           >
-                            {checkingEndpointIds.has(provider.id) ? <RefreshCcw size={14} /> : <PlugZap size={14} />}
+                            {checkingEndpointIds.has(provider.id) ? (
+                              <RefreshCcw size={14} />
+                            ) : (
+                              <PlugZap size={14} />
+                            )}
                           </button>
                           <button
                             className="icon-button"
-                            disabled={provider.locked || !canEditEndpointProfiles}
-                            onClick={() => void removeEndpointProfile(provider.id)}
+                            disabled={
+                              provider.locked || !canEditEndpointProfiles
+                            }
+                            onClick={() =>
+                              void removeEndpointProfile(provider.id)
+                            }
                             title={
                               provider.locked
                                 ? "企业预置 Profile 不可删除"
@@ -824,18 +1040,24 @@ export function SettingsWorkbench({
                         </div>
                       </div>
                       {expandedProviderIds.has(provider.id) ? (
-                        <div className={`provider-row-body ${newProviderId === provider.id ? "draft" : ""}`}>
+                        <div
+                          className={`provider-row-body ${newProviderId === provider.id ? "draft" : ""}`}
+                        >
                           <div className="provider-fields-grid">
                             <label>
                               Profile 名称
                               <input
                                 value={provider.name}
-                                disabled={provider.locked || !canEditEndpointProfiles}
+                                disabled={
+                                  provider.locked || !canEditEndpointProfiles
+                                }
                                 onChange={(event) => {
                                   const nextDraft = {
                                     ...draft,
                                     providers: draft.providers.map((item) =>
-                                      item.id === provider.id ? { ...item, name: event.target.value } : item,
+                                      item.id === provider.id
+                                        ? { ...item, name: event.target.value }
+                                        : item,
                                     ),
                                   };
                                   if (newProviderId === provider.id) {
@@ -851,12 +1073,19 @@ export function SettingsWorkbench({
                               Base URL
                               <input
                                 value={provider.baseUrl ?? ""}
-                                disabled={provider.locked || !canEditEndpointProfiles}
+                                disabled={
+                                  provider.locked || !canEditEndpointProfiles
+                                }
                                 onChange={(event) => {
                                   const nextDraft = {
                                     ...draft,
                                     providers: draft.providers.map((item) =>
-                                      item.id === provider.id ? { ...item, baseUrl: event.target.value } : item,
+                                      item.id === provider.id
+                                        ? {
+                                            ...item,
+                                            baseUrl: event.target.value,
+                                          }
+                                        : item,
                                     ),
                                   };
                                   if (newProviderId === provider.id) {
@@ -872,14 +1101,25 @@ export function SettingsWorkbench({
                               API Key
                               <div className="api-key-input-wrap">
                                 <input
-                                  type={visibleApiKeyProviderIds.has(provider.id) ? "text" : "password"}
+                                  type={
+                                    visibleApiKeyProviderIds.has(provider.id)
+                                      ? "text"
+                                      : "password"
+                                  }
                                   value={provider.apiKey ?? ""}
-                                  disabled={provider.locked || !canEditEndpointProfiles}
+                                  disabled={
+                                    provider.locked || !canEditEndpointProfiles
+                                  }
                                   onChange={(event) => {
                                     const nextDraft = {
                                       ...draft,
                                       providers: draft.providers.map((item) =>
-                                        item.id === provider.id ? { ...item, apiKey: event.target.value } : item,
+                                        item.id === provider.id
+                                          ? {
+                                              ...item,
+                                              apiKey: event.target.value,
+                                            }
+                                          : item,
                                       ),
                                     };
                                     if (newProviderId === provider.id) {
@@ -892,12 +1132,24 @@ export function SettingsWorkbench({
                                 />
                                 <button
                                   className="icon-button api-key-visibility-button"
-                                  disabled={provider.locked || !canEditEndpointProfiles}
-                                  onClick={() => toggleApiKeyVisible(provider.id)}
-                                  title={visibleApiKeyProviderIds.has(provider.id) ? "隐藏 API Key" : "查看 API Key"}
+                                  disabled={
+                                    provider.locked || !canEditEndpointProfiles
+                                  }
+                                  onClick={() =>
+                                    toggleApiKeyVisible(provider.id)
+                                  }
+                                  title={
+                                    visibleApiKeyProviderIds.has(provider.id)
+                                      ? "隐藏 API Key"
+                                      : "查看 API Key"
+                                  }
                                   type="button"
                                 >
-                                  {visibleApiKeyProviderIds.has(provider.id) ? <EyeOff size={14} /> : <Eye size={14} />}
+                                  {visibleApiKeyProviderIds.has(provider.id) ? (
+                                    <EyeOff size={14} />
+                                  ) : (
+                                    <Eye size={14} />
+                                  )}
                                 </button>
                               </div>
                             </label>
@@ -908,16 +1160,33 @@ export function SettingsWorkbench({
                               <div className="settings-row-actions">
                                 <button
                                   disabled={
-                                    fetchingModelIds.has(provider.id) || provider.locked || !canEditEndpointProfiles
+                                    fetchingModelIds.has(provider.id) ||
+                                    provider.locked ||
+                                    !canEditEndpointProfiles
                                   }
-                                  onClick={() => void fetchProviderModels(provider.id)}
+                                  onClick={() =>
+                                    void fetchProviderModels(provider.id)
+                                  }
                                 >
-                                  {fetchingModelIds.has(provider.id) ? <RefreshCcw size={14} /> : <Bot size={14} />}
-                                  {fetchingModelIds.has(provider.id) ? "获取中" : "获取模型"}
+                                  {fetchingModelIds.has(provider.id) ? (
+                                    <RefreshCcw size={14} />
+                                  ) : (
+                                    <Bot size={14} />
+                                  )}
+                                  {fetchingModelIds.has(provider.id)
+                                    ? "获取中"
+                                    : "获取模型"}
                                 </button>
                                 <button
-                                  disabled={provider.locked || !canEditEndpointProfiles}
-                                  onClick={() => setManualModelDraft({ providerId: provider.id, modelId: "" })}
+                                  disabled={
+                                    provider.locked || !canEditEndpointProfiles
+                                  }
+                                  onClick={() =>
+                                    setManualModelDraft({
+                                      providerId: provider.id,
+                                      modelId: "",
+                                    })
+                                  }
                                 >
                                   <Plus size={14} />
                                   手动添加
@@ -925,22 +1194,37 @@ export function SettingsWorkbench({
                               </div>
                             </div>
                             {manualModelDraft?.providerId === provider.id ? (
-                              <div className="provider-model-manual" ref={manualModelRef}>
+                              <div
+                                className="provider-model-manual"
+                                ref={manualModelRef}
+                              >
                                 <input
                                   autoFocus
                                   value={manualModelDraft.modelId}
                                   onChange={(event) =>
-                                    setManualModelDraft({ providerId: provider.id, modelId: event.target.value })
+                                    setManualModelDraft({
+                                      providerId: provider.id,
+                                      modelId: event.target.value,
+                                    })
                                   }
                                   onKeyDown={(event) => {
-                                    if (event.key === "Enter") void applyManualModel();
-                                    if (event.key === "Escape") setManualModelDraft(null);
+                                    if (event.key === "Enter")
+                                      void applyManualModel();
+                                    if (event.key === "Escape")
+                                      setManualModelDraft(null);
                                   }}
                                   placeholder="输入模型 ID，例如 MiniMax-M2.7-highspeed"
                                 />
                                 <div className="settings-row-actions provider-model-import-actions">
-                                  <button onClick={() => setManualModelDraft(null)}>取消</button>
-                                  <button className="primary" onClick={() => void applyManualModel()}>
+                                  <button
+                                    onClick={() => setManualModelDraft(null)}
+                                  >
+                                    取消
+                                  </button>
+                                  <button
+                                    className="primary"
+                                    onClick={() => void applyManualModel()}
+                                  >
                                     确定
                                   </button>
                                 </div>
@@ -950,14 +1234,25 @@ export function SettingsWorkbench({
                               <div className="provider-model-import">
                                 <div className="provider-model-import-head">
                                   <div>
-                                    <strong>发现 {modelImportDraft.models.length} 个新模型</strong>
-                                    <small>勾选只是选择，点确定后才添加并启用。</small>
+                                    <strong>
+                                      发现 {modelImportDraft.models.length}{" "}
+                                      个新模型
+                                    </strong>
+                                    <small>
+                                      勾选只是选择，点确定后才添加并启用。
+                                    </small>
                                   </div>
                                   <div className="settings-row-actions provider-model-import-actions">
-                                    <button onClick={() => setModelImportDraft(null)}>取消</button>
+                                    <button
+                                      onClick={() => setModelImportDraft(null)}
+                                    >
+                                      取消
+                                    </button>
                                     <button
                                       className="primary"
-                                      disabled={modelImportDraft.selectedIds.size === 0}
+                                      disabled={
+                                        modelImportDraft.selectedIds.size === 0
+                                      }
                                       onClick={() => void applyModelImport()}
                                     >
                                       确定
@@ -966,14 +1261,23 @@ export function SettingsWorkbench({
                                 </div>
                                 <div className="provider-model-import-list">
                                   {modelImportDraft.models.map((model) => (
-                                    <label className="provider-model-import-item" key={model.id}>
+                                    <label
+                                      className="provider-model-import-item"
+                                      key={model.id}
+                                    >
                                       <input
                                         type="checkbox"
-                                        checked={modelImportDraft.selectedIds.has(model.id)}
-                                        onChange={() => toggleModelImportSelection(model.id)}
+                                        checked={modelImportDraft.selectedIds.has(
+                                          model.id,
+                                        )}
+                                        onChange={() =>
+                                          toggleModelImportSelection(model.id)
+                                        }
                                       />
                                       <span>
-                                        <strong>{model.label || model.id}</strong>
+                                        <strong>
+                                          {model.label || model.id}
+                                        </strong>
                                       </span>
                                     </label>
                                   ))}
@@ -983,7 +1287,8 @@ export function SettingsWorkbench({
                             {provider.models.length > 0 ? (
                               <div className="provider-model-list">
                                 {provider.models.map((model) => {
-                                  const modelTitle = model.label || model.id || "未命名模型";
+                                  const modelTitle =
+                                    model.label || model.id || "未命名模型";
                                   const modelCheckId = `${provider.id}:${model.id}`;
                                   return (
                                     <div
@@ -992,19 +1297,27 @@ export function SettingsWorkbench({
                                     >
                                       <div className="provider-model-main">
                                         <div className="provider-model-title-line">
-                                          <strong title={model.id || modelTitle}>{modelTitle}</strong>
+                                          <strong
+                                            title={model.id || modelTitle}
+                                          >
+                                            {modelTitle}
+                                          </strong>
                                           <span
                                             className={
-                                              draft.defaultModel.providerId === provider.id &&
-                                              draft.defaultModel.modelId === model.id
+                                              draft.defaultModel.providerId ===
+                                                provider.id &&
+                                              draft.defaultModel.modelId ===
+                                                model.id
                                                 ? "default"
                                                 : model.enabled
                                                   ? "enabled"
                                                   : "disabled"
                                             }
                                           >
-                                            {draft.defaultModel.providerId === provider.id &&
-                                            draft.defaultModel.modelId === model.id
+                                            {draft.defaultModel.providerId ===
+                                              provider.id &&
+                                            draft.defaultModel.modelId ===
+                                              model.id
                                               ? "默认"
                                               : model.enabled
                                                 ? "启用"
@@ -1018,14 +1331,26 @@ export function SettingsWorkbench({
                                               type="number"
                                               min={1}
                                               step={1000}
-                                              disabled={provider.locked || !canEditEndpointProfiles}
-                                              value={model.contextWindowTokens ?? ""}
+                                              disabled={
+                                                provider.locked ||
+                                                !canEditEndpointProfiles
+                                              }
+                                              value={
+                                                model.contextWindowTokens ?? ""
+                                              }
                                               onChange={(event) =>
-                                                void updateProviderModel(provider.id, model.id, {
-                                                  contextWindowTokens: event.target.value
-                                                    ? Number(event.target.value)
-                                                    : undefined,
-                                                })
+                                                void updateProviderModel(
+                                                  provider.id,
+                                                  model.id,
+                                                  {
+                                                    contextWindowTokens: event
+                                                      .target.value
+                                                      ? Number(
+                                                          event.target.value,
+                                                        )
+                                                      : undefined,
+                                                  },
+                                                )
                                               }
                                               placeholder="例如 1000000"
                                             />
@@ -1036,14 +1361,26 @@ export function SettingsWorkbench({
                                               type="number"
                                               min={1}
                                               step={1000}
-                                              disabled={provider.locked || !canEditEndpointProfiles}
-                                              value={model.maxOutputTokens ?? ""}
+                                              disabled={
+                                                provider.locked ||
+                                                !canEditEndpointProfiles
+                                              }
+                                              value={
+                                                model.maxOutputTokens ?? ""
+                                              }
                                               onChange={(event) =>
-                                                void updateProviderModel(provider.id, model.id, {
-                                                  maxOutputTokens: event.target.value
-                                                    ? Number(event.target.value)
-                                                    : undefined,
-                                                })
+                                                void updateProviderModel(
+                                                  provider.id,
+                                                  model.id,
+                                                  {
+                                                    maxOutputTokens: event
+                                                      .target.value
+                                                      ? Number(
+                                                          event.target.value,
+                                                        )
+                                                      : undefined,
+                                                  },
+                                                )
                                               }
                                               placeholder="例如 384000"
                                             />
@@ -1051,12 +1388,22 @@ export function SettingsWorkbench({
                                           <label className="settings-inline-check">
                                             <input
                                               type="checkbox"
-                                              checked={Boolean(model.supportsVision)}
-                                              disabled={provider.locked || !canEditEndpointProfiles}
+                                              checked={Boolean(
+                                                model.supportsVision,
+                                              )}
+                                              disabled={
+                                                provider.locked ||
+                                                !canEditEndpointProfiles
+                                              }
                                               onChange={(event) =>
-                                                void updateProviderModel(provider.id, model.id, {
-                                                  supportsVision: event.target.checked,
-                                                })
+                                                void updateProviderModel(
+                                                  provider.id,
+                                                  model.id,
+                                                  {
+                                                    supportsVision:
+                                                      event.target.checked,
+                                                  },
+                                                )
                                               }
                                             />
                                             视觉
@@ -1064,12 +1411,22 @@ export function SettingsWorkbench({
                                           <label className="settings-inline-check">
                                             <input
                                               type="checkbox"
-                                              checked={Boolean(model.supportsThinking)}
-                                              disabled={provider.locked || !canEditEndpointProfiles}
+                                              checked={Boolean(
+                                                model.supportsThinking,
+                                              )}
+                                              disabled={
+                                                provider.locked ||
+                                                !canEditEndpointProfiles
+                                              }
                                               onChange={(event) =>
-                                                void updateProviderModel(provider.id, model.id, {
-                                                  supportsThinking: event.target.checked,
-                                                })
+                                                void updateProviderModel(
+                                                  provider.id,
+                                                  model.id,
+                                                  {
+                                                    supportsThinking:
+                                                      event.target.checked,
+                                                  },
+                                                )
                                               }
                                             />
                                             思考中
@@ -1084,8 +1441,10 @@ export function SettingsWorkbench({
                                           disabled={
                                             !provider.enabled ||
                                             !model.enabled ||
-                                            (draft.defaultModel.providerId === provider.id &&
-                                              draft.defaultModel.modelId === model.id)
+                                            (draft.defaultModel.providerId ===
+                                              provider.id &&
+                                              draft.defaultModel.modelId ===
+                                                model.id)
                                           }
                                           onClick={() => {
                                             const nextDraft = {
@@ -1095,11 +1454,16 @@ export function SettingsWorkbench({
                                                 modelId: model.id,
                                               },
                                             };
-                                            void commitDraft(nextDraft, `${modelTitle} 已设为默认模型。`);
+                                            void commitDraft(
+                                              nextDraft,
+                                              `${modelTitle} 已设为默认模型。`,
+                                            );
                                           }}
                                           title={
-                                            draft.defaultModel.providerId === provider.id &&
-                                            draft.defaultModel.modelId === model.id
+                                            draft.defaultModel.providerId ===
+                                              provider.id &&
+                                            draft.defaultModel.modelId ===
+                                              model.id
                                               ? "已是默认模型"
                                               : "设为默认模型"
                                           }
@@ -1108,21 +1472,31 @@ export function SettingsWorkbench({
                                         </button>
                                         <button
                                           className="icon-button"
-                                          disabled={provider.locked || !canEditEndpointProfiles}
+                                          disabled={
+                                            provider.locked ||
+                                            !canEditEndpointProfiles
+                                          }
                                           onClick={() => {
                                             const nextDraft = {
                                               ...draft,
-                                              providers: draft.providers.map((item) =>
-                                                item.id === provider.id
-                                                  ? {
-                                                      ...item,
-                                                      models: item.models.map((current) =>
-                                                        current.id === model.id
-                                                          ? { ...current, enabled: !current.enabled }
-                                                          : current,
-                                                      ),
-                                                    }
-                                                  : item,
+                                              providers: draft.providers.map(
+                                                (item) =>
+                                                  item.id === provider.id
+                                                    ? {
+                                                        ...item,
+                                                        models: item.models.map(
+                                                          (current) =>
+                                                            current.id ===
+                                                            model.id
+                                                              ? {
+                                                                  ...current,
+                                                                  enabled:
+                                                                    !current.enabled,
+                                                                }
+                                                              : current,
+                                                        ),
+                                                      }
+                                                    : item,
                                               ),
                                             };
                                             void commitDraft(
@@ -1132,23 +1506,42 @@ export function SettingsWorkbench({
                                           }}
                                           title={
                                             model.enabled &&
-                                            draft.defaultModel.providerId === provider.id &&
-                                            draft.defaultModel.modelId === model.id
+                                            draft.defaultModel.providerId ===
+                                              provider.id &&
+                                            draft.defaultModel.modelId ===
+                                              model.id
                                               ? "默认模型不能直接禁用，请先切换默认模型"
                                               : model.enabled
                                                 ? "禁用模型"
                                                 : "启用模型"
                                           }
                                         >
-                                          {model.enabled ? <Power size={13} /> : <Check size={13} />}
+                                          {model.enabled ? (
+                                            <Power size={13} />
+                                          ) : (
+                                            <Check size={13} />
+                                          )}
                                         </button>
                                         <button
                                           className="icon-button"
-                                          disabled={checkingModelIds.has(modelCheckId)}
-                                          onClick={() => void testProviderModel(provider, model.id)}
-                                          title={checkingModelIds.has(modelCheckId) ? "探测中" : "发送探测消息"}
+                                          disabled={checkingModelIds.has(
+                                            modelCheckId,
+                                          )}
+                                          onClick={() =>
+                                            void testProviderModel(
+                                              provider,
+                                              model.id,
+                                            )
+                                          }
+                                          title={
+                                            checkingModelIds.has(modelCheckId)
+                                              ? "探测中"
+                                              : "发送探测消息"
+                                          }
                                         >
-                                          {checkingModelIds.has(modelCheckId) ? (
+                                          {checkingModelIds.has(
+                                            modelCheckId,
+                                          ) ? (
                                             <RefreshCcw size={13} />
                                           ) : (
                                             <PlugZap size={13} />
@@ -1156,8 +1549,16 @@ export function SettingsWorkbench({
                                         </button>
                                         <button
                                           className="icon-button"
-                                          disabled={provider.locked || !canEditEndpointProfiles}
-                                          onClick={() => void removeProviderModel(provider.id, model.id)}
+                                          disabled={
+                                            provider.locked ||
+                                            !canEditEndpointProfiles
+                                          }
+                                          onClick={() =>
+                                            void removeProviderModel(
+                                              provider.id,
+                                              model.id,
+                                            )
+                                          }
                                           title="删除模型"
                                         >
                                           <Trash2 size={13} />
@@ -1172,12 +1573,24 @@ export function SettingsWorkbench({
                           {newProviderId === provider.id ? (
                             <div className="provider-draft-panel">
                               <div className="settings-row-actions provider-draft-actions">
-                                <button onClick={() => discardNewProviderDraft(provider.id)}>取消</button>
+                                <button
+                                  onClick={() =>
+                                    discardNewProviderDraft(provider.id)
+                                  }
+                                >
+                                  取消
+                                </button>
                                 <button
                                   className="primary"
                                   disabled={provider.models.length === 0}
-                                  onClick={() => void confirmNewProviderDraft(provider.id)}
-                                  title={provider.models.length === 0 ? "先添加至少一个模型" : "确认添加供应商"}
+                                  onClick={() =>
+                                    void confirmNewProviderDraft(provider.id)
+                                  }
+                                  title={
+                                    provider.models.length === 0
+                                      ? "先添加至少一个模型"
+                                      : "确认添加供应商"
+                                  }
                                 >
                                   确定
                                 </button>
@@ -1212,7 +1625,9 @@ export function SettingsWorkbench({
                 </span>
                 <button
                   className="settings-summary-action"
-                  disabled={refreshingMcpStatus || draft.mcpServers.length === 0}
+                  disabled={
+                    refreshingMcpStatus || draft.mcpServers.length === 0
+                  }
                   onClick={() => void refreshMcpStatus()}
                   type="button"
                 >
@@ -1252,7 +1667,12 @@ export function SettingsWorkbench({
                     <input
                       value={mcpAddDraft.name}
                       disabled={!canEditMcpServers}
-                      onChange={(event) => setMcpAddDraft({ ...mcpAddDraft, name: event.target.value })}
+                      onChange={(event) =>
+                        setMcpAddDraft({
+                          ...mcpAddDraft,
+                          name: event.target.value,
+                        })
+                      }
                       placeholder="playwright"
                     />
                   </label>
@@ -1263,18 +1683,28 @@ export function SettingsWorkbench({
                         <input
                           value={mcpAddDraft.command}
                           disabled={!canEditMcpServers}
-                          onChange={(event) => setMcpAddDraft({ ...mcpAddDraft, command: event.target.value })}
+                          onChange={(event) =>
+                            setMcpAddDraft({
+                              ...mcpAddDraft,
+                              command: event.target.value,
+                            })
+                          }
                           placeholder="npx / node / uvx / python"
                         />
                       </label>
                       <div className="mcp-create-args mcp-args-builder">
                         <span>参数</span>
-                        {(mcpAddDraft.args.length ? mcpAddDraft.args : [""]).map((arg, index) => (
+                        {(mcpAddDraft.args.length
+                          ? mcpAddDraft.args
+                          : [""]
+                        ).map((arg, index) => (
                           <div className="mcp-arg-entry" key={index}>
                             <input
                               value={arg}
                               disabled={!canEditMcpServers}
-                              onChange={(event) => updateMcpDraftArg(index, event.target.value)}
+                              onChange={(event) =>
+                                updateMcpDraftArg(index, event.target.value)
+                              }
                               onKeyDown={(event) => {
                                 if (event.key === "Enter") {
                                   event.preventDefault();
@@ -1284,7 +1714,11 @@ export function SettingsWorkbench({
                               placeholder="输入一个参数，如 -y"
                             />
                             {index === 0 ? (
-                              <button disabled={!canEditMcpServers} onClick={addMcpDraftArg} type="button">
+                              <button
+                                disabled={!canEditMcpServers}
+                                onClick={addMcpDraftArg}
+                                type="button"
+                              >
                                 添加
                               </button>
                             ) : (
@@ -1308,8 +1742,17 @@ export function SettingsWorkbench({
                       <input
                         value={mcpAddDraft.url}
                         disabled={!canEditMcpServers}
-                        onChange={(event) => setMcpAddDraft({ ...mcpAddDraft, url: event.target.value })}
-                        placeholder={mcpAddMode === "http" ? "https://example.com/mcp" : "https://example.com/sse"}
+                        onChange={(event) =>
+                          setMcpAddDraft({
+                            ...mcpAddDraft,
+                            url: event.target.value,
+                          })
+                        }
+                        placeholder={
+                          mcpAddMode === "http"
+                            ? "https://example.com/mcp"
+                            : "https://example.com/sse"
+                        }
                       />
                     </label>
                   ) : null}
@@ -1319,8 +1762,15 @@ export function SettingsWorkbench({
                       <textarea
                         value={mcpAddDraft.json}
                         disabled={!canEditMcpServers}
-                        onChange={(event) => setMcpAddDraft({ ...mcpAddDraft, json: event.target.value })}
-                        placeholder={'{ "type": "http", "url": "https://example.com/mcp" }'}
+                        onChange={(event) =>
+                          setMcpAddDraft({
+                            ...mcpAddDraft,
+                            json: event.target.value,
+                          })
+                        }
+                        placeholder={
+                          '{ "type": "http", "url": "https://example.com/mcp" }'
+                        }
                       />
                     </label>
                   ) : null}
@@ -1330,11 +1780,21 @@ export function SettingsWorkbench({
                         type="checkbox"
                         checked={mcpAddDraft.enabled}
                         disabled={!canEditMcpServers}
-                        onChange={(event) => setMcpAddDraft({ ...mcpAddDraft, enabled: event.target.checked })}
+                        onChange={(event) =>
+                          setMcpAddDraft({
+                            ...mcpAddDraft,
+                            enabled: event.target.checked,
+                          })
+                        }
                       />
                       启用
                     </label>
-                    <button disabled={!canEditMcpServers} onClick={resetMcpAddDraft} title="清空添加表单" type="button">
+                    <button
+                      disabled={!canEditMcpServers}
+                      onClick={resetMcpAddDraft}
+                      title="清空添加表单"
+                      type="button"
+                    >
                       清空
                     </button>
                     <button
@@ -1362,9 +1822,14 @@ export function SettingsWorkbench({
                   const isChecking = checkingMcpIds.has(server.id);
                   const serverConfig = readMcpConfigRecord(server.config);
                   const serverType = readMcpType(server.config);
-                  const serverSummary = formatMcpServerSummary(server, serverType);
+                  const serverSummary = formatMcpServerSummary(
+                    server,
+                    serverType,
+                  );
                   const serverArgs = readMcpArgs(server.config);
-                  const editArgRows = mcpEditArgDrafts[server.id] ?? (serverArgs.length ? serverArgs : [""]);
+                  const editArgRows =
+                    mcpEditArgDrafts[server.id] ??
+                    (serverArgs.length ? serverArgs : [""]);
                   return (
                     <div
                       className={`provider-row mcp-provider-row ${server.enabled ? "" : "disabled"}`}
@@ -1377,13 +1842,21 @@ export function SettingsWorkbench({
                           title={isExpanded ? "收起服务" : "展开服务"}
                           type="button"
                         >
-                          {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                          {isExpanded ? (
+                            <ChevronDown size={16} />
+                          ) : (
+                            <ChevronRight size={16} />
+                          )}
                         </button>
-                        <span className={`mcp-server-dot ${server.lastStatus ?? "untested"}`} />
+                        <span
+                          className={`mcp-server-dot ${server.lastStatus ?? "untested"}`}
+                        />
                         <div className="provider-row-title">
                           <div>
                             <strong>{server.name || "未命名服务"}</strong>
-                            <span className={`settings-status ${server.lastStatus ?? "untested"}`}>
+                            <span
+                              className={`settings-status ${server.lastStatus ?? "untested"}`}
+                            >
                               {formatMcpStatus(server)}
                             </span>
                           </div>
@@ -1398,7 +1871,11 @@ export function SettingsWorkbench({
                               type="checkbox"
                               checked={server.enabled}
                               disabled={server.locked || !canEditMcpServers}
-                              onChange={(event) => updateMcpServer(server.id, { enabled: event.target.checked })}
+                              onChange={(event) =>
+                                updateMcpServer(server.id, {
+                                  enabled: event.target.checked,
+                                })
+                              }
                             />
                             启用
                           </label>
@@ -1409,7 +1886,11 @@ export function SettingsWorkbench({
                             title={isChecking ? "检查中" : "检查服务"}
                             type="button"
                           >
-                            {isChecking ? <RefreshCcw size={14} /> : <PlugZap size={14} />}
+                            {isChecking ? (
+                              <RefreshCcw size={14} />
+                            ) : (
+                              <PlugZap size={14} />
+                            )}
                           </button>
                           <button
                             className="icon-button"
@@ -1432,7 +1913,11 @@ export function SettingsWorkbench({
                                 <input
                                   value={server.name}
                                   disabled={server.locked || !canEditMcpServers}
-                                  onChange={(event) => updateMcpServer(server.id, { name: event.target.value })}
+                                  onChange={(event) =>
+                                    updateMcpServer(server.id, {
+                                      name: event.target.value,
+                                    })
+                                  }
                                 />
                               </label>
                               {serverType === "stdio" ? (
@@ -1441,10 +1926,15 @@ export function SettingsWorkbench({
                                     命令
                                     <input
                                       value={readMcpCommand(server.config)}
-                                      disabled={server.locked || !canEditMcpServers}
+                                      disabled={
+                                        server.locked || !canEditMcpServers
+                                      }
                                       onChange={(event) =>
                                         updateMcpServer(server.id, {
-                                          config: { ...serverConfig, command: event.target.value },
+                                          config: {
+                                            ...serverConfig,
+                                            command: event.target.value,
+                                          },
                                         })
                                       }
                                     />
@@ -1452,36 +1942,64 @@ export function SettingsWorkbench({
                                   <div className="mcp-args-builder">
                                     <span>参数</span>
                                     {editArgRows.map((arg, index) => (
-                                      <div className="mcp-arg-entry" key={index}>
+                                      <div
+                                        className="mcp-arg-entry"
+                                        key={index}
+                                      >
                                         <input
                                           value={arg}
-                                          disabled={server.locked || !canEditMcpServers}
+                                          disabled={
+                                            server.locked || !canEditMcpServers
+                                          }
                                           onChange={(event) => {
-                                            const nextRows = updateArrayValue(editArgRows, index, event.target.value);
-                                            setMcpEditArgDrafts((current) => ({ ...current, [server.id]: nextRows }));
+                                            const nextRows = updateArrayValue(
+                                              editArgRows,
+                                              index,
+                                              event.target.value,
+                                            );
+                                            setMcpEditArgDrafts((current) => ({
+                                              ...current,
+                                              [server.id]: nextRows,
+                                            }));
                                             updateMcpServer(server.id, {
-                                              config: { ...serverConfig, args: compactMcpArgs(nextRows) },
+                                              config: {
+                                                ...serverConfig,
+                                                args: compactMcpArgs(nextRows),
+                                              },
                                             });
                                           }}
                                           onKeyDown={(event) => {
                                             if (event.key === "Enter") {
                                               event.preventDefault();
-                                              setMcpEditArgDrafts((current) => ({
-                                                ...current,
-                                                [server.id]: [...editArgRows, ""],
-                                              }));
+                                              setMcpEditArgDrafts(
+                                                (current) => ({
+                                                  ...current,
+                                                  [server.id]: [
+                                                    ...editArgRows,
+                                                    "",
+                                                  ],
+                                                }),
+                                              );
                                             }
                                           }}
                                           placeholder="输入一个参数，如 -y"
                                         />
                                         {index === 0 ? (
                                           <button
-                                            disabled={server.locked || !canEditMcpServers}
+                                            disabled={
+                                              server.locked ||
+                                              !canEditMcpServers
+                                            }
                                             onClick={() =>
-                                              setMcpEditArgDrafts((current) => ({
-                                                ...current,
-                                                [server.id]: [...editArgRows, ""],
-                                              }))
+                                              setMcpEditArgDrafts(
+                                                (current) => ({
+                                                  ...current,
+                                                  [server.id]: [
+                                                    ...editArgRows,
+                                                    "",
+                                                  ],
+                                                }),
+                                              )
                                             }
                                             type="button"
                                           >
@@ -1489,15 +2007,31 @@ export function SettingsWorkbench({
                                           </button>
                                         ) : (
                                           <button
-                                            disabled={server.locked || !canEditMcpServers}
+                                            disabled={
+                                              server.locked ||
+                                              !canEditMcpServers
+                                            }
                                             onClick={() => {
-                                              const nextRows = editArgRows.filter((_, argIndex) => argIndex !== index);
-                                              setMcpEditArgDrafts((current) => ({
-                                                ...current,
-                                                [server.id]: nextRows.length ? nextRows : [""],
-                                              }));
+                                              const nextRows =
+                                                editArgRows.filter(
+                                                  (_, argIndex) =>
+                                                    argIndex !== index,
+                                                );
+                                              setMcpEditArgDrafts(
+                                                (current) => ({
+                                                  ...current,
+                                                  [server.id]: nextRows.length
+                                                    ? nextRows
+                                                    : [""],
+                                                }),
+                                              );
                                               updateMcpServer(server.id, {
-                                                config: { ...serverConfig, args: compactMcpArgs(nextRows) },
+                                                config: {
+                                                  ...serverConfig,
+                                                  args: compactMcpArgs(
+                                                    nextRows,
+                                                  ),
+                                                },
                                               });
                                             }}
                                             title="删除参数"
@@ -1516,10 +2050,15 @@ export function SettingsWorkbench({
                                   服务 URL
                                   <input
                                     value={readMcpUrl(server.config)}
-                                    disabled={server.locked || !canEditMcpServers}
+                                    disabled={
+                                      server.locked || !canEditMcpServers
+                                    }
                                     onChange={(event) =>
                                       updateMcpServer(server.id, {
-                                        config: { ...serverConfig, url: event.target.value },
+                                        config: {
+                                          ...serverConfig,
+                                          url: event.target.value,
+                                        },
                                       })
                                     }
                                   />
@@ -1534,7 +2073,10 @@ export function SettingsWorkbench({
                                 disabled={server.locked || !canEditMcpServers}
                                 onChange={(event) =>
                                   updateMcpServer(server.id, {
-                                    config: parseJsonLoose(event.target.value, server.config),
+                                    config: parseJsonLoose(
+                                      event.target.value,
+                                      server.config,
+                                    ),
                                   })
                                 }
                               />
@@ -1549,7 +2091,11 @@ export function SettingsWorkbench({
                                     onClick={() => void testMcpServer(server)}
                                     type="button"
                                   >
-                                    {isChecking ? <RefreshCcw size={14} /> : <PlugZap size={14} />}
+                                    {isChecking ? (
+                                      <RefreshCcw size={14} />
+                                    ) : (
+                                      <PlugZap size={14} />
+                                    )}
                                     {isChecking ? "检查中" : "检查工具"}
                                   </button>
                                 </div>
@@ -1557,7 +2103,10 @@ export function SettingsWorkbench({
                               {server.tools?.length ? (
                                 <div className="settings-chip-row mcp-tool-list">
                                   {server.tools.map((tool) => (
-                                    <span className="settings-chip ok" key={tool}>
+                                    <span
+                                      className="settings-chip ok"
+                                      key={tool}
+                                    >
                                       <Wrench size={12} />
                                       {tool}
                                     </span>
@@ -1567,7 +2116,9 @@ export function SettingsWorkbench({
                                 <div className="mcp-provider-empty-tools">
                                   <Wrench size={16} />
                                   <strong>暂无工具</strong>
-                                  <small>点击检查后显示服务返回的工具列表。</small>
+                                  <small>
+                                    点击检查后显示服务返回的工具列表。
+                                  </small>
                                 </div>
                               )}
                             </div>
@@ -1614,7 +2165,11 @@ export function SettingsWorkbench({
           ) : null}
 
           {section === "audit" ? (
-            <AuditSettings auditEvents={auditEvents} onAuditEventsChange={setAuditEvents} onStatus={setStatus} />
+            <AuditSettings
+              auditEvents={auditEvents}
+              onAuditEventsChange={setAuditEvents}
+              onStatus={setStatus}
+            />
           ) : null}
 
           {section === "runtime" ? (
@@ -1627,7 +2182,10 @@ export function SettingsWorkbench({
                   await switchRuntime(runtimeId);
                   setStatus("Runtime 已切换", "ok");
                 } catch (error) {
-                  setStatus(error instanceof Error ? error.message : "Runtime 切换失败", "error");
+                  setStatus(
+                    error instanceof Error ? error.message : "Runtime 切换失败",
+                    "error",
+                  );
                 }
               }}
               runtimeState={runtimeState}
@@ -1659,4 +2217,3 @@ export function SettingsWorkbench({
     </section>
   );
 }
-

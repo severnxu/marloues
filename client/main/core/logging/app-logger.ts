@@ -327,7 +327,7 @@ function writeHumanLogs(
   event: string,
   data: unknown,
 ): void {
-  const line = formatHumanLine(sourcePath, level, event, data);
+  const line = formatHumanLine(event, data);
   appendTextLine(getAgentTextLogPath(), line);
   if (level === "warn" || level === "error")
     appendTextLine(getErrorsTextLogPath(), line);
@@ -355,20 +355,7 @@ function formatConsoleArgs(args: unknown[]): string {
     .join(" ");
 }
 
-function formatHumanLine(
-  sourcePath: string,
-  level: LogLevel,
-  event: string,
-  data: unknown,
-): string {
-  const channel =
-    sourcePath === getRuntimeLogPath()
-      ? "runtime"
-      : sourcePath === getConsoleLogPath()
-        ? "console"
-        : sourcePath === getHttpLogPath()
-          ? "http"
-          : "app";
+function formatHumanLine(event: string, data: unknown): string {
   const record =
     data && typeof data === "object" && !Array.isArray(data)
       ? (data as Record<string, unknown>)
@@ -410,18 +397,6 @@ function eventTag(event: string): string {
   const segment = event.split(".")[0].split(":")[0];
   if (!segment) return "Log";
   return segment.charAt(0).toUpperCase() + segment.slice(1);
-}
-
-function formatLocalTime(): string {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  const hh = String(now.getHours()).padStart(2, "0");
-  const mi = String(now.getMinutes()).padStart(2, "0");
-  const ss = String(now.getSeconds()).padStart(2, "0");
-  const ms = String(now.getMilliseconds()).padStart(3, "0");
-  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}.${ms}`;
 }
 
 function echoToConsole(

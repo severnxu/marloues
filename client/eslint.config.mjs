@@ -1,6 +1,7 @@
 import js from "@eslint/js";
 import prettier from "eslint-config-prettier";
 import tseslint from "typescript-eslint";
+import globals from "globals";
 
 export default tseslint.config(
   {
@@ -9,6 +10,18 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   prettier,
+  {
+    files: ["scripts/**/*.{mjs,cjs}"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.browser,
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
   {
     rules: {
       "@typescript-eslint/no-explicit-any": "error",
