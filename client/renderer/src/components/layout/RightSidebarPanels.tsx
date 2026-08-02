@@ -19,7 +19,13 @@ import {
   Terminal,
   Wrench,
 } from "lucide-react";
-import type { ChatSessionRecord, DirEntry, FileStat, MemoryFileRecord, TimelineItem } from "@shared/types";
+import type {
+  ChatSessionRecord,
+  DirEntry,
+  FileStat,
+  MemoryFileRecord,
+  TimelineItem,
+} from "@shared/types";
 
 interface ToolRun {
   id: string;
@@ -44,7 +50,11 @@ export function TaskPanel({
   isStreaming: boolean;
 }) {
   const tools = buildToolRuns(timeline).slice(-8);
-  const status = isStreaming ? "处理中" : timeline.length > 0 ? "已完成" : "空闲";
+  const status = isStreaming
+    ? "处理中"
+    : timeline.length > 0
+      ? "已完成"
+      : "空闲";
 
   return (
     <div className="task-panel scrollbar-thin">
@@ -84,11 +94,17 @@ export function TaskPanel({
         {timeline.length > 0 ? (
           <div className="task-timeline">
             {timeline.slice(-20).map((item) => (
-              <TimelineCard key={`${item.id}-${item.type}-${item.createdAt}`} item={item} compact />
+              <TimelineCard
+                key={`${item.id}-${item.type}-${item.createdAt}`}
+                item={item}
+                compact
+              />
             ))}
           </div>
         ) : (
-          <p className="task-empty">发送消息后，这里会显示模型、工具和执行进度。</p>
+          <p className="task-empty">
+            发送消息后，这里会显示模型、工具和执行进度。
+          </p>
         )}
       </section>
 
@@ -112,18 +128,24 @@ export function TaskPanel({
 }
 
 export function FileExplorer({ workspacePath }: { workspacePath?: string }) {
-  const [entriesByPath, setEntriesByPath] = useState<Record<string, DirEntry[]>>({});
-  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set(["."]));
-  const [loadingPaths, setLoadingPaths] = useState<Set<string>>(() => new Set());
+  const [entriesByPath, setEntriesByPath] = useState<
+    Record<string, DirEntry[]>
+  >({});
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(
+    () => new Set(["."]),
+  );
+  const [loadingPaths, setLoadingPaths] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [preview, setPreview] = useState("");
   const [previewCopied, setPreviewCopied] = useState(false);
   const [fileStat, setFileStat] = useState<FileStat | null>(null);
   const [fileLoading, setFileLoading] = useState(false);
   const [error, setError] = useState("");
+  const [filterQuery, setFilterQuery] = useState("");
 
   const rootEntries = entriesByPath["."] ?? [];
-  const fileCount = rootEntries.filter((entry) => !entry.isDirectory).length;
 
   const loadDir = async (nextPath: string) => {
     if (!workspacePath) return;
@@ -134,11 +156,15 @@ export function FileExplorer({ workspacePath }: { workspacePath?: string }) {
       setEntriesByPath((state) => ({
         ...state,
         [nextPath]: [...nextEntries].sort(
-          (a, b) => Number(b.isDirectory) - Number(a.isDirectory) || a.name.localeCompare(b.name),
+          (a, b) =>
+            Number(b.isDirectory) - Number(a.isDirectory) ||
+            a.name.localeCompare(b.name),
         ),
       }));
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : String(loadError));
+      setError(
+        loadError instanceof Error ? loadError.message : String(loadError),
+      );
     } finally {
       setLoadingPaths((paths) => {
         const next = new Set(paths);
@@ -156,12 +182,9 @@ export function FileExplorer({ workspacePath }: { workspacePath?: string }) {
     setPreviewCopied(false);
     setFileStat(null);
     setError("");
+    setFilterQuery("");
     if (workspacePath) void loadDir(".");
   }, [workspacePath]);
-
-  const refresh = () => {
-    for (const path of Array.from(expandedPaths)) void loadDir(path);
-  };
 
   const toggleDirectory = (path: string) => {
     const isExpanded = expandedPaths.has(path);
@@ -182,12 +205,17 @@ export function FileExplorer({ workspacePath }: { workspacePath?: string }) {
     setPreviewCopied(false);
     setError("");
     try {
-      const [stat, content] = await Promise.all([window.marloues.fs.stat(filePath), window.marloues.fs.readFile(filePath)]);
+      const [stat, content] = await Promise.all([
+        window.marloues.fs.stat(filePath),
+        window.marloues.fs.readFile(filePath),
+      ]);
       setFileStat(stat);
       setPreview(content);
     } catch (readError) {
       setPreview("");
-      setError(readError instanceof Error ? readError.message : String(readError));
+      setError(
+        readError instanceof Error ? readError.message : String(readError),
+      );
     } finally {
       setFileLoading(false);
     }
@@ -218,8 +246,8 @@ export function FileExplorer({ workspacePath }: { workspacePath?: string }) {
     <div className="file-panel">
       <div className="file-header">
         <div>
-          <strong>{workspacePath.split(/[\\/]/).pop() ?? "文件"}</strong>
-          <span>{selectedFile ? selectedFile : `${rootEntries.length} 项 / ${fileCount} 个文件`}</span>
+          <strong>{selectedFile}</strong>
+          <span>{selectedFile}</span>
         </div>
         {selectedFile ? (
           <button
@@ -233,11 +261,7 @@ export function FileExplorer({ workspacePath }: { workspacePath?: string }) {
           >
             <ArrowLeft size={14} />
           </button>
-        ) : (
-          <button onClick={refresh} disabled={!workspacePath} title="刷新文件">
-            <RefreshCcw size={14} />
-          </button>
-        )}
+        ) : null}
       </div>
       {error ? <p className="file-error">{error}</p> : null}
       {selectedFile ? (
@@ -258,10 +282,19 @@ export function FileExplorer({ workspacePath }: { workspacePath?: string }) {
               <strong>{selectedFile.split("/").pop()}</strong>
               <span>{selectedFile}</span>
             </div>
-            <button onClick={() => void openFile(selectedFile)} disabled={fileLoading} title="重新加载">
+            <button
+              onClick={() => void openFile(selectedFile)}
+              disabled={fileLoading}
+              title="重新加载"
+            >
               <RefreshCcw size={14} />
             </button>
-            <button onClick={() => void copyPreview()} disabled={!preview} title={previewCopied ? "已复制" : "复制内容"} aria-label={previewCopied ? "已复制内容" : "复制内容"}>
+            <button
+              onClick={() => void copyPreview()}
+              disabled={!preview}
+              title={previewCopied ? "已复制" : "复制内容"}
+              aria-label={previewCopied ? "已复制内容" : "复制内容"}
+            >
               {previewCopied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
             </button>
           </div>
@@ -283,17 +316,29 @@ export function FileExplorer({ workspacePath }: { workspacePath?: string }) {
           )}
         </div>
       ) : (
-        <div className="file-list tree scrollbar-thin">
-          <FileTree
-            dirPath="."
-            entries={rootEntries}
-            entriesByPath={entriesByPath}
-            expandedPaths={expandedPaths}
-            loadingPaths={loadingPaths}
-            onToggleDirectory={toggleDirectory}
-            onOpenFile={openFile}
-          />
-        </div>
+        <>
+          <label className="file-filter">
+            <Search size={14} />
+            <input
+              value={filterQuery}
+              onChange={(event) => setFilterQuery(event.target.value)}
+              placeholder="筛选文件"
+              aria-label="筛选文件"
+            />
+          </label>
+          <div className="file-list tree scrollbar-thin">
+            <FileTree
+              dirPath="."
+              entries={rootEntries}
+              entriesByPath={entriesByPath}
+              expandedPaths={expandedPaths}
+              loadingPaths={loadingPaths}
+              onToggleDirectory={toggleDirectory}
+              onOpenFile={openFile}
+              filterQuery={filterQuery}
+            />
+          </div>
+        </>
       )}
     </div>
   );
@@ -308,6 +353,7 @@ function FileTree({
   onToggleDirectory,
   onOpenFile,
   depth = 0,
+  filterQuery = "",
 }: {
   dirPath: string;
   entries: DirEntry[];
@@ -317,6 +363,7 @@ function FileTree({
   onToggleDirectory: (path: string) => void;
   onOpenFile: (path: string) => void;
   depth?: number;
+  filterQuery?: string;
 }) {
   if (loadingPaths.has(dirPath) && entries.length === 0) {
     return <div className="file-tree-empty">正在读取文件...</div>;
@@ -328,49 +375,60 @@ function FileTree({
 
   return (
     <div className="file-tree">
-      {entries.map((entry) => {
-        const itemPath = joinWorkspacePath(dirPath, entry.name);
-        const expanded = expandedPaths.has(itemPath);
-        const childEntries = entriesByPath[itemPath] ?? [];
+      {entries
+        .filter(
+          (entry) =>
+            entry.isDirectory ||
+            entry.name.toLowerCase().includes(filterQuery.trim().toLowerCase()),
+        )
+        .map((entry) => {
+          const itemPath = joinWorkspacePath(dirPath, entry.name);
+          const expanded = expandedPaths.has(itemPath);
+          const childEntries = entriesByPath[itemPath] ?? [];
 
-        return (
-          <div key={itemPath}>
-            <button
-              className="file-tree-row"
-              style={{ paddingLeft: 8 + depth * 14 }}
-              title={itemPath}
-              onClick={() => {
-                if (entry.isDirectory) onToggleDirectory(itemPath);
-                else void onOpenFile(itemPath);
-              }}
-            >
-              {entry.isDirectory ? (
-                expanded ? (
-                  <ChevronDown size={14} />
+          return (
+            <div key={itemPath}>
+              <button
+                className="file-tree-row"
+                style={{ paddingLeft: 8 + depth * 14 }}
+                title={itemPath}
+                onClick={() => {
+                  if (entry.isDirectory) onToggleDirectory(itemPath);
+                  else void onOpenFile(itemPath);
+                }}
+              >
+                {entry.isDirectory ? (
+                  expanded ? (
+                    <ChevronDown size={14} />
+                  ) : (
+                    <ChevronRight size={14} />
+                  )
                 ) : (
-                  <ChevronRight size={14} />
-                )
-              ) : (
-                <span className="file-tree-indent" />
-              )}
-              {entry.isDirectory ? <Folder size={14} className="folder-icon" /> : <FileText size={14} />}
-              <span>{entry.name}</span>
-            </button>
-            {entry.isDirectory && expanded ? (
-              <FileTree
-                dirPath={itemPath}
-                entries={childEntries}
-                entriesByPath={entriesByPath}
-                expandedPaths={expandedPaths}
-                loadingPaths={loadingPaths}
-                onToggleDirectory={onToggleDirectory}
-                onOpenFile={onOpenFile}
-                depth={depth + 1}
-              />
-            ) : null}
-          </div>
-        );
-      })}
+                  <span className="file-tree-indent" />
+                )}
+                {entry.isDirectory ? (
+                  <Folder size={14} className="folder-icon" />
+                ) : (
+                  <FileText size={14} />
+                )}
+                <span>{entry.name}</span>
+              </button>
+              {entry.isDirectory && expanded ? (
+                <FileTree
+                  dirPath={itemPath}
+                  entries={childEntries}
+                  entriesByPath={entriesByPath}
+                  expandedPaths={expandedPaths}
+                  loadingPaths={loadingPaths}
+                  onToggleDirectory={onToggleDirectory}
+                  onOpenFile={onOpenFile}
+                  depth={depth + 1}
+                  filterQuery={filterQuery}
+                />
+              ) : null}
+            </div>
+          );
+        })}
     </div>
   );
 }
@@ -390,14 +448,22 @@ function FilePreviewCode({ path, content }: { path: string; content: string }) {
       {lines.map((line, index) => (
         <div className="file-code-line" key={`${index}-${line.slice(0, 16)}`}>
           <span className="file-code-number">{index + 1}</span>
-          <code dangerouslySetInnerHTML={{ __html: line.length > 0 ? line : " " }} />
+          <code
+            dangerouslySetInnerHTML={{ __html: line.length > 0 ? line : " " }}
+          />
         </div>
       ))}
     </div>
   );
 }
 
-export function MemoryPanel({ workspacePath, timeline }: { workspacePath?: string; timeline: TimelineItem[] }) {
+export function MemoryPanel({
+  workspacePath,
+  timeline,
+}: {
+  workspacePath?: string;
+  timeline: TimelineItem[];
+}) {
   const memoryItems = timeline.filter((item) => item.type === "memory_recall");
   const [files, setFiles] = useState<MemoryFileRecord[]>([]);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
@@ -406,7 +472,8 @@ export function MemoryPanel({ workspacePath, timeline }: { workspacePath?: strin
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const selectedFile = files.find((file) => file.id === selectedFileId) ?? files[0];
+  const selectedFile =
+    files.find((file) => file.id === selectedFileId) ?? files[0];
   const isDirty = draft !== savedContent;
   const memoryApi = window.marloues.memory;
 
@@ -421,10 +488,15 @@ export function MemoryPanel({ workspacePath, timeline }: { workspacePath?: strin
     try {
       const nextFiles = await memoryApi.list();
       setFiles(nextFiles);
-      const nextSelected = nextFiles.find((file) => file.id === selectedFileId)?.id ?? nextFiles[0]?.id ?? null;
+      const nextSelected =
+        nextFiles.find((file) => file.id === selectedFileId)?.id ??
+        nextFiles[0]?.id ??
+        null;
       setSelectedFileId(nextSelected);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : String(loadError));
+      setError(
+        loadError instanceof Error ? loadError.message : String(loadError),
+      );
     }
   };
 
@@ -447,7 +519,11 @@ export function MemoryPanel({ workspacePath, timeline }: { workspacePath?: strin
         setDraft(content);
         setSavedContent(content);
       })
-      .catch((readError) => setError(readError instanceof Error ? readError.message : String(readError)))
+      .catch((readError) =>
+        setError(
+          readError instanceof Error ? readError.message : String(readError),
+        ),
+      )
       .finally(() => setLoading(false));
   }, [selectedFile?.id]);
 
@@ -458,9 +534,13 @@ export function MemoryPanel({ workspacePath, timeline }: { workspacePath?: strin
     try {
       const updated = await memoryApi.write(selectedFile.id, draft);
       setSavedContent(draft);
-      setFiles((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+      setFiles((items) =>
+        items.map((item) => (item.id === updated.id ? updated : item)),
+      );
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : String(saveError));
+      setError(
+        saveError instanceof Error ? saveError.message : String(saveError),
+      );
     } finally {
       setSaving(false);
     }
@@ -514,7 +594,11 @@ export function MemoryPanel({ workspacePath, timeline }: { workspacePath?: strin
               }}
               spellCheck={false}
               disabled={loading}
-              placeholder={selectedFile.exists ? "正在读取记忆..." : "这个记忆文件还不存在，输入内容并保存后会创建。"}
+              placeholder={
+                selectedFile.exists
+                  ? "正在读取记忆..."
+                  : "这个记忆文件还不存在，输入内容并保存后会创建。"
+              }
             />
           </div>
         ) : null}
@@ -524,7 +608,9 @@ export function MemoryPanel({ workspacePath, timeline }: { workspacePath?: strin
         <div className="memory-note">
           <strong>最近召回</strong>
           {memoryItems.slice(-4).map((item) => (
-            <p key={`${item.id}-${item.createdAt}`}>{formatMemoryRecall(item)}</p>
+            <p key={`${item.id}-${item.createdAt}`}>
+              {formatMemoryRecall(item)}
+            </p>
           ))}
         </div>
       ) : null}
@@ -545,8 +631,12 @@ function formatMemoryKind(kind: MemoryFileRecord["kind"]): string {
   return "自动记忆";
 }
 
-export function collectSessionTimeline(session?: ChatSessionRecord, liveTimeline: TimelineItem[] = []): TimelineItem[] {
-  const persisted = session?.messages.flatMap((message) => message.timeline ?? []) ?? [];
+export function collectSessionTimeline(
+  session?: ChatSessionRecord,
+  liveTimeline: TimelineItem[] = [],
+): TimelineItem[] {
+  const persisted =
+    session?.messages.flatMap((message) => message.timeline ?? []) ?? [];
   return [...persisted, ...liveTimeline];
 }
 
@@ -558,18 +648,25 @@ function formatMemoryRecall(item: TimelineItem): string {
     .map((memory) => {
       const path = typeof memory.path === "string" ? memory.path : "memory";
       const content =
-        typeof memory.content === "string" && memory.content.trim() ? ` - ${compactText(memory.content, 90)}` : "";
+        typeof memory.content === "string" && memory.content.trim()
+          ? ` - ${compactText(memory.content, 90)}`
+          : "";
       return `${path}${content}`;
     })
     .join("\n");
 }
 
-function readTimelineDetailArray(item: TimelineItem): Array<Record<string, unknown>> {
+function readTimelineDetailArray(
+  item: TimelineItem,
+): Array<Record<string, unknown>> {
   if (!item.detail) return [];
   try {
     const value = JSON.parse(item.detail) as unknown;
     return Array.isArray(value)
-      ? value.filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === "object")
+      ? value.filter(
+          (entry): entry is Record<string, unknown> =>
+            Boolean(entry) && typeof entry === "object",
+        )
       : [];
   } catch {
     return [];
@@ -578,7 +675,9 @@ function readTimelineDetailArray(item: TimelineItem): Array<Record<string, unkno
 
 function compactText(value: string, maxLength: number): string {
   const text = value.replace(/\s+/g, " ").trim();
-  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text || "空内容";
+  return text.length > maxLength
+    ? `${text.slice(0, maxLength)}...`
+    : text || "空内容";
 }
 
 function joinWorkspacePath(parent: string, name: string): string {
@@ -616,7 +715,13 @@ function languageFromPath(path: string): string {
   return map[ext] ?? ext;
 }
 
-function TimelineCard({ item, compact = false }: { item: TimelineItem; compact?: boolean }) {
+function TimelineCard({
+  item,
+  compact = false,
+}: {
+  item: TimelineItem;
+  compact?: boolean;
+}) {
   const Icon = iconForTimelineItem(item);
   const summary = summarizeTimelineItem(item);
   const isTool = item.type.startsWith("tool_");
@@ -628,7 +733,11 @@ function TimelineCard({ item, compact = false }: { item: TimelineItem; compact?:
       <div className="timeline-card-head">
         <Icon size={14} />
         <span>{formatTimelineType(item.type)}</span>
-        {item.status ? <em className={`status-pill ${item.status}`}>{formatTimelineStatus(item.status)}</em> : null}
+        {item.status ? (
+          <em className={`status-pill ${item.status}`}>
+            {formatTimelineStatus(item.status)}
+          </em>
+        ) : null}
       </div>
       <strong>{formatTimelineLabel(item)}</strong>
       {summary ? <p className="tool-summary">{summary}</p> : null}
@@ -643,12 +752,26 @@ function ToolRunCard({ tool }: { tool: ToolRun }) {
   const [copied, setCopied] = useState(false);
   const inputJson = tool.start?.toolInput ?? null;
   const outputJson = tool.result?.toolOutput ?? null;
-  const hasInput = typeof inputJson === "string" ? inputJson.trim().length > 0 : Boolean(inputJson);
-  const hasOutput = typeof outputJson === "string" ? outputJson.trim().length > 0 : Boolean(outputJson);
+  const hasInput =
+    typeof inputJson === "string"
+      ? inputJson.trim().length > 0
+      : Boolean(inputJson);
+  const hasOutput =
+    typeof outputJson === "string"
+      ? outputJson.trim().length > 0
+      : Boolean(outputJson);
   const hasDetail = Boolean(tool.detail);
 
   const handleCopy = async () => {
-    const text = JSON.stringify({ input: inputJson ?? undefined, output: outputJson ?? undefined, detail: tool.detail }, null, 2);
+    const text = JSON.stringify(
+      {
+        input: inputJson ?? undefined,
+        output: outputJson ?? undefined,
+        detail: tool.detail,
+      },
+      null,
+      2,
+    );
     try {
       await copyToClipboard(text);
       setCopied(true);
@@ -659,7 +782,9 @@ function ToolRunCard({ tool }: { tool: ToolRun }) {
   };
 
   return (
-    <div className={`task-tool-run ${tool.isError ? "error" : ""} ${expanded ? "expanded" : ""}`}>
+    <div
+      className={`task-tool-run ${tool.isError ? "error" : ""} ${expanded ? "expanded" : ""}`}
+    >
       <button
         type="button"
         className="task-tool-run-head"
@@ -676,11 +801,15 @@ function ToolRunCard({ tool }: { tool: ToolRun }) {
           <Wrench size={14} />
         )}
         <strong>{tool.name}</strong>
-        <span className={`status-pill ${tool.status}`}>{formatTimelineStatus(tool.status)}</span>
+        <span className={`status-pill ${tool.status}`}>
+          {formatTimelineStatus(tool.status)}
+        </span>
       </button>
       <div className="task-tool-meta">
         <span>{formatToolPhase(tool)}</span>
-        {formatToolDuration(tool) ? <span>{formatToolDuration(tool)}</span> : null}
+        {formatToolDuration(tool) ? (
+          <span>{formatToolDuration(tool)}</span>
+        ) : null}
       </div>
       {tool.summary ? <p>{tool.summary}</p> : null}
       {expanded && (hasDetail || hasInput || hasOutput) ? (
@@ -695,13 +824,19 @@ function ToolRunCard({ tool }: { tool: ToolRun }) {
           {hasInput ? (
             <div className="task-tool-json-section">
               <small>Input</small>
-              <pre className="task-tool-json-body">{formatJsonValue(inputJson)}</pre>
+              <pre className="task-tool-json-body">
+                {formatJsonValue(inputJson)}
+              </pre>
             </div>
           ) : null}
           {hasOutput ? (
             <div className="task-tool-json-section">
               <small>Output</small>
-              <pre className={`task-tool-json-body ${tool.isError ? "error" : ""}`}>{formatJsonValue(outputJson)}</pre>
+              <pre
+                className={`task-tool-json-body ${tool.isError ? "error" : ""}`}
+              >
+                {formatJsonValue(outputJson)}
+              </pre>
             </div>
           ) : null}
           {!hasInput && !hasOutput && hasDetail ? (
@@ -709,7 +844,9 @@ function ToolRunCard({ tool }: { tool: ToolRun }) {
           ) : null}
         </div>
       ) : null}
-      {!expanded && tool.detail ? <code className="task-tool-detail">{tool.detail}</code> : null}
+      {!expanded && tool.detail ? (
+        <code className="task-tool-detail">{tool.detail}</code>
+      ) : null}
     </div>
   );
 }
@@ -759,7 +896,12 @@ function buildToolRuns(timeline: TimelineItem[]): ToolRun[] {
   const runs = new Map<string, ToolRun>();
 
   for (const item of timeline) {
-    if (item.type !== "tool_start" && item.type !== "tool_result" && item.type !== "tool_delta") continue;
+    if (
+      item.type !== "tool_start" &&
+      item.type !== "tool_result" &&
+      item.type !== "tool_delta"
+    )
+      continue;
     const key = item.id || `${item.toolName ?? item.label}-${item.createdAt}`;
     const existing =
       runs.get(key) ??
@@ -791,7 +933,10 @@ function buildToolRuns(timeline: TimelineItem[]): ToolRun[] {
   return Array.from(runs.values());
 }
 
-function resolveToolRunStatus(run: ToolRun, item: TimelineItem): NonNullable<TimelineItem["status"]> {
+function resolveToolRunStatus(
+  run: ToolRun,
+  item: TimelineItem,
+): NonNullable<TimelineItem["status"]> {
   if (run.isError || item.isError) return "error";
   if (item.status) return item.status;
   if (item.type === "tool_result") return "completed";
@@ -803,7 +948,10 @@ function toolRunDetail(item: TimelineItem): string {
     const output = item.toolOutput.trim();
     return output.length > 1200 ? `${output.slice(0, 1200)}\n...` : output;
   }
-  if (item.detail) return item.detail.length > 1200 ? `${item.detail.slice(0, 1200)}\n...` : item.detail;
+  if (item.detail)
+    return item.detail.length > 1200
+      ? `${item.detail.slice(0, 1200)}\n...`
+      : item.detail;
   return "";
 }
 
@@ -847,7 +995,9 @@ function formatTimelineType(type: TimelineItem["type"]): string {
   return labels[type] ?? type;
 }
 
-function formatTimelineStatus(status: NonNullable<TimelineItem["status"]>): string {
+function formatTimelineStatus(
+  status: NonNullable<TimelineItem["status"]>,
+): string {
   const labels: Record<NonNullable<TimelineItem["status"]>, string> = {
     pending: "等待中",
     running: "运行中",
@@ -876,9 +1026,12 @@ function summarizeTimelineItem(item: TimelineItem): string {
   if (!input || typeof input !== "object") return "";
   const record = input as Record<string, unknown>;
   const name = item.toolName || item.label;
-  if (/bash/i.test(name) && typeof record.command === "string") return record.command;
-  if (/grep/i.test(name) && typeof record.pattern === "string") return `pattern: ${record.pattern}`;
-  if (/glob/i.test(name) && typeof record.pattern === "string") return `glob: ${record.pattern}`;
+  if (/bash/i.test(name) && typeof record.command === "string")
+    return record.command;
+  if (/grep/i.test(name) && typeof record.pattern === "string")
+    return `pattern: ${record.pattern}`;
+  if (/glob/i.test(name) && typeof record.pattern === "string")
+    return `glob: ${record.pattern}`;
   for (const key of ["file_path", "path", "notebook_path"]) {
     if (typeof record[key] === "string") return String(record[key]);
   }
@@ -887,7 +1040,9 @@ function summarizeTimelineItem(item: TimelineItem): string {
 
 function formatDetail(item: TimelineItem): string {
   if (item.type === "tool_result" && typeof item.toolOutput === "string") {
-    return item.toolOutput.length > 4000 ? `${item.toolOutput.slice(0, 4000)}\n...` : item.toolOutput;
+    return item.toolOutput.length > 4000
+      ? `${item.toolOutput.slice(0, 4000)}\n...`
+      : item.toolOutput;
   }
   return item.detail ?? "";
 }

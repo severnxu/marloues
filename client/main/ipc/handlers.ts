@@ -1467,15 +1467,22 @@ export function registerHandlers(): void {
 
   // ---------- Window ----------
 
-  ipcMain.on(IPC.WINDOW_MINIMIZE, () =>
-    BrowserWindow.getFocusedWindow()?.minimize(),
+  ipcMain.on(IPC.WINDOW_MINIMIZE, (event) =>
+    BrowserWindow.fromWebContents(event.sender)?.minimize(),
   );
-  ipcMain.on(IPC.WINDOW_MAXIMIZE, () => {
-    const win = BrowserWindow.getFocusedWindow();
+  ipcMain.on(IPC.WINDOW_MAXIMIZE, (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
     if (win?.isMaximized()) win.unmaximize();
     else win?.maximize();
   });
-  ipcMain.on(IPC.WINDOW_CLOSE, () => BrowserWindow.getFocusedWindow()?.close());
+  ipcMain.on(IPC.WINDOW_CLOSE, (event) =>
+    BrowserWindow.fromWebContents(event.sender)?.close(),
+  );
+  ipcMain.handle(
+    IPC.WINDOW_IS_MAXIMIZED,
+    (event) =>
+      BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false,
+  );
 
   // ---------- Auth ----------
 

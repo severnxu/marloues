@@ -1,0 +1,65 @@
+:root {
+  --workbench-titlebar-height: 46px;
+  --workbench-primary-width: 275px;
+  --workbench-auxiliary-width: 319px;
+  --workbench-primary-min: 275px;
+  --workbench-primary-max: 480px;
+  --workbench-auxiliary-min: 319px;
+  --workbench-auxiliary-max: 500px;
+  --workbench-main-min: 400px;
+  --workbench-traffic-light-safe-area: 76px;
+  --workbench-window-leading-width: 136px;
+  --workbench-windows-leading-width: 54px;
+  --workbench-windows-title-offset: calc(
+    var(--workbench-windows-leading-width) + 23px
+  );
+  --workbench-windows-title-divider-x: calc(
+    var(--workbench-windows-leading-width) + 28px
+  );
+  --workbench-windows-caption-width: 138px;
+  --workbench-windows-auxiliary-control-width: 38px;
+  --workbench-windows-auxiliary-primary-leading-safe-area: 84px;
+  --workbench-windows-auxiliary-primary-trailing-safe-area: 320px;
+  --workbench-windows-collapsed-header-safe-area: calc(
+    var(--workbench-windows-caption-width) +
+      var(--workbench-windows-auxiliary-control-width) +
+      var(--workbench-workspace-inline-padding)
+  );
+  --workbench-macos-collapsed-title-offset: 159px;
+  --workbench-macos-title-divider-x: 164px;
+  --workbench-macos-auxiliary-primary-leading-safe-area: 164px;
+  --workbench-workspace-inline-padding: 18px;
+  --workbench-resize-hit-width: 12px;
+  --workbench-interaction-bottom-gap: 20px;
+  --workbench-interaction-fade-inset: 24px;
+  --workbench-interaction-content-gap: 8px;
+  --workbench-steer-inline-inset: 14px;
+  --workbench-attachment-size: 54px;
+  --workbench-file-attachment-width: 176px;
+  --workbench-surface-navigation: var(--panel);
+  --workbench-surface-main: var(--bg);
+  --workbench-surface-auxiliary: var(--bg);
+  --workbench-divider: color-mix(in srgb, var(--border) 72%, transparent);
+  --workbench-control-hover: color-mix(in srgb, var(--text) 8%, transparent);
+  --workbench-overlay-shadow: -26px 0 58px -34px hsl(0 0% 0% / 0.72);
+  --workbench-motion: 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.platform-windows {
+  --workbench-surface-navigation: hsl(0 0% 9%);
+  --workbench-surface-main: hsl(0 0% 13%);
+  --workbench-surface-auxiliary: var(--workbench-surface-main);
+  --workbench-divider: hsl(0 0% 100% / 0.06);
+  font-family:
+    "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", sans-serif;
+}
+
+:root[data-theme="light"] .platform-windows {
+  --workbench-surface-navigation: hsl(60 11% 96%);
+  --workbench-surface-main: hsl(60 11% 98%);
+  --workbench-divider: hsl(0 0% 0% / 0.06);
+}
+
+:root.platform-darwin {
+  --traffic-light-safe-area: var(--workbench-traffic-light-safe-area);
+}

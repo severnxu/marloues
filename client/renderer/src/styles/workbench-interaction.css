@@ -1,0 +1,351 @@
+.chat-page {
+  --interaction-dock-height: 110px;
+}
+
+.chat-page .messages-scroll {
+  padding-bottom: calc(var(--interaction-dock-height) + 24px);
+}
+
+.interaction-dock {
+  position: absolute;
+  z-index: 30;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: var(--workbench-interaction-fade-inset) 32px
+    var(--workbench-interaction-bottom-gap);
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--workbench-surface-main) 88%, transparent)
+      var(--workbench-interaction-fade-inset),
+    var(--workbench-surface-main) 58%
+  );
+  pointer-events: none;
+}
+
+.input-interaction-stack,
+.permission-interaction-stack {
+  display: flex;
+  width: min(100%, 760px);
+  margin: 0 auto;
+  flex-direction: column;
+  align-items: stretch;
+  pointer-events: auto;
+}
+
+.interaction-dock .composer-wrap {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.interaction-dock .composer {
+  max-width: none;
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  border-radius: 14px;
+  background: color-mix(
+    in srgb,
+    var(--workbench-surface-main) 96%,
+    var(--text) 4%
+  );
+}
+
+.chat-page-empty .interaction-dock .composer-wrap {
+  margin: 0;
+}
+
+.chat-page-empty .empty-composer-prompt {
+  position: absolute;
+  right: 0;
+  bottom: calc(var(--interaction-dock-height) + 26px);
+  left: 0;
+  margin: 0;
+}
+
+.task-result-summary {
+  display: inline-flex;
+  height: 34px;
+  width: max-content;
+  max-width: 100%;
+  align-items: center;
+  align-self: center;
+  gap: 5px;
+  margin-bottom: var(--workbench-interaction-content-gap);
+  border: 1px solid color-mix(in srgb, var(--text) 15%, transparent);
+  border-radius: 999px;
+  background: color-mix(
+    in srgb,
+    var(--workbench-surface-main) 96%,
+    var(--text) 4%
+  );
+  padding: 0 12px;
+  color: var(--muted);
+  box-shadow: 0 5px 18px -14px hsl(0 0% 0% / 0.7);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.task-result-summary:hover {
+  border-color: color-mix(in srgb, var(--text) 28%, transparent);
+  color: var(--text);
+}
+
+.task-result-summary strong {
+  font-weight: 650;
+}
+
+.task-result-summary .is-addition {
+  color: var(--success);
+}
+
+.task-result-summary .is-deletion {
+  color: var(--danger);
+}
+
+.steer-queue {
+  position: relative;
+  z-index: 2;
+  width: calc(100% - (var(--workbench-steer-inline-inset) * 2));
+  max-height: 30dvh;
+  margin: 0 var(--workbench-steer-inline-inset) -1px;
+  overflow: auto;
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
+  background: color-mix(
+    in srgb,
+    var(--workbench-surface-main) 96%,
+    var(--text) 4%
+  );
+  box-shadow: 0 -12px 28px -28px hsl(0 0% 0% / 0.76);
+}
+
+.steer-row {
+  position: relative;
+  display: grid;
+  min-height: 46px;
+  grid-template-columns: 18px minmax(0, 1fr) auto 28px 28px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px 0 12px;
+  color: var(--muted);
+}
+
+.steer-row + .steer-row {
+  border-top: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+}
+
+.steer-grip {
+  cursor: grab;
+  opacity: 0.65;
+}
+
+.steer-copy,
+.steer-guide,
+.steer-icon-button,
+.steer-menu button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.steer-copy {
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  color: var(--text);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.steer-guide {
+  display: inline-flex;
+  height: 28px;
+  align-items: center;
+  gap: 4px;
+  border-radius: 7px;
+  padding: 0 7px;
+}
+
+.steer-icon-button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 7px;
+}
+
+.steer-guide:hover,
+.steer-icon-button:hover {
+  background: var(--workbench-control-hover);
+  color: var(--text);
+}
+
+.steer-menu {
+  position: absolute;
+  z-index: 4;
+  right: 8px;
+  top: calc(100% - 4px);
+  display: grid;
+  min-width: 148px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel);
+  padding: 5px;
+  box-shadow: var(--shadow-card);
+}
+
+.steer-menu button {
+  border-radius: 6px;
+  padding: 7px 9px;
+  text-align: left;
+}
+
+.steer-menu button:hover {
+  background: var(--hover);
+}
+
+.permission-interaction-stack .permission-card.embedded {
+  width: 100%;
+  max-width: none;
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  border-radius: 14px;
+  background: color-mix(
+    in srgb,
+    var(--workbench-surface-main) 97%,
+    var(--text) 3%
+  );
+  box-shadow: 0 18px 48px -34px hsl(0 0% 0% / 0.76);
+}
+
+.composer-attachments {
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px 10px 0;
+  scrollbar-width: thin;
+}
+
+.composer-attachments > * {
+  flex: 0 0 auto;
+}
+
+.composer-attachment-image {
+  width: var(--workbench-attachment-size);
+  height: var(--workbench-attachment-size);
+  overflow: visible;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+.composer-attachment-image .composer-attachment-preview {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  border-radius: 9px;
+}
+
+.composer-attachment-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.composer-attachment-file {
+  width: var(--workbench-file-attachment-width);
+  height: var(--workbench-attachment-size);
+  border: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+.interaction-dock .composer-attachment-file:hover,
+.interaction-dock .composer-attachment-image:hover {
+  border: 0;
+  background: transparent;
+  transform: none;
+}
+
+.composer-file-card {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  gap: 9px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--text) 12%, transparent);
+  border-radius: 10px;
+  padding: 6px 26px 6px 7px;
+  background: color-mix(
+    in srgb,
+    var(--workbench-surface-main) 94%,
+    var(--text) 6%
+  );
+}
+
+.composer-file-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.composer-file-copy {
+  display: grid;
+  min-width: 0;
+}
+
+.composer-file-copy strong,
+.composer-file-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-file-copy strong {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.composer-file-copy small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.composer-attachment-remove {
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  border: 1px solid color-mix(in srgb, white 34%, transparent);
+  background: hsl(0 0% 8% / 0.9);
+}
+
+.composer-attachment-remove::before {
+  position: absolute;
+  inset: -3px;
+  content: "";
+}
+
+.scroll-to-bottom-button {
+  bottom: calc(var(--interaction-dock-height) + 12px);
+}
+
+@media (max-width: 760px) {
+  .interaction-dock {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+}

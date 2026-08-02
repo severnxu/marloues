@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from "electron";
+import { app, BrowserWindow, Menu, Tray, nativeImage, shell } from "electron";
 import { join } from "node:path";
 import { registerHandlers } from "./ipc/handlers";
 import { initRuntime, destroyRuntime } from "./core/runtime/manager";
@@ -21,6 +21,7 @@ import {
   getMarlouesHome,
   getSettingsPath,
 } from "./app-paths";
+import { IPC } from "../shared/types";
 
 const isTest = process.env.NODE_ENV === "test";
 const gotSingleInstanceLock = isTest || app.requestSingleInstanceLock();
@@ -30,27 +31,51 @@ if (!gotSingleInstanceLock) {
 
 const isDev =
   process.env.NODE_ENV === "development" || !!process.env.ELECTRON_RENDERER_URL;
+const isMacOS = process.platform === "darwin";
+let mainWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
+let isQuitting = false;
 
 function createWindow(): void {
-  const mainWindow = new BrowserWindow({
+  const window = new BrowserWindow({
     width: 1280,
     height: 860,
     minWidth: 900,
     minHeight: 640,
     show: false,
     title: "Marloues",
-    titleBarStyle: "hiddenInset",
+    frame: isMacOS,
+    titleBarStyle: isMacOS ? "hiddenInset" : undefined,
+    trafficLightPosition: isMacOS ? { x: 20, y: 17 } : undefined,
+    backgroundColor: "#212121",
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
       sandbox: false,
     },
   });
+  mainWindow = window;
 
-  mainWindow.on("ready-to-show", () => {
-    mainWindow.show();
+  if (!isMacOS) window.setMenuBarVisibility(false);
+
+  const emitMaximizedState = (maximized: boolean) => {
+    if (!window.isDestroyed()) {
+      window.webContents.send(IPC.WINDOW_MAXIMIZED_CHANGED, maximized);
+    }
+  };
+  window.on("maximize", () => emitMaximizedState(true));
+  window.on("unmaximize", () => emitMaximizedState(false));
+
+  window.on("ready-to-show", () => {
+    window.show();
   });
 
-  mainWindow.webContents.setWindowOpenHandler((details) => {
+  window.on("close", (event) => {
+    if (isMacOS || isQuitting) return;
+    event.preventDefault();
+    window.hide();
+  });
+
+  window.webContents.setWindowOpenHandler((details) => {
     if (isAllowedExternalUrl(details.url)) {
       void shell.openExternal(details.url);
     } else {
@@ -59,7 +84,7 @@ function createWindow(): void {
     return { action: "deny" };
   });
 
-  mainWindow.webContents.on(
+  window.webContents.on(
     "console-message",
     (_event, level, message, line, sourceId) => {
       logConsole(mapRendererConsoleLevel(level), "renderer", message, {
@@ -69,7 +94,7 @@ function createWindow(): void {
     },
   );
 
-  mainWindow.webContents.on(
+  window.webContents.on(
     "did-fail-load",
     (_event, errorCode, errorDescription, validatedURL) => {
       logConsole("error", "renderer", "did-fail-load", {
@@ -80,7 +105,7 @@ function createWindow(): void {
     },
   );
 
-  mainWindow.webContents.on("render-process-gone", (_event, details) => {
+  window.webContents.on("render-process-gone", (_event, details) => {
     logConsole("error", "renderer", "render-process-gone", {
       reason: details.reason,
       exitCode: details.exitCode,
@@ -88,10 +113,50 @@ function createWindow(): void {
   });
 
   if (isDev && process.env.ELECTRON_RENDERER_URL) {
-    void mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
+    void window.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
-    void mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
+    void window.loadFile(join(__dirname, "../renderer/index.html"));
   }
+
+  if (!isMacOS) ensureTray();
+}
+
+function ensureTray(): void {
+  if (tray) return;
+  const icon = nativeImage
+    .createFromDataURL(
+      "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='28' height='28' rx='8' fill='%23212121'/%3E%3Cpath d='M9 23V9h3.4l3.6 7.1L19.6 9H23v14h-3v-8.4l-2.9 5.6h-2.2L12 14.6V23H9Z' fill='white'/%3E%3C/svg%3E",
+    )
+    .resize({ width: 16, height: 16 });
+  tray = new Tray(icon);
+  tray.setToolTip("Marloues");
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      {
+        label: "显示 Marloues",
+        click: () => showMainWindow(),
+      },
+      { type: "separator" },
+      {
+        label: "退出",
+        click: () => {
+          isQuitting = true;
+          app.quit();
+        },
+      },
+    ]),
+  );
+  tray.on("double-click", showMainWindow);
+}
+
+function showMainWindow(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createWindow();
+    return;
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
 }
 
 app.whenReady().then(async () => {
@@ -122,12 +187,18 @@ app.whenReady().then(async () => {
 
 app.on("activate", () => {
   if (!gotSingleInstanceLock) return;
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  showMainWindow();
+});
+
+app.on("second-instance", () => showMainWindow());
+
+app.on("before-quit", () => {
+  isQuitting = true;
 });
 
 app.on("window-all-closed", () => {
   void destroyRuntime();
-  if (process.platform !== "darwin") app.quit();
+  if (!isMacOS && isQuitting) app.quit();
 });
 
 function logInitialConfig(): void {

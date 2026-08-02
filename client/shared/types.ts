@@ -90,7 +90,14 @@ export interface ToolResultBlock {
 
 export interface TimelineItem {
   id: string;
-  type: "thinking" | "tool_start" | "tool_delta" | "tool_result" | "status" | "memory_recall" | "error";
+  type:
+    | "thinking"
+    | "tool_start"
+    | "tool_delta"
+    | "tool_result"
+    | "status"
+    | "memory_recall"
+    | "error";
   label: string;
   detail?: string;
   createdAt: number;
@@ -149,11 +156,17 @@ export interface ContextActionRequest {
     modelId: string;
     contextWindowTokens: number;
   };
-  actions: Array<"switch_to_larger_model" | "create_small_model_branch" | "new_session" | "continue_anyway">;
+  actions: Array<
+    | "switch_to_larger_model"
+    | "create_small_model_branch"
+    | "new_session"
+    | "continue_anyway"
+  >;
 }
 
 export type AgentWorkMode = "execute" | "plan";
-export type AgentPermissionMode = "default" | "acceptEdits" | "bypassPermissions";
+export type AgentPermissionMode =
+  "default" | "acceptEdits" | "bypassPermissions";
 export type AgentSdkPermissionMode = AgentPermissionMode | "plan";
 export type RuntimeKind = "sdk" | "binary" | "self-built";
 
@@ -400,10 +413,22 @@ export interface ToolProfile {
 
 export type AgentEvent =
   | { type: "turn_start"; sessionId: string; turnId: string }
-  | { type: "turn_done"; sessionId: string; turnId: string; reason: "success" | "error" | "aborted" }
+  | {
+      type: "turn_done";
+      sessionId: string;
+      turnId: string;
+      reason: "success" | "error" | "aborted";
+    }
   | { type: "text_delta"; sessionId: string; turnId: string; delta: string }
   | { type: "thinking_delta"; sessionId: string; turnId: string; delta: string }
-  | { type: "tool_start"; sessionId: string; turnId: string; id: string; name: string; input?: unknown }
+  | {
+      type: "tool_start";
+      sessionId: string;
+      turnId: string;
+      id: string;
+      name: string;
+      input?: unknown;
+    }
   | {
       type: "tool_delta";
       sessionId: string;
@@ -414,7 +439,14 @@ export type AgentEvent =
       input?: unknown;
       isReady?: boolean;
     }
-  | { type: "tool_result"; sessionId: string; turnId: string; id: string; output: unknown; isError?: boolean }
+  | {
+      type: "tool_result";
+      sessionId: string;
+      turnId: string;
+      id: string;
+      output: unknown;
+      isError?: boolean;
+    }
   | {
       type: "session_info";
       sessionId: string;
@@ -423,7 +455,13 @@ export type AgentEvent =
       slashCommands: string[];
       agents: string[];
     }
-  | { type: "mcp_status"; sessionId: string; turnId: string; servers: unknown[]; tools?: string[] }
+  | {
+      type: "mcp_status";
+      sessionId: string;
+      turnId: string;
+      servers: unknown[];
+      tools?: string[];
+    }
   | {
       type: "memory_recall";
       sessionId: string;
@@ -472,9 +510,20 @@ export type AgentEvent =
       detail?: string;
       status?: "pending" | "running" | "completed" | "error";
     }
-  | { type: "prompt_suggestion"; sessionId: string; turnId: string; suggestion: string }
+  | {
+      type: "prompt_suggestion";
+      sessionId: string;
+      turnId: string;
+      suggestion: string;
+    }
   | { type: "usage"; sessionId: string; turnId: string; usage: TokenUsage }
-  | { type: "result"; sessionId: string; turnId: string; content: string; sdkSessionId?: string }
+  | {
+      type: "result";
+      sessionId: string;
+      turnId: string;
+      content: string;
+      sdkSessionId?: string;
+    }
   | { type: "error"; sessionId: string; turnId: string; error: string };
 
 export interface ContextUsageRecord {
@@ -578,6 +627,8 @@ export interface MarlouesAPI {
     minimize(): void;
     maximize(): void;
     close(): void;
+    isMaximized(): Promise<boolean>;
+    onMaximizedChanged(callback: (maximized: boolean) => void): () => void;
   };
   workspace: {
     select(): Promise<WorkspaceInfo | null>;
@@ -601,9 +652,16 @@ export interface MarlouesAPI {
   config: {
     getAgentSettings(): Promise<AgentSettings>;
     saveAgentSettings(settings: AgentSettings): Promise<void>;
-    testEndpointProfile(profile: ModelProviderConfig): Promise<EndpointTestResult>;
-    testEndpointModel(profile: ModelProviderConfig, modelId: string): Promise<EndpointTestResult>;
-    listEndpointModels(profile: ModelProviderConfig): Promise<EndpointModelsResult>;
+    testEndpointProfile(
+      profile: ModelProviderConfig,
+    ): Promise<EndpointTestResult>;
+    testEndpointModel(
+      profile: ModelProviderConfig,
+      modelId: string,
+    ): Promise<EndpointTestResult>;
+    listEndpointModels(
+      profile: ModelProviderConfig,
+    ): Promise<EndpointModelsResult>;
   };
   runtime: {
     getState(): Promise<RuntimeState>;
@@ -627,7 +685,9 @@ export interface MarlouesAPI {
     toggle(skillId: string, enabled: boolean): Promise<SkillInfo[]>;
     remove(skillId: string): Promise<SkillInfo[]>;
     getDetail(skillId: string): Promise<SkillDetail>;
-    marketplaceList(request?: SkillMarketplaceListRequest): Promise<SkillMarketplaceListResponse>;
+    marketplaceList(
+      request?: SkillMarketplaceListRequest,
+    ): Promise<SkillMarketplaceListResponse>;
     marketplaceDetail(slug: string): Promise<SkillMarketplaceDetail>;
     marketplaceInstall(slug: string): Promise<SkillInfo[]>;
   };
@@ -642,15 +702,28 @@ export interface MarlouesAPI {
     rewindFiles(request: ChatRewindRequest): Promise<ChatRewindResult>;
     exportSession(sessionId: string): Promise<string | null>;
     send(request: ChatSendRequest): Promise<string>;
-    resendFromMessage(request: ChatResendRequest): Promise<ChatSessionRecord & { requestId: string }>;
+    resendFromMessage(
+      request: ChatResendRequest,
+    ): Promise<ChatSessionRecord & { requestId: string }>;
     abort(requestId: string): Promise<void>;
     cancelTool(toolCallId: string): Promise<void>;
     readThread(sessionId: string): Promise<WorkflowReadThreadResponse | null>;
-    onReadThread(callback: (snapshot: WorkflowReadThreadResponse | null) => void): () => void;
-    onEvent(callback: (event: import("./ui-protocol").UIEvent) => void): () => void;
+    onReadThread(
+      callback: (snapshot: WorkflowReadThreadResponse | null) => void,
+    ): () => void;
+    onEvent(
+      callback: (event: import("./ui-protocol").UIEvent) => void,
+    ): () => void;
     onItemEvent(callback: (event: unknown) => void): () => void;
-    onPermissionRequest(callback: (request: PermissionDialogRequest) => void): () => void;
-    respondToPermission(requestId: string, approved: boolean, scope?: PermissionDialogScope, reason?: string): void;
+    onPermissionRequest(
+      callback: (request: PermissionDialogRequest) => void,
+    ): () => void;
+    respondToPermission(
+      requestId: string,
+      approved: boolean,
+      scope?: PermissionDialogScope,
+      reason?: string,
+    ): void;
   };
 }
 
@@ -665,6 +738,8 @@ export const IPC = {
   WINDOW_MINIMIZE: "window:minimize",
   WINDOW_MAXIMIZE: "window:maximize",
   WINDOW_CLOSE: "window:close",
+  WINDOW_IS_MAXIMIZED: "window:is-maximized",
+  WINDOW_MAXIMIZED_CHANGED: "window:maximized-changed",
   WORKSPACE_SELECT: "workspace:select",
   WORKSPACE_SWITCH: "workspace:switch",
   WORKSPACE_RENAME: "workspace:rename",

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN" data-platform="macos">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Marloues 双平台工作台外骨架组件审核图册" />
+    <title>Marloues 工作台区块组件审核图册</title>
+    <link rel="stylesheet" href="./guide.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <div class="brand-lockup">
+        <span class="brand-mark">M</span>
+        <div><strong>工作台区块组件审核图册</strong><span>Structure review · v0.1</span></div>
+      </div>
+      <div class="header-actions">
+        <a href="../workbench-prototype/index.html">打开交互原型</a>
+        <button type="button" data-action="reset-review">重置审核</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <span class="eyebrow">跨平台外骨架 / 逐块审核</span>
+          <h1>同一套组件树，<br />两种窗口表达。</h1>
+          <p>每个区块使用当前交互稿的真实截图。请逐块确认职责、边界和平台差异；内部业务内容仅用于说明承载关系，不作为本轮组件拆分依据。</p>
+          <div class="platform-switch" role="tablist" aria-label="选择平台">
+            <button class="is-active" type="button" role="tab" aria-selected="true" data-platform="macos">macOS</button>
+            <button type="button" role="tab" aria-selected="false" data-platform="windows">Windows</button>
+          </div>
+        </div>
+        <figure class="hero-shot">
+          <img id="overview-image" src="./assets/macos-platform-window.png" alt="macOS 工作台整体结构" />
+          <figcaption><span id="overview-label">macOS / PlatformWindow</span><button type="button" data-zoom-target="overview-image">查看大图</button></figcaption>
+        </figure>
+      </section>
+
+      <section class="review-summary" aria-label="审核进度">
+        <div><span>当前平台</span><strong id="summary-platform">macOS</strong></div>
+        <div><span>审核区块</span><strong>10</strong></div>
+        <div><span>已认可</span><strong id="approved-count">0</strong></div>
+        <div><span>需调整</span><strong id="change-count">0</strong></div>
+        <div class="progress-track" aria-hidden="true"><i id="progress-fill"></i></div>
+      </section>
+
+      <div class="review-layout">
+        <aside class="structure-nav">
+          <div class="nav-heading"><span>组件树</span><small id="tree-platform">macOS</small></div>
+          <nav id="component-tree" aria-label="组件树导航"></nav>
+          <div class="boundary-note"><strong>审核边界</strong><p>确认外骨架的组件归属、尺寸、状态和平台差异；不审核对话气泡、文件树行、模型选择器等内部业务组件。</p></div>
+        </aside>
+
+        <section class="component-list" aria-live="polite">
+          <div class="list-heading"><div><span class="eyebrow">Component blocks</span><h2 id="list-title">macOS 区块说明</h2></div><p>点击截图可放大；每块可独立标记审核结论。</p></div>
+          <div id="component-cards"></div>
+        </section>
+      </div>
+    </main>
+
+    <dialog id="image-dialog" class="image-dialog">
+      <button type="button" data-action="close-dialog" aria-label="关闭大图">×</button>
+      <img id="dialog-image" alt="组件截图大图" />
+      <p id="dialog-caption"></p>
+    </dialog>
+
+    <script src="./guide.js"></script>
+  </body>
+</html>

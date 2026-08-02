@@ -1,0 +1,651 @@
+<!doctype html>
+<html
+  lang="zh-CN"
+  data-platform="macos"
+  data-theme="dark"
+  data-review-mode="presentation"
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Marloues macOS 与 Windows 双平台工作台 UI/UX 交互原型"
+    />
+    <script>
+      (() => {
+        const query = new URLSearchParams(window.location.search);
+        const root = document.documentElement;
+        root.dataset.platform =
+          query.get("platform") === "windows" ? "windows" : "macos";
+        root.dataset.theme = query.get("theme") === "light" ? "light" : "dark";
+        root.dataset.reviewMode =
+          query.get("review") === "acceptance" ? "acceptance" : "presentation";
+      })();
+    </script>
+    <title>Marloues 双平台工作台交互稿</title>
+    <link rel="stylesheet" href="./tokens.css" />
+    <link rel="stylesheet" href="./prototype.css" />
+  </head>
+  <body>
+    <svg class="svg-sprite" aria-hidden="true">
+      <symbol id="i-sidebar" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <path d="M9 4v16" />
+      </symbol>
+      <symbol id="i-aux" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <path d="M15 4v16" />
+      </symbol>
+      <symbol id="i-compose" viewBox="0 0 24 24">
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+      </symbol>
+      <symbol id="i-search" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="7" />
+        <path d="m20 20-3.5-3.5" />
+      </symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24">
+        <path
+          d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"
+        />
+      </symbol>
+      <symbol id="i-file" viewBox="0 0 24 24">
+        <path d="M6 2h8l4 4v16H6Z" />
+        <path d="M14 2v5h5" />
+      </symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24">
+        <path d="m9 18 6-6-6-6" />
+      </symbol>
+      <symbol id="i-back" viewBox="0 0 24 24">
+        <path d="m15 18-6-6 6-6" />
+      </symbol>
+      <symbol id="i-more" viewBox="0 0 24 24">
+        <circle cx="5" cy="12" r="1" />
+        <circle cx="12" cy="12" r="1" />
+        <circle cx="19" cy="12" r="1" />
+      </symbol>
+      <symbol id="i-send" viewBox="0 0 24 24">
+        <path d="m22 2-7 20-4-9-9-4Z" />
+        <path d="M22 2 11 13" />
+      </symbol>
+      <symbol id="i-paperclip" viewBox="0 0 24 24">
+        <path
+          d="m21.4 11.6-8.9 8.9a6 6 0 0 1-8.5-8.5l9.6-9.6a4 4 0 0 1 5.7 5.7l-9.6 9.6a2 2 0 0 1-2.8-2.8l8.9-8.9"
+        />
+      </symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+      </symbol>
+      <symbol id="i-maximize" viewBox="0 0 24 24">
+        <rect x="5" y="5" width="14" height="14" rx="1" />
+      </symbol>
+      <symbol id="i-restore" viewBox="0 0 24 24">
+        <rect x="7" y="4" width="13" height="13" rx="1" />
+        <path d="M17 17v3H4V7h3" />
+      </symbol>
+      <symbol id="i-close" viewBox="0 0 24 24">
+        <path d="m6 6 12 12M18 6 6 18" />
+      </symbol>
+      <symbol id="i-minus" viewBox="0 0 24 24">
+        <path d="M5 12h14" />
+      </symbol>
+      <symbol id="i-expand" viewBox="0 0 24 24">
+        <path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" />
+      </symbol>
+      <symbol id="i-contract" viewBox="0 0 24 24">
+        <path d="M3 8h5V3M21 8h-5V3M3 16h5v5M21 16h-5v5" />
+      </symbol>
+    </svg>
+
+    <header class="prototype-toolbar" aria-label="交互稿控制台">
+      <div class="prototype-title">
+        <span class="prototype-mark">M</span>
+        <span>Marloues 工作台交互稿</span>
+        <span class="prototype-version">外骨架基线 · PRD v0.3</span>
+      </div>
+      <div class="prototype-controls">
+        <a
+          class="toolbar-button prototype-back-link"
+          href="../workbench-component-guide/index.html"
+          aria-label="返回工作台区块组件审核图册"
+          >← 返回图册</a
+        >
+        <div class="segment" aria-label="选择平台">
+          <button class="segment-button is-active" data-set-platform="macos">
+            macOS
+          </button>
+          <button class="segment-button" data-set-platform="windows">
+            Windows
+          </button>
+        </div>
+        <div class="segment" aria-label="选择主题">
+          <button class="segment-button is-active" data-set-theme="dark">
+            深色
+          </button>
+          <button class="segment-button" data-set-theme="light">浅色</button>
+        </div>
+        <button
+          class="toolbar-button is-active"
+          data-action="toggle-result-summary"
+          aria-pressed="true"
+        >
+          结果状态
+        </button>
+        <button
+          class="toolbar-button is-active"
+          data-action="toggle-sample-attachments"
+          aria-pressed="true"
+        >
+          附件状态
+        </button>
+        <button
+          class="toolbar-button"
+          data-action="toggle-review-mode"
+          aria-pressed="false"
+        >
+          像素验收
+        </button>
+        <button class="toolbar-button" data-action="reset">重置布局</button>
+      </div>
+    </header>
+
+    <main class="prototype-stage">
+      <section
+        class="app-window"
+        id="app-window"
+        aria-label="Marloues 桌面工作台原型"
+      >
+        <header class="window-titlebar" data-drag-region>
+          <div class="traffic-lights" aria-label="macOS 窗口控制">
+            <button
+              class="traffic-light is-close"
+              aria-label="关闭窗口"
+            ></button>
+            <button
+              class="traffic-light is-minimize"
+              aria-label="最小化窗口"
+            ></button>
+            <button
+              class="traffic-light is-zoom"
+              aria-label="缩放窗口"
+            ></button>
+          </div>
+
+          <div class="title-leading">
+            <button
+              class="icon-button"
+              data-action="toggle-primary"
+              aria-label="切换左侧边栏"
+            >
+              <svg><use href="#i-sidebar" /></svg>
+              <span class="activity-dot" aria-hidden="true"></span>
+            </button>
+            <button
+              class="icon-button collapsed-only"
+              data-role="collapsed-context-action"
+              data-action="new-thread"
+              aria-label="新建会话"
+            >
+              <svg><use href="#i-compose" /></svg>
+            </button>
+            <div class="product-lockup">
+              <span class="product-mark">M</span>
+              <span>Marloues</span>
+            </div>
+          </div>
+
+          <div class="title-trailing">
+            <button
+              class="icon-button"
+              data-action="open-search"
+              aria-label="全局搜索"
+            >
+              <svg><use href="#i-search" /></svg>
+            </button>
+            <button
+              class="icon-button compact windows-auxiliary-primary-action"
+              data-role="windows-auxiliary-primary-action"
+              data-action="toggle-aux-primary"
+              aria-label="收回辅助区至右栏"
+            >
+              <svg><use href="#i-contract" /></svg>
+            </button>
+            <button
+              class="icon-button"
+              data-action="toggle-auxiliary"
+              aria-label="切换右侧辅助区"
+            >
+              <svg><use href="#i-aux" /></svg>
+            </button>
+          </div>
+
+          <div class="windows-caption-controls" aria-label="Windows 窗口控制">
+            <button data-window-action="minimize" aria-label="最小化">
+              <svg><use href="#i-minus" /></svg>
+            </button>
+            <button data-window-action="maximize" aria-label="最大化">
+              <svg class="maximize-icon"><use href="#i-maximize" /></svg>
+              <svg class="restore-icon"><use href="#i-restore" /></svg>
+            </button>
+            <button
+              class="window-close"
+              data-window-action="close"
+              aria-label="关闭"
+            >
+              <svg><use href="#i-close" /></svg>
+            </button>
+          </div>
+        </header>
+
+        <div class="workbench" id="workbench">
+          <aside class="primary-sidebar" id="primary-sidebar">
+            <div class="primary-sidebar-content">
+              <nav class="primary-actions" aria-label="主要操作">
+                <button data-action="new-thread">
+                  <svg><use href="#i-compose" /></svg><span>新建会话</span
+                  ><kbd data-shortcut="new">⌘N</kbd>
+                </button>
+                <button data-action="open-search">
+                  <svg><use href="#i-search" /></svg><span>搜索</span
+                  ><kbd data-shortcut="search">⌘K</kbd>
+                </button>
+              </nav>
+
+              <div class="sidebar-section-heading">
+                <span>工作区</span>
+                <button class="icon-button compact" aria-label="更多工作区操作">
+                  <svg><use href="#i-more" /></svg>
+                </button>
+              </div>
+
+              <div class="workspace-item is-expanded">
+                <button class="workspace-row" data-action="toggle-workspace">
+                  <svg class="workspace-chevron"><use href="#i-chevron" /></svg>
+                  <svg><use href="#i-folder" /></svg>
+                  <span>marloues</span>
+                  <span
+                    class="running-indicator"
+                    aria-label="任务运行中"
+                  ></span>
+                </button>
+                <div class="thread-list">
+                  <button class="thread-row is-active">
+                    <span>迁移新版工作台骨架</span><time>刚刚</time>
+                  </button>
+                  <button class="thread-row">
+                    <span>梳理多内核运行时协议</span><time>14:28</time>
+                  </button>
+                  <button class="thread-row">
+                    <span>完善文件审核交互</span><time>昨天</time>
+                  </button>
+                </div>
+              </div>
+
+              <div class="workspace-item">
+                <button class="workspace-row">
+                  <svg class="workspace-chevron"><use href="#i-chevron" /></svg>
+                  <svg><use href="#i-folder" /></svg>
+                  <span>personal-claw</span>
+                </button>
+              </div>
+            </div>
+
+            <button class="account-row">
+              <span class="avatar">MA</span>
+              <span><strong>Marloues</strong><small>本地工作台</small></span>
+              <svg><use href="#i-more" /></svg>
+            </button>
+          </aside>
+
+          <div
+            class="column-resize-handle primary-resize"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="调整左侧边栏宽度"
+          ></div>
+
+          <section class="main-workspace" id="main-workspace">
+            <header class="workspace-header">
+              <div>
+                <svg><use href="#i-folder" /></svg>
+                <strong>迁移新版工作台骨架</strong>
+              </div>
+              <span class="runtime-status" id="runtime-status"
+                ><i></i> Codex · 正在工作</span
+              >
+            </header>
+
+            <div class="conversation-scroll" id="conversation-scroll">
+              <div class="conversation-content">
+                <article class="message user-message">
+                  <p>
+                    先把 macOS 和 Windows
+                    的外骨架交互稿做出来，再进入正式组件迁移。
+                  </p>
+                  <footer>15:42</footer>
+                </article>
+
+                <article class="message assistant-message">
+                  <header>
+                    <span class="assistant-mark">M</span
+                    ><strong>Marloues</strong><span>已完成 4 个步骤</span>
+                  </header>
+                  <div class="activity-list">
+                    <button class="activity-row" data-action="toggle-activity">
+                      <span class="activity-check">✓</span
+                      ><span>读取双平台 PRD</span
+                      ><code>docs/prd/cross-platform-workbench-shell.md</code
+                      ><svg><use href="#i-chevron" /></svg>
+                    </button>
+                    <div class="activity-detail">
+                      确认左栏 275px、右栏 319px、顶部区域 46px。
+                    </div>
+                    <button class="activity-row" data-action="toggle-activity">
+                      <span class="activity-check">✓</span
+                      ><span>分析 neobot 平台窗口</span><code>WindowChrome</code
+                      ><svg><use href="#i-chevron" /></svg>
+                    </button>
+                    <div class="activity-detail">
+                      macOS 使用 hiddenInset；Windows 使用 frameless caption
+                      controls。
+                    </div>
+                  </div>
+                  <p>
+                    交互稿将共用同一套三栏工作台，只在窗口框架层区分平台。右侧区域统一称为“辅助区”，可以承载文件、变更、计划和上下文。
+                  </p>
+                  <div
+                    class="file-change-card"
+                    data-action="review-file"
+                    role="button"
+                    tabindex="0"
+                  >
+                    <svg><use href="#i-file" /></svg>
+                    <span
+                      ><strong>cross-platform-workbench-shell.md</strong
+                      ><small>已修改</small></span
+                    >
+                    <span class="diff-stat"><b>+42</b><em>−8</em></span>
+                    <span>审核 →</span>
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            <div
+              class="interaction-dock"
+              id="interaction-dock"
+              role="region"
+              aria-label="任务交互坞"
+            >
+              <div class="input-interaction-stack" id="input-interaction-stack">
+                <button
+                  class="task-result-summary"
+                  id="task-result-summary"
+                  type="button"
+                  data-action="review-file"
+                  aria-label="查看 5 个已更改文件"
+                >
+                  <span>5 个文件已更改</span>
+                  <span class="task-result-additions">+5</span>
+                  <span class="task-result-deletions">−6</span>
+                </button>
+
+                <section
+                  class="steer-queue"
+                  id="steer-queue"
+                  aria-label="等待引导的消息"
+                  hidden
+                >
+                  <header
+                    class="steer-queue-summary"
+                    id="steer-queue-summary"
+                    hidden
+                  ></header>
+                  <div class="steer-list" id="steer-list"></div>
+                </section>
+
+                <form class="composer composer-panel" id="composer">
+                  <div
+                    class="composer-attachments"
+                    id="composer-attachments"
+                    aria-label="已添加的附件"
+                  ></div>
+                  <textarea
+                    id="composer-input"
+                    rows="2"
+                    placeholder="交给 Marloues 一个任务…"
+                  ></textarea>
+                  <div class="composer-footer">
+                    <div>
+                      <button
+                        class="icon-button"
+                        type="button"
+                        data-action="add-attachment"
+                        aria-label="添加示例附件"
+                      >
+                        <svg><use href="#i-paperclip" /></svg>
+                      </button>
+                      <button
+                        class="permission-button"
+                        type="button"
+                        data-action="show-permission-request"
+                      >
+                        <svg><use href="#i-shield" /></svg><span>默认权限</span
+                        ><span>⌄</span>
+                      </button>
+                    </div>
+                    <div>
+                      <button class="model-button" type="button">
+                        <span class="runtime-chip">sdk</span><span>gpt-5.6</span
+                        ><span>⌄</span>
+                      </button>
+                      <button
+                        class="send-button"
+                        type="submit"
+                        aria-label="发送消息"
+                      >
+                        <svg><use href="#i-send" /></svg>
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+
+              <section
+                class="permission-request-panel"
+                id="permission-request-panel"
+                role="dialog"
+                aria-label="工具权限确认"
+                hidden
+              >
+                <div class="permission-request-copy">
+                  <span class="permission-request-kicker"
+                    ><svg><use href="#i-shield" /></svg> 权限确认</span
+                  >
+                  <strong>允许 Marloues 运行命令？</strong>
+                  <code>npm run test</code>
+                  <small>此命令将在当前工作区执行。请确认后继续任务。</small>
+                </div>
+                <div class="permission-request-actions">
+                  <button
+                    type="button"
+                    class="permission-deny"
+                    data-action="deny-permission"
+                  >
+                    拒绝
+                  </button>
+                  <button
+                    type="button"
+                    class="permission-allow-secondary"
+                    data-action="allow-permission"
+                  >
+                    允许此任务
+                  </button>
+                  <button
+                    type="button"
+                    class="permission-allow"
+                    data-action="allow-permission"
+                  >
+                    允许一次
+                  </button>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <div
+            class="column-resize-handle auxiliary-resize"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="调整右侧辅助区宽度"
+          ></div>
+
+          <aside class="auxiliary-sidebar" id="auxiliary-sidebar">
+            <header class="auxiliary-header">
+              <div class="auxiliary-tabs" role="tablist">
+                <button class="is-active" role="tab" data-aux-tab="files">
+                  文件
+                </button>
+                <button role="tab" data-aux-tab="changes">
+                  变更 <span>3</span>
+                </button>
+                <button role="tab" data-aux-tab="plan">计划</button>
+              </div>
+              <div>
+                <button
+                  class="icon-button compact"
+                  data-role="auxiliary-primary-action"
+                  data-action="toggle-aux-primary"
+                  aria-label="展开辅助区至主视图区"
+                >
+                  <svg><use href="#i-expand" /></svg>
+                </button>
+              </div>
+            </header>
+            <div class="auxiliary-content" data-aux-panel="files">
+              <label class="file-filter"
+                ><svg><use href="#i-search" /></svg
+                ><input placeholder="筛选文件"
+              /></label>
+              <div class="file-tree">
+                <button class="tree-row is-folder">
+                  <svg><use href="#i-chevron" /></svg
+                  ><svg><use href="#i-folder" /></svg><span>client</span>
+                </button>
+                <button class="tree-row depth-1 is-folder">
+                  <svg><use href="#i-chevron" /></svg
+                  ><svg><use href="#i-folder" /></svg><span>renderer</span>
+                </button>
+                <button class="tree-row depth-2 is-active">
+                  <span></span><svg><use href="#i-file" /></svg
+                  ><span>WorkbenchLayout.tsx</span><i>M</i>
+                </button>
+                <button class="tree-row depth-2">
+                  <span></span><svg><use href="#i-file" /></svg
+                  ><span>tokens.css</span>
+                </button>
+                <button class="tree-row is-folder">
+                  <svg><use href="#i-chevron" /></svg
+                  ><svg><use href="#i-folder" /></svg><span>docs</span>
+                </button>
+              </div>
+            </div>
+            <div class="auxiliary-content is-hidden" data-aux-panel="changes">
+              <div class="change-summary">
+                <strong>3 个文件已变更</strong><span>+86 −21</span>
+              </div>
+              <button class="change-row">
+                <svg><use href="#i-file" /></svg><span>WorkbenchLayout.tsx</span
+                ><b>+42</b><em>−8</em>
+              </button>
+              <button class="change-row">
+                <svg><use href="#i-file" /></svg><span>window-titlebar.css</span
+                ><b>+31</b><em>−9</em>
+              </button>
+              <button class="change-row">
+                <svg><use href="#i-file" /></svg><span>tokens.css</span
+                ><b>+13</b><em>−4</em>
+              </button>
+            </div>
+            <div class="auxiliary-content is-hidden" data-aux-panel="plan">
+              <ol class="plan-list">
+                <li class="is-done">
+                  <span>1</span>
+                  <div>
+                    <strong>确认双平台 PRD</strong><small>产品基线已冻结</small>
+                  </div>
+                </li>
+                <li class="is-active">
+                  <span>2</span>
+                  <div>
+                    <strong>评审 UI/UX 交互稿</strong
+                    ><small>等待确认布局和窗口交互</small>
+                  </div>
+                </li>
+                <li>
+                  <span>3</span>
+                  <div>
+                    <strong>搭建外骨架组件</strong
+                    ><small>待交互稿通过后开始</small>
+                  </div>
+                </li>
+              </ol>
+            </div>
+          </aside>
+        </div>
+
+        <div class="sidebar-peek-zone" aria-hidden="true"></div>
+
+        <div class="search-overlay" id="search-overlay" aria-hidden="true">
+          <section
+            class="command-palette"
+            role="dialog"
+            aria-modal="true"
+            aria-label="全局搜索"
+          >
+            <label
+              ><svg><use href="#i-search" /></svg
+              ><input
+                id="search-input"
+                placeholder="搜索会话、文件或命令"
+              /><kbd data-shortcut="escape">Esc</kbd></label
+            >
+            <div class="command-section-label">建议</div>
+            <button class="command-row is-active">
+              <svg><use href="#i-compose" /></svg
+              ><span
+                ><strong>新建会话</strong
+                ><small>在当前工作区开始任务</small></span
+              ><kbd data-shortcut="new">⌘N</kbd>
+            </button>
+            <button class="command-row">
+              <svg><use href="#i-aux" /></svg
+              ><span
+                ><strong>切换右侧辅助区</strong
+                ><small>文件、变更和计划</small></span
+              >
+            </button>
+            <button class="command-row">
+              <svg><use href="#i-folder" /></svg
+              ><span
+                ><strong>打开工作区</strong
+                ><small>选择本地项目目录</small></span
+              >
+            </button>
+          </section>
+        </div>
+
+        <div class="prototype-toast" id="prototype-toast" role="status"></div>
+      </section>
+    </main>
+
+    <footer class="prototype-hints">
+      <span>拖动两条分栏线调整宽度</span>
+      <span>折叠左栏后悬停窗口左上角可 Peek</span>
+      <span><kbd data-shortcut="search">⌘K</kbd> 打开全局搜索</span>
+    </footer>
+
+    <script src="./prototype.js"></script>
+  </body>
+</html>

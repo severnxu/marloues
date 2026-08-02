@@ -22,7 +22,8 @@ const INSPECTOR_MIN = 319;
 const INSPECTOR_MAX = 500;
 const INSPECTOR_COLLAPSE = 220;
 const MAIN_MIN = 400;
-const INSPECTOR_AUTO_CLOSE_WIDTH = SIDEBAR_MIN + INSPECTOR_MIN + INSPECTOR_DIVIDER_WIDTH + MAIN_MIN;
+const INSPECTOR_AUTO_CLOSE_WIDTH =
+  SIDEBAR_MIN + INSPECTOR_MIN + INSPECTOR_DIVIDER_WIDTH + MAIN_MIN;
 
 export function WorkspaceLayout({
   page,
@@ -43,7 +44,11 @@ export function WorkspaceLayout({
   themeMode: ThemeMode;
   onToggleTheme: () => void;
   permissionRequest?: PermissionDialogRequest;
-  onPermissionRespond: (approved: boolean, scope?: "once" | "session", reason?: string) => void;
+  onPermissionRespond: (
+    approved: boolean,
+    scope?: "once" | "session",
+    reason?: string,
+  ) => void;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [inspectorOpen, setInspectorOpen] = useState(true);
@@ -63,7 +68,8 @@ export function WorkspaceLayout({
 
   useEffect(() => {
     const handler = (event: Event) => {
-      const detail = (event as CustomEvent).detail as { section?: SettingsSection } | undefined;
+      const detail = (event as CustomEvent).detail as
+        { section?: SettingsSection } | undefined;
       onPage("settings");
       if (detail?.section) onSettingsSection(detail.section);
     };
@@ -78,7 +84,8 @@ export function WorkspaceLayout({
   useEffect(() => {
     const check = () => {
       const width = window.innerWidth;
-      if (inspectorOpenRef.current && width < INSPECTOR_AUTO_CLOSE_WIDTH) setInspectorOpen(false);
+      if (inspectorOpenRef.current && width < INSPECTOR_AUTO_CLOSE_WIDTH)
+        setInspectorOpen(false);
       if (sidebarOpenRef.current && width < 680) setSidebarOpen(false);
     };
 
@@ -114,8 +121,15 @@ export function WorkspaceLayout({
           const frameRect = contentFrameRef.current?.getBoundingClientRect();
           const frameRight = frameRect?.right ?? window.innerWidth;
           const frameWidth = frameRect?.width ?? window.innerWidth;
-          const maxWidth = Math.max(0, frameWidth - MAIN_MIN - INSPECTOR_DIVIDER_WIDTH);
-          const nextWidth = Math.min(INSPECTOR_MAX, maxWidth, frameRight - event.clientX);
+          const maxWidth = Math.max(
+            0,
+            frameWidth - MAIN_MIN - INSPECTOR_DIVIDER_WIDTH,
+          );
+          const nextWidth = Math.min(
+            INSPECTOR_MAX,
+            maxWidth,
+            frameRight - event.clientX,
+          );
           if (nextWidth < INSPECTOR_COLLAPSE) {
             setInspectorOpen(false);
             setInspectorWidth(DEFAULT_INSPECTOR_WIDTH);
@@ -148,7 +162,10 @@ export function WorkspaceLayout({
     if (inspectorRef.current) inspectorRef.current.style.transition = "";
   };
 
-  const startResize = (target: ResizeTarget, event: React.PointerEvent<HTMLDivElement>) => {
+  const startResize = (
+    target: ResizeTarget,
+    event: React.PointerEvent<HTMLDivElement>,
+  ) => {
     event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
     resizingRef.current = target;
@@ -164,13 +181,6 @@ export function WorkspaceLayout({
     });
   };
 
-  const toggleInspector = () => {
-    setInspectorOpen((open) => {
-      if (!open) setInspectorWidth(DEFAULT_INSPECTOR_WIDTH);
-      return !open;
-    });
-  };
-
   const inspectorVisible = inspectorOpen;
   const openSettings = (section?: SettingsSection) => {
     if (section) onSettingsSection(section);
@@ -181,7 +191,9 @@ export function WorkspaceLayout({
   const sidebarVisible = sidebarOpen || settingsPage;
 
   return (
-    <div className={`app-shell ${isMacOS ? "platform-layout-macos" : "platform-layout-standard"} ${sidebarVisible ? "sidebar-expanded" : "sidebar-collapsed"}`}>
+    <div
+      className={`app-shell ${isMacOS ? "platform-layout-macos" : "platform-layout-standard"} ${sidebarVisible ? "sidebar-expanded" : "sidebar-collapsed"}`}
+    >
       {!isMacOS ? (
         <TitleBar
           sidebarOpen={sidebarVisible}
@@ -210,7 +222,9 @@ export function WorkspaceLayout({
           style={sidebarVisible ? { width: sidebarWidth } : undefined}
         />
       )}
-      <div className={`workspace ${page === "settings" ? "settings-paper-workspace" : ""}`}>
+      <div
+        className={`workspace ${page === "settings" ? "settings-paper-workspace" : ""}`}
+      >
         <div
           ref={sidebarRef}
           className={`sidebar-region ${sidebarVisible ? "open" : "closed"}`}
@@ -227,37 +241,54 @@ export function WorkspaceLayout({
             />
           </div>
         </div>
-        <main className={`main-panel ${page === "settings" ? "settings-paper-main" : ""}`}>
+        <main
+          className={`main-panel ${page === "settings" ? "settings-paper-main" : ""}`}
+        >
           <div className="content-frame" ref={contentFrameRef}>
-            {sidebarVisible && !settingsPage ? <div className="frame-resize-handle left" onPointerDown={(event) => startResize("left", event)} /> : null}
+            {sidebarVisible && !settingsPage ? (
+              <div
+                className="frame-resize-handle left"
+                onPointerDown={(event) => startResize("left", event)}
+              />
+            ) : null}
             {page === "chat" ? (
               <>
                 <div className="chat-region">
                   <WorkflowChatPage
-                    rightOpen={inspectorOpen}
-                    onToggleRight={toggleInspector}
                     leftCollapsed={isMacOS && !sidebarOpen}
                     permissionRequest={permissionRequest}
                     onPermissionRespond={onPermissionRespond}
                   />
                 </div>
                 {inspectorVisible ? (
-                  <div className="frame-resize-handle right" onPointerDown={(event) => startResize("right", event)} />
+                  <div
+                    className="frame-resize-handle right"
+                    onPointerDown={(event) => startResize("right", event)}
+                  />
                 ) : null}
                 <div
                   ref={inspectorRef}
                   className={`inspector-region ${inspectorVisible ? "open" : "closed"}`}
                   style={{ width: inspectorVisible ? inspectorWidth : 0 }}
                 >
-                  <div className="inspector-size-lock" style={{ width: inspectorWidth }}>
+                  <div
+                    className="inspector-size-lock"
+                    style={{ width: inspectorWidth }}
+                  >
                     <RightSidebar />
                   </div>
                 </div>
               </>
             ) : (
               <div className="settings-region">
-                <SettingsPage section={settingsSection} onSection={onSettingsSection} />
-                <PermissionRequestOverlay request={permissionRequest} onRespond={onPermissionRespond} />
+                <SettingsPage
+                  section={settingsSection}
+                  onSection={onSettingsSection}
+                />
+                <PermissionRequestOverlay
+                  request={permissionRequest}
+                  onRespond={onPermissionRespond}
+                />
               </div>
             )}
           </div>

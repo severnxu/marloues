@@ -1,5 +1,9 @@
 # marloues — 产品需求文档 v1
 
+## 专项 PRD
+
+- [双平台工作台外骨架 PRD](./cross-platform-workbench-shell.md)：定义 macOS/Windows 窗口框架、统一三栏布局、平台交互和验收标准。
+
 ## 目录
 
 1. [产品定义](#1-产品定义)

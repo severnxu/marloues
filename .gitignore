@@ -39,3 +39,7 @@ build/
 
 # Recordings / screenshots
 recordings/
+
+# Audit browser profiles (transient)
+.codex-*audit*/
+
