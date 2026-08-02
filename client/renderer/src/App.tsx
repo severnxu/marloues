@@ -2,24 +2,32 @@ import { useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { AuthGate } from "@/components/auth/AuthGate";
 import { OnboardingDialog } from "@/components/onboarding/OnboardingDialog";
-import { WorkspaceLayout } from "@/components/layout/WorkspaceLayout";
-import { WorkflowChatShellFixturePage, WorkflowCodexFixturePage } from "@/components/workflow-chat/WorkflowCodexFixturePage";
+import { WorkbenchRoot } from "@/components/workbench/WorkbenchRoot";
+import {
+  WorkflowChatShellFixturePage,
+  WorkflowCodexFixturePage,
+} from "@/components/workflow-chat/WorkflowCodexFixturePage";
 import type { Page, SettingsSection } from "@/components/layout/types";
 import { useThemeSync } from "@/hooks/use-theme";
 import { notify } from "@/lib/notifications";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { useUnifiedChatStore } from "@/stores/unified-chat-store";
 import { useSettingsStore } from "@/stores/settings-store";
-import { useThemeStore } from "@/stores/theme-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
-import type { AgentSettings, PermissionDialogRequest, WorkspaceSettings } from "@shared/types";
+import type {
+  AgentSettings,
+  PermissionDialogRequest,
+  WorkspaceSettings,
+} from "@shared/types";
 import type { UIEvent } from "@shared/ui-protocol";
 
 let initialConfigLogged = false;
 const runtimeInitLogKeys = new Set<string>();
 
 export default function App() {
-  const workflowFixture = new URLSearchParams(window.location.search).get("workflowFixture");
+  const workflowFixture = new URLSearchParams(window.location.search).get(
+    "workflowFixture",
+  );
   if (import.meta.env.DEV && workflowFixture === "chatShell") {
     applyCodexFixtureTheme();
     return <WorkflowChatShellFixturePage />;
@@ -65,19 +73,21 @@ function applyCodexFixtureTheme(): void {
 
 function AuthenticatedApp() {
   const [page, setPage] = useState<Page>("chat");
-  const [settingsSection, setSettingsSection] = useState<SettingsSection>("personalization");
-  const [permissionRequests, setPermissionRequests] = useState<PermissionDialogRequest[]>([]);
-  const isDark = useThemeStore((state) => state.isDark);
-  const themeMode = useThemeStore((state) => state.mode);
+  const [settingsSection, setSettingsSection] =
+    useState<SettingsSection>("personalization");
+  const [permissionRequests, setPermissionRequests] = useState<
+    PermissionDialogRequest[]
+  >([]);
   const onboardingCompleted = useOnboardingStore((state) => state.completed);
-  const toggleTheme = useThemeStore((state) => state.toggle);
   const loadSettings = useSettingsStore((state) => state.load);
   const loadWorkspace = useWorkspaceStore((state) => state.load);
   const loadChats = useUnifiedChatStore((state) => state.load);
   const activeSessionId = useUnifiedChatStore((state) => state.activeSessionId);
   const handleEvent = useUnifiedChatStore((state) => state.handleEvent);
   const handleItemEvent = useUnifiedChatStore((state) => state.handleItemEvent);
-  const handleReadThread = useUnifiedChatStore((state) => state.handleReadThread);
+  const handleReadThread = useUnifiedChatStore(
+    (state) => state.handleReadThread,
+  );
 
   useEffect(() => {
     void (async () => {
@@ -96,27 +106,50 @@ function AuthenticatedApp() {
     const unsubscribeItemEvent = window.marloues.chat.onItemEvent((event) => {
       handleItemEvent(event as Parameters<typeof handleItemEvent>[0]);
     });
-    const unsubscribeReadThread = window.marloues.chat.onReadThread((snapshot) => {
-      handleReadThread(snapshot);
-    });
-    const unsubscribePermission = window.marloues.chat.onPermissionRequest((request) => {
-      setPermissionRequests((requests) => [...requests, request]);
-    });
+    const unsubscribeReadThread = window.marloues.chat.onReadThread(
+      (snapshot) => {
+        handleReadThread(snapshot);
+      },
+    );
+    const unsubscribePermission = window.marloues.chat.onPermissionRequest(
+      (request) => {
+        setPermissionRequests((requests) => [...requests, request]);
+      },
+    );
     return () => {
       unsubscribeChat();
       unsubscribeItemEvent();
       unsubscribeReadThread();
       unsubscribePermission();
     };
-  }, [handleEvent, handleItemEvent, handleReadThread, loadChats, loadSettings, loadWorkspace]);
+  }, [
+    handleEvent,
+    handleItemEvent,
+    handleReadThread,
+    loadChats,
+    loadSettings,
+    loadWorkspace,
+  ]);
 
   const activePermissionRequest =
-    permissionRequests.find((request) => request.sessionId === activeSessionId) ??
-    permissionRequests.find((request) => !request.sessionId);
-  const respondToPermission = (approved: boolean, scope?: "once" | "session", reason?: string) => {
+    permissionRequests.find(
+      (request) => request.sessionId === activeSessionId,
+    ) ?? permissionRequests.find((request) => !request.sessionId);
+  const respondToPermission = (
+    approved: boolean,
+    scope?: "once" | "session",
+    reason?: string,
+  ) => {
     if (!activePermissionRequest) return;
-    window.marloues.chat.respondToPermission(activePermissionRequest.id, approved, scope, reason);
-    setPermissionRequests((requests) => requests.filter((request) => request.id !== activePermissionRequest.id));
+    window.marloues.chat.respondToPermission(
+      activePermissionRequest.id,
+      approved,
+      scope,
+      reason,
+    );
+    setPermissionRequests((requests) =>
+      requests.filter((request) => request.id !== activePermissionRequest.id),
+    );
   };
 
   return (
@@ -130,17 +163,14 @@ function AuthenticatedApp() {
           }}
         />
       ) : null}
-    <WorkspaceLayout
-      page={page}
-      onPage={setPage}
-      settingsSection={settingsSection}
-      onSettingsSection={setSettingsSection}
-      isDark={isDark}
-      themeMode={themeMode}
-      onToggleTheme={toggleTheme}
-      permissionRequest={activePermissionRequest}
-      onPermissionRespond={respondToPermission}
-    />
+      <WorkbenchRoot
+        page={page}
+        onPage={setPage}
+        settingsSection={settingsSection}
+        onSettingsSection={setSettingsSection}
+        permissionRequest={activePermissionRequest}
+        onPermissionRespond={respondToPermission}
+      />
     </>
   );
 }
@@ -169,17 +199,25 @@ function notifyAgentEvent(event: UIEvent): void {
   }
 }
 
-function logRendererInitialConfig(settings: AgentSettings, workspaceSettings: WorkspaceSettings): void {
+function logRendererInitialConfig(
+  settings: AgentSettings,
+  workspaceSettings: WorkspaceSettings,
+): void {
   if (initialConfigLogged) return;
   initialConfigLogged = true;
   const summary = {
     endpointProfileCount: settings.providers.length,
-    enabledEndpointProfiles: settings.providers.filter((provider) => provider.enabled).map((provider) => provider.id),
+    enabledEndpointProfiles: settings.providers
+      .filter((provider) => provider.enabled)
+      .map((provider) => provider.id),
     defaultModel: settings.defaultModel,
     mcpServerCount: settings.mcpServers.length,
-    enabledMcpServers: settings.mcpServers.filter((server) => server.enabled).map((server) => server.name),
+    enabledMcpServers: settings.mcpServers
+      .filter((server) => server.enabled)
+      .map((server) => server.name),
     allowedToolCount: settings.toolPermissionPolicy?.allowedTools?.length ?? 0,
-    disallowedToolCount: settings.toolPermissionPolicy?.disallowedTools?.length ?? 0,
+    disallowedToolCount:
+      settings.toolPermissionPolicy?.disallowedTools?.length ?? 0,
     currentWorkspaceId: workspaceSettings.currentWorkspaceId,
     workspaceCount: workspaceSettings.workspaces.length,
     workspaces: workspaceSettings.workspaces.map((workspace) => ({
@@ -206,7 +244,9 @@ function logRendererInitialConfig(settings: AgentSettings, workspaceSettings: Wo
           `  - ${server.name} enabled=${server.enabled} status=${server.lastStatus ?? "unknown"} tools=${server.tools?.join(", ") || "(none)"}`,
       ),
       "workspaces:",
-      ...workspaceSettings.workspaces.map((workspace) => `  - ${workspace.name} ${workspace.path}`),
+      ...workspaceSettings.workspaces.map(
+        (workspace) => `  - ${workspace.name} ${workspace.path}`,
+      ),
     ].join("\n"),
   );
 }
@@ -252,7 +292,9 @@ function logRendererRuntimeInit(event: UIEvent): void {
       [
         `[marloues:init] mcpStatus.details ${event.turnId}`,
         "servers:",
-        ...formatConsoleList(event.servers.map((server) => formatRuntimeServer(server))),
+        ...formatConsoleList(
+          event.servers.map((server) => formatRuntimeServer(server)),
+        ),
         "tools:",
         ...formatConsoleList(event.tools ?? []),
       ].join("\n"),
@@ -260,7 +302,10 @@ function logRendererRuntimeInit(event: UIEvent): void {
   }
 }
 
-function hasLoggedRuntimeInit(turnId: string, type: "session.info" | "mcp.status"): boolean {
+function hasLoggedRuntimeInit(
+  turnId: string,
+  type: "session.info" | "mcp.status",
+): boolean {
   const key = `${turnId}:${type}`;
   if (runtimeInitLogKeys.has(key)) return true;
   runtimeInitLogKeys.add(key);
@@ -280,6 +325,7 @@ function formatRuntimeServer(server: unknown): string {
   const record = server as Record<string, unknown>;
   const name = typeof record.name === "string" ? record.name : "(unnamed)";
   const status = typeof record.status === "string" ? record.status : "unknown";
-  const error = typeof record.error === "string" ? ` error=${record.error}` : "";
+  const error =
+    typeof record.error === "string" ? ` error=${record.error}` : "";
   return `${name} status=${status}${error}`;
 }

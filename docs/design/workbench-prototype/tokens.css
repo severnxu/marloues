@@ -1,0 +1,138 @@
+:root {
+  color-scheme: dark;
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
+  --font-mono: "SF Mono", Menlo, "Cascadia Code", Consolas, monospace;
+  /* Prototype presentation tokens never ship in the Electron Renderer. */
+  --prototype-canvas: hsl(0 0% 6%);
+  --window: hsl(0 0% 13%);
+  --sidebar: hsl(0 0% 9%);
+  --raised-1: hsl(0 0% 100% / 0.04);
+  --raised-2: hsl(0 0% 100% / 0.07);
+  --raised-3: hsl(0 0% 100% / 0.11);
+  --overlay: hsl(0 0% 0% / 0.5);
+  --popover: hsl(0 0% 16%);
+  --surface-navigation: var(--sidebar);
+  --surface-workspace: var(--window);
+  --surface-elevated: var(--raised-1);
+  --border-subtle: hsl(0 0% 100% / 0.06);
+  --border: hsl(0 0% 100% / 0.1);
+  --border-strong: hsl(0 0% 100% / 0.18);
+  --text-1: hsl(0 0% 100% / 0.92);
+  --text-2: hsl(0 0% 100% / 0.68);
+  --text-3: hsl(0 0% 100% / 0.47);
+  --accent: hsl(211 100% 62%);
+  --accent-soft: hsl(211 100% 62% / 0.14);
+  --focus-ring: hsl(211 100% 62% / 0.55);
+  --shell-divider: var(--border-subtle);
+  --shell-divider-active: var(--focus-ring);
+  --success: hsl(145 96% 37%);
+  --success-soft: hsl(145 96% 37% / 0.13);
+  --danger: hsl(1 94% 61%);
+  --danger-soft: hsl(1 94% 61% / 0.13);
+  --warning: hsl(20 100% 64%);
+  --attachment-remove-bg: hsl(0 0% 8% / 0.94);
+  --attachment-remove-fg: hsl(0 0% 100% / 0.96);
+  --primary-fill: hsl(0 0% 100% / 0.92);
+  --primary-ink: hsl(0 0% 10%);
+  --window-close: hsl(4 83% 44%);
+  --presentation-window-border: var(--border-subtle);
+  --presentation-window-shadow:
+    0 34px 80px -28px hsl(0 0% 0% / 0.78), 0 0 0 1px hsl(0 0% 0% / 0.55);
+  --shadow-popover: 0 20px 50px -18px hsl(0 0% 0% / 0.72);
+  --shadow-sidebar: 26px 0 58px -30px hsl(0 0% 0% / 0.86);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-fast: 140ms;
+  --motion-normal: 260ms;
+  --titlebar-height: 46px;
+  --shell-divider-width: 1px;
+  --resize-handle-hit-area: 12px;
+  --workspace-inline-padding: 18px;
+  --windows-caption-controls-width: 138px;
+  --windows-auxiliary-control-width: 38px;
+  --windows-auxiliary-primary-leading-safe-area: 84px;
+  --windows-auxiliary-primary-trailing-safe-area: 320px;
+  --windows-collapsed-header-safe-area: calc(
+    var(--windows-caption-controls-width) +
+      var(--windows-auxiliary-control-width) + var(--workspace-inline-padding)
+  );
+  --interaction-dock-safe-area: 160px;
+  --interaction-dock-bottom-gap: 20px;
+  --interaction-dock-fade-inset: 24px;
+  --interaction-content-gap: 8px;
+  --task-result-gap: 8px;
+  --steer-queue-inline-inset: 14px;
+  --composer-attachment-size: 54px;
+  --composer-file-attachment-width: 176px;
+  --primary-sidebar-width: 275px;
+  --auxiliary-sidebar-width: 319px;
+  --primary-sidebar-min: 275px;
+  --primary-sidebar-max: 480px;
+  --auxiliary-sidebar-min: 319px;
+  --auxiliary-sidebar-max: 500px;
+  --collapse-threshold: 220px;
+  --main-workspace-min: 400px;
+  --traffic-light-safe-area: 76px;
+  --window-leading-width: 136px;
+  --windows-leading-width: 54px;
+  --mac-auxiliary-leading-safe-area: 164px;
+  --auxiliary-content-max-width: 900px;
+  --auxiliary-content-inline-padding: 8px;
+  --control-radius: 8px;
+  --card-radius: 10px;
+  --presentation-window-radius: 12px;
+  --scrollbar-width: 10px;
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+  --prototype-canvas: hsl(60 8% 92%);
+  --window: hsl(60 11% 98%);
+  --sidebar: hsl(60 11% 96%);
+  --raised-1: hsl(0 0% 0% / 0.035);
+  --raised-2: hsl(0 0% 0% / 0.065);
+  --raised-3: hsl(0 0% 0% / 0.1);
+  --overlay: hsl(60 8% 10% / 0.22);
+  --popover: hsl(60 12% 99%);
+  --border-subtle: hsl(0 0% 0% / 0.06);
+  --border: hsl(0 0% 0% / 0.1);
+  --border-strong: hsl(0 0% 0% / 0.16);
+  --text-1: hsl(0 0% 0% / 0.88);
+  --text-2: hsl(0 0% 0% / 0.62);
+  --text-3: hsl(0 0% 0% / 0.42);
+  --accent: hsl(210 90% 42%);
+  --accent-soft: hsl(210 90% 42% / 0.11);
+  --focus-ring: hsl(210 90% 42% / 0.38);
+  --success: hsl(147 90% 28%);
+  --success-soft: hsl(147 90% 28% / 0.12);
+  --danger: hsl(1 64% 47%);
+  --danger-soft: hsl(1 64% 47% / 0.11);
+  --warning: hsl(30 100% 36%);
+  --attachment-remove-bg: hsl(0 0% 8% / 0.94);
+  --attachment-remove-fg: hsl(0 0% 100% / 0.96);
+  --primary-fill: hsl(0 0% 0% / 0.86);
+  --primary-ink: hsl(0 0% 100%);
+  --presentation-window-border: var(--border-subtle);
+  --presentation-window-shadow:
+    0 30px 72px -36px hsl(60 8% 8% / 0.42), 0 0 0 1px hsl(0 0% 100% / 0.72);
+  --shadow-popover: 0 18px 42px -24px hsl(60 8% 12% / 0.34);
+  --shadow-sidebar: 22px 0 48px -32px hsl(60 8% 12% / 0.28);
+}
+
+html[data-platform="windows"] {
+  --font-ui:
+    "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", sans-serif;
+  --font-mono: "Cascadia Code", Consolas, "Microsoft YaHei UI", monospace;
+  --traffic-light-safe-area: 0px;
+  --control-radius: 6px;
+  --card-radius: 8px;
+  --presentation-window-radius: 8px;
+  --scrollbar-width: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-normal: 0ms;
+  }
+}
