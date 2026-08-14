@@ -14781,3 +14781,45 @@ body.resizing-columns .frame-resize-handle {
     padding: 16px;
   }
 }
+
+.update-status-panel {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--settings-border);
+  border-radius: 12px;
+  background: var(--settings-field);
+}
+
+.update-status-panel > small,
+.update-status-panel > p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.update-status-panel .update-error {
+  color: var(--danger, #dc5c5c);
+}
+
+.update-progress {
+  position: relative;
+  height: 6px;
+  margin: 8px 0 20px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 16%, transparent);
+}
+
+.update-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 160ms ease;
+}
+
+.update-progress > small {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  color: var(--muted);
+}

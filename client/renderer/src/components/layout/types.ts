@@ -8,4 +8,5 @@ export type SettingsSection =
   | "skills"
   | "audit"
   | "runtime"
-  | "security";
+  | "security"
+  | "update";
