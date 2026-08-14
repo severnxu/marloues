@@ -1,5 +1,6 @@
 import { app, BrowserWindow, Menu, Tray, nativeImage, shell } from "electron";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { registerHandlers } from "./ipc/handlers";
 import { initRuntime, destroyRuntime } from "./core/runtime/manager";
 import {
@@ -10,7 +11,10 @@ import {
   logInfo,
   logWarn,
 } from "./core/logging/app-logger";
-import { isAllowedExternalUrl } from "./core/security/navigation-policy";
+import {
+  isAllowedApplicationNavigation,
+  isAllowedExternalUrl,
+} from "./core/security/navigation-policy";
 import { initAutoUpdateService } from "./services/auto-update-service";
 import { getAgentSettings } from "./services/config-service";
 import { getWorkspaceSettings } from "./services/workspace-service";
@@ -37,6 +41,10 @@ let tray: Tray | null = null;
 let isQuitting = false;
 
 function createWindow(): void {
+  const applicationUrl =
+    isDev && process.env.ELECTRON_RENDERER_URL
+      ? process.env.ELECTRON_RENDERER_URL
+      : pathToFileURL(join(__dirname, "../renderer/index.html")).toString();
   const window = new BrowserWindow({
     width: 1280,
     height: 860,
@@ -84,6 +92,13 @@ function createWindow(): void {
     return { action: "deny" };
   });
 
+  window.webContents.on("will-navigate", (event, url) => {
+    if (isAllowedApplicationNavigation(url, applicationUrl)) return;
+
+    event.preventDefault();
+    logWarn("navigation.mainFrameBlocked", { url });
+  });
+
   window.webContents.on(
     "console-message",
     (_event, level, message, line, sourceId) => {
@@ -113,7 +128,7 @@ function createWindow(): void {
   });
 
   if (isDev && process.env.ELECTRON_RENDERER_URL) {
-    void window.loadURL(process.env.ELECTRON_RENDERER_URL);
+    void window.loadURL(applicationUrl);
   } else {
     void window.loadFile(join(__dirname, "../renderer/index.html"));
   }
