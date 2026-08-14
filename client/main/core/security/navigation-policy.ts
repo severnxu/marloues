@@ -1,4 +1,10 @@
-const ALLOWED_INTERNAL_SUFFIXES = [".internal", ".intranet", ".corp", ".lan", ".local"];
+const ALLOWED_INTERNAL_SUFFIXES = [
+  ".internal",
+  ".intranet",
+  ".corp",
+  ".lan",
+  ".local",
+];
 
 export function isAllowedExternalUrl(rawUrl: string): boolean {
   let url: URL;
@@ -8,7 +14,6 @@ export function isAllowedExternalUrl(rawUrl: string): boolean {
     return false;
   }
 
-  if (url.protocol === "file:") return true;
   if (url.protocol !== "http:" && url.protocol !== "https:") return false;
 
   const hostname = normalizeHostname(url.hostname);
@@ -18,6 +23,34 @@ export function isAllowedExternalUrl(rawUrl: string): boolean {
   if (hostname.includes(":")) return isPrivateIpv6(hostname);
   if (!hostname.includes(".")) return true;
   return ALLOWED_INTERNAL_SUFFIXES.some((suffix) => hostname.endsWith(suffix));
+}
+
+export function isAllowedApplicationNavigation(
+  rawUrl: string,
+  applicationUrl: string,
+): boolean {
+  let target: URL;
+  let application: URL;
+  try {
+    target = new URL(rawUrl);
+    application = new URL(applicationUrl);
+  } catch {
+    return false;
+  }
+
+  if (application.protocol === "file:") {
+    return (
+      target.protocol === "file:" &&
+      target.host === application.host &&
+      target.pathname === application.pathname
+    );
+  }
+
+  if (application.protocol !== "http:" && application.protocol !== "https:") {
+    return false;
+  }
+
+  return target.origin === application.origin;
 }
 
 function normalizeHostname(hostname: string): string {
@@ -34,7 +67,11 @@ function isPrivateIpv4(hostname: string): boolean {
   const octets = parts.map((part) => Number(part));
   if (
     octets.some(
-      (octet, index) => !Number.isInteger(octet) || octet < 0 || octet > 255 || String(octet) !== parts[index],
+      (octet, index) =>
+        !Number.isInteger(octet) ||
+        octet < 0 ||
+        octet > 255 ||
+        String(octet) !== parts[index],
     )
   )
     return false;
@@ -49,5 +86,10 @@ function isPrivateIpv4(hostname: string): boolean {
 }
 
 function isPrivateIpv6(hostname: string): boolean {
-  return hostname === "::1" || hostname.startsWith("fc") || hostname.startsWith("fd") || hostname.startsWith("fe80:");
+  return (
+    hostname === "::1" ||
+    hostname.startsWith("fc") ||
+    hostname.startsWith("fd") ||
+    hostname.startsWith("fe80:")
+  );
 }
