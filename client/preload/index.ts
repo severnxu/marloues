@@ -10,6 +10,7 @@ import type {
   MarlouesAPI,
   PermissionDialogRequest,
 } from "@shared/types";
+import type { UpdateState } from "@shared/hot-update";
 import { IPC } from "@shared/types";
 import type { UIEvent } from "@shared/ui-protocol";
 
@@ -31,7 +32,27 @@ const api: MarlouesAPI = {
   app: {
     platform: process.platform,
     getVersion: () => ipcRenderer.invoke(IPC.APP_GET_VERSION),
+    getVersionInfo: () => ipcRenderer.invoke(IPC.APP_GET_VERSION_INFO),
+    markRendererReady: (info) =>
+      ipcRenderer.invoke(IPC.APP_RENDERER_READY, info),
     exportDiagnostics: () => ipcRenderer.invoke(IPC.APP_EXPORT_DIAGNOSTICS),
+  },
+  update: {
+    getState: () => ipcRenderer.invoke(IPC.UPDATE_GET_STATE),
+    getPreferences: () => ipcRenderer.invoke(IPC.UPDATE_GET_PREFERENCES),
+    savePreferences: (preferences) =>
+      ipcRenderer.invoke(IPC.UPDATE_SAVE_PREFERENCES, preferences),
+    check: () => ipcRenderer.invoke(IPC.UPDATE_CHECK),
+    download: () => ipcRenderer.invoke(IPC.UPDATE_DOWNLOAD),
+    installNow: () => ipcRenderer.invoke(IPC.UPDATE_INSTALL_NOW),
+    onState: (callback: (state: UpdateState) => void) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        state: UpdateState,
+      ) => callback(state);
+      ipcRenderer.on(IPC.UPDATE_STATE, listener);
+      return () => ipcRenderer.off(IPC.UPDATE_STATE, listener);
+    },
   },
   window: {
     minimize: () => ipcRenderer.send(IPC.WINDOW_MINIMIZE),

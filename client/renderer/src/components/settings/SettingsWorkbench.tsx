@@ -30,6 +30,7 @@ import {
   SkillsSettings,
 } from "@/components/settings/sections/SkillAuditRuntimeSettings";
 import { SecuritySettings } from "@/components/settings/sections/SecuritySettings";
+import { UpdateSettings } from "@/components/settings/sections/UpdateSettings";
 import {
   EmptySettingsState,
   SettingsCard,
@@ -2212,6 +2213,7 @@ export function SettingsWorkbench({
               }}
             />
           ) : null}
+          {section === "update" ? <UpdateSettings /> : null}
         </div>
       </div>
     </section>

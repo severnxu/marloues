@@ -1,0 +1,91 @@
+name: Build signed UI hot-update feed
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Update channel
+        type: choice
+        required: true
+        default: stable
+        options:
+          - stable
+          - beta
+          - nightly
+      release_notes:
+        description: User-facing release notes
+        type: string
+        required: true
+      min_client:
+        description: Minimum compatible client version (defaults to package version)
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-feed:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Validate release configuration
+        shell: bash
+        env:
+          KEY_ID: ${{ vars.MARLOUES_HOT_UPDATE_KEY_ID }}
+          UPDATE_URL: ${{ vars.MARLOUES_HOT_UPDATE_URL }}
+          PRIVATE_KEY: ${{ secrets.MARLOUES_HOT_UPDATE_PRIVATE_KEY }}
+        run: |
+          test -n "$KEY_ID"
+          test -n "$UPDATE_URL"
+          test -n "$PRIVATE_KEY"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build renderer
+        run: npm run build
+        env:
+          MARLOUES_BUILD_ENV: production
+          MARLOUES_HOT_UPDATE_URL: ${{ vars.MARLOUES_HOT_UPDATE_URL }}
+          MARLOUES_REQUIRE_HOT_UPDATE: "1"
+
+      - name: Materialize signing key
+        shell: bash
+        env:
+          PRIVATE_KEY: ${{ secrets.MARLOUES_HOT_UPDATE_PRIVATE_KEY }}
+        run: printf '%s\n' "$PRIVATE_KEY" > "$RUNNER_TEMP/marloues-hot-update-private.pem"
+
+      - name: Build signed feed
+        shell: bash
+        env:
+          KEY_ID: ${{ vars.MARLOUES_HOT_UPDATE_KEY_ID }}
+          CHANNEL: ${{ inputs.channel }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          MIN_CLIENT: ${{ inputs.min_client }}
+        run: |
+          args=(--channel "$CHANNEL" --key-id "$KEY_ID" --private-key "$RUNNER_TEMP/marloues-hot-update-private.pem" --notes "$RELEASE_NOTES")
+          if [ -n "$MIN_CLIENT" ]; then args+=(--min-client "$MIN_CLIENT"); fi
+          npm run publish:hot -- "${args[@]}"
+
+      - name: Verify signed feed
+        env:
+          CHANNEL: ${{ inputs.channel }}
+        run: npm run verify:hot -- --channel "$CHANNEL"
+
+      - name: Upload feed for HTTPS deployment
+        uses: actions/upload-artifact@v7
+        with:
+          name: marloues-ui-${{ inputs.channel }}-${{ github.run_id }}
+          path: client/release/hot/${{ inputs.channel }}
+          if-no-files-found: error
+          retention-days: 14

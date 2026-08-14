@@ -1,6 +1,5 @@
 import { app, BrowserWindow, Menu, Tray, nativeImage, shell } from "electron";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { registerHandlers } from "./ipc/handlers";
 import { initRuntime, destroyRuntime } from "./core/runtime/manager";
 import {
@@ -26,6 +25,11 @@ import {
   getSettingsPath,
 } from "./app-paths";
 import { IPC } from "../shared/types";
+import {
+  getRendererApplicationUrl,
+  handleRendererLoadFailure,
+  loadSelectedRenderer,
+} from "./hot-update/renderer-controller";
 
 const isTest = process.env.NODE_ENV === "test";
 const gotSingleInstanceLock = isTest || app.requestSingleInstanceLock();
@@ -41,10 +45,7 @@ let tray: Tray | null = null;
 let isQuitting = false;
 
 function createWindow(): void {
-  const applicationUrl =
-    isDev && process.env.ELECTRON_RENDERER_URL
-      ? process.env.ELECTRON_RENDERER_URL
-      : pathToFileURL(join(__dirname, "../renderer/index.html")).toString();
+  const applicationUrl = getRendererApplicationUrl();
   const window = new BrowserWindow({
     width: 1280,
     height: 860,
@@ -93,7 +94,8 @@ function createWindow(): void {
   });
 
   window.webContents.on("will-navigate", (event, url) => {
-    if (isAllowedApplicationNavigation(url, applicationUrl)) return;
+    if (isAllowedApplicationNavigation(url, getRendererApplicationUrl()))
+      return;
 
     event.preventDefault();
     logWarn("navigation.mainFrameBlocked", { url });
@@ -111,12 +113,13 @@ function createWindow(): void {
 
   window.webContents.on(
     "did-fail-load",
-    (_event, errorCode, errorDescription, validatedURL) => {
+    (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
       logConsole("error", "renderer", "did-fail-load", {
         errorCode,
         errorDescription,
         validatedURL,
       });
+      if (isMainFrame) handleRendererLoadFailure(window);
     },
   );
 
@@ -130,7 +133,9 @@ function createWindow(): void {
   if (isDev && process.env.ELECTRON_RENDERER_URL) {
     void window.loadURL(applicationUrl);
   } else {
-    void window.loadFile(join(__dirname, "../renderer/index.html"));
+    void loadSelectedRenderer(window).catch((error) => {
+      logError("renderer.loadFailed", error);
+    });
   }
 
   if (!isMacOS) ensureTray();

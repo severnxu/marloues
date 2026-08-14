@@ -11,6 +11,7 @@ site/.astro/
 # Environment variables
 .env.local
 .env.*.local
+client/keys/
 
 # IDE
 .vscode/
@@ -42,4 +43,3 @@ recordings/
 
 # Audit browser profiles (transient)
 .codex-*audit*/
-
