@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { SECRET_ENCRYPTION_UNAVAILABLE_CODE } from "../../client/shared/types";
 
 vi.mock("electron", () => ({ app: undefined }));
 
@@ -48,5 +49,21 @@ describe("config-service", () => {
     const path = getSettingsPath();
     expect(path.startsWith(home)).toBe(true);
     expect(path.endsWith("settings.json")).toBe(true);
+  });
+
+  it("propagates encryption failures without overwriting the existing config", async () => {
+    const { getAgentSettings, saveAgentSettings } = await loadConfigService();
+    const { getSettingsPath } = await import("../../client/main/app-paths");
+    const before = getAgentSettings();
+    saveAgentSettings(before);
+    const diskBefore = readFileSync(getSettingsPath(), "utf8");
+    const providers = before.providers.map((provider, index) =>
+      index === 0 ? { ...provider, apiKey: "sk-must-not-fall-back" } : provider,
+    );
+
+    expect(() => saveAgentSettings({ ...before, providers })).toThrow(
+      new RegExp(SECRET_ENCRYPTION_UNAVAILABLE_CODE),
+    );
+    expect(readFileSync(getSettingsPath(), "utf8")).toBe(diskBefore);
   });
 });
