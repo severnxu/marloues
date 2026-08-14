@@ -167,6 +167,7 @@ function writeStore(store: StoreShape): void {
       settingsPath,
       error: error instanceof Error ? error.message : String(error),
     });
+    throw error;
   }
 }
 

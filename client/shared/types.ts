@@ -1,4 +1,19 @@
 import type { WorkflowReadThreadResponse } from "./workflow-read-thread-contract";
+
+/** Stable code for failures that would otherwise persist an API key without OS-backed encryption. */
+export const SECRET_ENCRYPTION_UNAVAILABLE_CODE = "SECRET_ENCRYPTION_UNAVAILABLE";
+
+/** Recognizes the error after Electron has serialized it across IPC. */
+export function isSecretEncryptionUnavailableError(error: unknown): boolean {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : "";
+  return message.includes(SECRET_ENCRYPTION_UNAVAILABLE_CODE);
+}
+
 export interface WorkspaceInfo {
   id: string;
   name: string;
