@@ -6,12 +6,12 @@ Multi-kernel Agent desktop workspace —— 多内核 Agent 桌面工作台。
 
 ## 为什么是多内核
 
-| 内核 | 实现 | 定位 |
-| --- | --- | --- |
-| **SDK Runtime** | Claude Agent SDK | 厂商 SDK，合规友好、企业交付 |
-| **Binary Runtime** | 外部 Agent 二进制（Bundled Codex / PATH 中的 codex） | 复用最强的现成 Agent 能力 |
-| **Self-built Runtime** | 自建 agent loop | 最高可控性与可审计性，支持注册自定义工具 |
-| **协议网关 Gateway** | 本机 HTTP 网关 | anthropic ↔ openai-chat ↔ responses 协议翻译，任意模型接入 |
+| 内核                   | 实现                                                 | 定位                                                       |
+| ---------------------- | ---------------------------------------------------- | ---------------------------------------------------------- |
+| **SDK Runtime**        | Claude Agent SDK                                     | 厂商 SDK，合规友好、企业交付                               |
+| **Binary Runtime**     | 外部 Agent 二进制（Bundled Codex / PATH 中的 codex） | 复用最强的现成 Agent 能力                                  |
+| **Self-built Runtime** | 自建 agent loop                                      | 最高可控性与可审计性，支持注册自定义工具                   |
+| **协议网关 Gateway**   | 本机 HTTP 网关                                       | anthropic ↔ openai-chat ↔ responses 协议翻译，任意模型接入 |
 
 统一 `AgentRuntime` SPI + `RuntimeCapabilities` 能力矩阵，UI 按内核能力渲染，而不是假设所有内核行为一致。
 
@@ -47,11 +47,11 @@ npm run release      # 构建 + electron-builder 发布
 
 ```bash
 npm run typecheck        # node + web 双 tsconfig
-npm run test:unit        # vitest 单测
-npm run test:runtime     # runtime 契约测试（tsx）
-npm run test:redaction-rules  # 脱敏规则测试
-npm run test:runtime:smoke
+npm run test:unit        # Vitest 单元测试
+npm run test:contract    # Runtime + 企业脱敏规则契约测试
+npm run test:smoke:runtime
 npm run test:e2e         # Playwright critical 项目（构建后）
+npm run test:visual      # 工作流视觉检查
 npm run lint
 ```
 

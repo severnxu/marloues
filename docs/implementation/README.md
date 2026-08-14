@@ -27,9 +27,9 @@
 | 模型选择                 | ✅ 完成                       | `runtime:list-models` + `runtime:set-model` + ModelSelector                  |
 | MCP probe                | ✅ 完成                       | `client/main/services/mcp-probe.ts`（stdio/http/sse）                        |
 | Token 用量               | ✅ 完成                       | Runtime 契约 + UI badge + StatusBar                                          |
-| 单元测试                 | ✅ 完成                       | vitest，12 文件 / 96 用例全绿（`tests/unit/`）                               |
-| 契约测试                 | ✅ 完成                       | `client/scripts/test-runtime-contract.ts`（含 MCP stdio tools/call 修复）    |
-| 脱敏规则测试             | ✅ 完成                       | `client/scripts/test-redaction-rules.ts`，12 项断言                          |
+| 单元测试                 | ✅ 完成                       | Vitest，21 文件 / 153 用例全绿（`tests/unit/`）                              |
+| 契约测试                 | ✅ 完成                       | `tests/contract/runtime.contract.ts`（含 MCP stdio tools/call 修复）         |
+| 脱敏规则测试             | ✅ 完成                       | `tests/contract/redaction-rules.contract.ts`，12 项断言                      |
 | E2E 冒烟                 | ✅ 完成（需显示环境）         | 源码构建与 packaged app 共用 2 个关键用例                                    |
 | CI/CD                    | ✅ 就绪（待 GitHub 首次运行） | `.github/workflows/`（GitHub Actions）+ `.husky/` 本地质量门                 |
 | 自动更新                 | ✅ 完成                       | electron-updater + auto-update service                                       |
@@ -38,16 +38,15 @@
 
 ## 测试矩阵（2026-08 实测，Node 22.22.2）
 
-| 命令（仓库根目录）             | 内容                    | 结果                             | CI 可跑    |
-| ------------------------------ | ----------------------- | -------------------------------- | ---------- |
-| `npm test`                     | vitest 单元测试         | 12 文件 / 96 用例 ✓              | ✅         |
-| `npm run test:redaction-rules` | 企业脱敏规则            | 12 项断言 ✓                      | ✅         |
-| `npm run test:runtime`         | Runtime SPI 契约        | ✓（含 HTTP/SSE/stdio MCP probe） | ✅         |
-| `npm run test:runtime:smoke`   | 真实 DeepSeek API 冒烟  | 需真实 Key 与网络                | ❌         |
-| `npm run test:e2e`             | Electron 冒烟（2 用例） | 2/2 ✓                            | ✅（xvfb） |
-| `npm run package:smoke`        | unpacked 应用打包后冒烟 | 2/2 ✓（Windows）                 | ✅（xvfb） |
-| `npm run typecheck`            | node + web 双 tsconfig  | 零错误 ✓                         | ✅         |
-| `npm run build`                | electron-vite 构建      | ✓                                | ✅         |
+| 命令（仓库根目录）           | 内容                    | 结果                     | CI 可跑    |
+| ---------------------------- | ----------------------- | ------------------------ | ---------- |
+| `npm test`                   | Vitest 单元测试         | 21 文件 / 153 用例 ✓     | ✅         |
+| `npm run test:contract`      | 全部离线契约测试        | Runtime + 企业脱敏规则 ✓ | ✅         |
+| `npm run test:smoke:runtime` | 真实 DeepSeek API 冒烟  | 需真实 Key 与网络        | ❌         |
+| `npm run test:e2e`           | Electron 冒烟（2 用例） | 2/2 ✓                    | ✅（xvfb） |
+| `npm run package:smoke`      | unpacked 应用打包后冒烟 | 2/2 ✓（Windows）         | ✅（xvfb） |
+| `npm run typecheck`          | node + web 双 tsconfig  | 零错误 ✓                 | ✅         |
+| `npm run build`              | electron-vite 构建      | ✓                        | ✅         |
 
 本地质量门（husky）：
 

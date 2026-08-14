@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const clientRoot = join(here, "..");
+const clientRoot = join(here, "..", "..", "client");
 const executable = packagedExecutable(clientRoot);
 
 if (!existsSync(executable)) {
@@ -13,7 +13,7 @@ if (!existsSync(executable)) {
   process.exit(2);
 }
 
-const require = createRequire(import.meta.url);
+const require = createRequire(join(clientRoot, "package.json"));
 const playwrightCli = require.resolve("@playwright/test/cli");
 const result = spawnSync(
   process.execPath,

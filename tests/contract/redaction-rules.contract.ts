@@ -13,7 +13,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { RedactionRule } from "../shared/types";
+import type { RedactionRule } from "../../client/shared/types";
 
 let exitCode = 0;
 
@@ -30,7 +30,7 @@ async function main(): Promise<void> {
   console.log("redaction rules — module layer");
   {
     const { setRedactionRules, redactSensitiveText, redactSensitiveValue } =
-      await import("../main/core/security/redaction");
+      await import("../../client/main/core/security/redaction");
 
     // Start from a clean state.
     setRedactionRules(undefined);
@@ -153,9 +153,9 @@ async function main(): Promise<void> {
 
     // Dynamic import after env is set so app-paths resolves to the temp home.
     const { getAgentSettings } =
-      await import("../main/services/config-service");
+      await import("../../client/main/services/config-service");
     const { redactSensitiveText } =
-      await import("../main/core/security/redaction");
+      await import("../../client/main/core/security/redaction");
 
     // Reading settings triggers applyEnterprisePolicy, which injects the rules.
     const settings = getAgentSettings();

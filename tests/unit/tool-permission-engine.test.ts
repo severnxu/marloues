@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   evaluateToolPermission,
   matchesRule,
-  type ToolPermissionInput,
 } from "../../client/main/core/permissions/tool-permission-engine";
 import type { ToolPermissionPolicy } from "@shared/types";
 
@@ -17,7 +16,10 @@ describe("tool-permission-engine", () => {
   });
 
   it("asks for sensitive tools by default", () => {
-    const decision = evaluateToolPermission({ toolName: "Bash", input: { command: "rm -rf /" } });
+    const decision = evaluateToolPermission({
+      toolName: "Bash",
+      input: { command: "rm -rf /" },
+    });
     expect(decision.action).toBe("ask");
     expect(decision.reason).toContain("Sensitive");
   });
@@ -54,27 +56,42 @@ describe("tool-permission-engine", () => {
   });
 
   it("bypass mode allows everything", () => {
-    const decision = evaluateToolPermission({ toolName: "Bash", permissionMode: "bypass" });
+    const decision = evaluateToolPermission({
+      toolName: "Bash",
+      permissionMode: "bypass",
+    });
     expect(decision.action).toBe("allow");
   });
 
   it("plan mode denies tool execution", () => {
-    const decision = evaluateToolPermission({ toolName: "Bash", permissionMode: "plan" });
+    const decision = evaluateToolPermission({
+      toolName: "Bash",
+      permissionMode: "plan",
+    });
     expect(decision.action).toBe("deny");
   });
 
   it("acceptEdits allows edit tools", () => {
-    const decision = evaluateToolPermission({ toolName: "Edit", permissionMode: "acceptEdits" });
+    const decision = evaluateToolPermission({
+      toolName: "Edit",
+      permissionMode: "acceptEdits",
+    });
     expect(decision.action).toBe("allow");
   });
 
   it("disallowedTools are denied", () => {
-    const decision = evaluateToolPermission({ toolName: "Bash", policy: { disallowedTools: ["Bash"] } });
+    const decision = evaluateToolPermission({
+      toolName: "Bash",
+      policy: { disallowedTools: ["Bash"] },
+    });
     expect(decision.action).toBe("deny");
   });
 
   it("allowedTools permit matching tools", () => {
-    const decision = evaluateToolPermission({ toolName: "WebSearch", policy: { allowedTools: ["WebSearch"] } });
+    const decision = evaluateToolPermission({
+      toolName: "WebSearch",
+      policy: { allowedTools: ["WebSearch"] },
+    });
     expect(decision.action).toBe("allow");
   });
 
@@ -98,7 +115,11 @@ describe("tool-permission-engine", () => {
   });
 
   it("matchesRule matches file_path arguments for edit tools", () => {
-    expect(matchesRule("Edit(**/*.md)", "Edit", { file_path: "src/a.md" })).toBe(true);
-    expect(matchesRule("Edit(**/*.md)", "Edit", { file_path: "src/a.ts" })).toBe(false);
+    expect(
+      matchesRule("Edit(**/*.md)", "Edit", { file_path: "src/a.md" }),
+    ).toBe(true);
+    expect(
+      matchesRule("Edit(**/*.md)", "Edit", { file_path: "src/a.ts" }),
+    ).toBe(false);
   });
 });

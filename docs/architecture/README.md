@@ -476,22 +476,21 @@ npm run typecheck  # TypeScript 类型检查
 - ✅ 企业安全 — 网络白名单、敏感信息脱敏、审计日志
 - ✅ HTTP Gateway — 协议转换 (Anthropic ↔ OpenAI Chat)，8080 端口
 - ✅ CI/CD — GitHub Actions（`.github/workflows/`）+ husky 本地质量门，待 GitHub 首次运行验证
-- ✅ 单元测试 — 12 个文件，96 个测试，全部通过（`tests/unit/`，2026-08 重建）
+- ✅ 单元测试 — 21 个文件，153 个测试，全部通过（`tests/unit/`，2026-08 重建）
 - ✅ TypeScript 类型检查 — node + web 双 tsconfig，零错误
 - ✅ E2E 冒烟 — 源码构建与 packaged app 均通过 2 个关键用例（应用启动 + 设置页）
 - ✅ 契约测试 — Runtime SPI 契约验证（Self-built + SDK），覆盖 tool / approval / interrupt / edit / MCP
 
 ### 7.2 测试结果 (2026-08)
 
-| 测试类型     | 命令                         | 结果                                   |
-| ------------ | ---------------------------- | -------------------------------------- |
-| 单元测试     | npm test                     | 12 文件 / 96 测试 ✓                    |
-| 脱敏规则     | npm run test:redaction-rules | 12 项断言 ✓                            |
-| 类型检查     | npm run typecheck            | node + web 零错误 ✓                    |
-| Runtime 契约 | npm run test:runtime         | ✓（HTTP / SSE / stdio MCP probe 全过） |
-| E2E          | npm run test:e2e             | 2 个用例，需 Electron 显示环境         |
-| 打包冒烟     | npm run package:smoke        | Windows unpacked app 2 个用例 ✓        |
-| 冒烟         | npm run test:runtime:smoke   | 需真实 API Key 与网络，CI 不跑         |
+| 测试类型     | 命令                       | 结果                            |
+| ------------ | -------------------------- | ------------------------------- |
+| 单元测试     | npm test                   | 21 文件 / 153 测试 ✓            |
+| 离线契约     | npm run test:contract      | Runtime + 企业脱敏规则 ✓        |
+| 类型检查     | npm run typecheck          | node + web 零错误 ✓             |
+| E2E          | npm run test:e2e           | 2 个用例，需 Electron 显示环境  |
+| 打包冒烟     | npm run package:smoke      | Windows unpacked app 2 个用例 ✓ |
+| Runtime 冒烟 | npm run test:smoke:runtime | 需真实 API Key 与网络，CI 不跑  |
 
 ### 7.3 已知问题
 
