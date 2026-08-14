@@ -1,8 +1,8 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { PlatformWindow } from "./PlatformWindow";
-import { PrimarySidebarShell } from "./WorkbenchRegions";
+import { PlatformWindow } from "@/components/workbench/PlatformWindow";
+import { PrimarySidebarShell } from "@/components/workbench/WorkbenchRegions";
 
 describe("primary sidebar Peek layout contract", () => {
   it("keeps the collapsed shell width stable while only changing Peek state", () => {

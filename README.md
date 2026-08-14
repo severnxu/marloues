@@ -11,11 +11,15 @@ client/                 # 主应用（npm 包根）
   preload/              #   预加载桥
   renderer/             #   渲染进程（React + Tailwind）：chat / sidebar / settings / onboarding
   shared/               #   跨进程共享：契约、归一化、工作区路径工具
-  scripts/              #   契约测试 / 脱敏规则测试 / 真实 API 冒烟
+  scripts/              #   构建、发布和开发辅助工具
   out/                  #   构建产物（electron-vite，gitignore）
 tests/                  # 测试套件
-  unit/                 #   vitest 单元测试（12 文件 / 93 用例）
+  unit/                 #   Vitest 单元测试
+  contract/             #   Runtime、企业策略等跨模块契约测试
+  smoke/                #   真实 API 与打包产物冒烟测试
   e2e/                  #   Playwright Electron 冒烟（2 用例）
+  visual/               #   工作流页面视觉回归检查
+  README.md             #   测试目录、命名及运行约定
 docs/                   # 设计文档：prd/（需求）architecture/（技术）implementation/（进度）
 .github/workflows/       # GitHub Actions（CI + 三平台 release）
 .husky/                 # 本地质量门（pre-commit / pre-push）
@@ -31,9 +35,9 @@ npm run dev                      # 开发模式（electron-vite dev）
 
 npm run lint                    # ESLint（零 warning）
 npm run typecheck               # node + web 双 tsconfig 类型检查
-npm test                        # vitest 单元测试（12 文件 / 96 用例）
-npm run test:redaction-rules    # 企业脱敏规则测试
-npm run test:runtime            # Runtime SPI 契约测试（含 MCP stdio/http/sse probe）
+npm run test:layout             # 测试目录规范检查
+npm test                        # Vitest 单元测试（当前 21 文件 / 153 用例）
+npm run test:contract           # 全部离线契约测试
 npm run build                   # 生产构建
 npm run test:e2e                # Playwright Electron 冒烟（需显示环境）
 npm run package:smoke           # 生成 unpacked 应用并直接对打包程序跑 E2E
@@ -42,8 +46,8 @@ npm run verify                  # 本地完整质量门（不含 E2E/package）
 
 冒烟测试说明：
 
-- `npm --prefix client run test:runtime:smoke` 需要**真实 DeepSeek API Key 与网络**（CI 不跑）；
-  首次运行可用 `DEEPSEEK_API_KEY=sk-xxx npx tsx client/scripts/test-runtime-smoke.ts --bootstrap` 自动生成最小配置，
+- `npm run test:smoke:runtime` 需要**真实 DeepSeek API Key 与网络**（CI 不跑）；
+  首次运行可用 `DEEPSEEK_API_KEY=sk-xxx npm run test:smoke:runtime -- --bootstrap` 自动生成最小配置，
   无配置时脚本会给出中文指引（退出码 2）。
 - `npm run test:e2e` 和 `npm run package:smoke` 需要显示环境（Windows 本机可直接跑）；CI 使用 xvfb。
 

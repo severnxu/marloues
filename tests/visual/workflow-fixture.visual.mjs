@@ -1,10 +1,16 @@
 import { existsSync, mkdirSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { createRequire } from 'node:module'
+import { dirname, join, resolve } from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
 import { setTimeout as delay } from 'node:timers/promises'
-import { chromium } from '@playwright/test'
+import { fileURLToPath } from 'node:url'
 
-const root = process.cwd()
+const here = dirname(fileURLToPath(import.meta.url))
+const root = resolve(here, '..', '..', 'client')
+const require = createRequire(join(root, 'package.json'))
+const { chromium } = require('@playwright/test')
+const viteCli = resolve(dirname(require.resolve('vite/package.json')), 'bin', 'vite.js')
+const tsxCli = require.resolve('tsx/cli')
 const port = Number(process.env.MARLOUES_FIXTURE_PORT || 5187)
 const fixtureState = process.env.MARLOUES_FIXTURE_STATE || 'completed'
 const fixtureSurface = process.env.MARLOUES_FIXTURE_SURFACE || 'turn'
@@ -24,7 +30,7 @@ const latestCodexReadThread = fixtureData === 'latestCodexReadThread'
 if (!existsSync(outputDir)) mkdirSync(outputDir, { recursive: true })
 
 const server = spawn(process.execPath, [
-  resolve(root, 'node_modules', 'vite', 'bin', 'vite.js'),
+  viteCli,
   '--config',
   resolve(root, 'vite.renderer.config.ts'),
   '--host',
@@ -304,7 +310,7 @@ function parseCssPx(value) {
 
 function loadLatestCodexReadThread() {
   const result = spawnSync(process.execPath, [
-    resolve(root, 'node_modules', 'tsx', 'dist', 'cli.mjs'),
+    tsxCli,
     resolve(root, 'scripts', 'export-latest-codex-read-thread.ts'),
   ], {
     cwd: root,

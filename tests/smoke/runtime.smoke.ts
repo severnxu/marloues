@@ -5,8 +5,8 @@
  * 证明不是蹭 Claude Code 的已有配置。
  *
  * 用法：
- *   npx tsx scripts/test-runtime-smoke.ts
- *   DEEPSEEK_API_KEY=sk-xxx npx tsx scripts/test-runtime-smoke.ts --bootstrap
+ *   npm run test:smoke:runtime
+ *   DEEPSEEK_API_KEY=sk-xxx npm run test:smoke:runtime -- --bootstrap
  *
  * 说明：
  *   - 需要真实 API Key 与网络，CI 中不会运行；
@@ -14,11 +14,11 @@
  *     先启动一次应用，或带 --bootstrap 用环境变量生成最小配置。
  */
 
-import { queryClaude } from "../main/core/sdk/claude-sdk";
+import { queryClaude } from "../../client/main/core/sdk/claude-sdk";
 import { renameSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { getSettingsPath } from "../main/app-paths";
+import { getSettingsPath } from "../../client/main/app-paths";
 
 const wantsBootstrap = process.argv.includes("--bootstrap");
 
@@ -47,13 +47,14 @@ async function prepare(): Promise<void> {
       "   首次使用请先启动一次应用（npm run dev）自动生成，或运行：",
     );
     console.error(
-      "     DEEPSEEK_API_KEY=sk-xxx npx tsx scripts/test-runtime-smoke.ts --bootstrap",
+      "     DEEPSEEK_API_KEY=sk-xxx npm run test:smoke:runtime -- --bootstrap",
     );
     console.error("   冒烟测试需要真实 API Key 与网络，CI 中不会运行。");
     process.exit(2);
   }
 
-  const { getAgentSettings } = await import("../main/services/config-service");
+  const { getAgentSettings } =
+    await import("../../client/main/services/config-service");
   const agentSettings = getAgentSettings();
 
   provider = agentSettings.providers?.find(
@@ -66,7 +67,7 @@ async function prepare(): Promise<void> {
     );
     console.error("   可在应用设置中添加 DeepSeek 端点，或运行：");
     console.error(
-      "     DEEPSEEK_API_KEY=sk-xxx npx tsx scripts/test-runtime-smoke.ts --bootstrap",
+      "     DEEPSEEK_API_KEY=sk-xxx npm run test:smoke:runtime -- --bootstrap",
     );
     process.exit(2);
   }
@@ -87,7 +88,7 @@ async function bootstrapConfig(): Promise<void> {
   if (!apiKey) {
     console.error("❌ --bootstrap 需要 API Key 环境变量：");
     console.error(
-      "   DEEPSEEK_API_KEY=sk-xxx npx tsx scripts/test-runtime-smoke.ts --bootstrap",
+      "   DEEPSEEK_API_KEY=sk-xxx npm run test:smoke:runtime -- --bootstrap",
     );
     process.exit(2);
   }
@@ -96,7 +97,7 @@ async function bootstrapConfig(): Promise<void> {
     process.env.DEEPSEEK_BASE_URL?.trim() || "https://api.deepseek.com";
   const modelId = process.env.DEEPSEEK_MODEL?.trim() || "deepseek-chat";
   const { getAgentSettings, saveAgentSettings } =
-    await import("../main/services/config-service");
+    await import("../../client/main/services/config-service");
   saveAgentSettings({
     ...getAgentSettings(),
     activeRuntimeId: "sdk",

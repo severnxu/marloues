@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { RuntimeEvent } from "../shared/agent-runtime";
+import type { RuntimeEvent } from "../../client/shared/agent-runtime";
 
 process.env.MARLOUES_HOME = mkdtempSync(
   join(tmpdir(), "marloues-runtime-contract-"),
@@ -12,20 +12,21 @@ let cleanupRemoteMcpServer: (() => Promise<void>) | undefined;
 
 async function main(): Promise<void> {
   const { getAgentSettings, saveAgentSettings } =
-    await import("../main/services/config-service");
+    await import("../../client/main/services/config-service");
   const { setClaudeQueryOverrideForTests } =
-    await import("../main/core/sdk/claude-sdk");
+    await import("../../client/main/core/sdk/claude-sdk");
   const { listEndpointModels, testEndpointModel, testEndpointProfile } =
-    await import("../main/services/endpoint-models");
-  const { probeMcpServer } = await import("../main/services/mcp-probe");
+    await import("../../client/main/services/endpoint-models");
+  const { probeMcpServer } =
+    await import("../../client/main/services/mcp-probe");
   const {
     destroyRuntime,
     getRuntime,
     getRuntimeState,
     initRuntime,
     switchRuntime,
-  } = await import("../main/core/runtime/manager");
-  const { eventLog } = await import("../main/codex/event-log");
+  } = await import("../../client/main/core/runtime/manager");
+  const { eventLog } = await import("../../client/main/codex/event-log");
   cleanupEventLog = () => eventLog.destroy();
 
   mkdirSync(process.env.MARLOUES_HOME!, { recursive: true });
@@ -60,7 +61,6 @@ async function main(): Promise<void> {
         type: "openai-compatible",
         enabled: true,
         baseUrl: modelServer.baseUrl,
-        apiKey: "contract-key",
         models: [
           { id: "contract-model", label: "Contract Model", enabled: true },
           { id: "disabled-model", label: "Disabled Model", enabled: false },

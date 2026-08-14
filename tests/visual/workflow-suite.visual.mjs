@@ -1,4 +1,8 @@
 import { spawnSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+
+const fixtureScript = fileURLToPath(new URL('./workflow-fixture.visual.mjs', import.meta.url))
+const clientRoot = fileURLToPath(new URL('../../client/', import.meta.url))
 
 const basePort = Number(process.env.MARLOUES_VISUAL_SUITE_PORT || 5210)
 const cases = [
@@ -22,8 +26,8 @@ for (let index = 0; index < cases.length; index += 1) {
     MARLOUES_FIXTURE_DATA: testCase.data,
     MARLOUES_FIXTURE_STATE: testCase.state,
   }
-  const result = spawnSync(process.execPath, ['scripts/verify-workflow-fixture-visual.mjs'], {
-    cwd: process.cwd(),
+  const result = spawnSync(process.execPath, [fixtureScript], {
+    cwd: clientRoot,
     env,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
