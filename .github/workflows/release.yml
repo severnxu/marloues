@@ -48,7 +48,7 @@ jobs:
               client/release/*.blockmap
               client/release/latest-linux.yml
           - platform: Windows
-            runner: windows-2025
+            runner: windows-2022
             command: npm run package:win
             artifact: marloues-windows
             artifact-path: |
