@@ -3,7 +3,8 @@ import { homedir } from "node:os";
 import { basename, join } from "node:path";
 
 export function getMarlouesHome(): string {
-  if (process.env.MARLOUES_HOME?.trim()) return process.env.MARLOUES_HOME.trim();
+  if (process.env.MARLOUES_HOME?.trim())
+    return process.env.MARLOUES_HOME.trim();
   return join(homedir(), app?.isPackaged ? ".marloues" : ".marloues-dev");
 }
 
@@ -66,11 +67,11 @@ export function getClaudeConfigDir(): string {
 }
 
 export function getEnterpriseSkillsDir(): string {
-  return join(getMarlouesHome(), "enterprise-skills");
+  return join(getRuntimeConfigDir(), "enterprise-skills");
 }
 
 export function getUserSkillsDir(): string {
-  return join(getMarlouesHome(), "skills");
+  return join(getRuntimeConfigDir(), "skills");
 }
 
 export function getLogDir(): string {

@@ -1,6 +1,12 @@
 import { dialog } from "electron";
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+} from "node:fs";
 import { basename, join, resolve } from "node:path";
 import type {
   SkillDetail,
@@ -8,9 +14,17 @@ import type {
   SkillMarketplaceDetail,
   SkillMarketplaceListResponse,
 } from "@shared/types";
-import { getEnterpriseSkillsDir, getUserSkillsDir } from "../app-paths";
+import {
+  getEnterpriseSkillsDir,
+  getMarlouesHome,
+  getUserSkillsDir,
+} from "../app-paths";
 import { logInfo } from "../core/logging/app-logger";
-import { getAgentSettings, getEnterpriseSkillRoots, saveAgentSettings } from "./config-service";
+import {
+  getAgentSettings,
+  getEnterpriseSkillRoots,
+  saveAgentSettings,
+} from "./config-service";
 import { getSkillRuntimePolicy } from "./skill-policy";
 import { getCurrentWorkspace } from "./workspace-service";
 
@@ -24,10 +38,43 @@ interface SkillCacheEntry {
 
 let skillCache: SkillCacheEntry | null = null;
 
+/** 迁移旧技能目录（~/.marloues-dev/skills → runtime-config/skills）一次。 */
+let skillDirMigrationDone = false;
+function migrateLegacySkillDirs(): void {
+  if (skillDirMigrationDone) return;
+  skillDirMigrationDone = true;
+  const legacyPairs: Array<[string, string]> = [
+    [join(getMarlouesHome(), "skills"), getUserSkillsDir()],
+    [join(getMarlouesHome(), "enterprise-skills"), getEnterpriseSkillsDir()],
+  ];
+  for (const [legacyDir, targetDir] of legacyPairs) {
+    if (!existsSync(legacyDir)) continue;
+    if (existsSync(targetDir) && readdirSync(targetDir).length > 0) continue;
+    const entries = readdirSync(legacyDir);
+    if (entries.length === 0) continue;
+    mkdirSync(targetDir, { recursive: true });
+    for (const name of entries) {
+      cpSync(join(legacyDir, name), join(targetDir, name), {
+        recursive: true,
+        force: true,
+      });
+    }
+    logInfo("skills.migratedLegacyDir", {
+      from: legacyDir,
+      to: targetDir,
+      count: entries.length,
+    });
+  }
+}
+
 export function listInstalledSkills(): SkillInfo[] {
+  migrateLegacySkillDirs();
   const signature = buildSkillCacheSignature();
   const now = Date.now();
-  if (skillCache?.signature === signature && now - skillCache.refreshedAt < SKILL_CACHE_TTL_MS) {
+  if (
+    skillCache?.signature === signature &&
+    now - skillCache.refreshedAt < SKILL_CACHE_TTL_MS
+  ) {
     return [...skillCache.skills];
   }
   return refreshSkillCache(signature);
@@ -46,21 +93,39 @@ export function prepareSkillRuntimeCache(reason = "startup"): SkillInfo[] {
   return skills;
 }
 
-function refreshSkillCache(signature = buildSkillCacheSignature()): SkillInfo[] {
+function refreshSkillCache(
+  signature = buildSkillCacheSignature(),
+): SkillInfo[] {
   const settings = getAgentSettings();
   const disabled = new Set(settings.disabledSkills);
   const workspace = getCurrentWorkspace();
-  const projectSkillsRoot = workspace?.path ? join(workspace.path, ".claude", "skills") : undefined;
-  const customDirs = (settings.skillDirectories ?? []).map((dir) => resolve(dir));
+  const projectSkillsRoot = workspace?.path
+    ? join(workspace.path, ".claude", "skills")
+    : undefined;
+  const customDirs = (settings.skillDirectories ?? []).map((dir) =>
+    resolve(dir),
+  );
   const dirs = [
-    ...listSkillChildDirs(getUserSkillsDir()).map((dir) => ({ dir, scope: "user" as const })),
+    ...listSkillChildDirs(getUserSkillsDir()).map((dir) => ({
+      dir,
+      scope: "user" as const,
+    })),
     ...customDirs.map((dir) => ({ dir, scope: "user" as const })),
     ...(projectSkillsRoot
-      ? listSkillChildDirs(projectSkillsRoot).map((dir) => ({ dir, scope: "project" as const }))
+      ? listSkillChildDirs(projectSkillsRoot).map((dir) => ({
+          dir,
+          scope: "project" as const,
+        }))
       : []),
-    ...listSkillChildDirs(getEnterpriseSkillsDir()).map((dir) => ({ dir, scope: "enterprise" as const })),
+    ...listSkillChildDirs(getEnterpriseSkillsDir()).map((dir) => ({
+      dir,
+      scope: "enterprise" as const,
+    })),
     ...getEnterpriseSkillRoots().flatMap((root) =>
-      listSkillChildDirs(root).map((dir) => ({ dir, scope: "enterprise" as const })),
+      listSkillChildDirs(root).map((dir) => ({
+        dir,
+        scope: "enterprise" as const,
+      })),
     ),
   ];
 
@@ -71,11 +136,14 @@ function refreshSkillCache(signature = buildSkillCacheSignature()): SkillInfo[] 
     byId.set(skill.id, {
       ...skill,
       enabled: !disabled.has(skill.id),
-      removable: entry.scope === "user" && customDirs.includes(resolve(entry.dir)),
+      removable:
+        entry.scope === "user" && customDirs.includes(resolve(entry.dir)),
     });
   }
 
-  const skills = Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
+  const skills = Array.from(byId.values()).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
   skillCache = { signature, skills, refreshedAt: Date.now() };
   logInfo("skills.cache.refreshed", {
     skillCount: skills.length,
@@ -93,9 +161,13 @@ function buildSkillCacheSignature(): string {
       JSON.stringify({
         userSkillsDir: getUserSkillsDir(),
         enterpriseSkillsDir: getEnterpriseSkillsDir(),
-        enterpriseSkillRoots: getEnterpriseSkillRoots().map((dir) => resolve(dir)),
+        enterpriseSkillRoots: getEnterpriseSkillRoots().map((dir) =>
+          resolve(dir),
+        ),
         workspacePath: workspace?.path,
-        skillDirectories: (settings.skillDirectories ?? []).map((dir) => resolve(dir)),
+        skillDirectories: (settings.skillDirectories ?? []).map((dir) =>
+          resolve(dir),
+        ),
         disabledSkills: settings.disabledSkills,
         policy,
       }),
@@ -106,7 +178,9 @@ function buildSkillCacheSignature(): string {
 export async function importSkillFolder(): Promise<SkillInfo | null> {
   const policy = getSkillRuntimePolicy();
   if (!policy.allowLocalImport) {
-    throw new Error(`Local Skill import is disabled in ${policy.env} environment.`);
+    throw new Error(
+      `Local Skill import is disabled in ${policy.env} environment.`,
+    );
   }
 
   const result = await dialog.showOpenDialog({
@@ -122,7 +196,10 @@ export async function importSkillFolder(): Promise<SkillInfo | null> {
   return importSkillFolderToRoot(dir, getUserSkillsDir());
 }
 
-export function importSkillFolderToRoot(source: string, targetRoot: string): SkillInfo {
+export function importSkillFolderToRoot(
+  source: string,
+  targetRoot: string,
+): SkillInfo {
   const sourceDir = resolve(source);
   const skill = readSkillInfo(sourceDir, "user");
   if (!skill) throw new Error("Selected folder does not contain SKILL.md.");
@@ -135,8 +212,13 @@ export function importSkillFolderToRoot(source: string, targetRoot: string): Ski
   skillCache = null;
 
   const imported = readSkillInfo(target, "user");
-  if (!imported) throw new Error("Imported Skill could not be read after copying.");
-  logInfo("skill.imported", { skillId: imported.id, name: imported.name, sourceDir });
+  if (!imported)
+    throw new Error("Imported Skill could not be read after copying.");
+  logInfo("skill.imported", {
+    skillId: imported.id,
+    name: imported.name,
+    sourceDir,
+  });
   return {
     ...imported,
     enabled: true,
@@ -163,11 +245,14 @@ export function removeSkill(skillId: string): SkillInfo[] {
   const settings = getAgentSettings();
   const skill = listInstalledSkills().find((item) => item.id === skillId);
   if (!skill) throw new Error(`Skill not found: ${skillId}`);
-  if (!skill.removable) throw new Error("Only imported user Skills can be removed.");
+  if (!skill.removable)
+    throw new Error("Only imported user Skills can be removed.");
 
   saveAgentSettings({
     ...settings,
-    skillDirectories: (settings.skillDirectories ?? []).filter((dir) => skillIdForPath(dir) !== skillId),
+    skillDirectories: (settings.skillDirectories ?? []).filter(
+      (dir) => skillIdForPath(dir) !== skillId,
+    ),
     disabledSkills: settings.disabledSkills.filter((id) => id !== skillId),
   });
   logInfo("skill.removed", { skillId, path: skill.path });
@@ -187,13 +272,16 @@ export function listMarketplaceSkills(): SkillMarketplaceListResponse {
   return { items: [], total: 0, hasMore: false };
 }
 
-export function getMarketplaceSkillDetail(slug: string): SkillMarketplaceDetail {
+export function getMarketplaceSkillDetail(
+  slug: string,
+): SkillMarketplaceDetail {
   return {
     slug,
     name: slug,
     installed: false,
     sourceUrl: "",
-    content: "Skill marketplace is not configured in this build. Use Import to add a local Skill folder.",
+    content:
+      "Skill marketplace is not configured in this build. Use Import to add a local Skill folder.",
     securityStatus: "unknown",
   };
 }
@@ -202,7 +290,10 @@ export function installMarketplaceSkill(): SkillInfo[] {
   return listInstalledSkills();
 }
 
-export function readSkillInfo(dir: string, scope: SkillInfo["scope"]): SkillInfo | null {
+export function readSkillInfo(
+  dir: string,
+  scope: SkillInfo["scope"],
+): SkillInfo | null {
   const skillPath = resolve(dir);
   const skillFile = resolve(skillPath, "SKILL.md");
   if (!existsSync(skillFile)) return null;
@@ -252,7 +343,8 @@ function parseSkillMetadata(content: string): {
   permissions?: string[];
 } {
   const frontmatter = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  const source = frontmatter?.[1] ?? content.split(/\r?\n/).slice(0, 40).join("\n");
+  const source =
+    frontmatter?.[1] ?? content.split(/\r?\n/).slice(0, 40).join("\n");
   const metadata: ReturnType<typeof parseSkillMetadata> = {};
   for (const line of source.split(/\r?\n/)) {
     const match = line.match(/^\s*([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.+?)\s*$/);
@@ -311,7 +403,9 @@ function cleanPermissionValue(value: string): string {
 function assertMutableLocalSkills(action: string): void {
   const enterprisePolicy = getAgentSettings().enterprisePolicy;
   if (enterprisePolicy?.allowLocalSkillDisable === false) {
-    throw new Error("Enterprise policy does not allow changing Skill enabled state.");
+    throw new Error(
+      "Enterprise policy does not allow changing Skill enabled state.",
+    );
   }
   const policy = getSkillRuntimePolicy();
   if (!policy.allowMutableLocalSkills) {
