@@ -24,6 +24,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: marloues-hot-update-pages
+  cancel-in-progress: false
+
 jobs:
   build-feed:
     runs-on: ubuntu-24.04
@@ -82,6 +86,31 @@ jobs:
           CHANNEL: ${{ inputs.channel }}
         run: npm run verify:hot -- --channel "$CHANNEL"
 
+      - name: Assemble GitHub Pages site
+        shell: bash
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          UPDATE_URL: ${{ vars.MARLOUES_HOT_UPDATE_URL }}
+          PAGES_ROOT: ${{ runner.temp }}/marloues-pages
+        run: |
+          npm run prepare:hot-pages -- \
+            --channel "$CHANNEL" \
+            --feed "release/hot/$CHANNEL" \
+            --output "$PAGES_ROOT" \
+            --base-url "$UPDATE_URL"
+
+      - name: Verify complete Pages feed
+        shell: bash
+        env:
+          PAGES_ROOT: ${{ runner.temp }}/marloues-pages
+        run: |
+          for channel in stable beta nightly; do
+            feed="$PAGES_ROOT/ui/$channel"
+            if test -f "$feed/manifest.json"; then
+              npm run verify:hot -- --channel "$channel" --feed "$feed"
+            fi
+          done
+
       - name: Upload feed for HTTPS deployment
         uses: actions/upload-artifact@v7
         with:
@@ -89,3 +118,28 @@ jobs:
           path: client/release/hot/${{ inputs.channel }}
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ runner.temp }}/marloues-pages
+
+  deploy-pages:
+    name: Deploy signed UI feed to GitHub Pages
+    needs: build-feed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Deploy GitHub Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@v4
