@@ -33,5 +33,9 @@ assert(
   clientPackage.build.linux.maintainer.includes("@users.noreply.github.com"),
   "Linux deb metadata must include a maintainer email address",
 );
+assert(
+  releaseWorkflow.includes('--repo "$GITHUB_REPOSITORY"'),
+  "Release publishing must not depend on a git checkout for repository discovery",
+);
 
 console.log("release packaging contract passed");
