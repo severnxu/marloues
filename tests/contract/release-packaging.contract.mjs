@@ -25,5 +25,13 @@ assert(
   releaseWorkflow.includes("runner: windows-2022"),
   "Windows installers must build on a runner supported by node-gyp",
 );
+assert(
+  releaseWorkflow.includes("unset CSC_LINK"),
+  "empty macOS signing secrets must not be treated as certificate paths",
+);
+assert(
+  clientPackage.build.linux.maintainer.includes("@users.noreply.github.com"),
+  "Linux deb metadata must include a maintainer email address",
+);
 
 console.log("release packaging contract passed");

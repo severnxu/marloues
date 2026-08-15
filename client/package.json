@@ -154,6 +154,7 @@
     },
     "linux": {
       "category": "Development",
+      "maintainer": "Marloues <severnxu@users.noreply.github.com>",
       "target": [
         {
           "target": "AppImage",

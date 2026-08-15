@@ -79,7 +79,11 @@ jobs:
         run: npm ci
 
       - name: Build installers
-        run: ${{ matrix.command }}
+        shell: bash
+        run: |
+          if [[ -z "${CSC_LINK:-}" ]]; then unset CSC_LINK; fi
+          if [[ -z "${CSC_KEY_PASSWORD:-}" ]]; then unset CSC_KEY_PASSWORD; fi
+          ${{ matrix.command }}
         env:
           MARLOUES_BUILD_ENV: production
           MARLOUES_CLIENT_UPDATE_PROVIDER: github
