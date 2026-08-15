@@ -3,7 +3,7 @@
  * API keys are encrypted with Electron safeStorage in providers[].apiKey.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import type {
   AgentSettings,
   ContextManagementSettings,
@@ -951,7 +951,12 @@ export function buildSdkEnv(
     ANTHROPIC_AUTH_TOKEN: resolved.apiKey,
     ANTHROPIC_BASE_URL: resolved.baseUrl,
     ANTHROPIC_MODEL: resolved.model,
-    CLAUDE_CONFIG_DIR: settings.runtimeConfigDir || getRuntimeConfigDir(),
+    // 运行时状态统一：sdk 内核的配置/会话落到 runtime-config/claude 子目录，
+    // 与 binary（runtime-config/codex）、self-built（runtime-config/self-built）对称。
+    CLAUDE_CONFIG_DIR: join(
+      settings.runtimeConfigDir || getRuntimeConfigDir(),
+      "claude",
+    ),
     DISABLE_TELEMETRY: "1",
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
   };
