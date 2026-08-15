@@ -341,22 +341,6 @@ export function WorkbenchRoot({
               layout.auxiliaryRef.current = node;
             }}
           />
-
-          <KeepAliveWorkbenchView
-            name="schedules"
-            active={false}
-            className="quick-page-overlay-host scheduled-tasks-page-host"
-          >
-            <></>
-          </KeepAliveWorkbenchView>
-
-          <KeepAliveWorkbenchView
-            name="plugins"
-            active={false}
-            className="quick-page-overlay-host plugins-page-host"
-          >
-            <></>
-          </KeepAliveWorkbenchView>
         </WorkbenchMainColumns>
       </WorkbenchLayout>
 

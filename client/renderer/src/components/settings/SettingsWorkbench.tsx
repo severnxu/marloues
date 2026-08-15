@@ -17,6 +17,7 @@ const {
 } = Sections;
 import { buildRuntimeSnapshot, statusToastTitle } from "@/components/settings";
 import { ProviderSection } from "./ProviderSection";
+import { McpServersPanel } from "@/components/mcp";
 import { useProviderManagement } from "./use-provider-management";
 import type { CommitDraft, SetStatus } from "./use-provider-management";
 import type { SettingsSection } from "./types";
@@ -246,6 +247,8 @@ export function SettingsWorkbench({
               pm={pm}
             />
           ) : null}
+
+          {section === "mcp" ? <McpServersPanel /> : null}
 
           {section === "skills" ? (
             <SkillsSettings

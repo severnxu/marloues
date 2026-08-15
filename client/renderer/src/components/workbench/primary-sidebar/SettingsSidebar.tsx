@@ -5,9 +5,9 @@ import {
   Info,
   MonitorCog,
   Package,
+  Plug,
   ServerCog,
   Settings,
-  Terminal,
   Wrench,
 } from "lucide-react";
 import type { SettingsSection } from "@/components/settings/types";
@@ -48,16 +48,16 @@ export function SettingsSidebar({
       icon: <ServerCog size={16} />,
     },
     {
+      id: "mcp" as const,
+      label: "MCP",
+      description: "Server 与工具",
+      icon: <Plug size={16} />,
+    },
+    {
       id: "skills" as const,
       label: "Skills",
       description: "导入与详情",
       icon: <Package size={16} />,
-    },
-    {
-      id: "runtimes" as const,
-      label: "运行时",
-      description: "Python/Node 下载",
-      icon: <Terminal size={16} />,
     },
     {
       id: "audit" as const,

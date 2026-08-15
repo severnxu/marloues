@@ -44,14 +44,14 @@ describe("workbench region contracts", () => {
 
   it("keeps inactive page content mounted", () => {
     const markup = renderToStaticMarkup(
-      <KeepAliveWorkbenchView name="plugins" active={false}>
-        <span>plugins-state</span>
+      <KeepAliveWorkbenchView name="chat" active={false}>
+        <span>chat-state</span>
       </KeepAliveWorkbenchView>,
     );
 
-    expect(markup).toContain('data-view="plugins"');
+    expect(markup).toContain('data-view="chat"');
     expect(markup).toContain("hidden");
-    expect(markup).toContain("plugins-state");
+    expect(markup).toContain("chat-state");
   });
 
   it("does not remove product chrome in acceptance review mode", () => {

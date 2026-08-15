@@ -195,7 +195,7 @@ export function GlobalSearchOverlay({
         id: "settings-mcp",
         title: "MCP",
         detail: "Server 与工具发现",
-        page: "plugins",
+        section: "mcp",
         icon: "mcp",
       },
       {
@@ -253,7 +253,7 @@ export function GlobalSearchOverlay({
         id: `mcp-server-${server.id}`,
         title: server.name || server.id || "未命名 MCP Server",
         detail: `${server.enabled ? "已启用" : "已停用"} · ${server.lastStatus ?? "未测试"}${server.lastError ? ` · ${server.lastError}` : ""}`,
-        page: "plugins" as const,
+        section: "mcp" as const,
         icon: "mcp" as const,
       }),
     );
@@ -261,7 +261,7 @@ export function GlobalSearchOverlay({
       id: `mcp-tool-${String(tool)}`,
       title: String(tool),
       detail: "MCP 工具",
-      page: "plugins" as const,
+      section: "mcp" as const,
       icon: "mcp" as const,
     }));
     return filterShortcuts([...serverItems, ...toolItems], normalizedQuery);

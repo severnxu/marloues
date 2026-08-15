@@ -9,6 +9,7 @@ export type SettingsSection =
   | "personalization"
   | "appearance"
   | "providers"
+  | "mcp"
   | "skills"
   | "audit"
   | "runtimes"
