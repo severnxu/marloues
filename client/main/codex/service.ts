@@ -1,5 +1,6 @@
 import { EventEmitter } from "events";
 import { randomUUID } from "crypto";
+import { join } from "node:path";
 import { store } from "../store";
 import { CodexAppServerSession } from "./session";
 import {
@@ -22,6 +23,7 @@ import {
   getAgentSettings,
   saveAgentSettings,
 } from "../services/config-service";
+import { getRuntimeConfigDir } from "../app-paths";
 import { resolveModelProvider } from "../core/config/model-provider";
 import type { ModelProviderConfig } from "@shared/types";
 
@@ -253,6 +255,7 @@ export class CodexService {
     );
 
     // Create transport for Codex CLI
+    const codexHome = join(getRuntimeConfigDir(), "codex");
     const transport = createCodexTransport({
       binaryPath: this.binaryPath,
       cwd: workingDir,
@@ -262,6 +265,9 @@ export class CodexService {
         OPENAI_API_KEY: apiKey,
         OPENAI_BASE_URL: baseUrl,
         OPENAI_MODEL: model,
+        // 运行时状态统一：codex 的 config.toml / 会话 JSONL / auth 落入
+        // runtime-config/codex，而不是默认的 ~/.codex。
+        CODEX_HOME: codexHome,
         // Tell Codex CLI to use our gateway as the API server
         CODEX_API_BASE_URL: `http://127.0.0.1:${gatewayPort}`,
         CODEX_DISABLE_TELEMETRY: "1",
