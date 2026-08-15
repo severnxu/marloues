@@ -1,0 +1,2289 @@
+/* ============================================================
+   Schedule page — 沿用 workbench design 体系
+   - 中性主操作（蓝仅用于焦点/链接/状态指示）
+   - 状态语义色：绿=成功 / 红=失败 / 琥珀=错过/暂停 / 蓝带 pulse=运行中
+   - 零 glow / 渐变 / 阴影溢出
+   - 全部 token 走 :root 全局变量
+   - 类名采用 camelCase key (vite css modules 默认不开 localsConvention,
+     所以 CSS 里的标识符必须与 JS 里 styles.xxx 的 key 一致)
+   - 复合态统一用 data-* 属性，避免 CSS module 抽类名失败
+   ============================================================ */
+@layer marloues-components.schedule {
+  /* ── 页面骨架 ──────────────────────────────────── */
+  .scheduledPage {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    overflow: hidden;
+    background: var(--bg-main);
+    color: var(--text-1);
+  }
+
+  /* ── 顶部 scheduled-page-header(A1) ─────────────── */
+  .scheduledPageHeader {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--schedule-page-header-height);
+    flex: none;
+    padding: 0;
+    background: var(--bg-main);
+  }
+
+  .scheduledPagePanel {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+  .scheduledPagePanel[hidden] {
+    display: none;
+  }
+
+  /* scheduled-create:header 段控件右侧的"新建任务"按钮 */
+  .scheduledCreate {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: var(--schedule-control-height);
+    padding: 0 13px;
+    border: 0;
+    border-radius: var(--select-control-radius);
+    background: var(--primary-fill);
+    color: var(--primary-ink);
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      background var(--motion-fast) var(--ease),
+      transform var(--motion-fast) var(--ease);
+  }
+  .scheduledCreate:hover {
+    background: var(--primary-fill);
+    filter: brightness(1.05);
+  }
+  .scheduledCreate:active {
+    transform: translateY(1px);
+  }
+  .scheduledCreate:focus-visible {
+    outline: 0;
+    box-shadow: 0 0 0 2px var(--accent-soft);
+  }
+  .scheduledCreate svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  /* ── scheduled-tabs 段控件(对齐 marloues scheduled-tabs) ── */
+  .scheduledTabs {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 10px;
+    background: var(--raised-1);
+    border: 1px solid var(--line);
+    -webkit-app-region: no-drag;
+  }
+  .scheduledTabs button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 14px;
+    border: 0;
+    background: transparent;
+    border-radius: 7px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 550;
+    color: var(--text-2);
+    cursor: pointer;
+    transition:
+      background var(--motion-fast) var(--ease),
+      color var(--motion-fast) var(--ease);
+  }
+  .scheduledTabs button:hover {
+    color: var(--text-1);
+    background: var(--raised-2);
+  }
+  .scheduledTabs button[aria-selected="true"] {
+    background: var(--primary-fill);
+    color: var(--primary-ink);
+    font-weight: 600;
+  }
+
+  /* ── scheduled-panel 容器(对齐 marloues .scheduled-panel) ── */
+  .scheduledPanel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    padding: 14px var(--schedule-page-gutter) 28px;
+  }
+  .scheduledPanel[data-scheduled-panel="records"] {
+    display: none;
+  }
+  .scheduledPanel[data-scheduled-panel="records"]:not(.is-hidden) {
+    display: flex;
+  }
+
+  /* ── scheduled-toolbar(A2 工具栏:search + filter) ── */
+  .scheduledToolbar {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .scheduledSearch {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: min(360px, 48%);
+    height: var(--schedule-control-height);
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--bg-main);
+    color: var(--text-3);
+    transition:
+      border-color var(--motion-fast) var(--ease),
+      box-shadow var(--motion-fast) var(--ease);
+  }
+  .scheduledSearch:focus-within {
+    background: var(--raised-1);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-1) 10%, transparent);
+  }
+  .scheduledSearch svg {
+    width: 13px;
+    height: 13px;
+    color: var(--text-3);
+    flex: 0 0 auto;
+  }
+  .scheduledSearch input {
+    height: 100%;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    flex: 1 1 auto;
+    color: var(--text-1);
+    font: inherit;
+    font-size: 13px;
+  }
+  .scheduledSearch input::placeholder {
+    color: var(--text-3);
+  }
+  .scheduledSearch kbd {
+    color: var(--text-3);
+    font-size: 10px;
+    font-family: inherit;
+    background: transparent;
+    border: 0;
+    padding: 0;
+  }
+
+  /* scheduled-select-control:状态/任务筛选下拉 */
+  .scheduledSelectControl {
+    position: relative;
+    height: var(--schedule-control-height);
+    flex: 0 0 auto;
+  }
+  .scheduledSelectTrigger {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    grid-template-columns: max-content minmax(0, 1fr) var(
+        --select-control-icon-size
+      );
+    align-items: center;
+    gap: var(--select-control-gap);
+    border: 1px solid var(--line);
+    border-radius: var(--select-control-radius);
+    background: var(--raised-1);
+    padding: 0 10px;
+    color: var(--text-1);
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      background var(--motion-fast) var(--ease),
+      box-shadow var(--motion-fast) var(--ease);
+  }
+  .scheduledSelectTrigger:hover,
+  .scheduledSelectControl[data-open] .scheduledSelectTrigger {
+    background: var(--raised-2);
+  }
+  .scheduledSelectTrigger:focus-visible {
+    outline: 0;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-1) 10%, transparent);
+  }
+  .scheduledSelectPrefix {
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-3);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .scheduledSelectPrefix svg {
+    width: 12px;
+    height: 12px;
+  }
+  .scheduledSelectValue {
+    min-width: 0;
+    font-weight: 560;
+    color: var(--text-1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .scheduledSelectTrigger > svg {
+    color: var(--text-3);
+    transition: transform var(--motion-fast) var(--ease);
+  }
+  .scheduledSelectControl[data-open] .scheduledSelectTrigger > svg {
+    transform: rotate(180deg);
+  }
+  .scheduledSelectMenu {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 100%;
+    min-width: 132px;
+    max-height: 240px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--select-control-radius);
+    background: var(--popover);
+    padding: 4px;
+    box-shadow: var(--popover-shadow);
+  }
+  .scheduledSelectControl[data-open-up] .scheduledSelectMenu {
+    top: auto;
+    bottom: calc(100% + 6px);
+  }
+  .scheduledSelectMenu button {
+    display: grid;
+    width: 100%;
+    height: 30px;
+    grid-template-columns: minmax(0, 1fr) 14px;
+    align-items: center;
+    gap: 8px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    padding: 0 8px;
+    color: var(--text-2);
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .scheduledSelectMenu button:hover,
+  .scheduledSelectMenu button[aria-selected="true"] {
+    background: var(--raised-2);
+    color: var(--text-1);
+  }
+  .scheduledSelectMenu button span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .scheduledFilter {
+    width: 112px;
+  }
+  .scheduledFilterRecords {
+    width: 180px;
+  }
+
+  .scheduledToolbarSpacer {
+    flex: 1 1 auto;
+  }
+  .scheduledToolbarRefresh {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--raised-1);
+    color: var(--text-1);
+    font: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+    transition:
+      background var(--motion-fast) var(--ease),
+      border-color var(--motion-fast) var(--ease);
+  }
+  .scheduledToolbarRefresh:hover {
+    background: var(--raised-2);
+    border-color: var(--border);
+  }
+  .scheduledToolbarRefresh:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .scheduledToolbarRefresh svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  /* ── scheduled-task-scroll + scheduled-card-list(A3 任务卡 grid) ── */
+  .scheduledTaskScroll {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    padding-right: 2px;
+  }
+  .scheduledCardList {
+    display: grid;
+    grid-template-columns: repeat(
+      auto-fill,
+      minmax(min(var(--schedule-card-min-width), 100%), 1fr)
+    );
+    gap: 10px;
+  }
+  .scheduledCardList[data-empty] {
+    display: block;
+  }
+
+  /* ── scheduled-task-card(A3 任务卡) ── */
+  .scheduledTaskCard {
+    display: flex;
+    min-width: 0;
+    min-height: var(--schedule-card-min-height);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: var(--schedule-card-padding);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg-main);
+    cursor: pointer;
+    transition:
+      border-color var(--motion-fast) var(--ease),
+      background var(--motion-fast) var(--ease),
+      box-shadow var(--motion-fast) var(--ease);
+  }
+  .scheduledTaskCard:hover {
+    background: var(--raised-1);
+  }
+  .scheduledTaskCard[data-active] {
+    background: var(--raised-1);
+    border-color: var(--border-strong);
+  }
+  .scheduledTaskCard[data-active]:hover {
+    background: var(--raised-1);
+  }
+  .scheduledTaskCard:focus-visible {
+    outline: 0;
+    background: var(--raised-1);
+  }
+  .scheduledTaskHead {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 9px;
+  }
+  .scheduledTaskTitleGroup {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    padding-top: 1px;
+  }
+  .scheduledTaskTitleGroup strong {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--text-1);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .scheduledTaskTitleGroup > span {
+    overflow: hidden;
+    color: var(--text-3);
+    font-size: 12px;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .scheduledTaskIcon {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border-radius: 7px;
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .scheduledTaskIcon svg {
+    width: 16px;
+    height: 16px;
+  }
+  .scheduledTaskIcon[data-muted] {
+    background: var(--raised-2);
+    color: var(--text-3);
+  }
+
+  .scheduledTaskTags {
+    display: flex;
+    height: var(--schedule-tag-height);
+    min-height: var(--schedule-tag-height);
+    min-width: 0;
+    align-items: center;
+    gap: 5px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .scheduledTaskTags[data-empty] {
+    visibility: hidden;
+  }
+  .scheduledTaskTags span {
+    display: inline-flex;
+    max-width: 96px;
+    height: var(--schedule-tag-height);
+    min-width: 0;
+    align-items: center;
+    overflow: hidden;
+    padding: 0 7px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: var(--raised-1);
+    color: var(--text-3);
+    font-size: 11px;
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .scheduledTaskMain {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 13px;
+  }
+  .scheduledTaskMain > span {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+  }
+  .scheduledTaskMain small {
+    color: var(--text-3);
+    font-size: 11px;
+  }
+  .scheduledTaskMain strong {
+    overflow: hidden;
+    color: var(--text-2);
+    font-size: 13px;
+    font-weight: 560;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ── scheduled-status(状态 chip) ── */
+  .scheduledStatus {
+    display: inline-flex;
+    height: 20px;
+    align-items: center;
+    gap: 5px;
+    flex: 0 0 auto;
+    padding: 0 7px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 620;
+    white-space: nowrap;
+  }
+  .scheduledStatus::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .scheduledStatus[data-variant="ok"] {
+    background: var(--success-soft);
+    color: var(--success);
+  }
+  .scheduledStatus[data-variant="err"] {
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
+  .scheduledStatus[data-variant="warn"] {
+    background: var(--warning-soft);
+    color: var(--warning);
+  }
+  .scheduledStatus[data-variant="run"] {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .scheduledStatus[data-variant="neutral"] {
+    background: var(--raised-2);
+    color: var(--text-3);
+  }
+  .scheduledStatus[data-variant="neutral"]::before {
+    display: none;
+  }
+
+  /* ── scheduled-task-actions(图标按钮行 + switch) ── */
+  .scheduledTaskActions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: auto;
+    padding-top: 8px;
+    color: var(--text-3);
+  }
+  .scheduledTaskActions .scheduledSwitch {
+    width: 30px;
+    height: 18px;
+    margin-left: auto;
+    background: transparent;
+  }
+  .scheduledTaskActions .scheduledSwitch:hover {
+    width: 30px;
+    height: 18px;
+    background: transparent;
+  }
+  .scheduledTaskActions button {
+    display: grid;
+    width: 26px;
+    height: 26px;
+    place-items: center;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-3);
+    cursor: pointer;
+    transition:
+      background var(--motion-fast) var(--ease),
+      color var(--motion-fast) var(--ease);
+  }
+  .scheduledTaskActions button:hover {
+    background: var(--raised-2);
+    color: var(--text-1);
+  }
+  .scheduledTaskActions button svg {
+    width: 13px;
+    height: 13px;
+  }
+  .scheduledTaskActions button[aria-label="删除任务"]:hover {
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
+
+  /* ── scheduled-switch(iOS 风开关) ── */
+  .scheduledSwitch {
+    position: relative;
+    display: inline-flex;
+    width: 30px;
+    height: 18px;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    align-items: center;
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+  .scheduledSwitch span {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--raised-3);
+    box-shadow: inset 0 0 0 1px var(--border);
+    transition:
+      background 160ms var(--ease),
+      box-shadow 160ms var(--ease);
+    pointer-events: none;
+  }
+  .scheduledSwitch span::after {
+    display: block;
+    width: 14px;
+    height: 14px;
+    margin: 2px;
+    border-radius: 50%;
+    background: var(--bg-main);
+    box-shadow: 0 1px 2px hsl(0 0% 0% / 0.18);
+    content: "";
+    transition: transform 160ms var(--ease);
+  }
+  .scheduledSwitch[aria-checked="true"] span {
+    background: var(--success);
+    box-shadow: none;
+  }
+  .scheduledSwitch[aria-checked="true"] span::after {
+    transform: translateX(12px);
+  }
+  .scheduledSwitch:focus-visible {
+    outline: 0;
+  }
+  .scheduledSwitch:focus-visible span {
+    box-shadow: 0 0 0 2px var(--accent-soft);
+  }
+
+  /* ── scheduled-empty(空态) ── */
+  .scheduledEmpty {
+    display: grid;
+    min-height: 240px;
+    place-items: center;
+    align-content: center;
+    gap: 7px;
+    color: var(--text-3);
+    text-align: center;
+  }
+  .scheduledEmpty svg {
+    width: 22px;
+    height: 22px;
+  }
+  .scheduledEmpty strong {
+    color: var(--text-2);
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .scheduledEmpty span {
+    font-size: 12px;
+  }
+  .scheduledEmpty button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 6px;
+    padding: 6px 13px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--primary-fill);
+    color: var(--primary-ink);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* ── scheduled-detail-panel(A4 详情侧栏,绝对定位右侧) ── */
+  .scheduledDetailDismiss {
+    position: absolute;
+    z-index: 90;
+    inset: 0;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    cursor: default;
+  }
+  .scheduledDetailPanel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 100;
+    display: flex;
+    width: min(var(--schedule-detail-width), calc(100% - 48px));
+    height: 100%;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+    border: 0;
+    border-left: 1px solid var(--border);
+    border-radius: 6px 0 0 6px;
+    background: var(--bg-main);
+    box-shadow: -22px 0 48px -34px hsl(0 0% 0% / 0.62);
+    contain: paint;
+  }
+  .scheduledDetailPanel[data-empty] {
+    display: none;
+  }
+  .scheduledDetailPanelHeader {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: grid;
+    height: auto;
+    flex: 0 0 auto;
+    padding: 15px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-main);
+  }
+  .scheduledDetailTitleRow {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .scheduledDetailTitleRow strong {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--text-1);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .scheduledDetailClose {
+    display: grid;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-3);
+    cursor: pointer;
+    transition:
+      background var(--motion-fast) var(--ease),
+      color var(--motion-fast) var(--ease);
+  }
+  .scheduledDetailClose:hover {
+    background: var(--raised-2);
+    color: var(--text-1);
+  }
+
+  .scheduledDetailBody {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    overflow: auto;
+  }
+  .scheduledDetailSection {
+    display: grid;
+    gap: 12px;
+    padding: 15px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .scheduledDetailSection > small {
+    color: var(--text-3);
+    font-size: 11px;
+    font-weight: 650;
+    text-transform: uppercase;
+  }
+  .scheduledDetailSection dl {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 10px 12px;
+    margin: 0;
+    color: var(--text-2);
+    font-size: 13px;
+  }
+  .scheduledDetailSection dt {
+    color: var(--text-3);
+  }
+  .scheduledDetailSection dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  .scheduledDetailSection dd code {
+    font-family: var(--font-code);
+    font-size: 12px;
+    color: var(--text-1);
+  }
+  .scheduledDetailTags {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+  }
+  .scheduledDetailTags span {
+    display: inline-flex;
+    max-width: 112px;
+    height: var(--schedule-tag-height);
+    min-width: 0;
+    align-items: center;
+    overflow: hidden;
+    padding: 0 7px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: var(--raised-1);
+    color: var(--text-3);
+    font-size: 11px;
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .scheduledDetailTags .scheduledTagEmpty {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-3);
+  }
+  .scheduledPromptPreview {
+    height: var(--schedule-prompt-preview-height);
+    overflow: auto;
+    padding: 8px 9px;
+    border: 0;
+    border-radius: 6px;
+    background: var(--raised-1);
+    color: var(--text-2);
+    font-size: 12px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+  }
+  .scheduledDetailState {
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-1);
+  }
+
+  .scheduledHistoryHeading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 22px;
+  }
+  .scheduledHistoryLink {
+    display: grid;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text-3);
+    cursor: pointer;
+    transition:
+      background var(--motion-fast) var(--ease),
+      color var(--motion-fast) var(--ease);
+  }
+  .scheduledHistoryLink:hover {
+    background: var(--raised-2);
+    color: var(--text-1);
+  }
+  .scheduledHistory {
+    display: grid;
+    gap: 0;
+  }
+  .scheduledHistoryItem {
+    display: grid;
+    grid-template-columns: 10px minmax(0, 1fr) auto;
+    min-height: 34px;
+    align-items: center;
+    gap: 8px;
+    padding: 0 2px;
+    border: 0;
+    border-top: 1px solid var(--line);
+    background: transparent;
+    color: var(--text-2);
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .scheduledHistoryItem:hover {
+    color: var(--text-1);
+  }
+  .scheduledHistoryItem:first-of-type {
+    border-top: 0;
+  }
+  .scheduledHistoryItem time {
+    color: var(--text-3);
+  }
+  .scheduledHistoryDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-3);
+  }
+  .scheduledHistoryDot[data-status="ok"] {
+    background: var(--success);
+  }
+  .scheduledHistoryDot[data-status="err"] {
+    background: var(--danger);
+  }
+  .scheduledHistoryDot[data-status="warn"] {
+    background: var(--warning);
+  }
+  .scheduledHistoryDot[data-status="run"] {
+    background: var(--accent);
+  }
+  .scheduledHistoryLabel {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .scheduledHistoryTime {
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .scheduledHistoryOpen {
+    color: var(--accent);
+    font-size: 11.5px;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .scheduledHistoryOpen:hover {
+    text-decoration: underline;
+  }
+  .scheduledHistoryEmpty {
+    padding: 6px 2px;
+    color: var(--text-3);
+    font-size: 12px;
+  }
+  .scheduledHistoryError {
+    grid-column: 1 / -1;
+    padding: 4px 8px;
+    margin-top: 2px;
+    border-radius: 4px;
+    background: var(--danger-soft);
+    color: var(--danger);
+    font-size: 11.5px;
+    line-height: 1.5;
+    word-break: break-word;
+  }
+
+  .scheduledDetailEmpty {
+    display: grid;
+    flex: 1 1 auto;
+    place-items: center;
+    align-content: center;
+    gap: 6px;
+    color: var(--text-3);
+    text-align: center;
+  }
+  .scheduledDetailEmpty svg {
+    width: 36px;
+    height: 36px;
+    color: var(--text-3);
+    opacity: 0.6;
+  }
+  .scheduledDetailEmptyBig {
+    color: var(--text-1);
+    font-size: 13px;
+    font-weight: 560;
+  }
+  .scheduledDetailEmpty span {
+    font-size: 12px;
+  }
+
+  /* ── records(执行记录)────────────────────────────────── */
+  .scheduledRecordHeader {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 14px;
+  }
+  .scheduledRecordHeader > div {
+    display: grid;
+    gap: 3px;
+  }
+  .scheduledRecordHeader strong {
+    color: var(--text-1);
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .scheduledRecordHeader > div span {
+    color: var(--text-3);
+    font-size: 12px;
+  }
+  .scheduledRecordList {
+    display: grid;
+    min-height: 0;
+    flex: 1 1 auto;
+    gap: 8px;
+    align-content: start;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+  .scheduledRecordList button {
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr) 64px 110px;
+    min-height: 44px;
+    align-items: center;
+    gap: 10px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--bg-main);
+    color: var(--text-2);
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--motion-fast) var(--ease);
+  }
+  .scheduledRecordList button:hover {
+    background: var(--raised-1);
+  }
+  .scheduledRecordTime {
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .scheduledRecordTaskDot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-3);
+    justify-self: center;
+  }
+  .scheduledRecordTaskDot[data-status="ok"] {
+    background: var(--success);
+  }
+  .scheduledRecordTaskDot[data-status="err"] {
+    background: var(--danger);
+  }
+  .scheduledRecordTaskDot[data-status="warn"] {
+    background: var(--warning);
+  }
+  .scheduledRecordTaskDot[data-status="run"] {
+    background: var(--accent);
+  }
+  .scheduledRecordTaskName {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-1);
+    font-weight: 600;
+  }
+  .scheduledRecordStatus {
+    color: var(--text-2);
+  }
+  .scheduledRecordStatus[data-status="ok"] {
+    color: var(--success);
+  }
+  .scheduledRecordStatus[data-status="err"] {
+    color: var(--danger);
+  }
+  .scheduledRecordStatus[data-status="warn"] {
+    color: var(--warning);
+  }
+  .scheduledRecordStatus[data-status="run"] {
+    color: var(--accent);
+  }
+  .scheduledRecordSpinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--border-strong);
+    border-top-color: var(--text-2);
+    border-radius: 50%;
+    animation: scheduledSpin 0.9s linear infinite;
+  }
+  .scheduledRecordFailed {
+    display: grid;
+    width: 14px;
+    height: 14px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--danger-soft);
+    color: var(--danger);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  /* ── 表单弹窗(A6 modal, 跟 schedule 设计稿解耦, 沿用既有命名) ── */
+  .modalBackdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px;
+    background: var(--overlay-bg);
+    animation: scheduledModalFade var(--motion-fast) var(--ease);
+  }
+  @keyframes scheduledModalFade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .modal {
+    display: flex;
+    flex-direction: column;
+    width: min(640px, calc(100% - 32px));
+    height: min(var(--schedule-modal-height), calc(100% - 32px));
+    overflow: hidden;
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    background: var(--popover);
+    color: var(--text-1);
+    box-shadow: var(--modal-shadow);
+  }
+  .modalHead {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 13px 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .modalHead h2 {
+    margin: 0;
+    color: var(--text-1);
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .modalHead .iconBtn {
+    width: 30px;
+    height: 32px;
+    background: var(--raised-2);
+  }
+  .modalBody {
+    display: grid;
+    min-height: 0;
+    flex: 1 1 auto;
+    gap: 14px;
+    align-content: start;
+    grid-auto-rows: max-content;
+    padding: 18px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+  .modalFoot {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 13px 18px;
+    border-top: 1px solid var(--line);
+  }
+  .modalFoot .hint {
+    margin-right: auto;
+    color: var(--text-3);
+    font-size: 11.5px;
+  }
+  .modalFoot .btn {
+    height: 32px;
+    padding: 0 14px;
+  }
+
+  .scheduledFormField {
+    display: grid;
+    gap: 7px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .scheduledFormField > span,
+  .scheduledFormField > legend,
+  .scheduledEffectiveRange > span {
+    color: var(--text-2);
+    font-size: 13px;
+    font-weight: 560;
+  }
+  .scheduledFormField small,
+  .scheduledEffectiveRange small {
+    color: var(--text-3);
+    font-weight: 400;
+  }
+  .scheduledFormField .input,
+  .scheduledFormField .textarea,
+  .scheduledFormField input {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--bg-main);
+    color: var(--text-1);
+    font: inherit;
+  }
+  .scheduledFormField .input,
+  .scheduledFormField input {
+    height: 34px;
+    padding: 0 10px;
+  }
+  .scheduledFormField .textarea {
+    min-height: 134px;
+    resize: vertical;
+    padding: 10px;
+    line-height: 1.6;
+  }
+  .scheduledFormField .input:focus,
+  .scheduledFormField .textarea:focus,
+  .scheduledFormField input:focus {
+    border-color: var(--line);
+    outline: 0;
+    background: var(--raised-1);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-1) 10%, transparent);
+  }
+
+  .scheduledTagControl {
+    display: flex;
+    min-height: 38px;
+    align-items: center;
+    gap: 6px;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--bg-main);
+  }
+  .scheduledTagControl:focus-within {
+    background: var(--raised-1);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-1) 10%, transparent);
+  }
+  .scheduledTagChip {
+    display: inline-flex;
+    max-width: 128px;
+    height: 26px;
+    min-width: 0;
+    flex: 0 1 auto;
+    align-items: center;
+    gap: 4px;
+    padding: 0 6px 0 8px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: var(--raised-1);
+    color: var(--text-2);
+    cursor: pointer;
+  }
+  .scheduledTagChip:hover {
+    background: var(--raised-2);
+    color: var(--text-1);
+  }
+  .scheduledTagChip span {
+    min-width: 0;
+    overflow: hidden;
+    color: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .scheduledTagControl > input[data-role="scheduled-tag-input"] {
+    width: auto;
+    height: 26px;
+    min-width: 44px;
+    flex: 1 1 120px;
+    padding: 0 5px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .scheduledTagControl > input[data-role="scheduled-tag-input"]:focus {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .scheduledTagCount {
+    min-width: 28px;
+    flex: 0 0 auto;
+    margin-left: auto;
+    padding-right: 4px;
+    color: var(--text-3);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    line-height: 26px;
+    text-align: right;
+  }
+
+  .scheduledFrequencyTabs {
+    width: fit-content;
+    grid-column: auto;
+    justify-self: start;
+  }
+  .scheduledCycleRow {
+    display: grid;
+    grid-template-columns: 110px minmax(0, 1fr);
+    align-items: start;
+    gap: 8px;
+  }
+  .scheduledCycleConfig {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) 110px;
+    gap: 8px;
+  }
+  .scheduledDailyTime {
+    width: 110px;
+    justify-self: end;
+  }
+  .scheduledMonthlyConfig {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) 104px 110px;
+    gap: 8px;
+  }
+  .scheduledMonthlyConfig > small {
+    grid-column: 1 / -1;
+    color: var(--text-3);
+    font-size: 11px;
+  }
+  .scheduledOnceRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 110px;
+    gap: 8px;
+  }
+  .scheduledFormSelect {
+    width: 100%;
+  }
+  .scheduledFormSelect .scheduledSelectTrigger {
+    grid-template-columns: minmax(0, 1fr) var(--select-control-icon-size);
+  }
+  .scheduledFormSelect .scheduledSelectPrefix:empty {
+    display: none;
+  }
+  .scheduledTimeField,
+  .scheduledDateTimeField {
+    position: relative;
+    display: grid;
+    height: 34px;
+    grid-template-columns: minmax(0, 1fr) 15px;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--bg-main);
+    color: var(--text-1);
+  }
+  .scheduledTimeField input,
+  .scheduledDateTimeField input {
+    width: 100%;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-1);
+    outline: 0;
+  }
+  .scheduledTimeField input::-webkit-calendar-picker-indicator,
+  .scheduledDateTimeField input::-webkit-calendar-picker-indicator {
+    display: none;
+  }
+  .scheduledTimeField svg,
+  .scheduledDateTimeField svg {
+    color: var(--text-3);
+  }
+  .scheduledIntervalRow {
+    display: grid;
+    width: fit-content;
+    grid-template-columns: max-content 96px 88px;
+    align-items: center;
+    gap: 6px;
+  }
+  .scheduledIntervalRow > span {
+    display: inline-flex;
+    height: 34px;
+    align-items: center;
+    padding-right: 2px;
+    color: var(--text-2);
+  }
+  .scheduledIntervalRow > input {
+    width: 96px;
+  }
+  .scheduledDateTimeField {
+    grid-template-columns: minmax(0, 1fr) 15px;
+  }
+
+  .scheduledEffectiveRange {
+    position: relative;
+    display: grid;
+    gap: 7px;
+  }
+  .scheduledDateRangeTrigger {
+    display: grid;
+    width: 100%;
+    height: 34px;
+    grid-template-columns: minmax(0, 1fr) 16px;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--bg-main);
+    color: var(--text-3);
+    cursor: pointer;
+    text-align: left;
+  }
+  .scheduledDateRangeTrigger:hover,
+  .scheduledDateRangeTrigger[aria-expanded="true"] {
+    border-color: var(--border-strong);
+    background: var(--raised-1);
+    color: var(--text-2);
+  }
+  .scheduledDateRangeTrigger[aria-expanded="true"] {
+    border-color: var(--line);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-1) 10%, transparent);
+  }
+  .scheduledDateRangeTrigger span {
+    overflow: hidden;
+    color: inherit;
+    font-weight: 400;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .scheduledEffectiveInputs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--popover);
+  }
+  .scheduledEffectiveInputs label {
+    display: grid;
+    gap: 6px;
+  }
+  .scheduledEffectiveInputs input {
+    height: 34px;
+    min-width: 0;
+    padding: 0 8px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--bg-main);
+    color: var(--text-1);
+  }
+
+  .scheduledNotificationOptions {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 16px;
+    white-space: nowrap;
+  }
+  .scheduledCheck {
+    display: flex;
+    height: 28px;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-2);
+    font-size: 13px;
+  }
+  .scheduledCheck input {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    padding: 0;
+    accent-color: var(--primary-fill);
+  }
+
+  .previewHero {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    align-items: start;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--raised-1);
+  }
+  .previewHero[data-invalid] {
+    border-color: var(--danger);
+    background: var(--danger-soft);
+  }
+  .previewHeroIcon {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border-radius: 8px;
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .previewHero[data-invalid] .previewHeroIcon {
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
+  .previewHeroBody {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+  }
+  .previewHeroLabel {
+    color: var(--text-3);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .previewHeroMain {
+    color: var(--text-1);
+    font-size: 14px;
+    font-weight: 600;
+    word-break: break-word;
+  }
+  .previewHeroSub {
+    color: var(--text-2);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .previewRuns {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .previewRuns li {
+    padding: 2px 0;
+    color: var(--text-2);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .previewRuns li::before {
+    content: "·";
+    margin-right: 6px;
+    color: var(--text-3);
+  }
+
+  .field {
+    display: grid;
+    gap: 6px;
+  }
+  .field label {
+    color: var(--text-2);
+    font-size: 12px;
+    font-weight: 560;
+  }
+  .field .hint {
+    color: var(--text-3);
+    font-size: 11.5px;
+  }
+  .fieldRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .input,
+  .textarea,
+  .selectInput {
+    width: 100%;
+    height: var(--schedule-control-height);
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--bg-main);
+    color: var(--text-1);
+    font: inherit;
+    font-size: 13px;
+    transition:
+      border-color var(--motion-fast) var(--ease),
+      box-shadow var(--motion-fast) var(--ease);
+  }
+  .input:focus,
+  .textarea:focus,
+  .selectInput:focus {
+    outline: 0;
+    background: var(--raised-1);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-1) 10%, transparent);
+  }
+  .input::placeholder,
+  .textarea::placeholder {
+    color: var(--text-3);
+  }
+  .textarea {
+    height: 116px;
+    resize: vertical;
+    padding: 9px 10px;
+    font-family: inherit;
+    line-height: 1.55;
+  }
+
+  .kindToggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--raised-1);
+  }
+  .kindToggle button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 12px;
+    border: 0;
+    background: transparent;
+    border-radius: 6px;
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 550;
+    color: var(--text-2);
+    cursor: pointer;
+    transition:
+      background var(--motion-fast) var(--ease),
+      color var(--motion-fast) var(--ease);
+  }
+  .kindToggle button:hover {
+    color: var(--text-1);
+    background: var(--raised-2);
+  }
+  .kindToggle button[aria-pressed="true"] {
+    background: var(--primary-fill);
+    color: var(--primary-ink);
+    font-weight: 600;
+  }
+  .kindToggle button .radio {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1.5px solid var(--text-3);
+    transition: background var(--motion-fast) var(--ease);
+  }
+  .kindToggle button[aria-pressed="true"] .radio {
+    background: var(--primary-ink);
+    border-color: var(--primary-ink);
+  }
+  .kindToggle button strong {
+    font-weight: inherit;
+  }
+  .kindToggle button small {
+    color: var(--text-3);
+    font-size: 11px;
+  }
+  .kindToggle button[aria-pressed="true"] small {
+    color: var(--text-2);
+  }
+
+  .presetGrid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .presetGrid button {
+    display: grid;
+    grid-template-columns: 18px 1fr;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--bg-main);
+    color: var(--text-1);
+    font: inherit;
+    font-size: 12.5px;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      background var(--motion-fast) var(--ease),
+      border-color var(--motion-fast) var(--ease);
+  }
+  .presetGrid button:hover {
+    background: var(--raised-1);
+  }
+  .presetGrid button[aria-pressed="true"] {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--text-1);
+  }
+  .presetGrid button small {
+    color: var(--text-3);
+    font-size: 11px;
+  }
+  .presetGrid .presetIcon {
+    display: grid;
+    width: 18px;
+    height: 18px;
+    place-items: center;
+    color: var(--text-2);
+  }
+  .presetGrid button[aria-pressed="true"] .presetIcon {
+    color: var(--accent);
+  }
+
+  .timeInput {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: var(--schedule-control-height);
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--bg-main);
+    color: var(--text-1);
+  }
+  .timeInput:focus-within {
+    background: var(--raised-1);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-1) 10%, transparent);
+  }
+  .timeInput input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-1);
+    font: inherit;
+    font-size: 13px;
+    outline: 0;
+  }
+  .timeInput svg {
+    width: 12px;
+    height: 12px;
+    color: var(--text-3);
+  }
+
+  .workspacePicker {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--bg-main);
+    cursor: pointer;
+    transition: border-color var(--motion-fast) var(--ease);
+  }
+  .workspacePicker:hover {
+    border-color: var(--border);
+  }
+  .workspacePicker select {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .workspacePickerIcon {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    border-radius: 6px;
+    background: var(--raised-2);
+    color: var(--text-2);
+  }
+  .workspacePickerMain {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+  .workspacePickerName {
+    overflow: hidden;
+    color: var(--text-1);
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .workspacePickerPath {
+    overflow: hidden;
+    color: var(--text-3);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cronChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 9px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: var(--raised-1);
+    color: var(--text-2);
+    font-family: var(--font-code);
+    font-size: 12px;
+  }
+  .cronChip[data-invalid] {
+    border-color: var(--danger);
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
+  .formError {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 9px;
+    border-radius: 5px;
+    background: var(--danger-soft);
+    color: var(--danger);
+    font-size: 12px;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: var(--schedule-control-height);
+    padding: 0 13px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--bg-main);
+    color: var(--text-1);
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 550;
+    cursor: pointer;
+    transition:
+      background var(--motion-fast) var(--ease),
+      border-color var(--motion-fast) var(--ease);
+  }
+  .btn:hover {
+    background: var(--raised-1);
+    border-color: var(--border);
+  }
+  .btn svg {
+    width: 13px;
+    height: 13px;
+  }
+  .btnPrimary {
+    background: var(--primary-fill);
+    color: var(--primary-ink);
+    border-color: transparent;
+  }
+  .btnPrimary:hover {
+    background: var(--primary-fill);
+    filter: brightness(1.05);
+  }
+  .btnGhost {
+    background: var(--raised-2);
+  }
+  .btnGhost:hover {
+    background: var(--raised-1);
+  }
+  .iconBtn {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-3);
+    cursor: pointer;
+    transition:
+      background var(--motion-fast) var(--ease),
+      color var(--motion-fast) var(--ease);
+  }
+  .iconBtn:hover {
+    background: var(--raised-2);
+    color: var(--text-1);
+  }
+  .iconBtn svg {
+    width: 13px;
+    height: 13px;
+  }
+  .iconBtn[data-variant="danger"]:hover {
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
+  .spin {
+    animation: scheduledSpin 0.9s linear infinite;
+  }
+  @keyframes scheduledSpin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* ── 完整调度控件：时间轮、多选和日期日历 ── */
+  .scheduledTimePicker {
+    position: relative;
+    display: grid;
+    width: 100%;
+    height: var(--schedule-control-height);
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) 15px;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--bg-main);
+    color: var(--text-1);
+    cursor: pointer;
+  }
+  .scheduledTimePicker:hover,
+  .scheduledTimePicker[data-open] {
+    background: var(--raised-1);
+  }
+  .scheduledTimePicker:focus-visible,
+  .scheduledTimePicker[data-open] {
+    border-color: var(--border-strong);
+    outline: 0;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-1) 10%, transparent);
+  }
+  .scheduledTimeValue {
+    overflow: hidden;
+    font-variant-numeric: tabular-nums;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .scheduledTimePicker > svg {
+    color: var(--text-3);
+  }
+  .scheduledTimePopover {
+    position: absolute;
+    z-index: 96;
+    top: calc(100% + 6px);
+    right: 0;
+    width: 176px;
+    padding: 8px 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--popover);
+    box-shadow: var(--popover-shadow);
+  }
+  .scheduledTimePicker[data-open-up] .scheduledTimePopover {
+    top: auto;
+    bottom: calc(100% + 6px);
+  }
+  .scheduledTimeWheelPanel {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .scheduledTimeWheelPanel::before {
+    position: absolute;
+    z-index: 0;
+    top: 60px;
+    right: 0;
+    left: 0;
+    height: 30px;
+    border-radius: 6px;
+    background: var(--raised-2);
+    content: "";
+    pointer-events: none;
+  }
+  .scheduledTimeWheelGroup {
+    position: relative;
+    min-width: 0;
+  }
+  .scheduledTimeWheel {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-rows: repeat(5, 30px);
+  }
+  .scheduledTimeWheel button {
+    width: 100%;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text-2);
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+  }
+  .scheduledTimeWheel button:hover {
+    background: var(--raised-3);
+    color: var(--text-1);
+  }
+  .scheduledTimeWheel button[aria-selected="true"] {
+    color: var(--text-1);
+    font-weight: 650;
+  }
+  .scheduledTimeWheel button[data-distance="1"] {
+    opacity: 0.68;
+  }
+  .scheduledTimeWheel button[data-distance="2"] {
+    opacity: 0.34;
+  }
+  .scheduledTimeSeparator {
+    position: absolute;
+    z-index: 2;
+    top: 60px;
+    left: -11px;
+    display: grid;
+    width: 6px;
+    height: 30px;
+    place-items: center;
+    color: var(--text-2);
+    font-weight: 650;
+    pointer-events: none;
+  }
+
+  .scheduledMultiSelect {
+    position: relative;
+    min-width: 0;
+  }
+  .scheduledMultiTrigger {
+    display: grid;
+    width: 100%;
+    height: var(--schedule-control-height);
+    grid-template-columns: minmax(0, 1fr) 14px;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--bg-main);
+    color: var(--text-1);
+    cursor: pointer;
+    text-align: left;
+  }
+  .scheduledMultiTrigger span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .scheduledMultiSelect[data-open] .scheduledMultiTrigger {
+    border-color: var(--border-strong);
+    background: var(--raised-1);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-1) 10%, transparent);
+  }
+  .scheduledMultiSelect[data-open] .scheduledMultiTrigger svg {
+    transform: rotate(-90deg);
+  }
+  .scheduledMultiOptions {
+    position: absolute;
+    z-index: 95;
+    top: calc(100% + 6px);
+    right: 0;
+    left: 0;
+    max-height: 238px;
+    padding: 5px;
+    overflow: auto;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--popover);
+    box-shadow: var(--popover-shadow);
+  }
+  .scheduledMultiSelect[data-open-up] .scheduledMultiOptions {
+    top: auto;
+    bottom: calc(100% + 6px);
+  }
+  .scheduledMultiOptions button {
+    display: grid;
+    width: 100%;
+    height: 30px;
+    grid-template-columns: minmax(0, 1fr) 14px;
+    align-items: center;
+    gap: 8px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text-2);
+    cursor: pointer;
+    text-align: left;
+  }
+  .scheduledMultiOptions button:hover {
+    background: var(--raised-2);
+    color: var(--text-1);
+  }
+  .scheduledMultiOptions button[aria-selected="true"] {
+    color: var(--text-1);
+  }
+
+  .scheduledDatePicker {
+    position: relative;
+    min-width: 0;
+  }
+  .scheduledCalendarPopover {
+    position: fixed;
+    z-index: 130;
+    width: min(336px, calc(100% - 24px));
+    overflow: hidden;
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    background: var(--popover);
+    color: var(--text-1);
+    box-shadow: var(--popover-shadow);
+  }
+  .scheduledCalendarHeader {
+    display: grid;
+    grid-template-columns: 30px 30px minmax(0, 1fr) 30px 30px;
+    align-items: center;
+    gap: 2px;
+    padding: 10px 12px 8px;
+  }
+  .scheduledCalendarHeader strong {
+    justify-self: center;
+    color: var(--text-1);
+    font-size: 14px;
+    font-weight: 620;
+  }
+  .scheduledCalendarHeader button,
+  .scheduledCalendarFooter button {
+    display: grid;
+    height: 30px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-2);
+    cursor: pointer;
+  }
+  .scheduledCalendarHeader button:hover,
+  .scheduledCalendarFooter button:hover {
+    background: var(--raised-2);
+    color: var(--text-1);
+  }
+  .scheduledCalendarHeader button {
+    width: 30px;
+  }
+  .scheduledCalendarWeekdays,
+  .scheduledCalendarGrid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0;
+    padding: 0 12px;
+  }
+  .scheduledCalendarWeekdays span {
+    display: grid;
+    height: 28px;
+    place-items: center;
+    color: var(--text-3);
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .scheduledCalendarDay {
+    position: relative;
+    display: grid;
+    width: 100%;
+    height: 36px;
+    min-width: 0;
+    margin: 0;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-sizing: border-box;
+    color: var(--text-1);
+    cursor: pointer;
+  }
+  .scheduledCalendarDay::before {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    background: transparent;
+    content: "";
+    pointer-events: none;
+  }
+  .scheduledCalendarDay span {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    width: 100%;
+    height: 100%;
+    place-items: center;
+    color: inherit;
+    cursor: inherit;
+    font-size: 12px;
+    font-weight: 450;
+    pointer-events: none;
+  }
+  .scheduledCalendarDay:not([aria-disabled="true"]):hover {
+    background: var(--raised-2);
+  }
+  .scheduledCalendarDay[data-outside],
+  .scheduledCalendarDay[data-past] {
+    color: var(--text-3);
+    opacity: 0.38;
+  }
+  .scheduledCalendarDay[aria-disabled="true"],
+  .scheduledCalendarDay[aria-disabled="true"] span {
+    cursor: not-allowed;
+  }
+  .scheduledCalendarDay[aria-disabled="true"]:hover {
+    background: transparent;
+  }
+  .scheduledCalendarDay[data-in-range]::before {
+    background: var(--raised-2);
+  }
+  .scheduledCalendarDay[data-selected],
+  .scheduledCalendarDay[data-selected]:hover,
+  .scheduledCalendarDay[data-preview-selected],
+  .scheduledCalendarDay[data-preview-selected]:hover {
+    background: var(--primary-fill);
+    color: var(--primary-ink);
+    font-weight: 650;
+  }
+  .scheduledCalendarDay[data-range-start]:not([data-range-end]) {
+    border-radius: 7px 0 0 7px;
+  }
+  .scheduledCalendarDay[data-range-end]:not([data-range-start]) {
+    border-radius: 0 7px 7px 0;
+  }
+  .scheduledCalendarDay[data-range-start][data-range-end] {
+    border-radius: 7px;
+  }
+  .scheduledCalendarDay[data-today]:not([data-selected]) {
+    box-shadow: inset 0 0 0 1px var(--border-strong);
+  }
+  .scheduledCalendarDay:focus-visible {
+    z-index: 2;
+    outline: 1px solid var(--focus-ring);
+    outline-offset: -1px;
+  }
+  .scheduledCalendarFooter {
+    display: flex;
+    min-height: 48px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 8px 12px 0;
+    padding: 8px 0;
+    border-top: 1px solid var(--line);
+  }
+  .scheduledCalendarFooter span {
+    overflow: hidden;
+    color: var(--text-2);
+    min-width: 0;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .scheduledCalendarFooter button {
+    padding: 0 8px;
+    font-size: 12px !important;
+  }
+
+  @media (max-width: 760px) {
+    .scheduledPanel {
+      padding-right: 14px;
+      padding-left: 14px;
+    }
+    .scheduledSearch {
+      width: auto;
+      flex: 1 1 260px;
+    }
+    .scheduledToolbar {
+      flex-wrap: wrap;
+    }
+    .scheduledToolbarSpacer {
+      display: none;
+    }
+    .scheduledCreate {
+      margin-left: auto;
+    }
+    .scheduledDetailPanel {
+      width: min(92%, var(--schedule-detail-width));
+    }
+    .scheduledCycleRow {
+      grid-template-columns: 1fr;
+    }
+    .scheduledNotificationOptions {
+      flex-wrap: wrap;
+    }
+  }
+}

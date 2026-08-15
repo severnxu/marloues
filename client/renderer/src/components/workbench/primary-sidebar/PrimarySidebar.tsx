@@ -400,11 +400,13 @@ export function PrimarySidebar({
     <aside className="sidebar">
       <div className="sidebar-panel">
         <QuickAccessZone
+          page={page}
           isMacOS={isMacOS}
           onNewConversation={async () => {
             await createSession();
             onPage("chat");
           }}
+          onPage={onPage}
         />
 
         <WorkAreaZone

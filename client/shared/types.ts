@@ -214,6 +214,123 @@ export interface ChatSendReceipt {
   error?: string;
 }
 
+// ==================== Scheduled tasks ====================
+
+export interface ScheduleTimeSpec {
+  hour: number;
+  minute: number;
+}
+
+export type ScheduledTaskScheduleConfig =
+  | {
+      mode: "cycle";
+      cycleType: "daily";
+      time: ScheduleTimeSpec;
+    }
+  | {
+      mode: "cycle";
+      cycleType: "weekly";
+      weekdays: number[];
+      time: ScheduleTimeSpec;
+    }
+  | {
+      mode: "cycle";
+      cycleType: "monthly";
+      months: number[];
+      dayOfMonth: number | "last";
+      time: ScheduleTimeSpec;
+    }
+  | {
+      mode: "interval";
+      every: number;
+      unit: "hours" | "days" | "weeks";
+      /** 间隔任务的固定起算点，编辑任务时保持不变。 */
+      anchorAt: number;
+    }
+  | {
+      mode: "once";
+      runAt: number;
+    };
+
+export interface ScheduledTaskEffectiveRange {
+  /** 本地日期，格式 YYYY-MM-DD。 */
+  start: string;
+  /** 本地日期，格式 YYYY-MM-DD。 */
+  end: string;
+}
+
+export type ScheduleNotificationChannel = "app" | "wecom" | "feishu";
+
+/**
+ * 设计稿中的完整交互配置。cron/runAt 继续保留作旧版本兼容字段，
+ * 新任务的展示、编辑回显与下一次执行时间以该元数据为准。
+ */
+export interface ScheduledTaskMetadata {
+  tags: string[];
+  schedule: ScheduledTaskScheduleConfig;
+  effectiveRange?: ScheduledTaskEffectiveRange;
+  notificationChannels: ScheduleNotificationChannel[];
+}
+
+/** 定时任务定义（scheduled_tasks 表） */
+export interface ScheduledTaskRecord {
+  id: string;
+  name: string;
+  instruction: string;
+  workspacePath: string;
+  kind: "once" | "cron";
+  /** kind='once'：触发时间戳(ms)，执行后任务自动完成 */
+  runAt?: number;
+  /** kind='cron'：5 段 cron 表达式（预设频率也归一化为 cron） */
+  cronExpr?: string;
+  enabled: boolean;
+  /** 调度器缓存的下次触发时间 */
+  nextRunAt?: number;
+  lastRunAt?: number;
+  lastRunStatus?: string;
+  /** 连续失败次数，达 5 自动暂停 */
+  failCount?: number;
+  metadata?: ScheduledTaskMetadata;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** 创建/更新定时任务的输入 */
+export interface ScheduledTaskInput {
+  name: string;
+  instruction: string;
+  workspacePath: string;
+  kind: "once" | "cron";
+  runAt?: number;
+  cronExpr?: string;
+  metadata?: ScheduledTaskMetadata;
+}
+
+export type ScheduledTaskRunStatus =
+  "running" | "success" | "failed" | "missed" | "no_window";
+
+/** 定时任务执行记录（scheduled_task_runs 表） */
+export interface ScheduledTaskRunRecord {
+  id: string;
+  taskId: string;
+  sessionId?: string;
+  status: ScheduledTaskRunStatus;
+  startedAt?: number;
+  finishedAt?: number;
+  error?: string;
+  /** ChatSendReceipt 序列化，便于排查投递结果 */
+  receiptJson?: string;
+  createdAt: number;
+}
+
+/** 主进程 → 渲染层的定时任务变更推送 */
+export interface ScheduleChangedPayload {
+  kind: "upsert" | "remove" | "run";
+  /** run 事件也可能携带受影响任务的最新 record，渲染层可就地替换 */
+  record?: ScheduledTaskRecord;
+  run?: ScheduledTaskRunRecord;
+}
+
 export interface ChatResendRequest {
   sessionId: string;
   fromMessageId: string;
@@ -470,6 +587,7 @@ export interface SkillDetail extends SkillInfo {
 export interface SkillMarketplaceItem {
   slug: string;
   name: string;
+  cnName?: string;
   description?: string;
   ownerHandle?: string;
   version?: string;
@@ -488,9 +606,21 @@ export interface SkillMarketplaceDetail extends SkillMarketplaceItem {
   securitySummary?: string;
 }
 
+export interface SkillImportPreview {
+  path: string;
+  name: string;
+  version?: string;
+  entry: "SKILL.md";
+}
+
 export interface SkillMarketplaceListRequest {
   query?: string;
+  cnName?: string;
+  creator?: string;
+  tagId?: string;
   limit?: number;
+  pageNo?: number;
+  pageSize?: number;
   cursor?: string;
 }
 
@@ -812,17 +942,34 @@ export interface MarlouesAPI {
   audit: {
     list(limit?: number): Promise<AuditEventRecord[]>;
   };
+  schedule: {
+    list(): Promise<ScheduledTaskRecord[]>;
+    create(input: ScheduledTaskInput): Promise<ScheduledTaskRecord>;
+    update(
+      taskId: string,
+      input: Partial<ScheduledTaskInput>,
+    ): Promise<ScheduledTaskRecord>;
+    remove(taskId: string): Promise<void>;
+    toggle(taskId: string): Promise<ScheduledTaskRecord>;
+    runNow(taskId: string): Promise<ScheduledTaskRunRecord | null>;
+    listRuns(taskId: string, limit?: number): Promise<ScheduledTaskRunRecord[]>;
+    onChanged(callback: (payload: ScheduleChangedPayload) => void): () => void;
+  };
   skill: {
     list(): Promise<SkillInfo[]>;
-    importFolder(): Promise<SkillInfo | null>;
+    selectImportFolder(): Promise<SkillImportPreview | null>;
+    importFolder(path?: string): Promise<SkillInfo | null>;
     toggle(skillId: string, enabled: boolean): Promise<SkillInfo[]>;
     remove(skillId: string): Promise<SkillInfo[]>;
     getDetail(skillId: string): Promise<SkillDetail>;
     marketplaceList(
       request?: SkillMarketplaceListRequest,
     ): Promise<SkillMarketplaceListResponse>;
-    marketplaceDetail(slug: string): Promise<SkillMarketplaceDetail>;
-    marketplaceInstall(slug: string): Promise<SkillInfo[]>;
+    marketplaceDetail(
+      slug: string,
+      version?: string,
+    ): Promise<SkillMarketplaceDetail>;
+    marketplaceInstall(slug: string, version?: string): Promise<SkillInfo[]>;
   };
   chat: {
     listSessions(): Promise<ChatSessionRecord[]>;
@@ -916,7 +1063,16 @@ export const IPC = {
   MCP_REFRESH_STATUS: "mcp:refresh-status",
   MCP_LIST_TOOLS: "mcp:list-tools",
   AUDIT_LIST: "audit:list",
+  SCHEDULE_LIST: "schedule:list",
+  SCHEDULE_CREATE: "schedule:create",
+  SCHEDULE_UPDATE: "schedule:update",
+  SCHEDULE_REMOVE: "schedule:remove",
+  SCHEDULE_TOGGLE: "schedule:toggle",
+  SCHEDULE_RUN_NOW: "schedule:run-now",
+  SCHEDULE_LIST_RUNS: "schedule:list-runs",
+  SCHEDULE_CHANGED: "schedule:changed",
   SKILL_LIST: "skill:list",
+  SKILL_SELECT_IMPORT_FOLDER: "skill:select-import-folder",
   SKILL_IMPORT_FOLDER: "skill:import-folder",
   SKILL_TOGGLE: "skill:toggle",
   SKILL_REMOVE: "skill:remove",

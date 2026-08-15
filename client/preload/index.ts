@@ -135,7 +135,10 @@ const api: MarlouesAPI = {
   },
   skill: {
     list: () => ipcRenderer.invoke(IPC.SKILL_LIST),
-    importFolder: () => ipcRenderer.invoke(IPC.SKILL_IMPORT_FOLDER),
+    selectImportFolder: () =>
+      ipcRenderer.invoke(IPC.SKILL_SELECT_IMPORT_FOLDER),
+    importFolder: (path?: string) =>
+      ipcRenderer.invoke(IPC.SKILL_IMPORT_FOLDER, path),
     toggle: (skillId: string, enabled: boolean) =>
       ipcRenderer.invoke(IPC.SKILL_TOGGLE, skillId, enabled),
     remove: (skillId: string) => ipcRenderer.invoke(IPC.SKILL_REMOVE, skillId),
@@ -143,10 +146,10 @@ const api: MarlouesAPI = {
       ipcRenderer.invoke(IPC.SKILL_GET_DETAIL, skillId),
     marketplaceList: (request) =>
       ipcRenderer.invoke(IPC.SKILL_MARKETPLACE_LIST, request),
-    marketplaceDetail: (slug: string) =>
-      ipcRenderer.invoke(IPC.SKILL_MARKETPLACE_DETAIL, slug),
-    marketplaceInstall: (slug: string) =>
-      ipcRenderer.invoke(IPC.SKILL_MARKETPLACE_INSTALL, slug),
+    marketplaceDetail: (slug: string, version?: string) =>
+      ipcRenderer.invoke(IPC.SKILL_MARKETPLACE_DETAIL, slug, version),
+    marketplaceInstall: (slug: string, version?: string) =>
+      ipcRenderer.invoke(IPC.SKILL_MARKETPLACE_INSTALL, slug, version),
   },
   chat: {
     listSessions: () => ipcRenderer.invoke(IPC.CHAT_LIST_SESSIONS),
@@ -221,6 +224,23 @@ const api: MarlouesAPI = {
         scope,
         reason,
       }),
+  },
+  schedule: {
+    list: () => ipcRenderer.invoke(IPC.SCHEDULE_LIST),
+    create: (input) => ipcRenderer.invoke(IPC.SCHEDULE_CREATE, input),
+    update: (taskId, input) =>
+      ipcRenderer.invoke(IPC.SCHEDULE_UPDATE, taskId, input),
+    remove: (taskId) => ipcRenderer.invoke(IPC.SCHEDULE_REMOVE, taskId),
+    toggle: (taskId) => ipcRenderer.invoke(IPC.SCHEDULE_TOGGLE, taskId),
+    runNow: (taskId) => ipcRenderer.invoke(IPC.SCHEDULE_RUN_NOW, taskId),
+    listRuns: (taskId, limit) =>
+      ipcRenderer.invoke(IPC.SCHEDULE_LIST_RUNS, taskId, limit),
+    onChanged: (callback) => {
+      const listener = (_event: Electron.IpcRendererEvent, payload: unknown) =>
+        callback(payload as never);
+      ipcRenderer.on(IPC.SCHEDULE_CHANGED, listener);
+      return () => ipcRenderer.off(IPC.SCHEDULE_CHANGED, listener);
+    },
   },
 };
 

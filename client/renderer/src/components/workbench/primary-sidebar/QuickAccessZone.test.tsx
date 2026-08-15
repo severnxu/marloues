@@ -3,23 +3,39 @@ import { describe, expect, it, vi } from "vitest";
 import { QuickAccessZone } from "./QuickAccessZone";
 
 describe("QuickAccessZone", () => {
-  it("renders the new conversation entry without dead quick pages", () => {
+  it("renders the frozen entry order without global search", () => {
     const markup = renderToStaticMarkup(
-      <QuickAccessZone isMacOS onNewConversation={vi.fn()} />,
+      <QuickAccessZone
+        page="chat"
+        isMacOS
+        onNewConversation={vi.fn()}
+        onPage={vi.fn()}
+      />,
     );
 
-    expect(markup).toContain("新建会话");
-    expect(markup).toContain("⌘N");
-    expect(markup).not.toContain("定时任务");
-    expect(markup).not.toContain("插件");
+    const labels = ["新建会话", "定时任务", "插件"];
+    labels.reduce((previousIndex, label) => {
+      const index = markup.indexOf(label);
+      expect(index).toBeGreaterThan(previousIndex);
+      return index;
+    }, -1);
+    expect(markup).not.toContain("搜索");
     expect(markup).not.toContain("会话回放");
+    expect(markup).toContain("⌘N");
   });
 
-  it("uses the windows shortcut label on non-macOS", () => {
+  it("marks the visible quick page as current", () => {
     const markup = renderToStaticMarkup(
-      <QuickAccessZone isMacOS={false} onNewConversation={vi.fn()} />,
+      <QuickAccessZone
+        page="plugins"
+        isMacOS={false}
+        onNewConversation={vi.fn()}
+        onPage={vi.fn()}
+      />,
     );
 
+    expect(markup).toContain('data-quick-access="plugins"');
+    expect(markup).toContain('aria-current="page"');
     expect(markup).toContain("Ctrl+N");
   });
 });

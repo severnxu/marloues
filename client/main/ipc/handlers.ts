@@ -5,6 +5,7 @@
 
 import { app, ipcMain, BrowserWindow, dialog, shell } from "electron";
 import { writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { IPC } from "./channels";
 import { logInfo } from "../core/logging/app-logger";
 import type {
@@ -26,6 +27,8 @@ import type {
   SkillDetail,
   SkillInfo,
   SessionSearchResult,
+  ScheduledTaskRecord,
+  ScheduledTaskRunRecord,
 } from "@shared/types";
 import {
   getRuntime,
@@ -97,12 +100,16 @@ import {
   getMarketplaceSkillDetail,
   getSkillDetail as getSkillDetailFromService,
   importSkillFolder as importSkillFolderFromService,
+  importSkillFolderToRoot,
   installMarketplaceSkill,
   listInstalledSkills as listInstalledSkillsFromService,
   listMarketplaceSkills,
+  readSkillInfo as readSkillInfoFromService,
   removeSkill as removeSkillFromService,
   toggleSkill as toggleSkillFromService,
 } from "../services/skill-service";
+import { getUserSkillsDir } from "../app-paths";
+import type { SkillImportPreview } from "@shared/types";
 import type { MessageItem } from "@shared/workflow-types";
 import type { WorkflowTurnItem } from "@shared/workflow-read-thread-contract";
 import { messageItemToWorkflowTurnItem } from "@shared/adapters/message-item-to-workflow-turn-item";
@@ -2102,6 +2109,33 @@ export function registerHandlers(): void {
     listAuditEvents(limit),
   );
 
+  // ---------- Schedule (stub) ----------
+  // Marloues main process does not ship a scheduler backend yet. The renderer
+  // keeps the full task page/interaction; all data endpoints return empty and
+  // mutations report the feature as not wired up.
+  const SCHEDULE_NOT_WIRED = "定时任务后端尚未接入，此操作暂不可用";
+  ipcMain.handle(
+    IPC.SCHEDULE_LIST,
+    async (): Promise<ScheduledTaskRecord[]> => [],
+  );
+  ipcMain.handle(
+    IPC.SCHEDULE_LIST_RUNS,
+    async (): Promise<ScheduledTaskRunRecord[]> => [],
+  );
+  ipcMain.handle(IPC.SCHEDULE_CREATE, async () => {
+    throw new Error(SCHEDULE_NOT_WIRED);
+  });
+  ipcMain.handle(IPC.SCHEDULE_UPDATE, async () => {
+    throw new Error(SCHEDULE_NOT_WIRED);
+  });
+  ipcMain.handle(IPC.SCHEDULE_REMOVE, async () => {
+    throw new Error(SCHEDULE_NOT_WIRED);
+  });
+  ipcMain.handle(IPC.SCHEDULE_TOGGLE, async () => {
+    throw new Error(SCHEDULE_NOT_WIRED);
+  });
+  ipcMain.handle(IPC.SCHEDULE_RUN_NOW, async () => null);
+
   // ---------- Skill ----------
 
   ipcMain.handle(IPC.SKILL_LIST, async (): Promise<SkillInfo[]> =>
@@ -2109,9 +2143,31 @@ export function registerHandlers(): void {
   );
 
   ipcMain.handle(
+    IPC.SKILL_SELECT_IMPORT_FOLDER,
+    async (): Promise<SkillImportPreview | null> => {
+      const result = await dialog.showOpenDialog({
+        title: "选择 Skill 目录",
+        properties: ["openDirectory"],
+      });
+      if (result.canceled || !result.filePaths[0]) return null;
+      const dir = resolve(result.filePaths[0]);
+      const skill = readSkillInfoFromService(dir, "user");
+      if (!skill) return null;
+      return {
+        path: dir,
+        name: skill.name,
+        version: skill.version,
+        entry: "SKILL.md",
+      };
+    },
+  );
+
+  ipcMain.handle(
     IPC.SKILL_IMPORT_FOLDER,
-    async (): Promise<SkillInfo | null> => {
-      const skill = await importSkillFolderFromService();
+    async (_e, path?: string): Promise<SkillInfo | null> => {
+      const skill = path
+        ? importSkillFolderToRoot(path, getUserSkillsDir())
+        : await importSkillFolderFromService();
       if (!skill) return null;
       recordAuditEvent({
         toolName: "skill.importFolder",
@@ -2162,10 +2218,13 @@ export function registerHandlers(): void {
   ipcMain.handle(IPC.SKILL_MARKETPLACE_LIST, async () =>
     listMarketplaceSkills(),
   );
-  ipcMain.handle(IPC.SKILL_MARKETPLACE_DETAIL, async (_e, slug: string) =>
-    getMarketplaceSkillDetail(slug),
+  ipcMain.handle(
+    IPC.SKILL_MARKETPLACE_DETAIL,
+    async (_e, slug: string, _version?: string) =>
+      getMarketplaceSkillDetail(slug),
   );
-  ipcMain.handle(IPC.SKILL_MARKETPLACE_INSTALL, async () =>
-    installMarketplaceSkill(),
+  ipcMain.handle(
+    IPC.SKILL_MARKETPLACE_INSTALL,
+    async (_e, _slug?: string, _version?: string) => installMarketplaceSkill(),
   );
 }

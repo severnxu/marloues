@@ -10,6 +10,8 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import type { SettingsSection } from "@/components/settings/types";
+import { PluginsView } from "@/pages/PluginsPage";
+import { SchedulePage } from "@/pages/SchedulePage";
 import {
   getAuxiliarySessionScope,
   isAuxiliaryOpenForSession,
@@ -91,6 +93,11 @@ export function WorkbenchRoot({
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const createSession = useUnifiedChatStore((s) => s.createSession);
+  const setActiveSession = useUnifiedChatStore((s) => s.setActiveSession);
+  const openScheduledSession = (sessionId: string) => {
+    setActiveSession(sessionId);
+    onPage("chat");
+  };
 
   // ---- OPEN_GLOBAL_SEARCH_EVENT (⌘K / Ctrl+K handler from anywhere) ----
   useEffect(() => {
@@ -341,6 +348,22 @@ export function WorkbenchRoot({
               layout.auxiliaryRef.current = node;
             }}
           />
+
+          <KeepAliveWorkbenchView
+            name="schedules"
+            active={page === "schedules"}
+            className="quick-page-overlay-host scheduled-tasks-page-host"
+          >
+            <SchedulePage onOpenSession={openScheduledSession} />
+          </KeepAliveWorkbenchView>
+
+          <KeepAliveWorkbenchView
+            name="plugins"
+            active={page === "plugins"}
+            className="quick-page-overlay-host plugins-page-host"
+          >
+            <PluginsView onClose={() => onPage("chat")} />
+          </KeepAliveWorkbenchView>
         </WorkbenchMainColumns>
       </WorkbenchLayout>
 
