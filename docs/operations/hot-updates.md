@@ -50,9 +50,11 @@ npm run key:hot -- --key-id official-2026-01
 
 GitHub Actions 的热更新工作流还需要配置：
 
-- Repository variable `MARLOUES_HOT_UPDATE_KEY_ID`
-- Repository variable `MARLOUES_HOT_UPDATE_URL`
+- Repository variable `MARLOUES_HOT_UPDATE_KEY_ID`，例如 `official-2026-01`
+- Repository variable `MARLOUES_HOT_UPDATE_URL`，本仓库应为 `https://marloues.github.io/marloues/ui`
 - Repository secret `MARLOUES_HOT_UPDATE_PRIVATE_KEY`
+
+首次使用前，在 GitHub 仓库的 **Settings → Pages → Build and deployment** 中将 Source 设为 **GitHub Actions**。UI feed 是公开更新文件；私钥只保存在 Actions Secret 中，不会进入 Pages artifact。
 
 ## 公钥轮换
 
@@ -100,6 +102,21 @@ npm run verify:hot -- --channel stable
 ```
 
 `publish-hot-update.mjs` 会拒绝覆盖相同或更低的 UI 版本。正式部署需要保证 `manifest.json`、`manifest.sig` 和 `packages/` 同时可用；推荐先上传包，再原子替换清单和签名。
+
+### 通过 GitHub 发布
+
+仓库的 **Build signed UI hot-update feed** 工作流支持手动选择 `stable`、`beta` 或 `nightly`，构建并验证签名后发布到 GitHub Pages。公开地址结构为：
+
+```text
+https://marloues.github.io/marloues/ui/
+  stable/manifest.json
+  beta/manifest.json
+  nightly/manifest.json
+```
+
+Pages 每次部署会替换整个站点，因此工作流会先从当前 Pages 站点读取另外两个通道，再和本次生成的通道一起验证和部署。首次发布时尚不存在的通道会按 404 跳过；已有通道下载失败、路径不安全或验证失败时会终止部署，不会静默删除线上通道。
+
+完整客户端仍由 `Release` 工作流发布到 GitHub Releases；UI 热更新由这个工作流发布到 GitHub Pages。二者职责独立。
 
 ## 用户控制
 
