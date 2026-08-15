@@ -142,4 +142,19 @@ for (const requiredFragment of [
   );
 }
 
+const releaseWorkflow = readFileSync(
+  join(repositoryRoot, ".github", "workflows", "release.yml"),
+  "utf8",
+);
+for (const requiredFragment of [
+  "MARLOUES_CLIENT_UPDATE_PROVIDER: github",
+  "MARLOUES_HOT_UPDATE_URL: ${{ vars.MARLOUES_HOT_UPDATE_URL }}",
+  'MARLOUES_REQUIRE_HOT_UPDATE: "1"',
+]) {
+  assert(
+    releaseWorkflow.includes(requiredFragment),
+    `release workflow contains ${requiredFragment}`,
+  );
+}
+
 console.log(`hot-update Pages contract passed (${temporaryRoot})`);

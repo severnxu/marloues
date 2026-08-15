@@ -118,6 +118,8 @@ Pages 每次部署会替换整个站点，因此工作流会先从当前 Pages �
 
 完整客户端仍由 `Release` 工作流发布到 GitHub Releases；UI 热更新由这个工作流发布到 GitHub Pages。二者职责独立。
 
+`Release` 工作流会把仓库变量 `MARLOUES_HOT_UPDATE_URL` 和已提交的公钥一起嵌入正式客户端；缺少 URL 或可信公钥时，正式打包会直接失败，避免发布无法使用 UI 热更新的安装包。
+
 ## 用户控制
 
 设置页的“更新”区域提供：
