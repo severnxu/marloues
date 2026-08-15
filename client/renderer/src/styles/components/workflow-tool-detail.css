@@ -1,0 +1,375 @@
+/* Structured tool details shared by MCP, dynamic, plan, and media tools. */
+
+.workflow-tool-detail {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--raised-1);
+  color: var(--text-2);
+}
+
+.workflow-tool-detail-header {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0 10px;
+}
+
+.workflow-tool-detail-title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-1);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-tool-detail-controls,
+.workflow-tool-detail-status,
+.workflow-tool-detail-cancel {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+}
+
+.workflow-tool-detail-controls {
+  gap: var(--space-2);
+}
+
+.workflow-tool-detail-status {
+  gap: var(--space-1);
+  color: var(--text-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  line-height: 1;
+}
+
+.workflow-tool-detail-status svg,
+.workflow-tool-detail-cancel svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+
+.workflow-tool-detail-status.is-success {
+  color: var(--success);
+}
+
+.workflow-tool-detail-status.is-failed {
+  color: var(--danger);
+}
+
+.workflow-tool-detail-status.is-running svg {
+  animation: workflow-tool-spin 900ms linear infinite;
+}
+
+.workflow-tool-detail-cancel {
+  min-height: 24px;
+  justify-content: center;
+  gap: var(--space-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-2);
+  padding: 0 7px;
+  font-size: var(--text-xs);
+  transition:
+    background var(--motion-fast) var(--ease),
+    border-color var(--motion-fast) var(--ease),
+    color var(--motion-fast) var(--ease);
+}
+
+.workflow-tool-detail-cancel:hover,
+.workflow-tool-detail-cancel:focus-visible {
+  border-color: color-mix(in srgb, var(--danger) 32%, var(--border));
+  outline: 0;
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.workflow-tool-detail-cancel:disabled {
+  cursor: var(--cursor-disabled);
+  opacity: 0.58;
+}
+
+.workflow-tool-detail-body {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  padding: 10px;
+}
+
+.workflow-tool-section {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.workflow-tool-section-head {
+  display: flex;
+  min-height: 24px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.workflow-tool-label,
+.workflow-tool-muted {
+  color: var(--text-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.workflow-tool-primary {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.workflow-tool-primary.is-danger {
+  color: var(--danger);
+}
+
+.workflow-tool-list {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.workflow-tool-empty {
+  color: var(--text-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.workflow-tool-pre {
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-workspace);
+  color: var(--text-2);
+  padding: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.workflow-tool-pre.is-scrollable {
+  max-height: 220px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.workflow-tool-pre.is-danger {
+  border-color: color-mix(in srgb, var(--danger) 24%, var(--border-subtle));
+  color: var(--danger);
+}
+
+.workflow-tool-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.workflow-tool-chip {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--raised-1);
+  color: var(--text-2);
+  padding: 3px 7px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-tool-plan {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.workflow-tool-plan-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-2);
+}
+
+.workflow-tool-plan-dot {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--raised-2);
+  color: var(--text-3);
+}
+
+.workflow-tool-plan-dot svg {
+  width: 11px;
+  height: 11px;
+}
+
+.workflow-tool-plan-dot.is-completed {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.workflow-tool-plan-dot.is-running {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.workflow-tool-plan-dot.is-running svg {
+  animation: workflow-tool-spin 900ms linear infinite;
+}
+
+.workflow-tool-plan-dot.is-pending span {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.workflow-tool-plan-content {
+  min-width: 0;
+}
+
+.workflow-tool-plan-step {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.workflow-tool-markdown {
+  max-height: 260px;
+  min-width: 0;
+  overflow: auto;
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.workflow-tool-metrics {
+  display: grid;
+  overflow: hidden;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.workflow-tool-metric {
+  min-width: 0;
+  padding: var(--space-2);
+  text-align: center;
+}
+
+.workflow-tool-metric + .workflow-tool-metric {
+  border-left: 1px solid var(--border-subtle);
+}
+
+.workflow-tool-metric div {
+  overflow: hidden;
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-tool-metric span {
+  color: var(--text-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.workflow-tool-usage-bar {
+  overflow: hidden;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--raised-2);
+}
+
+.workflow-tool-usage-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.workflow-subagent-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.workflow-subagent-link {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  gap: var(--space-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-2);
+  padding: 5px var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.workflow-subagent-link:hover,
+.workflow-subagent-link:focus-visible {
+  outline: 0;
+  background: var(--raised-2);
+  color: var(--text-1);
+}
+
+.workflow-subagent-link-label {
+  flex: none;
+  color: currentColor;
+}
+
+.workflow-subagent-link-detail {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-subagent-waiting {
+  color: var(--text-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+@keyframes workflow-tool-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workflow-tool-detail-status.is-running svg,
+  .workflow-tool-plan-dot.is-running svg {
+    animation: none;
+  }
+}

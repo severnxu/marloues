@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch } from "react";
 import type { AuxiliaryMode, WorkbenchLayoutAction } from "./layout-model";
 
+const AUXILIARY_FADE_MS = 140;
+
+/** Keeps auxiliary content out of view while its outer geometry switches. */
 export function useAuxiliaryTransition(
   dispatch: Dispatch<WorkbenchLayoutAction>,
 ) {
@@ -48,8 +51,8 @@ export function useAuxiliaryTransition(
           switchingRef.current = false;
           setSwitching(false);
           timerRef.current = null;
-        }, 140);
-      }, 140);
+        }, AUXILIARY_FADE_MS);
+      }, AUXILIARY_FADE_MS);
     },
     [dispatch],
   );

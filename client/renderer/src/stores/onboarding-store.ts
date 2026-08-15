@@ -1,21 +1,30 @@
 import { create } from "zustand";
 
 /* PRD 5.10 — Onboarding 持久化状态。首次启动显示未完成步骤，完成后不再弹出。 */
-const STORAGE_KEY = "marloues.onboarding.v1";
+const STORAGE_KEY = "marloues.onboarding.v2";
 
 export interface OnboardingState {
   completed: boolean;
-  selectedRuntime: boolean;
   configuredModel: boolean;
   selectedWorkspace: boolean;
   complete: () => void;
-  markStep: (step: "selectedRuntime" | "configuredModel" | "selectedWorkspace", done: boolean) => void;
+  markStep: (
+    step: "configuredModel" | "selectedWorkspace",
+    done: boolean,
+  ) => void;
   reset: () => void;
 }
 
-function readStored(): Pick<OnboardingState, "completed" | "selectedRuntime" | "configuredModel" | "selectedWorkspace"> {
+function readStored(): Pick<
+  OnboardingState,
+  "completed" | "configuredModel" | "selectedWorkspace"
+> {
   if (typeof window === "undefined") {
-    return { completed: false, selectedRuntime: false, configuredModel: false, selectedWorkspace: false };
+    return {
+      completed: false,
+      configuredModel: false,
+      selectedWorkspace: false,
+    };
   }
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -23,7 +32,6 @@ function readStored(): Pick<OnboardingState, "completed" | "selectedRuntime" | "
       const parsed = JSON.parse(raw) as Partial<OnboardingState>;
       return {
         completed: Boolean(parsed.completed),
-        selectedRuntime: Boolean(parsed.selectedRuntime),
         configuredModel: Boolean(parsed.configuredModel),
         selectedWorkspace: Boolean(parsed.selectedWorkspace),
       };
@@ -31,10 +39,15 @@ function readStored(): Pick<OnboardingState, "completed" | "selectedRuntime" | "
   } catch {
     // localStorage may be unavailable or corrupted
   }
-  return { completed: false, selectedRuntime: false, configuredModel: false, selectedWorkspace: false };
+  return { completed: false, configuredModel: false, selectedWorkspace: false };
 }
 
-function save(state: Pick<OnboardingState, "completed" | "selectedRuntime" | "configuredModel" | "selectedWorkspace">): void {
+function save(
+  state: Pick<
+    OnboardingState,
+    "completed" | "configuredModel" | "selectedWorkspace"
+  >,
+): void {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -57,7 +70,6 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
       const next = { ...state, [step]: done };
       save({
         completed: next.completed,
-        selectedRuntime: next.selectedRuntime,
         configuredModel: next.configuredModel,
         selectedWorkspace: next.selectedWorkspace,
       });
@@ -65,7 +77,11 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
     });
   },
   reset: () => {
-    const cleared = { completed: false, selectedRuntime: false, configuredModel: false, selectedWorkspace: false };
+    const cleared = {
+      completed: false,
+      configuredModel: false,
+      selectedWorkspace: false,
+    };
     save(cleared);
     set(cleared);
   },

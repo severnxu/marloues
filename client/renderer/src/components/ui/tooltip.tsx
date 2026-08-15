@@ -15,10 +15,30 @@ export interface TooltipProps {
 type Side = NonNullable<TooltipProps["side"]>;
 
 const POSITIONS: Record<Side, React.CSSProperties> = {
-  top: { bottom: "100%", left: "50%", transform: "translateX(-50%)", marginBottom: 6 },
-  bottom: { top: "100%", left: "50%", transform: "translateX(-50%)", marginTop: 6 },
-  left: { right: "100%", top: "50%", transform: "translateY(-50%)", marginRight: 6 },
-  right: { left: "100%", top: "50%", transform: "translateY(-50%)", marginLeft: 6 },
+  top: {
+    bottom: "100%",
+    left: "50%",
+    transform: "translateX(-50%)",
+    marginBottom: 6,
+  },
+  bottom: {
+    top: "100%",
+    left: "50%",
+    transform: "translateX(-50%)",
+    marginTop: 6,
+  },
+  left: {
+    right: "100%",
+    top: "50%",
+    transform: "translateY(-50%)",
+    marginRight: 6,
+  },
+  right: {
+    left: "100%",
+    top: "50%",
+    transform: "translateY(-50%)",
+    marginLeft: 6,
+  },
 };
 
 /**
@@ -45,9 +65,12 @@ export function Tooltip({
     setVisible(false);
   }, []);
 
-  React.useEffect(() => () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-  }, []);
+  React.useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    [],
+  );
 
   const bubbleStyle: React.CSSProperties = {
     position: "absolute",

@@ -1,0 +1,511 @@
+/* Conversation activity rows and expandable activity details. */
+
+/* Think row — dedicated visual for reasoning items (not a generic ActivityRow). */
+.workflow-think-row,
+.workflow-activity-row {
+  /* 行内水平 padding；竖线/展开内容对齐跟随此值（图标列 18px + gap 9px） */
+  --activity-row-pad-x: 10px;
+}
+
+.workflow-think-row {
+  margin-bottom: 4px;
+}
+
+.workflow-think-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 6px var(--activity-row-pad-x);
+  border: 0;
+  border-radius: var(--control-radius);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--motion-fast) var(--ease),
+    color var(--motion-fast) var(--ease);
+}
+
+.workflow-think-toggle.is-static {
+  cursor: default;
+}
+
+/* Expandable rows brighten text on hover; static rows stay put. */
+.workflow-think-toggle:not(.is-static):hover {
+  color: var(--text-2);
+}
+
+.workflow-think-icon {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  place-items: center;
+  opacity: 0.7;
+}
+
+.workflow-think-icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+.workflow-think-summary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-think-chev {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  color: var(--text-3);
+  opacity: 0;
+  transition:
+    opacity var(--motion-fast) var(--ease),
+    transform var(--motion-fast) var(--ease);
+}
+
+.workflow-think-row:hover .workflow-think-chev,
+.workflow-think-row:focus-within .workflow-think-chev,
+.workflow-think-row[data-open="true"] .workflow-think-chev {
+  opacity: 1;
+}
+
+.workflow-think-row[data-open="true"] .workflow-think-chev {
+  transform: rotate(90deg);
+}
+
+.workflow-think-dots {
+  display: inline-flex;
+  gap: 3px;
+  flex: none;
+}
+
+.workflow-think-dots i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-3);
+  animation: workflow-think-dot 1.3s ease-in-out infinite;
+}
+
+.workflow-think-dots i:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.workflow-think-dots i:nth-child(3) {
+  animation-delay: 0.36s;
+}
+
+.workflow-think-detail {
+  max-height: min(40vh, 320px);
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  margin: 1px 0 4px calc(var(--activity-row-pad-x) + 8px);
+}
+
+.workflow-think-body {
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  box-sizing: border-box;
+  border-left: 2px solid var(--border-subtle);
+  padding: 3px 0 3px 14px;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@keyframes workflow-think-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+
+  30% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.workflow-agent-flow-section {
+  display: grid;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  gap: 16px;
+  padding: 0;
+}
+
+.workflow-activity-group {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  gap: 4px;
+}
+
+.workflow-activity-group-detail {
+  position: relative;
+  max-height: var(--conversation-activity-max-height);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: hidden;
+  padding-right: 2px;
+  scrollbar-width: thin;
+}
+
+.workflow-activity-group.is-detail .workflow-activity-group-detail {
+  border-top: 0;
+}
+
+.workflow-activity-group-detail .workflow-activity-row {
+}
+
+.workflow-activity-group-detail .workflow-activity-row:first-child {
+  border-top: 0;
+}
+
+.workflow-command-group {
+  display: grid;
+  min-width: 0;
+}
+
+.workflow-command-group .workflow-activity-row + .workflow-activity-row {
+}
+
+.workflow-activity-row {
+  min-width: 0;
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.workflow-activity-row-button {
+  display: flex;
+  width: 100%;
+  min-height: 24px;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--control-radius);
+  outline: 0;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition:
+    background var(--motion-fast) var(--ease),
+    color var(--motion-fast) var(--ease);
+}
+
+.workflow-activity-row-button.is-static {
+  cursor: default;
+}
+
+.workflow-activity-row-button:focus-visible {
+  background: var(--raised-1);
+  color: var(--text-1);
+}
+
+/* Expandable rows brighten text on hover; static rows stay put. */
+.workflow-activity-row-button:not(.is-static):hover {
+  background: var(--raised-1);
+  color: var(--text-1);
+}
+
+.workflow-activity-row-button.is-static:hover {
+  background: transparent;
+  color: var(--text-2);
+}
+
+.workflow-activity-row-icon {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  color: var(--text-3);
+}
+
+.workflow-activity-row-icon.is-danger {
+  color: var(--danger);
+}
+
+.workflow-activity-row-icon svg,
+.workflow-activity-row-button > svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.workflow-activity-row-button[data-activity-source="browser"]
+  .workflow-activity-row-icon {
+  color: var(--accent);
+}
+
+.workflow-activity-thinking-label {
+  background: linear-gradient(
+    90deg,
+    var(--text-3) 15%,
+    var(--text-1) 48%,
+    var(--text-3) 80%
+  );
+  background-size: 220% 100%;
+  background-clip: text;
+  color: transparent;
+  animation: workflow-thinking-shimmer 1.6s linear infinite;
+}
+
+@keyframes workflow-thinking-shimmer {
+  to {
+    background-position: -220% 0;
+  }
+}
+
+.workflow-activity-row-content {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+.workflow-activity-row-label {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  overflow: hidden;
+  color: currentColor;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-activity-row-meta {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-activity-row-meta:empty {
+  display: block;
+}
+
+.workflow-activity-row-meta > span:not(.workflow-activity-diff-stats) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workflow-activity-row-chevron {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  place-items: center;
+  color: var(--text-3);
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--ease);
+}
+
+.workflow-activity-row-chevron svg {
+  width: 13px;
+  height: 13px;
+  transform: rotate(0deg);
+  transition: transform var(--motion-fast) var(--ease);
+}
+
+.workflow-activity-row-button:hover .workflow-activity-row-chevron,
+.workflow-activity-row-button:focus-visible .workflow-activity-row-chevron,
+.workflow-activity-row-button[aria-expanded="true"]
+  .workflow-activity-row-chevron {
+  opacity: 1;
+}
+
+.workflow-activity-row-button[aria-expanded="true"]
+  .workflow-activity-row-chevron
+  svg {
+  transform: rotate(90deg);
+}
+
+.workflow-activity-row-chevron.is-hidden {
+  visibility: hidden;
+}
+
+.workflow-activity-summary-row {
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.workflow-activity-detail {
+  min-width: 0;
+  margin: 1px 0 4px calc(var(--activity-row-pad-x) + 8px);
+  padding: 3px 0 3px 14px;
+  border-left: 2px solid var(--border-subtle);
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}
+
+.workflow-activity-detail-surface {
+  min-width: 0;
+  margin-top: var(--space-2);
+}
+
+.workflow-detail-copy-button {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-3);
+  transition:
+    background var(--motion-fast) var(--ease),
+    border-color var(--motion-fast) var(--ease),
+    color var(--motion-fast) var(--ease);
+}
+
+.workflow-detail-copy-button:hover,
+.workflow-detail-copy-button:focus-visible {
+  border-color: var(--border-subtle);
+  outline: 0;
+  background: var(--raised-2);
+  color: var(--text-1);
+}
+
+.workflow-detail-copy-button svg {
+  width: 13px;
+  height: 13px;
+}
+
+.workflow-activity-status {
+  margin-left: var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.workflow-activity-status.is-error {
+  color: var(--danger);
+}
+
+.workflow-activity-inline-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: var(--space-1);
+  transform: translateY(-1px);
+}
+
+.workflow-activity-inline-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.4;
+  animation: typing-dot 1.2s ease-in-out infinite;
+}
+
+.workflow-activity-inline-dots span:nth-child(2) {
+  animation-delay: 120ms;
+}
+
+.workflow-activity-inline-dots span:nth-child(3) {
+  animation-delay: 240ms;
+}
+
+.workflow-activity-diff-stats {
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
+  margin-left: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.workflow-activity-row-meta > .workflow-activity-diff-stats:first-child {
+  margin-left: 0;
+}
+
+.workflow-activity-diff-stats .is-addition {
+  color: var(--success);
+}
+
+.workflow-activity-diff-stats .is-deletion {
+  color: var(--danger);
+}
+
+.workflow-activity-row[data-activity-kind="fileChange"]
+  .workflow-activity-row-label {
+  color: inherit;
+  font-size: inherit;
+}
+
+.workflow-activity-row[data-activity-kind="fileChange"]
+  .workflow-activity-file-target {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-1);
+}
+
+.workflow-activity-row[data-activity-kind="fileChange"]
+  .workflow-activity-diff-stats {
+  font-weight: 550;
+}
+
+@media (max-width: 640px) {
+  .workflow-activity-group {
+    margin-bottom: var(--space-2);
+  }
+
+  .workflow-activity-row-content {
+    grid-template-columns: minmax(0, 1fr) 16px;
+    column-gap: var(--space-1);
+  }
+
+  .workflow-activity-row-meta,
+  .workflow-activity-row-meta:empty {
+    display: none;
+  }
+
+  .workflow-activity-detail {
+    padding-left: var(--space-3);
+    padding-right: var(--space-2);
+  }
+
+  .workflow-activity-detail-surface {
+    margin-left: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workflow-activity-inline-dots span,
+  .workflow-think-dots i {
+    animation: none;
+  }
+}

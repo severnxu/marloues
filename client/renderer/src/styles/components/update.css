@@ -1,0 +1,502 @@
+/* update component styles. Theme values come from ../tokens.css. */
+@layer marloues-components.cascade-0315 {
+  .sidebar-update-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    transition: 160ms ease;
+    color: var(--component-update-sidebar-update-badge-color-96d0efb);
+  }
+
+  .sidebar-update-badge-available {
+    color: var(--component-update-sidebar-update-badge-available-color-846acf2);
+  }
+
+  .sidebar-update-badge-available:hover {
+    background: var(
+      --component-update-sidebar-update-badge-available-background-aec990f
+    );
+    color: var(--component-update-sidebar-update-badge-available-color-a657366);
+  }
+
+  .sidebar-update-badge-ready {
+    width: auto;
+    min-width: 48px;
+    gap: 4px;
+    background: var(--accent-soft);
+    color: var(--component-update-sidebar-update-badge-ready-color-ccbe51d);
+    padding: 0 7px;
+  }
+
+  .sidebar-update-badge-ready:hover {
+    background: var(--hover);
+  }
+
+  .sidebar-update-ready-label {
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar-update-icon-spinning {
+      animation: none;
+    }
+  }
+
+  .sidebar-update-badge-error {
+    color: var(--component-update-sidebar-update-badge-error-color-88833af);
+  }
+
+  .sidebar-update-icon-spinning {
+    animation: sidebar-update-spin 800ms linear infinite;
+  }
+}
+@layer marloues-components.cascade-0317 {
+  .sidebar-update-badge-idle {
+    color: var(--component-update-sidebar-update-badge-idle-color-e1c6251);
+  }
+
+  .sidebar-update-badge-idle:hover {
+    color: var(--component-update-sidebar-update-badge-idle-color-6ca6a4b);
+  }
+
+  .sidebar-update-badge.is-open {
+    background: var(--component-update-sidebar-update-badge-background-7e05173);
+  }
+
+  .sidebar-update-progress-ring {
+    display: block;
+    pointer-events: none;
+  }
+
+  .sidebar-update-progress-ring-fill {
+    transition: stroke-dashoffset 320ms ease;
+  }
+
+  .sidebar-update-progress-ring-text {
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .sidebar-update-popover {
+    background: var(
+      --component-update-sidebar-update-popover-background-d3bfc1f
+    );
+    backdrop-filter: var(
+      --component-update-sidebar-update-popover-backdrop-filter-5cf64dc
+    );
+    border: var(--component-update-sidebar-update-popover-border-d3fe73c);
+    border-radius: 12px;
+    padding: 0;
+    box-shadow: var(
+      --component-update-sidebar-update-popover-box-shadow-3dec11e
+    );
+    color: var(--component-update-sidebar-update-popover-color-310b5f2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    max-height: 480px;
+  }
+
+  .sidebar-update-popover-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: var(
+      --component-update-sidebar-update-popover-header-border-bottom-79d9737
+    );
+  }
+
+  .sidebar-update-popover-title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  .sidebar-update-popover-close {
+    flex-shrink: 0;
+  }
+
+  .sidebar-update-popover-body {
+    padding: 14px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow: auto;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .sidebar-update-popover-hint {
+    margin: 0;
+    color: var(--component-update-sidebar-update-popover-hint-color-9893e55);
+    font-size: 12px;
+  }
+
+  .sidebar-update-components {
+    display: grid;
+    gap: 4px;
+  }
+
+  .sidebar-update-components > span {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sidebar-update-components small {
+    color: var(--component-update-sidebar-update-popover-hint-color-9893e55);
+  }
+
+  .sidebar-update-popover-body > button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: var(--component-update-sidebar-update-popover-body-border-f17760b);
+    background: var(
+      --component-update-sidebar-update-popover-body-background-e6b827b
+    );
+    color: var(--component-update-sidebar-update-popover-body-color-d545a44);
+    font-size: 13px;
+    cursor: pointer;
+    transition: 160ms ease;
+  }
+
+  .sidebar-update-popover-body > button:hover {
+    background: var(
+      --component-update-sidebar-update-popover-body-background-46ebfe7
+    );
+  }
+
+  .sidebar-update-popover-body > button.primary {
+    background: var(
+      --component-update-sidebar-update-popover-body-background-1f77639
+    );
+    color: var(--component-update-sidebar-update-popover-body-color-7f60b94);
+    border-color: var(
+      --component-update-sidebar-update-popover-body-border-color-0777233
+    );
+  }
+
+  .sidebar-update-popover-body > button.primary:hover {
+    background: var(
+      --component-update-sidebar-update-popover-body-background-576a00b
+    );
+  }
+
+  .sidebar-update-popover-body > button:disabled {
+    opacity: var(
+      --component-update-sidebar-update-popover-body-opacity-99596df
+    );
+    cursor: not-allowed;
+  }
+
+  .sidebar-update-popover-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .sidebar-update-popover-progress {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .sidebar-update-popover-progress-percent {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(
+      --component-update-sidebar-update-popover-progress-percent-color-a53ea88
+    );
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sidebar-update-popover-progress-bytes {
+    font-size: 12px;
+    color: var(
+      --component-update-sidebar-update-popover-progress-bytes-color-c38d37e
+    );
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sidebar-update-popover-progress-bar {
+    height: 6px;
+    border-radius: 999px;
+    background: var(
+      --component-update-sidebar-update-popover-progress-bar-background-8deb7a7
+    );
+    overflow: hidden;
+  }
+
+  .sidebar-update-popover-progress-bar-fill {
+    height: 100%;
+    background: var(
+      --component-update-sidebar-update-popover-progress-bar-fill-background-0a9613a
+    );
+    transition: width 200ms ease;
+  }
+
+  .sidebar-update-popover-error-msg {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    color: var(
+      --component-update-sidebar-update-popover-error-msg-color-14bda91
+    );
+    font-weight: 500;
+  }
+
+  .sidebar-update-popover-error-detail {
+    border: var(
+      --component-update-sidebar-update-popover-error-detail-border-2cfd0db
+    );
+    border-radius: 8px;
+    padding: 0;
+    font-size: 12px;
+    overflow: hidden;
+  }
+
+  .sidebar-update-popover-error-detail summary {
+    padding: 6px 10px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+    color: var(
+      --component-update-sidebar-update-popover-error-detail-color-cbf704d
+    );
+  }
+
+  .sidebar-update-popover-error-detail pre {
+    margin: 0;
+    padding: 8px 10px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 160px;
+    overflow: auto;
+    background: var(
+      --component-update-sidebar-update-popover-error-detail-background-2766e66
+    );
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    font-size: 11px;
+  }
+
+  .sidebar-update-popover-error-detail .sidebar-update-popover-copy-error {
+    margin: 6px 10px 8px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: var(
+      --component-update-sidebar-update-popover-error-detail-border-d6da14a
+    );
+    background: var(
+      --component-update-sidebar-update-popover-error-detail-background-f4446c2
+    );
+    font-size: 11px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .sidebar-update-popover-chevron {
+    transition: transform 160ms ease;
+  }
+
+  .sidebar-update-popover-chevron.open {
+    transform: rotate(180deg);
+  }
+
+  .sidebar-update-popover-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 16px;
+    font-size: 11px;
+    color: var(--component-update-sidebar-update-popover-footer-color-d3a11fe);
+    border-top: var(
+      --component-update-sidebar-update-popover-footer-border-top-92bb518
+    );
+    background: var(
+      --component-update-sidebar-update-popover-footer-background-79d2387
+    );
+  }
+
+  .sidebar-update-popover-footer code {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+
+  .release-notes {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--component-update-release-notes-color-dcca312);
+    max-height: 240px;
+    overflow: auto;
+  }
+
+  .release-notes-p {
+    margin: 0 0 8px;
+  }
+
+  .release-notes-h1 {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 8px 0 4px;
+    color: var(--component-update-release-notes-h1-color-c50400d);
+  }
+
+  .release-notes-h2 {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 8px 0 4px;
+    color: var(--component-update-release-notes-h2-color-89b1a03);
+  }
+
+  .release-notes-h3 {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 8px 0 4px;
+    color: var(--component-update-release-notes-h3-color-00d8083);
+  }
+
+  .release-notes-ul {
+    margin: 4px 0 8px;
+    padding-left: 18px;
+    list-style: disc;
+  }
+
+  .release-notes-li {
+    margin: 2px 0;
+  }
+
+  .release-notes-link {
+    color: var(--component-update-release-notes-link-color-2da7077);
+    text-decoration: underline;
+  }
+
+  .release-notes-inline-code {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    background: var(
+      --component-update-release-notes-inline-code-background-458ac54
+    );
+    border-radius: 4px;
+    padding: 1px 4px;
+    font-size: 12px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar-update-progress-ring-fill {
+      transition: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar-update-popover-progress-bar-fill {
+      transition: none;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .sidebar-update-popover {
+      width: calc(100vw - 32px) !important;
+      left: 16px !important;
+    }
+  }
+}
+/* Theme token bindings. The dark theme falls back to the component layer. */
+.sidebar-update-badge-available {
+  color: var(
+    --theme-update-sidebar-update-badge-available-color-e354f53,
+    revert-layer
+  );
+}
+.sidebar-update-popover {
+  background: var(
+    --theme-update-sidebar-update-popover-background-d8f0380,
+    revert-layer
+  );
+  border-color: var(
+    --theme-update-sidebar-update-popover-border-color-955f28e,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-update-sidebar-update-popover-box-shadow-499b566,
+    revert-layer
+  );
+}
+.sidebar-update-popover-header {
+  border-bottom-color: var(
+    --theme-update-sidebar-update-popover-header-border-bottom-color-1683e4e,
+    revert-layer
+  );
+}
+.sidebar-update-popover-body > button {
+  background: var(
+    --theme-update-sidebar-update-popover-body-background-c1e0600,
+    revert-layer
+  );
+  border-color: var(
+    --theme-update-sidebar-update-popover-body-border-color-c33cd8f,
+    revert-layer
+  );
+}
+.sidebar-update-popover-body > button:hover {
+  background: var(
+    --theme-update-sidebar-update-popover-body-background-da0744a,
+    revert-layer
+  );
+}
+.sidebar-update-popover-footer {
+  background: var(
+    --theme-update-sidebar-update-popover-footer-background-44e3050,
+    revert-layer
+  );
+  border-top-color: var(
+    --theme-update-sidebar-update-popover-footer-border-top-color-92793ed,
+    revert-layer
+  );
+}
+.sidebar-update-popover-error-detail {
+  border-color: var(
+    --theme-update-sidebar-update-popover-error-detail-border-color-8f4e9a5,
+    revert-layer
+  );
+}
+.sidebar-update-popover-error-detail pre {
+  background: var(
+    --theme-update-sidebar-update-popover-error-detail-background-b49b312,
+    revert-layer
+  );
+}
+.sidebar-update-popover-progress-bar {
+  background: var(
+    --theme-update-sidebar-update-popover-progress-bar-background-2e5f6e8,
+    revert-layer
+  );
+}
+.sidebar-update-badge-idle:hover {
+  background: var(
+    --theme-update-sidebar-update-badge-idle-background-5988873,
+    revert-layer
+  );
+}

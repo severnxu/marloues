@@ -1,0 +1,248 @@
+/* notifications component styles. Theme values come from ../tokens.css. */
+
+@layer marloues-components.cascade-0006 {
+  [data-sonner-toaster] {
+    --width: min(380px, calc(100vw - 32px));
+    z-index: 10000;
+  }
+
+  [data-sonner-toast].marloues-toast {
+    --normal-bg: var(
+      --component-notifications-marloues-toast---normal-bg-ada8c88
+    );
+    --normal-border: var(
+      --component-notifications-marloues-toast---normal-border-6e27872
+    );
+    --normal-text: var(--text);
+    --success-bg: var(
+      --component-notifications-marloues-toast---success-bg-72d193f
+    );
+    --success-border: var(
+      --component-notifications-marloues-toast---success-border-8855006
+    );
+    --success-text: var(--text);
+    --error-bg: var(
+      --component-notifications-marloues-toast---error-bg-235c53d
+    );
+    --error-border: var(
+      --component-notifications-marloues-toast---error-border-a4fa784
+    );
+    --error-text: var(--text);
+    --warning-bg: var(
+      --component-notifications-marloues-toast---warning-bg-4516f05
+    );
+    --warning-border: var(
+      --component-notifications-marloues-toast---warning-border-ffb373e
+    );
+    --warning-text: var(--text);
+    border: var(--component-notifications-marloues-toast-border-41aa3be);
+    border-left-width: 3px;
+    border-radius: 8px;
+    background: var(
+      --component-notifications-marloues-toast-background-da82c05
+    );
+    box-shadow: var(
+      --component-notifications-marloues-toast-box-shadow-60bce01
+    );
+    color: var(--component-notifications-marloues-toast-color-423e840);
+    padding: 13px 40px 13px 14px;
+    backdrop-filter: var(
+      --component-notifications-marloues-toast-backdrop-filter-01e3791
+    );
+  }
+
+  [data-sonner-toast].marloues-toast-success {
+    border-left-color: var(
+      --component-notifications-marloues-toast-success-border-left-color-81f0514
+    );
+  }
+
+  [data-sonner-toast].marloues-toast-warning {
+    border-left-color: var(
+      --component-notifications-marloues-toast-warning-border-left-color-64da08d
+    );
+  }
+
+  [data-sonner-toast].marloues-toast-error {
+    border-left-color: var(
+      --component-notifications-marloues-toast-error-border-left-color-560ca0e
+    );
+  }
+
+  [data-sonner-toast].marloues-toast-info {
+    border-left-color: var(
+      --component-notifications-marloues-toast-info-border-left-color-877864e
+    );
+  }
+
+  [data-sonner-toast].marloues-toast [data-title] {
+    max-width: 280px;
+    overflow: hidden;
+    color: var(--component-notifications-marloues-toast-color-c8a257b);
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  [data-sonner-toast].marloues-toast [data-description] {
+    display: -webkit-box;
+    max-width: 300px;
+    overflow: hidden;
+    color: var(--component-notifications-marloues-toast-color-9922881);
+    font-size: 12px;
+    line-height: 1.5;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  [data-sonner-toast].marloues-toast [data-close-button] {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    left: auto;
+    width: 22px;
+    height: 22px;
+    transform: none;
+    border-color: var(
+      --component-notifications-marloues-toast-border-color-9e7be6e
+    );
+    border-radius: 6px;
+    background: var(
+      --component-notifications-marloues-toast-background-4983641
+    );
+    color: var(--component-notifications-marloues-toast-color-6b7e203);
+  }
+
+  [data-sonner-toast].marloues-toast [data-close-button]:hover {
+    background: var(
+      --component-notifications-marloues-toast-background-b919ea5
+    );
+    color: var(--component-notifications-marloues-toast-color-35f14db);
+  }
+
+  [data-sonner-toast].marloues-toast [data-icon] {
+    margin-top: 1px;
+  }
+}
+
+@layer marloues-components.cascade-0008 {
+  [data-sonner-toast].marloues-toast-success [data-icon] {
+    color: var(--component-notifications-marloues-toast-success-color-fd9a27c);
+  }
+
+  [data-sonner-toast].marloues-toast-warning [data-icon] {
+    color: var(--component-notifications-marloues-toast-warning-color-20e0d7b);
+  }
+
+  [data-sonner-toast].marloues-toast-error [data-icon] {
+    color: var(--component-notifications-marloues-toast-error-color-f238a6f);
+  }
+}
+/* Theme token bindings. The dark theme falls back to the component layer. */
+
+[data-sonner-toast].marloues-toast {
+  --normal-bg: var(
+    --theme-notifications-marloues-toast---normal-bg-be12774,
+    revert-layer
+  );
+  --normal-border: var(
+    --theme-notifications-marloues-toast---normal-border-1efe6cf,
+    revert-layer
+  );
+  --normal-text: var(
+    --theme-notifications-marloues-toast---normal-text-fc639d5,
+    revert-layer
+  );
+  --success-bg: var(
+    --theme-notifications-marloues-toast---success-bg-b7420b7,
+    revert-layer
+  );
+  --success-border: var(
+    --theme-notifications-marloues-toast---success-border-a6a9622,
+    revert-layer
+  );
+  --success-text: var(
+    --theme-notifications-marloues-toast---success-text-d1d7739,
+    revert-layer
+  );
+  --error-bg: var(
+    --theme-notifications-marloues-toast---error-bg-cc58263,
+    revert-layer
+  );
+  --error-border: var(
+    --theme-notifications-marloues-toast---error-border-df93373,
+    revert-layer
+  );
+  --error-text: var(
+    --theme-notifications-marloues-toast---error-text-5f4d4c1,
+    revert-layer
+  );
+  --warning-bg: var(
+    --theme-notifications-marloues-toast---warning-bg-63614aa,
+    revert-layer
+  );
+  --warning-border: var(
+    --theme-notifications-marloues-toast---warning-border-9263411,
+    revert-layer
+  );
+  --warning-text: var(
+    --theme-notifications-marloues-toast---warning-text-9f38d7a,
+    revert-layer
+  );
+  border-color: var(
+    --theme-notifications-marloues-toast-border-color-0d96e04,
+    revert-layer
+  );
+  background: var(
+    --theme-notifications-marloues-toast-background-1bf692c,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-notifications-marloues-toast-box-shadow-a78f33c,
+    revert-layer
+  );
+}
+
+[data-sonner-toast].marloues-toast-success {
+  border-left-color: var(
+    --theme-notifications-marloues-toast-success-border-left-color-ef5bab0,
+    revert-layer
+  );
+}
+
+[data-sonner-toast].marloues-toast-warning {
+  border-left-color: var(
+    --theme-notifications-marloues-toast-warning-border-left-color-257cd85,
+    revert-layer
+  );
+}
+
+[data-sonner-toast].marloues-toast-error {
+  border-left-color: var(
+    --theme-notifications-marloues-toast-error-border-left-color-4c53d0b,
+    revert-layer
+  );
+}
+
+[data-sonner-toast].marloues-toast-info {
+  border-left-color: var(
+    --theme-notifications-marloues-toast-info-border-left-color-9e04090,
+    revert-layer
+  );
+}
+
+[data-sonner-toast].marloues-toast [data-close-button] {
+  background: var(
+    --theme-notifications-marloues-toast-background-cd866e0,
+    revert-layer
+  );
+  color: var(--theme-notifications-marloues-toast-color-6c59a44, revert-layer);
+}
+
+[data-sonner-toast].marloues-toast [data-close-button]:hover {
+  background: var(
+    --theme-notifications-marloues-toast-background-7ba68aa,
+    revert-layer
+  );
+  color: var(--theme-notifications-marloues-toast-color-50f9dda, revert-layer);
+}

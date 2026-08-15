@@ -1,0 +1,204 @@
+/* Workbench geometry and region ownership. */
+@layer marloues-workbench {
+  body.resizing-columns {
+    cursor: var(--cursor-resize-column);
+    user-select: none;
+  }
+
+  body.resizing-columns * {
+    cursor: inherit !important;
+  }
+
+  .app-shell,
+  .platform-window {
+    position: relative;
+    isolation: isolate;
+    width: 100%;
+    height: 100vh;
+    min-width: 0;
+    min-height: 100vh;
+    overflow: hidden;
+    background: var(--surface-workspace);
+    color: var(--text-1);
+    font-family: var(--font-ui);
+  }
+
+  .workbench-layout,
+  .workspace {
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--surface-workspace);
+    font-size: var(--text-md);
+  }
+
+  .workbench-main-columns {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    flex: 1 1 0;
+    overflow: hidden;
+  }
+
+  .main-workspace,
+  .main-panel {
+    position: relative;
+    display: flex;
+    min-width: min(var(--main-workspace-min), 100%);
+    min-height: 0;
+    flex: 1 1 0;
+    overflow: hidden;
+    background: var(--surface-workspace);
+  }
+
+  .content-frame {
+    position: relative;
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    flex: 1 1 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    background: var(--surface-workspace);
+    box-shadow: none;
+  }
+
+  .workspace-view-stack {
+    position: relative;
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    flex: 1 1 0;
+    overflow: hidden;
+  }
+
+  .workspace-view {
+    position: relative;
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    flex: 1 1 0;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .workspace-view[hidden] {
+    display: none !important;
+  }
+
+  /* Quick pages are sibling overlays of the persistent main/auxiliary trees.
+     They occupy both regions without moving or remounting either one. */
+  .quick-page-overlay-host {
+    position: absolute;
+    inset: 0;
+    z-index: auto;
+    flex: none;
+    background: var(--surface-workspace);
+  }
+
+  .workspace-view-chat .chat-region {
+    width: 100%;
+    height: auto;
+    min-width: 0;
+    min-height: 0;
+    flex: 1 1 0;
+    margin-top: 0;
+    overflow: hidden;
+  }
+
+  .platform-windows .workspace-view-chat > .chat-header {
+    position: relative;
+    inset: auto;
+    z-index: 6;
+    width: 100%;
+    height: var(--titlebar-height);
+    min-height: var(--titlebar-height);
+    flex: 0 0 var(--titlebar-height);
+    border-bottom: 1px solid transparent;
+    background: var(--surface-workspace);
+    padding: 0 var(--workspace-inline-padding);
+  }
+
+  .content-frame-full,
+  .settings-region {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    flex: 1 1 0;
+    overflow: hidden;
+  }
+
+  .settings-region {
+    position: relative;
+  }
+
+  .workbench-overlay-host {
+    position: absolute;
+    inset: 0;
+    z-index: 180;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .workbench-overlay-host > * {
+    pointer-events: auto;
+  }
+
+  .workbench-resize-handle {
+    position: relative;
+    z-index: var(--resize-handle-z-index);
+    width: var(--resize-handle-hit-width);
+    height: 100%;
+    flex: 0 0 var(--resize-handle-hit-width);
+    align-self: stretch;
+    margin-inline: var(--resize-handle-hit-offset);
+    cursor: var(--cursor-resize-column);
+    touch-action: none;
+    background: transparent;
+    -webkit-app-region: no-drag;
+  }
+
+  .workbench-resize-handle::before {
+    position: absolute;
+    inset: 0 auto 0 50%;
+    width: var(--shell-divider-width);
+    background: var(--shell-divider);
+    content: "";
+    opacity: 0;
+    transform: translateX(-50%);
+    transition:
+      background-color var(--resize-handle-transition),
+      opacity var(--resize-handle-transition);
+  }
+
+  .workbench-resize-handle:hover::before,
+  body.resizing-columns .workbench-resize-handle::before {
+    background: var(--shell-divider-active);
+    opacity: 1;
+  }
+
+  .platform-windows .workbench-resize-handle.is-auxiliary {
+    height: calc(100% - var(--titlebar-height));
+    margin-top: var(--titlebar-height);
+  }
+
+  .platform-windows .workbench-resize-handle.is-primary {
+    z-index: 70;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .workbench-resize-handle::before {
+      transition: none;
+    }
+  }
+}

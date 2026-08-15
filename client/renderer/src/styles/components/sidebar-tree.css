@@ -1,0 +1,556 @@
+/* WorkAreaZone hierarchy and conversation navigation. */
+@layer marloues-components {
+  .work-area-list,
+  .work-area-children,
+  .work-area-project,
+  .work-area-leaves {
+    display: grid;
+    min-width: 0;
+    gap: var(--sidebar-row-gap);
+  }
+
+  .work-area-list {
+    width: 100%;
+  }
+
+  .work-area {
+    position: relative;
+    min-width: 0;
+  }
+
+  .work-area-heading {
+    position: relative;
+    min-width: 0;
+  }
+
+  .work-area-row {
+    display: flex;
+    width: 100%;
+    height: var(--sidebar-row-height);
+    min-height: var(--sidebar-row-height);
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-2);
+    border: 0;
+    border-radius: var(--control-radius);
+    background: transparent;
+    padding: 0 7px 0 10px;
+    color: var(--text-3);
+    font-size: 14px;
+    text-align: left;
+  }
+
+  .work-area-row:focus-visible {
+    outline: 0;
+  }
+
+  .work-area-label {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 14px;
+    font-weight: 560;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .work-area-chevron {
+    width: 12px;
+    height: 12px;
+    flex: 0 0 12px;
+    color: var(--text-3);
+    opacity: 0;
+    transition:
+      opacity var(--motion-fast) var(--ease),
+      transform var(--motion-fast) var(--ease);
+  }
+
+  .work-area-row:hover .work-area-chevron,
+  .work-area-row:focus-visible .work-area-chevron {
+    opacity: 1;
+  }
+
+  .work-area.is-expanded .work-area-chevron {
+    transform: rotate(90deg);
+  }
+
+  .work-area-activity {
+    margin-left: auto;
+  }
+
+  .work-area-add {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    right: 0;
+    display: grid;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-3);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-50%);
+    transition:
+      color var(--motion-fast) var(--ease),
+      opacity var(--motion-fast) var(--ease),
+      transform var(--motion-fast) var(--ease);
+  }
+
+  .work-area-add svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .work-area-add:hover,
+  .work-area-add:focus-visible {
+    outline: 0;
+    background: transparent;
+    color: var(--accent);
+    transform: translateY(-50%) scale(1.08);
+  }
+
+  .work-area-daily .work-area-row:hover + .work-area-add,
+  .work-area-daily .work-area-row:focus-visible + .work-area-add,
+  .work-area-daily.is-actions-pinned .work-area-add,
+  .work-area-add:hover,
+  .work-area-add:focus-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .work-area-daily .work-area-row:hover .work-area-activity,
+  .work-area-daily .work-area-row:focus-visible .work-area-activity,
+  .work-area-daily.is-actions-pinned .work-area-activity {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .work-area-children {
+    margin-top: var(--sidebar-row-gap);
+  }
+
+  .project-row {
+    position: relative;
+    display: grid;
+    width: 100%;
+    height: var(--sidebar-row-height);
+    min-height: var(--sidebar-row-height);
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
+    overflow: hidden;
+    border: 0;
+    border-radius: var(--control-radius);
+    background: transparent;
+    color: var(--text-2);
+    font-size: 14px;
+  }
+
+  .project-row:hover,
+  .project-row:has(.project-row-main:focus-visible) {
+    background: var(--raised-2);
+  }
+
+  .project-row-main {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    grid-template-columns: 16px minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-2);
+    border: 0;
+    background: transparent;
+    padding: 0 8px 0 10px;
+    color: inherit;
+    text-align: left;
+  }
+
+  .project-row-main:focus-visible {
+    outline: 0;
+  }
+
+  .project-icon-slot {
+    display: grid;
+    width: 16px;
+    height: 16px;
+    place-items: center;
+    color: var(--text-3);
+  }
+
+  .project-icon-slot svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .project-row-name {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--text-3);
+    font-size: 13px;
+    font-weight: 560;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .work-area-project.is-expanded .project-row-name {
+    color: var(--text-2);
+  }
+
+  .project-activity-indicator {
+    position: absolute;
+    right: 14px;
+    transition: opacity var(--motion-fast) var(--ease);
+  }
+
+  .project-row-actions {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    right: 6px;
+    display: flex;
+    align-items: center;
+    gap: var(--sidebar-row-gap);
+    opacity: 0;
+    transform: translateY(-50%);
+    visibility: hidden;
+  }
+
+  .project-row-actions button {
+    display: grid;
+    width: 22px;
+    height: 22px;
+    place-items: center;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text-3);
+  }
+
+  .project-row-actions button svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .project-row-actions button:hover,
+  .project-row-actions button:focus-visible {
+    outline: 0;
+    background: var(--raised-3);
+    color: var(--text-1);
+  }
+
+  .work-area-daily .project-row:hover .project-row-actions,
+  .work-area-daily
+    .project-row:has(.project-row-main:focus-visible)
+    .project-row-actions {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .work-area-daily .project-row:hover .project-activity-indicator,
+  .work-area-daily
+    .project-row:has(.project-row-main:focus-visible)
+    .project-activity-indicator {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .session-item,
+  .work-area-leaf {
+    --session-safe-area: 0px;
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: var(--sidebar-row-height);
+    min-height: var(--sidebar-row-height);
+    min-width: 0;
+    flex-shrink: 0;
+    align-items: center;
+    overflow: hidden;
+    border: 0;
+    border-radius: var(--control-radius);
+    background: transparent;
+    padding: 0 8px 0 34px;
+    color: var(--text-1);
+    font-size: 14px;
+    font-weight: 560;
+    text-align: left;
+  }
+
+  .session-item:has(.session-trailing time),
+  .work-area-leaf:has(.work-area-leaf-trailing time) {
+    --session-safe-area: 28px;
+  }
+
+  .session-item:has(.session-activity-indicator),
+  .work-area-leaf:has(.sidebar-activity-indicator) {
+    --session-safe-area: 18px;
+  }
+
+  .session-item:hover,
+  .session-item:focus-visible,
+  .work-area-leaf:hover,
+  .work-area-leaf:focus-visible {
+    outline: 0;
+    background: var(--raised-2);
+    color: var(--text-1);
+  }
+
+  .session-item:hover,
+  .session-item:focus-visible,
+  .session-item:focus-within {
+    --session-safe-area: 46px;
+  }
+
+  .session-item.pinned,
+  .work-area-leaf.pinned {
+    padding-left: 16px;
+  }
+
+  .session-pinned-indicator {
+    display: grid;
+    width: 14px;
+    height: 14px;
+    flex: 0 0 14px;
+    place-items: center;
+    margin-right: 4px;
+    color: var(--text-3);
+    opacity: 0.86;
+  }
+
+  .session-pinned-indicator svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .session-content,
+  .work-area-leaf-title {
+    display: block;
+    width: calc(100% - var(--session-safe-area));
+    max-width: calc(100% - var(--session-safe-area));
+    min-width: 0;
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .work-area-leaf-title {
+    font-size: 14px;
+    font-weight: 560;
+  }
+
+  .session-title-line,
+  .session-title-text {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    color: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: 20px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .session-title-line {
+    position: relative;
+    height: 20px;
+  }
+
+  .session-item.has-permission .session-title-line {
+    padding-right: 62px;
+  }
+
+  .session-permission-status {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    display: inline-flex;
+    height: 18px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid color-mix(in srgb, var(--success) 34%, transparent);
+    border-radius: 999px;
+    background: var(--success-soft);
+    padding: 0 7px;
+    color: var(--success);
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-50%) scale(0.94);
+    transition:
+      opacity var(--motion-fast) var(--ease),
+      transform var(--motion-fast) var(--ease);
+  }
+
+  .session-permission-status.is-visible {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+
+  .session-permission-status > span {
+    color: inherit;
+    font-size: inherit;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .session-rename {
+    width: 100%;
+    border: 1px solid var(--focus-ring);
+    border-radius: var(--radius-sm);
+    outline: 0;
+    background: var(--surface-workspace);
+    padding: 3px 7px;
+    color: var(--text-1);
+    font-size: 13px;
+  }
+
+  .session-trailing,
+  .work-area-leaf-trailing {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    display: flex;
+    width: 46px;
+    align-items: center;
+    justify-content: flex-end;
+    pointer-events: none;
+    transform: translateY(-50%);
+  }
+
+  .session-trailing time,
+  .work-area-leaf-trailing time {
+    min-width: 24px;
+    color: var(--text-3);
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 16px;
+    text-align: right;
+    opacity: 0.72;
+  }
+
+  .session-activity-indicator {
+    transition: opacity var(--motion-fast) var(--ease);
+  }
+
+  .session-actions {
+    position: absolute;
+    right: 0;
+    display: flex;
+    width: 44px;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--sidebar-row-gap);
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .session-action {
+    display: grid;
+    width: 21px;
+    height: 22px;
+    place-items: center;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text-3);
+    pointer-events: auto;
+  }
+
+  .session-action svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .session-action:hover,
+  .session-action:focus-visible {
+    outline: 0;
+    background: var(--raised-3);
+    color: var(--text-1);
+  }
+
+  .session-action.session-pin.active {
+    color: var(--accent);
+  }
+
+  .session-item:hover .session-trailing > time,
+  .session-item:focus-visible .session-trailing > time,
+  .session-item:focus-within .session-trailing > time,
+  .session-item:hover .session-activity-indicator,
+  .session-item:focus-visible .session-activity-indicator,
+  .session-item:focus-within .session-activity-indicator {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .session-item:hover .session-actions,
+  .session-item:focus-visible .session-actions,
+  .session-item:focus-within .session-actions {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .workspace-sessions-more {
+    width: 100%;
+    height: var(--sidebar-row-height);
+    border: 0;
+    border-radius: var(--control-radius);
+    background: transparent;
+    padding: 0 8px 0 34px;
+    color: var(--text-3);
+    font-size: 12px;
+    text-align: left;
+  }
+
+  .workspace-sessions-more:hover,
+  .workspace-sessions-more:focus-visible {
+    outline: 0;
+    background: var(--raised-2);
+    color: var(--text-2);
+  }
+
+  .session-menu {
+    position: fixed;
+    z-index: 90;
+    width: max-content;
+    min-width: 164px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-popover);
+    padding: 5px;
+    box-shadow: var(--shadow-md);
+  }
+
+  .session-menu button {
+    display: flex;
+    width: 100%;
+    height: 32px;
+    align-items: center;
+    gap: 10px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    padding: 0 10px;
+    color: var(--text-1);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .session-menu button:hover,
+  .session-menu button:focus-visible {
+    outline: 0;
+    background: var(--raised-2);
+  }
+
+  .session-menu button.danger {
+    color: var(--danger);
+  }
+}

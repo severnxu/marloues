@@ -1,0 +1,221 @@
+/* settings-appearance component styles. Theme values come from ../tokens.css. */
+
+@layer marloues-components.cascade-0161 {
+  .appearance-settings {
+    display: grid;
+    gap: 16px;
+  }
+}
+
+@layer marloues-components.cascade-0163 {
+  .appearance-accent-panel {
+    display: grid;
+    gap: 12px;
+  }
+
+  .appearance-accent-current {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 12px;
+    border: var(
+      --component-settings-appearance-appearance-accent-current-border-9f10939
+    );
+    border-radius: 8px;
+    background: var(
+      --component-settings-appearance-appearance-accent-current-background-56db32b
+    );
+    padding: 10px 12px;
+  }
+
+  .appearance-accent-swatch {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    border: var(
+      --component-settings-appearance-appearance-accent-swatch-border-75d8d53
+    );
+    border-radius: 999px;
+  }
+
+  .appearance-accent-current div {
+    display: grid;
+    min-width: 0;
+    flex: 1;
+    gap: 2px;
+  }
+
+  .appearance-accent-current strong {
+    color: var(
+      --component-settings-appearance-appearance-accent-current-color-d7a65bc
+    );
+    font-size: 12px;
+    font-weight: 650;
+  }
+
+  .appearance-accent-current small {
+    color: var(
+      --component-settings-appearance-appearance-accent-current-color-eba618d
+    );
+    font-size: 11px;
+  }
+
+  .appearance-accent-current button {
+    min-height: 30px;
+    flex-shrink: 0;
+    border: var(
+      --component-settings-appearance-appearance-accent-current-border-b3c4a0e
+    );
+    border-radius: 6px;
+    background: var(
+      --component-settings-appearance-appearance-accent-current-background-46d584e
+    );
+    color: var(
+      --component-settings-appearance-appearance-accent-current-color-9e9e3e0
+    );
+    padding: 0 10px;
+    font-size: 11px;
+    font-weight: 650;
+    transition:
+      border-color var(--settings-transition),
+      background var(--settings-transition),
+      color var(--settings-transition);
+  }
+
+  .appearance-accent-current button:hover {
+    border-color: var(
+      --component-settings-appearance-appearance-accent-current-border-color-e7c6348
+    );
+    background: var(
+      --component-settings-appearance-appearance-accent-current-background-df9e68b
+    );
+    color: var(
+      --component-settings-appearance-appearance-accent-current-color-53f4912
+    );
+  }
+
+  .appearance-accent-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: end;
+  }
+
+  .appearance-color-picker {
+    position: relative;
+    display: grid !important;
+    width: 64px;
+    height: 36px;
+    place-items: center;
+    border: var(
+      --component-settings-appearance-appearance-color-picker-border-c889dbd
+    );
+    border-radius: 7px;
+    background: var(
+      --component-settings-appearance-appearance-color-picker-background-3848a37
+    );
+    color: var(
+      --component-settings-appearance-appearance-color-picker-color-4c8fd6e
+    ) !important;
+    cursor: pointer;
+    transition:
+      border-color var(--settings-transition),
+      background var(--settings-transition),
+      color var(--settings-transition);
+  }
+
+  .appearance-color-picker:hover {
+    border-color: var(
+      --component-settings-appearance-appearance-color-picker-border-color-6de5972
+    );
+    color: var(
+      --component-settings-appearance-appearance-color-picker-color-5b13953
+    ) !important;
+  }
+
+  .appearance-color-picker input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    opacity: var(
+      --component-settings-appearance-appearance-color-picker-opacity-b8710ed
+    );
+  }
+
+  @media (max-width: 860px) {
+    .appearance-accent-controls {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+/* Theme token bindings. The dark theme falls back to the component layer. */
+
+.appearance-accent-current {
+  border-color: var(
+    --theme-settings-appearance-appearance-accent-current-border-color-5761d64,
+    revert-layer
+  );
+  background: var(
+    --theme-settings-appearance-appearance-accent-current-background-7a39a7a,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-settings-appearance-appearance-accent-current-box-shadow-0900bc7,
+    revert-layer
+  );
+  color: var(
+    --theme-settings-appearance-appearance-accent-current-color-4a1da62,
+    revert-layer
+  );
+}
+
+.appearance-color-picker {
+  background: var(
+    --theme-settings-appearance-appearance-color-picker-background-0684515,
+    revert-layer
+  );
+  border-color: var(
+    --theme-settings-appearance-appearance-color-picker-border-color-ed81bbe,
+    revert-layer
+  );
+  color: var(
+    --theme-settings-appearance-appearance-color-picker-color-52a0662,
+    revert-layer
+  );
+}
+
+.appearance-accent-current button:hover {
+  border-color: var(
+    --theme-settings-appearance-appearance-accent-current-border-color-c91662a,
+    revert-layer
+  );
+  background: var(
+    --theme-settings-appearance-appearance-accent-current-background-1f056ef,
+    revert-layer
+  );
+  color: var(
+    --theme-settings-appearance-appearance-accent-current-color-96f62ec,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-settings-appearance-appearance-accent-current-box-shadow-6375451,
+    revert-layer
+  );
+}
+
+.appearance-accent-current button {
+  border-color: var(
+    --theme-settings-appearance-appearance-accent-current-border-color-eb051e6,
+    revert-layer
+  );
+  background: var(
+    --theme-settings-appearance-appearance-accent-current-background-1527c88,
+    revert-layer
+  );
+  color: var(
+    --theme-settings-appearance-appearance-accent-current-color-59f5884,
+    revert-layer
+  );
+}

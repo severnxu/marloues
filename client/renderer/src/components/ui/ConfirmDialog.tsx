@@ -28,7 +28,10 @@ export function ConfirmDialog({
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
-      const isInputFocused = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+      const isInputFocused =
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable;
       if (isInputFocused) return;
 
       if (event.key === "Escape") {
@@ -64,11 +67,17 @@ export function ConfirmDialog({
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="grid gap-2 whitespace-pre-wrap">
-          <p id="confirm-dialog-title" className="m-0 text-sm leading-6 text-foreground">
+          <p
+            id="confirm-dialog-title"
+            className="m-0 text-sm leading-6 text-foreground"
+          >
             {title}
           </p>
           {message ? (
-            <p id="confirm-dialog-message" className="m-0 text-xs leading-5 text-muted-foreground">
+            <p
+              id="confirm-dialog-message"
+              className="m-0 text-xs leading-5 text-muted-foreground"
+            >
               {message}
             </p>
           ) : null}

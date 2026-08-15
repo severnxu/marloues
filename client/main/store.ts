@@ -5,6 +5,7 @@ import { logError, logInfo } from "./core/logging/app-logger";
 import { getStateDir } from "./app-paths";
 import type { RuntimeKind, TokenUsage } from "../shared/types";
 import type { WorkflowUserMessageContent } from "../shared/workflow-read-thread-contract";
+import type { WorkflowTurnItem } from "../shared/workflow-read-thread-contract";
 import { upsertSessionRecord } from "./services/session-store";
 
 export interface Provider {
@@ -82,7 +83,7 @@ export interface StoredMessage {
   modelId?: string;
   modelName?: string;
   usage?: TokenUsage;
-  items: StoredMessageItem[];
+  items: WorkflowTurnItem[];
   rawEvents?: { method: string; params: unknown; receivedAt: number }[];
 }
 
@@ -192,7 +193,11 @@ class SimpleStore {
             session as StoredSession & Record<string, unknown>
           )["co" + "dexThreadId"];
           return typeof legacyThreadId === "string" && !session.runtimeThreadId
-            ? { ...session, runtimeThreadId: legacyThreadId, runtimeThreadIds: { binary: legacyThreadId } }
+            ? {
+                ...session,
+                runtimeThreadId: legacyThreadId,
+                runtimeThreadIds: { binary: legacyThreadId },
+              }
             : session;
         });
 

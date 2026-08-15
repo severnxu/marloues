@@ -1,132 +1,109 @@
-export interface MessageItem {
-  id: string
-  type: 'agent_message' | 'reasoning' | 'command_execution' | 'file_change' | 'mcp_tool_call' | 'web_search' | 'todo_list' | 'permission_request' | 'error'
-  rawType?: string
-  phase?: 'started' | 'updated' | 'completed'
-  text?: string
-  command?: string
-  shell?: string
-  aggregated_output?: string
-  exit_code?: number
-  status?: string
-  startedAt?: number
-  updatedAt?: number
-  completedAt?: number
-  server?: string
-  tool?: string
-  args?: unknown
-  arguments?: unknown
-  result?: unknown
-  changes?: { path: string; kind: string }[]
-  patch?: string
-  error?: { message: string }
-  query?: string
-  toolName?: string
-  reason?: string
-  timeoutMs?: number
-  message?: string
-  items?: { text: string; completed: boolean }[]
-  rawItem?: unknown
-}
+import type { WorkflowTurnItem } from "@shared/workflow-read-thread-contract";
 
 export interface WorkflowRawEvent {
-  method: string
-  params: unknown
-  receivedAt: number
+  method: string;
+  params: unknown;
+  receivedAt: number;
 }
 
 export type UserMessageContent =
-  | { type: 'text'; text: string }
-  | { type: 'image'; url: string }
-  | { type: 'localImage'; path: string }
-  | { type: 'skill'; name: string; path?: string }
-  | { type: 'mention'; name: string; path?: string }
+  import("@shared/workflow-read-thread-contract").WorkflowUserMessageContent;
 
 export interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  userContent?: UserMessageContent[]
-  timestamp: number
-  status?: 'thinking' | 'running' | 'completed' | 'failed'
-  startedAt?: number
-  updatedAt?: number
-  completedAt?: number
-  modelId?: string
-  modelName?: string
-  usage?: import("@shared/types").TokenUsage
-  items: MessageItem[]
-  rawEvents?: WorkflowRawEvent[]
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  userContent?: UserMessageContent[];
+  timestamp: number;
+  status?: "thinking" | "running" | "completed" | "failed";
+  startedAt?: number;
+  updatedAt?: number;
+  completedAt?: number;
+  modelId?: string;
+  modelName?: string;
+  usage?: import("@shared/types").TokenUsage;
+  items: WorkflowTurnItem[];
+  rawEvents?: WorkflowRawEvent[];
 }
 
 export interface Session {
-  id: string
-  title: string
-  updatedAt: number
-  pinned?: boolean
-  archived?: boolean
-  workflowThreadId?: string
-  cwd?: string
-  model?: string
+  id: string;
+  title: string;
+  updatedAt: number;
+  pinned?: boolean;
+  archived?: boolean;
+  workflowThreadId?: string;
+  cwd?: string;
+  model?: string;
   tokenUsage?: {
-    input: number
-    output: number
-    cached: number
-  }
-  turnCount?: number
-  messages: Message[]
+    input: number;
+    output: number;
+    cached: number;
+  };
+  turnCount?: number;
+  messages: Message[];
 }
 
 export interface Skill {
-  id: string
-  name: string
-  trigger: string
-  description: string
-  icon: string
-  iconClass: string
-  author: string
-  version: string
-  permissions: string
-  enabled: boolean
+  id: string;
+  name: string;
+  trigger: string;
+  description: string;
+  icon: string;
+  iconClass: string;
+  author: string;
+  version: string;
+  permissions: string;
+  enabled: boolean;
 }
 
 export interface Toast {
-  id: string
-  message: string
-  type: 'success' | 'error'
+  id: string;
+  message: string;
+  type: "success" | "error";
+}
+
+export interface SlashCommandItem {
+  id: string;
+  command: string;
+  label: string;
+  description?: string;
+  argumentHint?: string;
+  category: "builtin" | "skill";
 }
 
 export interface Provider {
-  id: string
-  name: string
-  apiKey: string
-  baseUrl: string
-  model?: string
-  enabled: boolean
+  id: string;
+  name: string;
+  apiKey: string;
+  baseUrl: string;
+  model?: string;
+  enabled: boolean;
 }
 
 export interface Settings {
-  language: string
-  autoSave: boolean
-  maxSessions: number
-  theme: 'light' | 'dark' | 'auto'
-  accentColor: string
-  fontSize: number
-  compactMode: boolean
-  workingDirectory: string
-  sandboxMode: 'read-only' | 'workspace-write' | 'danger-full-access'
-  approvalPolicy: 'untrusted' | 'on-request' | 'never'
-  webSearch: boolean
+  language: string;
+  autoSave: boolean;
+  maxSessions: number;
+  theme: "light" | "dark" | "auto";
+  accentColor: string;
+  fontSize: number;
+  compactMode: boolean;
+  workingDirectory: string;
+  sandboxMode: "read-only" | "workspace-write" | "danger-full-access";
+  approvalPolicy: "untrusted" | "on-request" | "never";
+  webSearch: boolean;
 }
 
 export interface ContextMenuState {
-  x: number
-  y: number
-  type: 'session' | 'message'
-  targetId?: string
+  x: number;
+  y: number;
+  type: "session" | "message";
+  targetId?: string;
 }
 
-export type Page = 'chat' | 'extensions' | 'settings' | 'lab'
-export type ExtTab = 'skills' | 'mcps' | 'plugins'
-export type SkillTab = 'installed' | 'market' | 'import'
-export type SettingsTab = 'general' | 'appearance' | 'providers' | 'shortcuts' | 'about'
+export type Page = "chat" | "extensions" | "settings" | "lab";
+export type ExtTab = "skills" | "mcps" | "plugins";
+export type SkillTab = "installed" | "market" | "import";
+export type SettingsTab =
+  "general" | "appearance" | "providers" | "shortcuts" | "about";

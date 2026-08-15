@@ -1,5 +1,9 @@
 import { useEffect } from "react";
-import { applyStoredTheme, applySystemThemePreference, useThemeStore } from "@/stores/theme-store";
+import {
+  applyStoredTheme,
+  applySystemThemePreference,
+  useThemeStore,
+} from "@/stores/theme-store";
 
 export function useThemeSync(): void {
   const mode = useThemeStore((state) => state.mode);

@@ -28,7 +28,7 @@
     "test:visual": "npm run test:visual --workspace marloues",
     "lint": "npm run lint:client && npm run lint:tests",
     "lint:client": "npm run lint --workspace marloues",
-    "lint:tests": "node client/node_modules/eslint/bin/eslint.js --config tests/eslint.config.mjs tests",
+    "lint:tests": "node node_modules/eslint/bin/eslint.js --config tests/eslint.config.mjs tests",
     "format": "npm run format --workspace marloues",
     "rebuild:native": "npm run rebuild:native --workspace marloues",
     "package:dir": "npm run package:dir --workspace marloues",
@@ -48,14 +48,18 @@
     "prepare": "husky"
   },
   "lint-staged": {
-    "client/**/*.{ts,tsx}": "node client/node_modules/eslint/bin/eslint.js --config client/eslint.config.mjs --fix",
+    "client/**/*.{ts,tsx}": "node node_modules/eslint/bin/eslint.js --config client/eslint.config.mjs --fix",
     "client/**/*.{ts,tsx,css,json}": "node client/node_modules/prettier/bin/prettier.cjs --write",
-    "tests/**/*.{ts,tsx,js,mjs,cjs}": "node client/node_modules/eslint/bin/eslint.js --config tests/eslint.config.mjs --fix",
+    "tests/**/*.{ts,tsx,js,mjs,cjs}": "node node_modules/eslint/bin/eslint.js --config tests/eslint.config.mjs --fix",
     "tests/**/*.{ts,tsx,json,md}": "node client/node_modules/prettier/bin/prettier.cjs --write"
   },
   "devDependencies": {
+    "@types/react": "~18.3.18",
     "husky": "^9.1.7",
     "lint-staged": "^17.3.0",
     "turbo": "^2.5.8"
+  },
+  "dependencies": {
+    "remend": "^1.3.0"
   }
 }

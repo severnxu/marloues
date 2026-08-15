@@ -1,0 +1,891 @@
+/* settings-shell component styles. Theme values come from ../tokens.css. */
+
+@layer marloues-components.cascade-0021 {
+  .workspace.settings-paper-workspace {
+    background: var(--component-settings-shell-workspace-background-8b30791);
+  }
+}
+
+@layer marloues-components.cascade-0028 {
+  .main-panel.settings-paper-main {
+    background: var(--component-settings-shell-main-panel-background-fcaa426);
+  }
+
+  @media (max-width: 760px), (max-height: 620px) {
+    .settings-content {
+      padding: 16px;
+    }
+  }
+}
+
+@layer marloues-components.cascade-0033 {
+  .settings-region {
+    position: relative;
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+  }
+}
+
+@layer marloues-components.cascade-0049 {
+  .settings-sidebar {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    border-right: var(
+      --component-settings-shell-settings-sidebar-border-right-c565029
+    );
+    background: var(
+      --component-settings-shell-settings-sidebar-background-eab4710
+    );
+    padding: 8px 0 0;
+  }
+
+  .settings-side-top {
+    padding: 0 12px 10px;
+  }
+
+  :root.platform-darwin .settings-side-top {
+    padding-top: calc(var(--titlebar-height) + 4px);
+  }
+
+  .settings-side-top button {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 9px;
+    border: var(--component-settings-shell-settings-side-top-border-786ae84);
+    background: var(
+      --component-settings-shell-settings-side-top-background-8164d3e
+    );
+    color: var(--component-settings-shell-settings-side-top-color-29d47d5);
+    text-align: left;
+    transition: 150ms ease;
+  }
+
+  .settings-side-nav button {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 9px;
+    border: var(--component-settings-shell-settings-side-nav-border-5ced8b2);
+    background: var(
+      --component-settings-shell-settings-side-nav-background-cf165a5
+    );
+    color: var(--component-settings-shell-settings-side-nav-color-12d1199);
+    text-align: left;
+    transition: 150ms ease;
+  }
+
+  .settings-side-top button {
+    min-height: 40px;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .settings-side-top button:hover {
+    background: var(
+      --component-settings-shell-settings-side-top-background-77f1a24
+    );
+    color: var(--component-settings-shell-settings-side-top-color-b091719);
+  }
+
+  .settings-side-nav button:hover {
+    background: var(
+      --component-settings-shell-settings-side-nav-background-a5df8be
+    );
+    color: var(--component-settings-shell-settings-side-nav-color-7c8dae8);
+  }
+
+  .settings-side-nav button.active {
+    background: var(
+      --component-settings-shell-settings-side-nav-background-0abe58e
+    );
+    color: var(--component-settings-shell-settings-side-nav-color-713b2c3);
+  }
+
+  .settings-side-body {
+    min-height: 0;
+    flex: 1;
+    padding: 6px 12px 14px;
+  }
+
+  .settings-side-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px 10px;
+    color: var(--component-settings-shell-settings-side-label-color-0f6226d);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .settings-side-nav {
+    display: grid;
+    gap: 8px;
+  }
+
+  .settings-side-nav button {
+    min-height: 54px;
+    border-radius: 12px;
+    padding: 9px 12px;
+  }
+
+  .settings-side-nav svg {
+    flex-shrink: 0;
+  }
+
+  .settings-side-nav span {
+    min-width: 0;
+  }
+
+  .settings-side-nav strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .settings-side-nav small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .settings-side-nav strong {
+    color: var(--component-settings-shell-settings-side-nav-color-a0336c3);
+    font-size: 13px;
+  }
+
+  .settings-side-nav small {
+    margin-top: 2px;
+    color: var(--component-settings-shell-settings-side-nav-color-72a4099);
+    font-size: 11px;
+  }
+}
+
+@layer marloues-components.cascade-0112 {
+  .settings-page input:focus {
+    border-color: var(
+      --component-settings-shell-settings-page-border-color-8b492a7
+    );
+  }
+
+  .settings-page select:focus {
+    border-color: var(
+      --component-settings-shell-settings-page-border-color-7b95ea2
+    );
+  }
+}
+
+@layer marloues-components.cascade-0141 {
+  .settings-action-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: var(
+      --component-settings-shell-settings-action-button-border-a4a72ac
+    );
+    border-radius: var(--radius-md);
+    background: var(
+      --component-settings-shell-settings-action-button-background-0f0c70b
+    );
+    color: var(--component-settings-shell-settings-action-button-color-fb89878);
+    padding: 7px 14px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .settings-action-button:hover {
+    border-color: var(
+      --component-settings-shell-settings-action-button-border-color-f7e6422
+    );
+  }
+}
+
+@layer marloues-components.cascade-0150 {
+  .settings-page {
+    height: 100%;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    border: var(--component-settings-shell-settings-page-border-fd9f3cd);
+    border-radius: 0;
+    background: var(
+      --component-settings-shell-settings-page-background-4673e5a
+    );
+    padding: 0;
+  }
+
+  .settings-page.settings-section-skills {
+    overflow: hidden;
+  }
+
+  @supports not (scrollbar-gutter: stable) {
+    .settings-page {
+      overflow-y: scroll;
+    }
+  }
+
+  @supports not (scrollbar-gutter: stable) {
+    .settings-page.settings-section-skills {
+      overflow: hidden;
+    }
+  }
+
+  .settings-page * {
+    box-sizing: border-box;
+  }
+
+  .settings-page *::before {
+    box-sizing: border-box;
+  }
+
+  .settings-page *::after {
+    box-sizing: border-box;
+  }
+
+  .settings-shell {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .settings-content {
+    display: grid;
+    gap: 16px;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    overflow-y: auto;
+    padding: 24px 34px 34px;
+  }
+
+  .settings-section-skills .settings-content {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    flex-direction: column;
+  }
+}
+
+@layer marloues-components.cascade-0152 {
+  .settings-section-skills .settings-runtime-panel {
+    align-self: start;
+  }
+}
+
+@layer marloues-components.cascade-0155 {
+  .settings-large-textarea {
+    min-height: 128px !important;
+    resize: none !important;
+    font-family: inherit !important;
+    font-size: 13px !important;
+    line-height: 1.75 !important;
+  }
+}
+
+@layer marloues-components.cascade-0157 {
+  .settings-fields {
+    display: grid;
+    gap: 12px;
+  }
+}
+
+@layer marloues-components.cascade-0159 {
+  .settings-page label {
+    display: grid;
+    gap: 6px;
+    color: var(--component-settings-shell-settings-page-color-f19501b);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .settings-page input {
+    min-width: 0;
+    border: var(--component-settings-shell-settings-page-border-54a2ddd);
+    border-radius: 6px;
+    outline: var(--component-settings-shell-settings-page-outline-23d2d67);
+    background: var(
+      --component-settings-shell-settings-page-background-6835961
+    );
+    color: var(--component-settings-shell-settings-page-color-df98b06);
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.45;
+    transition:
+      border-color var(--settings-transition),
+      background var(--settings-transition),
+      box-shadow var(--settings-transition);
+  }
+
+  .settings-page select {
+    min-width: 0;
+    border: var(--component-settings-shell-settings-page-border-0942e64);
+    border-radius: 6px;
+    outline: var(--component-settings-shell-settings-page-outline-1254abd);
+    background: var(
+      --component-settings-shell-settings-page-background-88316fa
+    );
+    color: var(--component-settings-shell-settings-page-color-ba45781);
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.45;
+    transition:
+      border-color var(--settings-transition),
+      background var(--settings-transition),
+      box-shadow var(--settings-transition);
+  }
+
+  .settings-page textarea {
+    min-width: 0;
+    border: var(--component-settings-shell-settings-page-border-0cd3b6c);
+    border-radius: 6px;
+    outline: var(--component-settings-shell-settings-page-outline-b895739);
+    background: var(
+      --component-settings-shell-settings-page-background-161a1fe
+    );
+    color: var(--component-settings-shell-settings-page-color-7ab8d70);
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.45;
+    transition:
+      border-color var(--settings-transition),
+      background var(--settings-transition),
+      box-shadow var(--settings-transition);
+  }
+
+  .settings-page input::placeholder {
+    color: var(--component-settings-shell-settings-page-color-8986f03);
+  }
+
+  .settings-page textarea::placeholder {
+    color: var(--component-settings-shell-settings-page-color-a921d10);
+  }
+
+  .settings-page input:focus {
+    border-color: var(
+      --component-settings-shell-settings-page-border-color-8b492a7
+    );
+    background: var(
+      --component-settings-shell-settings-page-background-6d8cc2f
+    );
+    box-shadow: var(
+      --component-settings-shell-settings-page-box-shadow-d3858d1
+    );
+  }
+
+  .settings-page select:focus {
+    border-color: var(
+      --component-settings-shell-settings-page-border-color-7b95ea2
+    );
+    background: var(
+      --component-settings-shell-settings-page-background-5ca6023
+    );
+    box-shadow: var(
+      --component-settings-shell-settings-page-box-shadow-607a041
+    );
+  }
+
+  .settings-page textarea:focus {
+    border-color: var(
+      --component-settings-shell-settings-page-border-color-9e5cca8
+    );
+    background: var(
+      --component-settings-shell-settings-page-background-40f774d
+    );
+    box-shadow: var(
+      --component-settings-shell-settings-page-box-shadow-a03d109
+    );
+  }
+
+  .settings-page input:disabled {
+    cursor: not-allowed;
+    color: var(--component-settings-shell-settings-page-color-4181e33);
+    opacity: var(--component-settings-shell-settings-page-opacity-29abf94);
+  }
+
+  .settings-page select:disabled {
+    cursor: not-allowed;
+    color: var(--component-settings-shell-settings-page-color-2419244);
+    opacity: var(--component-settings-shell-settings-page-opacity-1c30eff);
+  }
+
+  .settings-page textarea:disabled {
+    cursor: not-allowed;
+    color: var(--component-settings-shell-settings-page-color-c1f43f5);
+    opacity: var(--component-settings-shell-settings-page-opacity-886682d);
+  }
+
+  .settings-page textarea {
+    min-height: 104px;
+    resize: vertical;
+    font-family: var(--mono);
+    line-height: 1.6;
+  }
+
+  .settings-toggle {
+    display: flex !important;
+    grid-template-columns: none !important;
+    align-items: center;
+    gap: 10px !important;
+    width: fit-content;
+    border: var(--component-settings-shell-settings-toggle-border-7468466);
+    border-radius: 8px;
+    background: var(
+      --component-settings-shell-settings-toggle-background-c8e4ce8
+    );
+    padding: 9px 11px;
+    color: var(
+      --component-settings-shell-settings-toggle-color-242550c
+    ) !important;
+  }
+
+  .settings-toggle input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(
+      --component-settings-shell-settings-toggle-accent-color-6808469
+    );
+  }
+
+  .settings-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 2px;
+    border-top: var(
+      --component-settings-shell-settings-actions-border-top-6e0cf37
+    );
+    background: var(
+      --component-settings-shell-settings-actions-background-457ef7e
+    );
+    color: var(--component-settings-shell-settings-actions-color-2f4dde1);
+    padding: 16px 0 0;
+    font-size: 12px;
+  }
+
+  .settings-action-status {
+    max-width: min(720px, 100%);
+    overflow: hidden;
+    border: var(
+      --component-settings-shell-settings-action-status-border-af5fb27
+    );
+    border-radius: 8px;
+    background: var(
+      --component-settings-shell-settings-action-status-background-7235667
+    );
+    padding: 8px 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .settings-action-status.ok {
+    border-color: var(
+      --component-settings-shell-settings-action-status-border-color-ee085a9
+    );
+    background: var(
+      --component-settings-shell-settings-action-status-background-16615cf
+    );
+    color: var(--component-settings-shell-settings-action-status-color-050c9df);
+  }
+
+  .settings-action-status.error {
+    border-color: var(
+      --component-settings-shell-settings-action-status-border-color-fa6982d
+    );
+    background: var(
+      --component-settings-shell-settings-action-status-background-f0e14a0
+    );
+    color: var(--component-settings-shell-settings-action-status-color-bbd9cc7);
+  }
+}
+
+@layer marloues-components.cascade-0167 {
+  .settings-inline-check {
+    display: inline-flex !important;
+    grid-template-columns: none !important;
+    align-items: center;
+    gap: 8px !important;
+    width: fit-content;
+    color: var(
+      --component-settings-shell-settings-inline-check-color-daa3012
+    ) !important;
+  }
+
+  .settings-inline-check input {
+    width: auto;
+    accent-color: var(
+      --component-settings-shell-settings-inline-check-accent-color-fa12c36
+    );
+  }
+
+  .settings-page .settings-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    min-height: 42px;
+    border: var(--component-settings-shell-settings-page-border-bed6bad);
+    border-radius: 8px;
+    background: var(
+      --component-settings-shell-settings-page-background-c614887
+    );
+    padding: 8px 10px;
+    color: var(--component-settings-shell-settings-page-color-387c98e);
+  }
+
+  .settings-page .settings-check input {
+    width: auto;
+    accent-color: var(
+      --component-settings-shell-settings-page-accent-color-1ff8e28
+    );
+  }
+}
+
+@layer marloues-components.cascade-0169 {
+  .settings-page .settings-check strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .settings-page .settings-check span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .settings-page .settings-check strong {
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .settings-page .settings-check span {
+    color: var(--component-settings-shell-settings-page-color-e4efdb7);
+    font-size: 11px;
+  }
+}
+
+@layer marloues-components.cascade-0180 {
+  .profile-editor {
+    display: grid;
+    gap: 10px;
+  }
+}
+
+@layer marloues-components.cascade-0247 {
+  .settings-summary-action {
+    display: inline-flex;
+    min-height: 68px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: var(
+      --component-settings-shell-settings-summary-action-border-ee933bb
+    );
+    border-radius: 8px;
+    background: var(
+      --component-settings-shell-settings-summary-action-background-ee429bc
+    );
+    color: var(
+      --component-settings-shell-settings-summary-action-color-b3925f8
+    );
+    padding: 0 15px;
+    font-size: 12px;
+    font-weight: 720;
+    white-space: nowrap;
+    transition:
+      border-color 150ms ease,
+      background 150ms ease,
+      color 150ms ease;
+  }
+
+  .settings-summary-action:hover:not(:disabled) {
+    border-color: var(
+      --component-settings-shell-settings-summary-action-border-color-aa90e62
+    );
+    background: var(
+      --component-settings-shell-settings-summary-action-background-9dc08c6
+    );
+  }
+
+  .settings-summary-action:disabled {
+    cursor: not-allowed;
+    opacity: var(
+      --component-settings-shell-settings-summary-action-opacity-acc36a7
+    );
+  }
+}
+
+@layer marloues-components.cascade-0302 {
+  .settings-empty-state {
+    display: grid;
+    gap: 6px;
+    border: var(--component-settings-shell-settings-empty-state-border-ddd61fb);
+    border-radius: 8px;
+    background: var(
+      --component-settings-shell-settings-empty-state-background-7f0b1c3
+    );
+    padding: 22px 16px;
+    text-align: center;
+  }
+
+  .settings-empty-state strong {
+    color: var(--component-settings-shell-settings-empty-state-color-8af9640);
+    font-size: 13px;
+  }
+
+  .settings-empty-state p {
+    margin: 0;
+    color: var(--component-settings-shell-settings-empty-state-color-92be0d5);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .settings-runtime-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.2fr);
+    align-items: center;
+    gap: 10px;
+    border: var(
+      --component-settings-shell-settings-runtime-panel-border-0195822
+    );
+    border-radius: 8px;
+    background: var(
+      --component-settings-shell-settings-runtime-panel-background-1f4733f
+    );
+    box-shadow: var(
+      --component-settings-shell-settings-runtime-panel-box-shadow-f4df715
+    );
+    padding: 12px;
+  }
+
+  .settings-runtime-panel strong {
+    display: block;
+    color: var(--component-settings-shell-settings-runtime-panel-color-f6f952a);
+    font-size: 13px;
+  }
+
+  .settings-runtime-panel small {
+    display: block;
+    margin-top: 3px;
+    color: var(--component-settings-shell-settings-runtime-panel-color-6229835);
+    font-size: 11px;
+    line-height: 1.55;
+  }
+}
+
+@layer marloues-components.cascade-0305 {
+  .settings-muted {
+    color: var(--component-settings-shell-settings-muted-color-80b1c10);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+}
+
+@layer marloues-components.cascade-0311 {
+  @media (max-width: 720px) {
+    .settings-content {
+      padding: 22px 16px 28px;
+    }
+  }
+}
+
+@layer marloues-components.cascade-0313 {
+  @media (max-width: 720px) {
+    .settings-runtime-panel {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+/* Theme token bindings. The dark theme falls back to the component layer. */
+
+.settings-sidebar {
+  background: var(
+    --theme-settings-shell-settings-sidebar-background-2ed5d64,
+    revert-layer
+  );
+  color: var(
+    --theme-settings-shell-settings-sidebar-color-a6aa766,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-settings-shell-settings-sidebar-box-shadow-e8f4835,
+    revert-layer
+  );
+}
+
+.settings-side-top button {
+  background: var(
+    --theme-settings-shell-settings-side-top-background-a100eab,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-settings-shell-settings-side-top-box-shadow-d222158,
+    revert-layer
+  );
+}
+
+.settings-side-nav button.active {
+  background: var(
+    --theme-settings-shell-settings-side-nav-background-6fb8a90,
+    revert-layer
+  );
+  color: var(
+    --theme-settings-shell-settings-side-nav-color-564ce63,
+    revert-layer
+  );
+}
+
+.settings-side-nav button:hover {
+  background: var(
+    --theme-settings-shell-settings-side-nav-background-9f8c376,
+    revert-layer
+  );
+}
+
+.settings-runtime-panel {
+  border-color: var(
+    --theme-settings-shell-settings-runtime-panel-border-color-c657707,
+    revert-layer
+  );
+  background: var(
+    --theme-settings-shell-settings-runtime-panel-background-d283f27,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-settings-shell-settings-runtime-panel-box-shadow-d5177b4,
+    revert-layer
+  );
+  color: var(
+    --theme-settings-shell-settings-runtime-panel-color-5d84042,
+    revert-layer
+  );
+}
+
+.settings-action-status {
+  border-color: var(
+    --theme-settings-shell-settings-action-status-border-color-278789c,
+    revert-layer
+  );
+  background: var(
+    --theme-settings-shell-settings-action-status-background-806cbb9,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-settings-shell-settings-action-status-box-shadow-d42a9af,
+    revert-layer
+  );
+  color: var(
+    --theme-settings-shell-settings-action-status-color-55f136c,
+    revert-layer
+  );
+}
+
+.settings-actions {
+  border-color: var(
+    --theme-settings-shell-settings-actions-border-color-2eea2fa,
+    revert-layer
+  );
+  background: var(
+    --theme-settings-shell-settings-actions-background-a269196,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-settings-shell-settings-actions-box-shadow-aad8996,
+    revert-layer
+  );
+  color: var(
+    --theme-settings-shell-settings-actions-color-545c876,
+    revert-layer
+  );
+}
+
+.settings-page input {
+  background: var(
+    --theme-settings-shell-settings-page-background-c923237,
+    revert-layer
+  );
+  border-color: var(
+    --theme-settings-shell-settings-page-border-color-e922451,
+    revert-layer
+  );
+  color: var(--theme-settings-shell-settings-page-color-803ad76, revert-layer);
+}
+
+.settings-page select {
+  background: var(
+    --theme-settings-shell-settings-page-background-b39b62b,
+    revert-layer
+  );
+  border-color: var(
+    --theme-settings-shell-settings-page-border-color-b346a89,
+    revert-layer
+  );
+  color: var(--theme-settings-shell-settings-page-color-674c797, revert-layer);
+}
+
+.settings-page textarea {
+  background: var(
+    --theme-settings-shell-settings-page-background-83ea52c,
+    revert-layer
+  );
+  border-color: var(
+    --theme-settings-shell-settings-page-border-color-9a18449,
+    revert-layer
+  );
+  color: var(--theme-settings-shell-settings-page-color-346f4c7, revert-layer);
+}
+
+.settings-page input:focus {
+  background: var(
+    --theme-settings-shell-settings-page-background-4584d14,
+    revert-layer
+  );
+  border-color: var(
+    --theme-settings-shell-settings-page-border-color-0f0f3f6,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-settings-shell-settings-page-box-shadow-0875485,
+    revert-layer
+  );
+}
+
+.settings-page select:focus {
+  background: var(
+    --theme-settings-shell-settings-page-background-34fc46a,
+    revert-layer
+  );
+  border-color: var(
+    --theme-settings-shell-settings-page-border-color-db0c63b,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-settings-shell-settings-page-box-shadow-b6e0f5a,
+    revert-layer
+  );
+}
+
+.settings-page textarea:focus {
+  background: var(
+    --theme-settings-shell-settings-page-background-49bddc9,
+    revert-layer
+  );
+  border-color: var(
+    --theme-settings-shell-settings-page-border-color-1e66fdd,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-settings-shell-settings-page-box-shadow-d9e11df,
+    revert-layer
+  );
+}

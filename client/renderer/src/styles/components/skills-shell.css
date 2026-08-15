@@ -1,0 +1,544 @@
+/* skills-shell component styles. Theme values come from ../tokens.css. */
+
+@layer marloues-components.cascade-0151 {
+  .settings-section-skills .skill-page-panel {
+    flex: 1 1 auto;
+  }
+}
+
+@layer marloues-components.cascade-0164 {
+  .skill-card-head button {
+    display: inline-flex;
+    min-height: 32px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: var(--component-skills-shell-skill-card-head-border-b0709c9);
+    border-radius: 8px;
+    background: var(
+      --component-skills-shell-skill-card-head-background-be4f611
+    );
+    color: var(--component-skills-shell-skill-card-head-color-3dfb73a);
+    padding: 7px 11px;
+    font-size: 11px;
+    font-weight: 650;
+    transition:
+      border-color var(--settings-transition),
+      background var(--settings-transition),
+      color var(--settings-transition);
+  }
+
+  .skill-card-head button:hover {
+    border-color: var(
+      --component-skills-shell-skill-card-head-border-color-b940bd6
+    );
+    background: var(
+      --component-skills-shell-skill-card-head-background-e7ef9a0
+    );
+  }
+
+  .skill-card-head button:disabled {
+    cursor: not-allowed;
+    opacity: var(--component-skills-shell-skill-card-head-opacity-9375af6);
+  }
+}
+
+@layer marloues-components.cascade-0180 {
+  .skill-grid {
+    display: grid;
+    gap: 10px;
+  }
+
+  .skill-grid {
+    gap: 0;
+    overflow: hidden;
+    border: var(--component-skills-shell-skill-grid-border-c85a441);
+    border-radius: 10px;
+    background: var(--component-skills-shell-skill-grid-background-3677d4a);
+  }
+}
+
+@layer marloues-components.cascade-0187 {
+  .skill-page-panel {
+    display: grid;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    align-content: start;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 14px;
+    overflow: hidden;
+    border: var(--component-skills-shell-skill-page-panel-border-b4574f2);
+    border-radius: 0;
+    background: var(
+      --component-skills-shell-skill-page-panel-background-bd466cb
+    );
+    padding: 18px 18px 0;
+  }
+
+  .skill-page-panel.installed {
+    grid-template-rows: auto auto auto;
+    overflow-y: auto;
+    padding-bottom: 18px;
+  }
+
+  .skill-page-panel.import {
+    grid-template-rows: auto auto auto;
+    overflow-y: auto;
+    padding-bottom: 18px;
+  }
+}
+
+@layer marloues-components.cascade-0189 {
+  .skill-page-tabs {
+    display: inline-flex;
+    justify-self: center;
+    align-items: center;
+    gap: 4px;
+    border: var(--component-skills-shell-skill-page-tabs-border-f470734);
+    border-radius: 10px;
+    background: var(
+      --component-skills-shell-skill-page-tabs-background-235e2f2
+    );
+    padding: 4px;
+  }
+
+  .skill-page-tabs button {
+    display: inline-flex;
+    min-width: 64px;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+    border: var(--component-skills-shell-skill-page-tabs-border-5f65a8d);
+    border-radius: 7px;
+    background: var(
+      --component-skills-shell-skill-page-tabs-background-3c125a1
+    );
+    color: var(--component-skills-shell-skill-page-tabs-color-dbb56ab);
+    padding: 0 14px;
+    font-size: 12px;
+    font-weight: 650;
+    transition:
+      background var(--settings-transition),
+      color var(--settings-transition);
+  }
+
+  .skill-page-tabs button:hover {
+    background: var(
+      --component-skills-shell-skill-page-tabs-background-2d16199
+    );
+    color: var(--component-skills-shell-skill-page-tabs-color-840529e);
+  }
+
+  .skill-page-tabs button.active {
+    background: var(
+      --component-skills-shell-skill-page-tabs-background-cd5b8cc
+    );
+    color: var(--component-skills-shell-skill-page-tabs-color-8c9d26b);
+  }
+
+  .skill-page-summary {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .skill-page-summary h2 {
+    margin: 0;
+    color: var(--component-skills-shell-skill-page-summary-color-085e214);
+    font-size: 13px;
+    font-weight: 750;
+    line-height: 1.35;
+  }
+
+  .skill-page-summary p {
+    margin: 3px 0 0;
+    color: var(--component-skills-shell-skill-page-summary-color-c20905f);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .skill-page-summary button {
+    display: inline-flex;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border: var(--component-skills-shell-skill-page-summary-border-5bb3d40);
+    border-radius: 8px;
+    background: var(
+      --component-skills-shell-skill-page-summary-background-c51ba07
+    );
+    color: var(--component-skills-shell-skill-page-summary-color-f34dad6);
+    padding: 0;
+    transition:
+      border-color var(--settings-transition),
+      background var(--settings-transition),
+      color var(--settings-transition);
+  }
+
+  .skill-page-summary button:hover {
+    border-color: var(
+      --component-skills-shell-skill-page-summary-border-color-450ce76
+    );
+    background: var(
+      --component-skills-shell-skill-page-summary-background-e28f3d1
+    );
+    color: var(--component-skills-shell-skill-page-summary-color-cf0984e);
+  }
+
+  .skill-empty-state {
+    display: grid;
+    min-height: 96px;
+    place-items: center;
+    border: var(--component-skills-shell-skill-empty-state-border-c22632a);
+    border-radius: 12px;
+    color: var(--component-skills-shell-skill-empty-state-color-6785c24);
+    padding: 22px;
+    text-align: center;
+    font-size: 14px;
+  }
+}
+
+@layer marloues-components.cascade-0297 {
+  .skill-list-row {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    min-height: 54px;
+    align-items: center;
+    gap: 12px;
+    border: var(--component-skills-shell-skill-list-row-border-f1388d6);
+    border-bottom: var(
+      --component-skills-shell-skill-list-row-border-bottom-4ce55d3
+    );
+    border-radius: 0;
+    cursor: pointer;
+    padding: 9px 12px;
+  }
+
+  .skill-list-row:focus-visible {
+    outline: var(--component-skills-shell-skill-list-row-outline-90d65b7);
+    outline-offset: -2px;
+  }
+
+  .skill-list-row:last-child {
+    border-bottom: var(
+      --component-skills-shell-skill-list-row-border-bottom-065f3e2
+    );
+  }
+}
+
+@layer marloues-components.cascade-0300 {
+  .skill-row-icon {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border: var(--component-skills-shell-skill-row-icon-border-f7968bd);
+    border-radius: 8px;
+    background: var(--component-skills-shell-skill-row-icon-background-912217c);
+    color: var(--component-skills-shell-skill-row-icon-color-33f23a5);
+  }
+
+  .skill-row-copy {
+    display: grid;
+    min-width: 0;
+    gap: 2px;
+  }
+
+  .skill-row-title {
+    display: flex;
+    min-width: 0;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .skill-row-title strong {
+    flex: 0 1 auto;
+    overflow: hidden;
+    color: var(--component-skills-shell-skill-row-title-color-a92e725);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 750;
+    line-height: 1.35;
+  }
+
+  .skill-row-title small {
+    flex: 0 0 auto;
+    color: var(--component-skills-shell-skill-row-title-color-d39c4f9);
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .skill-row-copy p {
+    overflow: hidden;
+    margin: 0;
+    color: var(--component-skills-shell-skill-row-copy-color-f653d35);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .skill-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .skill-row-actions button {
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+    border: var(--component-skills-shell-skill-row-actions-border-093af85);
+    border-radius: 7px;
+    background: var(
+      --component-skills-shell-skill-row-actions-background-b6de56d
+    );
+    color: var(--component-skills-shell-skill-row-actions-color-c3c2bf8);
+    padding: 0;
+    transition:
+      background var(--settings-transition),
+      color var(--settings-transition);
+  }
+
+  .skill-row-actions button:hover {
+    background: var(
+      --component-skills-shell-skill-row-actions-background-acd09d4
+    );
+    color: var(--component-skills-shell-skill-row-actions-color-726ec73);
+  }
+
+  .skill-row-actions button:disabled {
+    cursor: not-allowed;
+    opacity: var(--component-skills-shell-skill-row-actions-opacity-3d91d41);
+  }
+}
+
+@layer marloues-components.cascade-0304 {
+  .skill-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .skill-card-head > div {
+    min-width: 0;
+  }
+
+  .skill-card-head strong {
+    display: block;
+    color: var(--component-skills-shell-skill-card-head-color-243067b);
+    font-size: 13px;
+    line-height: 1.4;
+  }
+}
+
+@layer marloues-components.cascade-0305 {
+  .skill-card-head small {
+    color: var(--component-skills-shell-skill-card-head-color-95436d9);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .skill-card-head small {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@layer marloues-components.cascade-0312 {
+  @media (max-width: 720px) {
+    .skill-page-panel {
+      min-height: calc(100vh - 76px);
+      padding: 8px 0 0;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .skill-page-tabs {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .skill-page-tabs button {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+}
+/* Theme token bindings. The dark theme falls back to the component layer. */
+
+.skill-page-panel {
+  border-color: var(
+    --theme-skills-shell-skill-page-panel-border-color-8636e9a,
+    revert-layer
+  );
+  background: var(
+    --theme-skills-shell-skill-page-panel-background-8f57a8f,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-skills-shell-skill-page-panel-box-shadow-9de6106,
+    revert-layer
+  );
+  color: var(--theme-skills-shell-skill-page-panel-color-67a8c9f, revert-layer);
+}
+
+.skill-grid {
+  border-color: var(
+    --theme-skills-shell-skill-grid-border-color-e65d67a,
+    revert-layer
+  );
+  background: var(
+    --theme-skills-shell-skill-grid-background-2361726,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-skills-shell-skill-grid-box-shadow-bbe0d62,
+    revert-layer
+  );
+  color: var(--theme-skills-shell-skill-grid-color-9207a83, revert-layer);
+}
+
+.skill-list-row {
+  border-bottom-color: var(
+    --theme-skills-shell-skill-list-row-border-bottom-color-9df0bb6,
+    revert-layer
+  );
+}
+
+.skill-list-row:hover {
+  background: var(
+    --theme-skills-shell-skill-list-row-background-9cd579b,
+    revert-layer
+  );
+}
+
+.skill-row-icon {
+  border-color: var(
+    --theme-skills-shell-skill-row-icon-border-color-aaa7420,
+    revert-layer
+  );
+  background: var(
+    --theme-skills-shell-skill-row-icon-background-8e33f80,
+    revert-layer
+  );
+  color: var(--theme-skills-shell-skill-row-icon-color-15268f1, revert-layer);
+  box-shadow: var(
+    --theme-skills-shell-skill-row-icon-box-shadow-7b3804d,
+    revert-layer
+  );
+}
+
+.skill-row-copy p {
+  color: var(--theme-skills-shell-skill-row-copy-color-78805bd, revert-layer);
+}
+
+.skill-row-actions button:hover {
+  background: var(
+    --theme-skills-shell-skill-row-actions-background-426aebd,
+    revert-layer
+  );
+}
+
+.skill-page-tabs {
+  border-color: var(
+    --theme-skills-shell-skill-page-tabs-border-color-ca86027,
+    revert-layer
+  );
+  background: var(
+    --theme-skills-shell-skill-page-tabs-background-aa1f2d8,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-skills-shell-skill-page-tabs-box-shadow-5fba87b,
+    revert-layer
+  );
+  color: var(--theme-skills-shell-skill-page-tabs-color-bd9da17, revert-layer);
+}
+
+.skill-page-tabs button.active {
+  background: var(
+    --theme-skills-shell-skill-page-tabs-background-1bc5c9b,
+    revert-layer
+  );
+  border-color: var(
+    --theme-skills-shell-skill-page-tabs-border-color-867fc71,
+    revert-layer
+  );
+  background: var(
+    --theme-skills-shell-skill-page-tabs-background-1bc5c9b,
+    revert-layer
+  ) !important;
+  color: var(--theme-skills-shell-skill-page-tabs-color-03f9a0a, revert-layer);
+  box-shadow: var(
+    --theme-skills-shell-skill-page-tabs-box-shadow-3ea4abc,
+    revert-layer
+  );
+}
+
+.skill-page-tabs button:hover {
+  background: var(
+    --theme-skills-shell-skill-page-tabs-background-2d5a845,
+    revert-layer
+  );
+  border-color: var(
+    --theme-skills-shell-skill-page-tabs-border-color-256bd0e,
+    revert-layer
+  );
+  background: var(
+    --theme-skills-shell-skill-page-tabs-background-2d5a845,
+    revert-layer
+  ) !important;
+  color: var(--theme-skills-shell-skill-page-tabs-color-82fe4e2, revert-layer);
+  box-shadow: var(
+    --theme-skills-shell-skill-page-tabs-box-shadow-cfa2f2e,
+    revert-layer
+  );
+}
+
+.skill-empty-state {
+  border-color: var(
+    --theme-skills-shell-skill-empty-state-border-color-1ca4bc4,
+    revert-layer
+  );
+  color: var(
+    --theme-skills-shell-skill-empty-state-color-f6e9154,
+    revert-layer
+  );
+  background: var(
+    --theme-skills-shell-skill-empty-state-background-86b17f7,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-skills-shell-skill-empty-state-box-shadow-6b8386f,
+    revert-layer
+  );
+}
+
+.skill-card-head button:hover {
+  border-color: var(
+    --theme-skills-shell-skill-card-head-border-color-728dfe8,
+    revert-layer
+  );
+  background: var(
+    --theme-skills-shell-skill-card-head-background-1487040,
+    revert-layer
+  );
+  color: var(--theme-skills-shell-skill-card-head-color-ff4224b, revert-layer);
+  box-shadow: var(
+    --theme-skills-shell-skill-card-head-box-shadow-bfe5a5e,
+    revert-layer
+  );
+}

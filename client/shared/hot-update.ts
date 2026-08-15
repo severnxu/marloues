@@ -79,6 +79,10 @@ export interface UpdateState {
   error?: string;
   errorCode?:
     "network" | "checksum" | "permission" | "configuration" | "unknown";
+  /** 详细错误诊断（含 stack），用于错误面板的折叠详情 */
+  errorDetail?: string;
+  /** 该 ready 状态对应的包版本号 */
+  packageVersion?: string;
   lastCheckedAt?: string;
 }
 

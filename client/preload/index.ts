@@ -57,9 +57,19 @@ const api: MarlouesAPI = {
   window: {
     minimize: () => ipcRenderer.send(IPC.WINDOW_MINIMIZE),
     maximize: () => ipcRenderer.send(IPC.WINDOW_MAXIMIZE),
+    setMaximized: (maximized: boolean) =>
+      ipcRenderer.invoke(IPC.WINDOW_SET_MAXIMIZED, maximized),
     close: () => ipcRenderer.send(IPC.WINDOW_CLOSE),
     isMaximized: () => ipcRenderer.invoke(IPC.WINDOW_IS_MAXIMIZED),
     onMaximizedChanged: (callback) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        maximized: boolean,
+      ) => callback(maximized);
+      ipcRenderer.on(IPC.WINDOW_MAXIMIZED_CHANGED, listener);
+      return () => ipcRenderer.off(IPC.WINDOW_MAXIMIZED_CHANGED, listener);
+    },
+    onMaximizedChange: (callback) => {
       const listener = (
         _event: Electron.IpcRendererEvent,
         maximized: boolean,
@@ -141,6 +151,8 @@ const api: MarlouesAPI = {
   chat: {
     listSessions: () => ipcRenderer.invoke(IPC.CHAT_LIST_SESSIONS),
     listAllSessions: () => ipcRenderer.invoke(IPC.CHAT_LIST_ALL_SESSIONS),
+    searchSessions: (query: string, limit?: number) =>
+      ipcRenderer.invoke(IPC.CHAT_SEARCH_SESSIONS, query, limit),
     createSession: () => ipcRenderer.invoke(IPC.CHAT_CREATE_SESSION),
     deleteSession: (sessionId: string) =>
       ipcRenderer.invoke(IPC.CHAT_DELETE_SESSION, sessionId),
@@ -161,6 +173,8 @@ const api: MarlouesAPI = {
     abort: (requestId: string) => ipcRenderer.invoke(IPC.CHAT_ABORT, requestId),
     cancelTool: (toolCallId: string) =>
       ipcRenderer.invoke(IPC.CHAT_CANCEL_TOOL, toolCallId),
+    compact: (sessionId: string) =>
+      ipcRenderer.invoke(IPC.CHAT_COMPACT, sessionId),
     readThread: (sessionId: string) =>
       ipcRenderer.invoke(IPC.CHAT_READ_THREAD, sessionId),
     onReadThread: (callback) => {

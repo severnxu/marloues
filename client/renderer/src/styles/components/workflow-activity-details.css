@@ -1,0 +1,149 @@
+/* Structured details rendered beneath conversation activity rows. */
+
+.workflow-agent-flow-buffer {
+  padding-block: var(--space-1);
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+
+.workflow-activity-detail-stack {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--raised-1);
+}
+
+.workflow-activity-detail-block {
+  min-width: 0;
+  padding: 0 var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.workflow-activity-detail-block:last-child {
+  border-bottom: 0;
+}
+
+.workflow-activity-detail-label {
+  padding-top: var(--space-2);
+  color: var(--text-3);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.workflow-activity-detail-value {
+  max-height: 208px;
+  min-width: 0;
+  margin: 0;
+  overflow: auto;
+  padding-top: var(--space-1);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.workflow-activity-detail-value.is-normal {
+  color: var(--text-1);
+}
+
+.workflow-activity-detail-value.is-danger {
+  color: var(--danger);
+}
+
+.workflow-collab-agent-head {
+  display: flex;
+  min-height: 28px;
+  min-width: 0;
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.workflow-collab-agent-tool {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-collab-agent-model {
+  flex: none;
+}
+
+.workflow-reasoning-card,
+.workflow-permission-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--raised-1);
+  color: var(--text-2);
+}
+
+.workflow-reasoning-card-title,
+.workflow-permission-card-title {
+  min-height: 30px;
+  padding: 6px 10px 5px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-1);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.workflow-reasoning-card-body {
+  max-height: 260px;
+  margin: 0;
+  overflow: auto;
+  padding: 10px;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.58;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.workflow-permission-card-body {
+  display: grid;
+  gap: var(--space-2);
+  padding: 10px;
+}
+
+.workflow-permission-tool {
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.workflow-permission-reason {
+  max-height: 220px;
+  margin: 0;
+  overflow: auto;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.58;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.workflow-permission-timeout {
+  color: var(--text-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}

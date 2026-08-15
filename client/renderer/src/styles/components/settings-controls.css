@@ -1,0 +1,1262 @@
+/* settings-controls component styles. Theme values come from ../tokens.css. */
+
+@layer marloues-components.cascade-0154 {
+  .settings-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .settings-stat-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 64px;
+    overflow: hidden;
+    border: var(
+      --component-settings-controls-settings-stat-card-border-7b809db
+    );
+    border-radius: 8px;
+    background: var(
+      --component-settings-controls-settings-stat-card-background-7686ea0
+    );
+    color: var(--component-settings-controls-settings-stat-card-color-d7bceb4);
+    padding: 12px 14px;
+    text-align: left;
+    box-shadow: var(
+      --component-settings-controls-settings-stat-card-box-shadow-b9b8736
+    );
+    transition:
+      border-color var(--settings-transition),
+      background var(--settings-transition),
+      color var(--settings-transition);
+  }
+
+  .settings-stat-card:hover {
+    border-color: var(
+      --component-settings-controls-settings-stat-card-border-color-df9f02d
+    );
+    background: var(
+      --component-settings-controls-settings-stat-card-background-fa3c661
+    );
+  }
+
+  .settings-stat-card {
+    display: grid;
+    gap: 3px;
+  }
+
+  .settings-stat-card strong {
+    color: var(--component-settings-controls-settings-stat-card-color-f711bd4);
+    font-size: 20px;
+    font-weight: 650;
+    line-height: 1.2;
+  }
+
+  .settings-stat-card small {
+    color: var(--component-settings-controls-settings-stat-card-color-b959639);
+    font-size: 11px;
+  }
+
+  .settings-card {
+    display: grid;
+    gap: 0;
+    border: var(--component-settings-controls-settings-card-border-babd0e0);
+    border-radius: 8px;
+    background: var(
+      --component-settings-controls-settings-card-background-1c635d2
+    );
+    box-shadow: var(
+      --component-settings-controls-settings-card-box-shadow-14825d1
+    );
+    padding: 20px;
+  }
+
+  .settings-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .settings-card-title {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .settings-card-action {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+  }
+
+  .settings-card-action button {
+    display: inline-flex;
+    min-height: 34px;
+    align-items: center;
+    gap: 7px;
+    border: var(
+      --component-settings-controls-settings-card-action-border-f46d1da
+    );
+    border-radius: 8px;
+    background: var(
+      --component-settings-controls-settings-card-action-background-218f730
+    );
+    color: var(
+      --component-settings-controls-settings-card-action-color-b366abd
+    );
+    padding: 7px 11px;
+    font-size: 12px;
+    font-weight: 650;
+  }
+
+  .settings-card-action button:hover {
+    border-color: var(
+      --component-settings-controls-settings-card-action-border-color-3a11093
+    );
+    background: var(
+      --component-settings-controls-settings-card-action-background-bda300e
+    );
+  }
+
+  .settings-card-icon {
+    display: flex;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(
+      --component-settings-controls-settings-card-icon-background-b72262f
+    );
+    color: var(--component-settings-controls-settings-card-icon-color-daecd28);
+  }
+
+  .settings-row-inline {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 12px;
+    border-top: var(
+      --component-settings-controls-settings-row-inline-border-top-5e8e906
+    );
+    padding: 14px 0;
+  }
+
+  .settings-card-head + .settings-fields .settings-row-inline:first-child {
+    border-top: var(
+      --component-settings-controls-settings-card-head-border-top-e19f3d2
+    );
+    padding-top: 0;
+  }
+
+  .settings-row-inline:first-child {
+    border-top: var(
+      --component-settings-controls-settings-row-inline-border-top-31c4739
+    );
+    padding-top: 0;
+  }
+
+  .settings-row-inline:last-child {
+    padding-bottom: 0;
+  }
+
+  .settings-row-icon {
+    display: flex;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(
+      --component-settings-controls-settings-row-icon-background-ec569f4
+    );
+    color: var(--component-settings-controls-settings-row-icon-color-2d85d46);
+  }
+
+  .settings-row-copy {
+    display: grid;
+    min-width: 0;
+    flex: 1;
+    gap: 3px;
+  }
+
+  .settings-row-copy strong {
+    overflow: hidden;
+    color: var(--component-settings-controls-settings-row-copy-color-9308bf2);
+    font-size: 13px;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .settings-row-copy small {
+    overflow: hidden;
+    color: var(--component-settings-controls-settings-row-copy-color-2801853);
+    font-size: 11px;
+    line-height: 1.45;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .settings-row-trailing {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .settings-version-value {
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  .settings-switch {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    border: var(--component-settings-controls-settings-switch-border-b8cea64);
+    border-radius: 999px;
+    background: var(
+      --component-settings-controls-settings-switch-background-5b357d2
+    );
+    padding: 0;
+    transition: background var(--settings-transition);
+  }
+
+  .settings-switch span {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    background: var(
+      --component-settings-controls-settings-switch-background-ab9c5db
+    );
+    box-shadow: var(
+      --component-settings-controls-settings-switch-box-shadow-c0ba104
+    );
+    transition: transform var(--settings-transition);
+  }
+
+  .settings-switch.active {
+    background: var(
+      --component-settings-controls-settings-switch-background-1ff9d19
+    );
+  }
+
+  .settings-switch.active span {
+    transform: translateX(16px);
+  }
+}
+
+@layer marloues-components.cascade-0156 {
+  .settings-card h2 {
+    margin: 0;
+    color: var(--component-settings-controls-settings-card-color-be52e08);
+    font-size: 13px;
+    font-weight: 650;
+    line-height: 1.35;
+  }
+
+  .settings-card p {
+    margin: 3px 0 0;
+    color: var(--component-settings-controls-settings-card-color-2e3f854);
+    font-size: 11px;
+    line-height: 1.55;
+  }
+}
+
+@layer marloues-components.cascade-0160 {
+  .settings-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .settings-row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .settings-toolbar {
+    justify-content: flex-end;
+  }
+}
+
+@layer marloues-components.cascade-0162 {
+  .settings-segmented-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+  }
+
+  .settings-segmented-options button {
+    display: grid;
+    min-height: 78px;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 5px 9px;
+    border: var(
+      --component-settings-controls-settings-segmented-options-border-d41794e
+    );
+    border-radius: 8px;
+    background: var(
+      --component-settings-controls-settings-segmented-options-background-722b2bc
+    );
+    color: var(
+      --component-settings-controls-settings-segmented-options-color-e9273aa
+    );
+    padding: 13px 14px;
+    text-align: left;
+    transition:
+      border-color var(--settings-transition),
+      background var(--settings-transition),
+      color var(--settings-transition);
+  }
+
+  .settings-segmented-options button:hover {
+    border-color: var(
+      --component-settings-controls-settings-segmented-options-border-color-3721737
+    );
+    background: var(
+      --component-settings-controls-settings-segmented-options-background-59fa071
+    );
+    color: var(
+      --component-settings-controls-settings-segmented-options-color-5d7203b
+    );
+  }
+
+  .settings-segmented-options button.active {
+    border-color: var(
+      --component-settings-controls-settings-segmented-options-border-color-de274cd
+    );
+    background: var(
+      --component-settings-controls-settings-segmented-options-background-2eb8023
+    );
+    color: var(
+      --component-settings-controls-settings-segmented-options-color-6889b6d
+    );
+  }
+
+  .settings-segmented-options button > span {
+    display: grid;
+    width: 16px;
+    height: 16px;
+    grid-row: span 2;
+    place-items: center;
+    margin-top: 1px;
+    border: var(
+      --component-settings-controls-settings-segmented-options-border-e95830c
+    );
+    border-radius: 999px;
+    background: var(
+      --component-settings-controls-settings-segmented-options-background-09a7628
+    );
+    color: var(
+      --component-settings-controls-settings-segmented-options-color-9f985a7
+    );
+  }
+
+  .settings-segmented-options button.active > span {
+    border-color: var(
+      --component-settings-controls-settings-segmented-options-border-color-5ec3af5
+    );
+    background: var(
+      --component-settings-controls-settings-segmented-options-background-70711ff
+    );
+    color: var(
+      --component-settings-controls-settings-segmented-options-color-71c47d8
+    );
+  }
+
+  .settings-segmented-options strong {
+    color: var(
+      --component-settings-controls-settings-segmented-options-color-d31865f
+    );
+    font-size: 13px;
+    font-weight: 650;
+    line-height: 1.35;
+  }
+
+  .settings-segmented-options small {
+    color: var(
+      --component-settings-controls-settings-segmented-options-color-289a5fd
+    );
+    font-size: 11px;
+    line-height: 1.55;
+  }
+}
+
+@layer marloues-components.cascade-0164 {
+  .settings-toolbar button {
+    display: inline-flex;
+    min-height: 32px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: var(--component-settings-controls-settings-toolbar-border-74cbb3e);
+    border-radius: 8px;
+    background: var(
+      --component-settings-controls-settings-toolbar-background-de14422
+    );
+    color: var(--component-settings-controls-settings-toolbar-color-303dc79);
+    padding: 7px 11px;
+    font-size: 11px;
+    font-weight: 650;
+    transition:
+      border-color var(--settings-transition),
+      background var(--settings-transition),
+      color var(--settings-transition);
+  }
+
+  .settings-row-actions button {
+    display: inline-flex;
+    min-height: 32px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: var(
+      --component-settings-controls-settings-row-actions-border-a6cc9cd
+    );
+    border-radius: 8px;
+    background: var(
+      --component-settings-controls-settings-row-actions-background-8160fe6
+    );
+    color: var(
+      --component-settings-controls-settings-row-actions-color-c29b3a2
+    );
+    padding: 7px 11px;
+    font-size: 11px;
+    font-weight: 650;
+    transition:
+      border-color var(--settings-transition),
+      background var(--settings-transition),
+      color var(--settings-transition);
+  }
+
+  .settings-toolbar button:hover {
+    border-color: var(
+      --component-settings-controls-settings-toolbar-border-color-8d9bec2
+    );
+    background: var(
+      --component-settings-controls-settings-toolbar-background-97ae888
+    );
+  }
+
+  .settings-row-actions button:hover {
+    border-color: var(
+      --component-settings-controls-settings-row-actions-border-color-91492b7
+    );
+    background: var(
+      --component-settings-controls-settings-row-actions-background-490f62c
+    );
+  }
+
+  .settings-toolbar button:disabled {
+    cursor: not-allowed;
+    opacity: var(
+      --component-settings-controls-settings-toolbar-opacity-3b76949
+    );
+  }
+
+  .settings-row-actions button:disabled {
+    cursor: not-allowed;
+    opacity: var(
+      --component-settings-controls-settings-row-actions-opacity-eee1328
+    );
+  }
+}
+
+@layer marloues-components.cascade-0171 {
+  .settings-row-actions .icon-button {
+    width: 32px;
+    padding-right: 0;
+    padding-left: 0;
+  }
+}
+
+@layer marloues-components.cascade-0172 {
+  @media (max-width: 860px) {
+    .settings-segmented-options {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+@layer marloues-components.cascade-0176 {
+  @media (max-width: 860px) {
+    .mcp-add-footer .settings-row-actions {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 860px) {
+    .mcp-add-footer .settings-row-actions button {
+      width: 100%;
+    }
+  }
+}
+
+@layer marloues-components.cascade-0210 {
+  .mcp-server-summary .settings-chip-row {
+    flex: 1 1 220px;
+  }
+
+  .mcp-server-summary .settings-chip-row {
+    overflow: auto;
+    max-height: 64px;
+    padding-right: 2px;
+  }
+}
+
+@layer marloues-components.cascade-0256 {
+  .mcp-provider-row .settings-status {
+    flex-shrink: 0;
+    min-height: 20px;
+    align-items: center;
+    padding: 3px 7px;
+    font-size: 10px;
+    font-weight: 720;
+  }
+
+  .mcp-provider-row .settings-status.untested {
+    border-color: var(
+      --component-settings-controls-mcp-provider-row-border-color-4fd9648
+    );
+    background: var(
+      --component-settings-controls-mcp-provider-row-background-d247745
+    );
+    color: var(--component-settings-controls-mcp-provider-row-color-9ca8579);
+  }
+
+  .mcp-provider-row .settings-status.running {
+    border-color: var(
+      --component-settings-controls-mcp-provider-row-border-color-f56fa63
+    );
+    background: var(
+      --component-settings-controls-mcp-provider-row-background-bc14c57
+    );
+    color: var(--component-settings-controls-mcp-provider-row-color-922b0f6);
+  }
+
+  .mcp-provider-row .settings-status.disconnected {
+    border-color: var(
+      --component-settings-controls-mcp-provider-row-border-color-cc2ee5c
+    );
+    background: var(
+      --component-settings-controls-mcp-provider-row-background-cdbfc66
+    );
+    color: var(--component-settings-controls-mcp-provider-row-color-aceeb85);
+  }
+}
+
+@layer marloues-components.cascade-0265 {
+  .mcp-provider-tools .settings-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+}
+
+@layer marloues-components.cascade-0267 {
+  .mcp-tool-list .settings-chip {
+    max-width: 100%;
+  }
+
+  .mcp-tool-list .settings-chip {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@layer marloues-components.cascade-0291 {
+  .mcp-inspector-actions .settings-switch {
+    min-height: auto;
+    width: 38px;
+    height: 22px;
+    border: var(
+      --component-settings-controls-mcp-inspector-actions-border-f9ba308
+    );
+    background: var(
+      --component-settings-controls-mcp-inspector-actions-background-98d6031
+    );
+    padding: 0;
+    box-shadow: var(
+      --component-settings-controls-mcp-inspector-actions-box-shadow-308b0cd
+    );
+  }
+
+  .mcp-inspector-actions .settings-switch:hover {
+    background: var(
+      --component-settings-controls-mcp-inspector-actions-background-9e77094
+    );
+    transform: none;
+  }
+
+  .mcp-inspector-actions .settings-switch.active {
+    background: var(
+      --component-settings-controls-mcp-inspector-actions-background-7fc9b0c
+    );
+  }
+
+  .mcp-inspector-actions .settings-switch span {
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    background: var(
+      --component-settings-controls-mcp-inspector-actions-background-8d0e0a2
+    );
+  }
+
+  .mcp-inspector-actions .settings-switch.active span {
+    transform: translateX(16px);
+  }
+}
+
+@layer marloues-components.cascade-0296 {
+  .mcp-inspector-v2 .settings-status {
+    min-height: 24px;
+    align-items: center;
+    border-color: var(
+      --component-settings-controls-mcp-inspector-v2-border-color-f0110d3
+    );
+    background: var(
+      --component-settings-controls-mcp-inspector-v2-background-9f72c3b
+    );
+    color: var(--component-settings-controls-mcp-inspector-v2-color-bbf3d44);
+    font-weight: 730;
+  }
+
+  .mcp-inspector-v2 .settings-status.ok {
+    border-color: var(
+      --component-settings-controls-mcp-inspector-v2-border-color-b2372ef
+    );
+    background: var(
+      --component-settings-controls-mcp-inspector-v2-background-590ac90
+    );
+    color: var(--component-settings-controls-mcp-inspector-v2-color-9f34b9f);
+  }
+
+  .mcp-inspector-v2 .settings-status.error {
+    border-color: var(
+      --component-settings-controls-mcp-inspector-v2-border-color-f37b759
+    );
+    background: var(
+      --component-settings-controls-mcp-inspector-v2-background-09bb6d0
+    );
+    color: var(--component-settings-controls-mcp-inspector-v2-color-e571921);
+  }
+
+  .settings-row-card {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+    border: var(--component-settings-controls-settings-row-card-border-2969d51);
+    border-radius: 8px;
+    background: var(
+      --component-settings-controls-settings-row-card-background-d1b137c
+    );
+    box-shadow: var(
+      --component-settings-controls-settings-row-card-box-shadow-2eb8f27
+    );
+    padding: 12px;
+    transition:
+      border-color var(--settings-transition),
+      background var(--settings-transition);
+  }
+}
+
+@layer marloues-components.cascade-0298 {
+  .settings-row-card:hover {
+    border-color: var(
+      --component-settings-controls-settings-row-card-border-color-d649b55
+    );
+    background: var(
+      --component-settings-controls-settings-row-card-background-36033ab
+    );
+  }
+
+  .settings-row-card.disabled {
+    border-color: var(
+      --component-settings-controls-settings-row-card-border-color-76c26c5
+    );
+    background: var(
+      --component-settings-controls-settings-row-card-background-f4e5978
+    );
+    opacity: var(
+      --component-settings-controls-settings-row-card-opacity-c4a38e8
+    );
+  }
+
+  .settings-row-card.disabled .skill-card-head strong {
+    color: var(--component-settings-controls-settings-row-card-color-2c92f91);
+  }
+
+  .settings-row-card.disabled .skill-row-title strong {
+    color: var(--component-settings-controls-settings-row-card-color-3df00f9);
+  }
+}
+
+@layer marloues-components.cascade-0303 {
+  .settings-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .settings-chip {
+    max-width: 100%;
+    overflow: hidden;
+    border: var(--component-settings-controls-settings-chip-border-4d46af8);
+    border-radius: 999px;
+    background: var(
+      --component-settings-controls-settings-chip-background-4a3eb58
+    );
+    color: var(--component-settings-controls-settings-chip-color-03845a4);
+    padding: 4px 8px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    line-height: 1.1;
+  }
+
+  .settings-chip.ok {
+    border-color: var(
+      --component-settings-controls-settings-chip-border-color-7b1c9e1
+    );
+    background: var(
+      --component-settings-controls-settings-chip-background-8b1fe02
+    );
+    color: var(--component-settings-controls-settings-chip-color-c11876a);
+  }
+
+  .settings-chip.error {
+    border-color: var(
+      --component-settings-controls-settings-chip-border-color-2cfc141
+    );
+    background: var(
+      --component-settings-controls-settings-chip-background-ec190fb
+    );
+    color: var(--component-settings-controls-settings-chip-color-fbb76c6);
+  }
+}
+
+@layer marloues-components.cascade-0307 {
+  .settings-row-card p {
+    margin: 0;
+    color: var(--component-settings-controls-settings-row-card-color-df82d7b);
+    font-size: 12px;
+    line-height: 1.65;
+  }
+
+  .settings-status {
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
+    overflow: hidden;
+    border: var(--component-settings-controls-settings-status-border-943e4e8);
+    border-radius: 999px;
+    background: var(
+      --component-settings-controls-settings-status-background-cef28d7
+    );
+    color: var(--component-settings-controls-settings-status-color-8a43ba6);
+    padding: 4px 8px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+    line-height: 1.15;
+  }
+
+  .settings-status.ok {
+    border-color: var(
+      --component-settings-controls-settings-status-border-color-adc8fed
+    );
+    background: var(
+      --component-settings-controls-settings-status-background-0914be2
+    );
+    color: var(--component-settings-controls-settings-status-color-e92ed89);
+  }
+
+  .settings-status.error {
+    border-color: var(
+      --component-settings-controls-settings-status-border-color-08f9300
+    );
+    background: var(
+      --component-settings-controls-settings-status-background-5ff4f5e
+    );
+    color: var(--component-settings-controls-settings-status-color-8115538);
+  }
+}
+
+@layer marloues-components.cascade-0314 {
+  @media (max-width: 720px) {
+    .settings-card {
+      padding: 16px;
+    }
+  }
+}
+/* Theme token bindings. The dark theme falls back to the component layer. */
+
+.settings-stat-card {
+  border-color: var(
+    --theme-settings-controls-settings-stat-card-border-color-0216ef3,
+    revert-layer
+  );
+  background: var(
+    --theme-settings-controls-settings-stat-card-background-36ad786,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-settings-controls-settings-stat-card-box-shadow-e7c8ce7,
+    revert-layer
+  );
+  color: var(
+    --theme-settings-controls-settings-stat-card-color-2e30add,
+    revert-layer
+  );
+}
+
+.settings-card {
+  border-color: var(
+    --theme-settings-controls-settings-card-border-color-99aaef6,
+    revert-layer
+  );
+  background: var(
+    --theme-settings-controls-settings-card-background-59e0630,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-settings-controls-settings-card-box-shadow-de12228,
+    revert-layer
+  );
+  color: var(
+    --theme-settings-controls-settings-card-color-1dfe35c,
+    revert-layer
+  );
+}
+
+.settings-row-card {
+  border-color: var(
+    --theme-settings-controls-settings-row-card-border-color-e329b66,
+    revert-layer
+  );
+  background: var(
+    --theme-settings-controls-settings-row-card-background-4a35c2a,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-settings-controls-settings-row-card-box-shadow-dbe1954,
+    revert-layer
+  );
+  color: var(
+    --theme-settings-controls-settings-row-card-color-d1f0bcb,
+    revert-layer
+  );
+}
+
+.mcp-inspector-actions .settings-switch {
+  background: var(
+    --theme-settings-controls-mcp-inspector-actions-background-2d23b82,
+    revert-layer
+  );
+}
+
+.mcp-inspector-actions .settings-switch.active {
+  background: var(
+    --theme-settings-controls-mcp-inspector-actions-background-0f3e321,
+    revert-layer
+  );
+}
+
+.mcp-inspector-actions .settings-switch span {
+  background: var(
+    --theme-settings-controls-mcp-inspector-actions-background-4e3c354,
+    revert-layer
+  );
+}
+
+.settings-stat-card:hover {
+  border-color: var(
+    --theme-settings-controls-settings-stat-card-border-color-2d5bb24,
+    revert-layer
+  );
+  background: var(
+    --theme-settings-controls-settings-stat-card-background-f13ad48,
+    revert-layer
+  );
+  color: var(
+    --theme-settings-controls-settings-stat-card-color-55879f3,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-settings-controls-settings-stat-card-box-shadow-af43c21,
+    revert-layer
+  );
+}
+
+.settings-segmented-options button:hover {
+  border-color: var(
+    --theme-settings-controls-settings-segmented-options-border-color-23cf2de,
+    revert-layer
+  );
+  background: var(
+    --theme-settings-controls-settings-segmented-options-background-07f4889,
+    revert-layer
+  );
+  background: var(
+    --theme-settings-controls-settings-segmented-options-background-07f4889,
+    revert-layer
+  ) !important;
+  color: var(
+    --theme-settings-controls-settings-segmented-options-color-2a1b319,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-settings-controls-settings-segmented-options-box-shadow-9386bd8,
+    revert-layer
+  );
+}
+
+.settings-segmented-options button.active {
+  border-color: var(
+    --theme-settings-controls-settings-segmented-options-border-color-d64f16e,
+    revert-layer
+  );
+  background: var(
+    --theme-settings-controls-settings-segmented-options-background-8063487,
+    revert-layer
+  );
+  background: var(
+    --theme-settings-controls-settings-segmented-options-background-8063487,
+    revert-layer
+  ) !important;
+  color: var(
+    --theme-settings-controls-settings-segmented-options-color-d16d12c,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-settings-controls-settings-segmented-options-box-shadow-e680e9a,
+    revert-layer
+  );
+}
+
+.settings-row-card:hover {
+  border-color: var(
+    --theme-settings-controls-settings-row-card-border-color-a48fb1b,
+    revert-layer
+  );
+  background: var(
+    --theme-settings-controls-settings-row-card-background-31e7699,
+    revert-layer
+  );
+  color: var(
+    --theme-settings-controls-settings-row-card-color-2e85ec5,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-settings-controls-settings-row-card-box-shadow-bbc79be,
+    revert-layer
+  );
+}
+
+.settings-toolbar button:hover {
+  border-color: var(
+    --theme-settings-controls-settings-toolbar-border-color-b57bfb1,
+    revert-layer
+  );
+  background: var(
+    --theme-settings-controls-settings-toolbar-background-7defc84,
+    revert-layer
+  );
+  color: var(
+    --theme-settings-controls-settings-toolbar-color-e5b92e5,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-settings-controls-settings-toolbar-box-shadow-49f357c,
+    revert-layer
+  );
+}
+
+.settings-row-actions button:hover {
+  border-color: var(
+    --theme-settings-controls-settings-row-actions-border-color-f615d5c,
+    revert-layer
+  );
+  background: var(
+    --theme-settings-controls-settings-row-actions-background-d9aaf9a,
+    revert-layer
+  );
+  color: var(
+    --theme-settings-controls-settings-row-actions-color-c6ff417,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-settings-controls-settings-row-actions-box-shadow-0ce8682,
+    revert-layer
+  );
+}
+
+.settings-toolbar button {
+  border-color: var(
+    --theme-settings-controls-settings-toolbar-border-color-d7c3903,
+    revert-layer
+  );
+  background: var(
+    --theme-settings-controls-settings-toolbar-background-27f6da5,
+    revert-layer
+  );
+  color: var(
+    --theme-settings-controls-settings-toolbar-color-dd3f777,
+    revert-layer
+  );
+}
+
+.settings-row-actions button {
+  border-color: var(
+    --theme-settings-controls-settings-row-actions-border-color-48676c4,
+    revert-layer
+  );
+  background: var(
+    --theme-settings-controls-settings-row-actions-background-6e003b4,
+    revert-layer
+  );
+  color: var(
+    --theme-settings-controls-settings-row-actions-color-1952fa1,
+    revert-layer
+  );
+}
+
+.settings-card::before {
+  content: var(
+    --theme-settings-controls-settings-card-content-0849005,
+    revert-layer
+  );
+}
+
+.settings-stat-card::before {
+  content: var(
+    --theme-settings-controls-settings-stat-card-content-79e1255,
+    revert-layer
+  );
+}
+
+/* ── IM 渠道（企微/飞书）表单字段 ─────────────────────────────── */
+.settings-field {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  border-top: var(
+    --component-settings-controls-settings-row-inline-border-top-5e8e906
+  );
+  padding: 10px 0;
+}
+
+.settings-field > span {
+  color: var(--component-settings-controls-settings-stat-card-color-b959639);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.settings-field input {
+  min-width: 0;
+  border: var(--component-settings-controls-settings-card-border-babd0e0);
+  border-radius: 8px;
+  background: var(--settings-field);
+  color: var(--component-settings-controls-settings-stat-card-color-f711bd4);
+  padding: 8px 11px;
+  font-size: 13px;
+  outline: none;
+  transition:
+    border-color var(--settings-transition),
+    background var(--settings-transition);
+}
+
+.settings-field input:focus {
+  border-color: var(--settings-field-focus);
+}
+
+.settings-action-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-top: var(
+    --component-settings-controls-settings-row-inline-border-top-5e8e906
+  );
+  padding-top: 14px;
+}
+
+.settings-button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 7px;
+  border: var(
+    --component-settings-controls-settings-card-action-border-f46d1da
+  );
+  border-radius: 8px;
+  background: var(
+    --component-settings-controls-settings-card-action-background-218f730
+  );
+  color: var(--component-settings-controls-settings-card-action-color-b366abd);
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.settings-button:hover {
+  border-color: var(
+    --component-settings-controls-settings-card-action-border-color-3a11093
+  );
+  background: var(
+    --component-settings-controls-settings-card-action-background-bda300e
+  );
+}
+
+.settings-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.settings-button.primary {
+  border-color: var(--theme-accent, hsl(217 90% 60%));
+  background: var(--theme-accent, hsl(217 90% 60%));
+  color: #fff;
+}
+
+.settings-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--component-settings-controls-settings-stat-card-color-b959639);
+  font-size: 11px;
+}
+
+.spin {
+  animation: settings-spin 0.9s linear infinite;
+}
+
+@keyframes settings-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ���� ��΢ɨ���ݰ󶨵��� ���������������������������������������������������������������������� */
+.im-qr-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.45);
+}
+
+.im-qr-dialog {
+  display: flex;
+  width: min(360px, calc(100vw - 48px));
+  flex-direction: column;
+  gap: 12px;
+  border-radius: 12px;
+  background: var(
+    --component-settings-controls-settings-card-background-1c635d2
+  );
+  box-shadow: var(
+    --component-settings-controls-settings-card-box-shadow-14825d1
+  );
+  padding: 18px;
+  color: var(--component-settings-controls-settings-stat-card-color-f711bd4);
+}
+
+.im-qr-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.im-qr-head strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+}
+
+.im-qr-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.im-qr-body img {
+  border: var(--component-settings-controls-settings-card-border-babd0e0);
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px;
+}
+
+.im-qr-placeholder {
+  display: flex;
+  width: 220px;
+  height: 220px;
+  align-items: center;
+  justify-content: center;
+  border: var(--component-settings-controls-settings-card-border-babd0e0);
+  border-radius: 8px;
+}
+
+.im-qr-status {
+  margin: 0;
+  color: var(--component-settings-controls-settings-stat-card-color-b959639);
+  font-size: 12px;
+}
+
+.im-qr-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.im-qr-error p {
+  margin: 0;
+  color: var(--status-error, #e74c3c);
+  font-size: 12px;
+  text-align: center;
+}
+
+.im-qr-steps ol {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--component-settings-controls-settings-stat-card-color-b959639);
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.im-qr-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: var(
+    --component-settings-controls-settings-row-inline-border-top-5e8e906
+  );
+  padding-top: 12px;
+}

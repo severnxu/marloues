@@ -1,4 +1,6 @@
-import type { McpServerConfig, ModelOption, TimelineItem } from "@shared/types";
+import type { McpServerConfig, ModelOption } from "@shared/types";
+import type { SessionInitInfo } from "@/stores/unified-chat-store";
+import { STRINGS } from "@shared/strings.zh";
 export interface RuntimeSnapshot {
   skills: string[];
   mcpTools: string[];
@@ -25,14 +27,19 @@ export const emptyMcpAddDraft = (): McpAddDraft => ({
   enabled: true,
 });
 
-export function statusToastTitle(message: string, tone: "info" | "ok" | "error"): string {
-  if (tone === "ok") return "操作成功";
+export function statusToastTitle(
+  message: string,
+  tone: "info" | "ok" | "error",
+): string {
+  if (tone === "ok") return STRINGS.status.operationOk;
   if (tone === "error") {
     const prefix = message.split(/[：:]/)[0]?.trim();
-    return prefix && prefix.length <= 24 ? prefix : "操作失败";
+    return prefix
+      ? STRINGS.status.operationFailedWithPrefix(prefix)
+      : STRINGS.status.operationFailed;
   }
-  if (message.includes("正在测试")) return "正在测试";
-  return "状态更新";
+  if (message.includes(STRINGS.status.testing)) return STRINGS.status.testing;
+  return STRINGS.status.updated;
 }
 
 export function _splitLines(value: string): string[] {
@@ -46,13 +53,20 @@ export function compactMcpArgs(args: string[]): string[] {
   return args.map((arg) => arg.trim()).filter(Boolean);
 }
 
-export function updateArrayValue(items: string[], index: number, value: string): string[] {
+export function updateArrayValue(
+  items: string[],
+  index: number,
+  value: string,
+): string[] {
   const next = [...items];
   next[index] = value;
   return next;
 }
 
-export function buildMcpConfigFromDraft(mode: McpAddMode, draft: McpAddDraft): Record<string, unknown> | null {
+export function buildMcpConfigFromDraft(
+  mode: McpAddMode,
+  draft: McpAddDraft,
+): Record<string, unknown> | null {
   if (mode === "stdio") {
     const command = draft.command.trim();
     if (!command) return null;
@@ -71,7 +85,8 @@ export function buildMcpConfigFromDraft(mode: McpAddMode, draft: McpAddDraft): R
   if (!rawJson) return null;
   try {
     const parsed = JSON.parse(rawJson);
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+      return null;
     return parsed as Record<string, unknown>;
   } catch {
     return null;
@@ -79,10 +94,10 @@ export function buildMcpConfigFromDraft(mode: McpAddMode, draft: McpAddDraft): R
 }
 
 export function formatMcpAddModeHint(mode: McpAddMode): string {
-  if (mode === "stdio") return "启动本地 MCP 进程，适合 npx、node、uvx、python。";
-  if (mode === "http") return "连接远程 Streamable HTTP MCP 服务。";
-  if (mode === "sse") return "连接远程 SSE MCP 服务。";
-  return "粘贴完整 MCP 配置，适合 headers、tools、alwaysLoad 等高级项。";
+  if (mode === "stdio") return STRINGS.mcp.addModeHint.stdio;
+  if (mode === "http") return STRINGS.mcp.addModeHint.http;
+  if (mode === "sse") return STRINGS.mcp.addModeHint.sse;
+  return STRINGS.mcp.addModeHint.json;
 }
 
 export function readMcpConfigRecord(config: unknown): Record<string, unknown> {
@@ -96,7 +111,9 @@ export function readMcpCommand(config: unknown): string {
   return typeof record.command === "string" ? record.command : "";
 }
 
-export function readMcpType(config: unknown): "stdio" | "http" | "sse" | "json" {
+export function readMcpType(
+  config: unknown,
+): "stdio" | "http" | "sse" | "json" {
   const record = readMcpConfigRecord(config);
   const type = typeof record.type === "string" ? record.type : "";
   if (type === "http" || type === "sse") return type;
@@ -111,89 +128,69 @@ export function readMcpUrl(config: unknown): string {
 
 export function readMcpArgs(config: unknown): string[] {
   const record = readMcpConfigRecord(config);
-  return Array.isArray(record.args) ? record.args.filter((item): item is string => typeof item === "string") : [];
+  return Array.isArray(record.args)
+    ? record.args.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
-export function formatMcpServerSummary(server: McpServerConfig, type: ReturnType<typeof readMcpType>): string {
+export function formatMcpServerSummary(
+  server: McpServerConfig,
+  type: ReturnType<typeof readMcpType>,
+): string {
   const transport = formatMcpTransportLabel(type);
   const toolCount = server.tools?.length ?? 0;
-  if (server.lastStatus === "ok") return `${transport} · ${toolCount} 个工具`;
-  if (server.lastStatus === "running") return `${transport} · 检查中`;
-  if (server.lastStatus === "disconnected") return `${transport} · 已断开`;
-  if (server.lastStatus === "error") return `${transport} · 检查失败`;
-  return `${transport} · 未检查`;
+  if (server.lastStatus === "ok")
+    return STRINGS.mcp.serverSummary(transport, toolCount);
+  if (server.lastStatus === "running")
+    return STRINGS.mcp.serverSummaryRunning(transport);
+  if (server.lastStatus === "disconnected")
+    return STRINGS.mcp.serverSummaryDisconnected(transport);
+  if (server.lastStatus === "error")
+    return STRINGS.mcp.serverSummaryCheckFailed(transport);
+  return STRINGS.mcp.serverSummaryUncheck(transport);
 }
 
-export function formatMcpTransportLabel(type: ReturnType<typeof readMcpType>): string {
-  if (type === "stdio") return "本地进程";
-  if (type === "http") return "HTTP 服务";
-  if (type === "sse") return "SSE 服务";
-  return "自定义 JSON";
+export function formatMcpTransportLabel(
+  type: ReturnType<typeof readMcpType>,
+): string {
+  if (type === "stdio") return STRINGS.mcp.transport.stdio;
+  if (type === "http") return STRINGS.mcp.transport.http;
+  if (type === "sse") return STRINGS.mcp.transport.sse;
+  return STRINGS.mcp.transport.json;
 }
 
 export function formatMcpStatus(server: McpServerConfig): string {
-  if (server.lastStatus === "ok") return "正常";
-  if (server.lastStatus === "running") return "检查中";
-  if (server.lastStatus === "disconnected") return "已断开";
-  if (server.lastStatus === "error") return "异常";
-  return "未检查";
+  if (server.lastStatus === "ok") return STRINGS.mcp.status.ok;
+  if (server.lastStatus === "running") return STRINGS.mcp.status.running;
+  if (server.lastStatus === "disconnected")
+    return STRINGS.mcp.status.disconnected;
+  if (server.lastStatus === "error") return STRINGS.mcp.status.error;
+  return STRINGS.mcp.status.uncheck;
 }
 
 export function formatMcpError(error: string | undefined): string {
-  if (!error) return "未知错误";
-  if (/ENOENT|not found|cannot find/i.test(error)) return `${error}。请检查 command 或 args 中的本地路径是否已下发。`;
-  if (/timed out|timeout/i.test(error)) return `${error}。请确认 MCP Server 能在 5 秒内完成 initialize 和 tools/list。`;
+  if (!error) return STRINGS.mcp.errorUnknown;
+  if (/ENOENT|not found|cannot find/i.test(error))
+    return `${error}。${STRINGS.mcp.errorHint.notFound}`;
+  if (/timed out|timeout/i.test(error))
+    return `${error}。${STRINGS.mcp.errorHint.timeout}`;
   if (/invalid response|JSON|parse/i.test(error))
-    return `${error}。请确认 MCP Server 的 stdout 只输出 JSON-RPC 协议消息，普通日志写入 stderr。`;
+    return `${error}。${STRINGS.mcp.errorHint.parse}`;
   return error;
 }
 
-export function buildRuntimeSnapshot(timeline: TimelineItem[]): RuntimeSnapshot {
-  const snapshot: RuntimeSnapshot = { skills: [], mcpTools: [], mcpServers: [] };
-  for (const item of timeline) {
-    if (item.label === "Session initialized") {
-      const detail = parseJsonObject(item.detail);
-      snapshot.skills = readStringArray(detail.skills);
-      snapshot.updatedAt = Math.max(snapshot.updatedAt ?? 0, item.createdAt);
-    }
-    if (item.label === "MCP servers loaded") {
-      const detail = parseJsonObject(item.detail);
-      snapshot.mcpTools = readStringArray(detail.tools);
-      snapshot.mcpServers = readRuntimeServers(detail.servers);
-      snapshot.updatedAt = Math.max(snapshot.updatedAt ?? 0, item.createdAt);
-    }
+export function buildRuntimeSnapshot(
+  info: SessionInitInfo | undefined,
+): RuntimeSnapshot {
+  if (!info) {
+    return { skills: [], mcpTools: [], mcpServers: [] };
   }
-  return snapshot;
-}
-
-export function parseJsonObject(value: string | undefined): Record<string, unknown> {
-  if (!value) return {};
-  try {
-    const parsed = JSON.parse(value);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
-  } catch {
-    return {};
-  }
-}
-
-export function readStringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
-}
-
-export function readRuntimeServers(value: unknown): RuntimeSnapshot["mcpServers"] {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((item) => {
-    if (!item || typeof item !== "object") return [];
-    const record = item as Record<string, unknown>;
-    if (typeof record.name !== "string") return [];
-    return [
-      {
-        name: record.name,
-        status: typeof record.status === "string" ? record.status : undefined,
-        error: typeof record.error === "string" ? record.error : undefined,
-      },
-    ];
-  });
+  return {
+    skills: [],
+    mcpTools: info.mcpTools ?? [],
+    mcpServers: info.mcpServers ?? [],
+    updatedAt: info.mcpUpdatedAt,
+  };
 }
 
 export function withModelMetadataDefaults(model: ModelOption): ModelOption {

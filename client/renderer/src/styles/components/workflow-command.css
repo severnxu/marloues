@@ -1,0 +1,125 @@
+/* Command execution details: one quiet terminal surface per activity row. */
+
+.workflow-command-detail {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--raised-1);
+  color: var(--text-2);
+}
+
+.workflow-command-detail-header {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0 10px;
+}
+
+.workflow-command-shell {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-command-status {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  line-height: 1;
+}
+
+.workflow-command-status svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+
+.workflow-command-status.is-success {
+  color: var(--success);
+}
+
+.workflow-command-status.is-failed {
+  color: var(--danger);
+}
+
+.workflow-command-status.is-running svg {
+  animation: workflow-command-spin 900ms linear infinite;
+}
+
+.workflow-command-detail-body {
+  min-width: 0;
+}
+
+.workflow-command-section {
+  min-width: 0;
+  padding: var(--space-2) 10px 10px;
+}
+
+.workflow-command-section + .workflow-command-section,
+.workflow-command-section + .workflow-command-empty {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.workflow-command-section-header {
+  display: flex;
+  min-height: 24px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+  color: var(--text-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+}
+
+.workflow-command-code {
+  min-width: 0;
+  margin: 0;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.workflow-command-code.is-scrollable {
+  max-height: 210px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.workflow-command-code.is-danger {
+  color: var(--danger);
+}
+
+.workflow-command-empty {
+  padding: 10px;
+  color: var(--text-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+@keyframes workflow-command-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workflow-command-status.is-running svg {
+    animation: none;
+  }
+}

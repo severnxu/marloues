@@ -6,6 +6,13 @@ import type {
   UpdatePreferences,
   UpdateState,
 } from "./hot-update";
+export type {
+  AppVersionInfo,
+  RendererReadyInfo,
+  RendererReadyReceipt,
+  UpdatePreferences,
+  UpdateState,
+} from "./hot-update";
 
 /** Stable code for failures that would otherwise persist an API key without OS-backed encryption. */
 export const SECRET_ENCRYPTION_UNAVAILABLE_CODE =
@@ -29,6 +36,17 @@ export interface WorkspaceInfo {
   lastOpenedAt: number;
 }
 
+export interface WorkspaceGitContext {
+  isRepository: boolean;
+  branch?: string;
+  upstream?: string;
+  ahead: number;
+  behind: number;
+  changedFiles: number;
+  insertions: number;
+  deletions: number;
+}
+
 export interface WorkspaceSettings {
   currentWorkspaceId?: string;
   workspaces: WorkspaceInfo[];
@@ -50,6 +68,38 @@ export interface ChatSessionRecord {
   sdkSessionId?: string;
 }
 
+export interface SessionSearchResult {
+  sessionId: string;
+  turnId: string;
+  ordinal: number;
+  title: string;
+  workspacePath?: string;
+  excerpt: string;
+  updatedAt: number;
+}
+
+export interface OutboxMessageRecord {
+  messageId: string;
+  sessionId: string;
+  turnId?: string;
+  displayContent: string;
+  userContent?: import("./workflow-read-thread-contract").WorkflowUserMessageContent[];
+  state: "queued" | "applying" | "sent";
+  paused?: boolean;
+  createdAt: number;
+}
+
+export interface OutboxSnapshot {
+  sessionId: string;
+  items: OutboxMessageRecord[];
+  paused?: boolean;
+}
+
+export interface PendingStateSnapshot {
+  outboxes: OutboxSnapshot[];
+  approvals: PermissionDialogRequest[];
+}
+
 export type ChatRole = "user" | "assistant" | "system";
 
 export interface ChatMessageRecord {
@@ -59,7 +109,7 @@ export interface ChatMessageRecord {
   userContent?: import("./workflow-read-thread-contract").WorkflowUserMessageContent[];
   blocks: MessageBlock[];
   createdAt: number;
-  items: import("./workflow-types").MessageItem[];
+  items: import("./workflow-read-thread-contract").WorkflowTurnItem[];
   startedAt?: number;
   completedAt?: number;
   modelId?: string;
@@ -135,9 +185,33 @@ export interface ChatSendRequest {
   sessionId: string;
   text: string;
   attachments?: unknown[];
+  workMode?: AgentWorkMode;
   permissionMode?: AgentPermissionMode;
+  deliveryMode?: "normal" | "steer";
   forceSend?: boolean;
   clientMessageId?: string;
+}
+
+export type ChatSendReceiptStatus =
+  "started" | "queued" | "fallback" | "failed";
+
+/**
+ * Durable acknowledgement for renderer -> main message delivery. A resolved
+ * receipt describes what the main process actually did; callers never need to
+ * infer delivery from an exception string.
+ */
+export interface ChatSendReceipt {
+  status: ChatSendReceiptStatus;
+  sessionId: string;
+  messageId: string;
+  turnId?: string;
+  reason?:
+    | "turn_boundary"
+    | "no_active_turn"
+    | "no_window"
+    | "missing_workspace"
+    | "rejected";
+  error?: string;
 }
 
 export interface ChatResendRequest {
@@ -149,6 +223,7 @@ export interface ChatResendRequest {
 export interface ChatForkRequest {
   sessionId: string;
   upToMessageId?: string;
+  lastTurnId?: string;
   title?: string;
 }
 
@@ -269,6 +344,8 @@ export interface AgentSettings {
   desktopNotificationsEnabled: boolean;
   friendlyTone?: boolean;
   customInstructions?: string;
+  preventSleep?: boolean;
+  outputStyle?: "default" | "coding" | "explanatory";
   memoryMode?: AgentMemoryMode;
   contextManagement?: ContextManagementSettings;
   toolPermissionPolicy?: ToolPermissionPolicy;
@@ -284,6 +361,7 @@ export interface AgentSettings {
   disabledSkills: string[];
   enterprisePolicy?: EnterprisePolicy;
   enterpriseControlledSettings?: string[];
+  sandboxEnabled?: boolean;
 }
 
 export type AgentMemoryMode = "workspace" | "session" | "off";
@@ -570,7 +648,15 @@ export interface ContextUsageRecord {
     tokens: number;
     isLoaded?: boolean;
   }>;
+  apiUsage?: ApiUsageCounters;
   raw?: unknown;
+}
+
+export interface ApiUsageCounters {
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheCreationInputTokens?: number;
+  cacheReadInputTokens?: number;
 }
 
 export interface MemoryRecallRecord {
@@ -610,6 +696,14 @@ export interface PermissionDialogRequest {
   cwd?: string;
   reason: string;
   inputSummary: string;
+  timeout?: number;
+  expiresAt?: number;
+  /** 由 SDK suggestions 与 Marloues 的安全策略共同计算，不由 renderer 推断。 */
+  options?: {
+    allowOnce: boolean;
+    allowSession: boolean;
+    denyWithReason: boolean;
+  };
 }
 
 export type PermissionDialogScope = "once" | "session";
@@ -619,7 +713,10 @@ export interface AuthSession {
   username: string;
   email?: string;
   displayName?: string;
-  provider?: string;
+  provider?: string; // "local" | "sso"
+  userId?: string;
+  env?: string;
+  detail?: Record<string, unknown>;
   expiresAt: number;
 }
 
@@ -660,9 +757,11 @@ export interface MarlouesAPI {
   window: {
     minimize(): void;
     maximize(): void;
+    setMaximized(maximized: boolean): Promise<boolean>;
     close(): void;
     isMaximized(): Promise<boolean>;
     onMaximizedChanged(callback: (maximized: boolean) => void): () => void;
+    onMaximizedChange(callback: (maximized: boolean) => void): () => void;
   };
   workspace: {
     select(): Promise<WorkspaceInfo | null>;
@@ -728,6 +827,10 @@ export interface MarlouesAPI {
   chat: {
     listSessions(): Promise<ChatSessionRecord[]>;
     listAllSessions(): Promise<ChatSessionRecord[]>;
+    searchSessions(
+      query: string,
+      limit?: number,
+    ): Promise<SessionSearchResult[]>;
     createSession(): Promise<ChatSessionRecord>;
     deleteSession(sessionId: string): Promise<void>;
     updateSessionTitle(sessionId: string, title: string): Promise<void>;
@@ -735,12 +838,13 @@ export interface MarlouesAPI {
     forkSession(request: ChatForkRequest): Promise<ChatSessionRecord>;
     rewindFiles(request: ChatRewindRequest): Promise<ChatRewindResult>;
     exportSession(sessionId: string): Promise<string | null>;
-    send(request: ChatSendRequest): Promise<string>;
+    send(request: ChatSendRequest): Promise<ChatSendReceipt>;
     resendFromMessage(
       request: ChatResendRequest,
     ): Promise<ChatSessionRecord & { requestId: string }>;
     abort(requestId: string): Promise<void>;
     cancelTool(toolCallId: string): Promise<void>;
+    compact(sessionId: string): Promise<void>;
     readThread(sessionId: string): Promise<WorkflowReadThreadResponse | null>;
     onReadThread(
       callback: (snapshot: WorkflowReadThreadResponse | null) => void,
@@ -780,6 +884,7 @@ export const IPC = {
   UPDATE_STATE: "update:state",
   WINDOW_MINIMIZE: "window:minimize",
   WINDOW_MAXIMIZE: "window:maximize",
+  WINDOW_SET_MAXIMIZED: "window:set-maximized",
   WINDOW_CLOSE: "window:close",
   WINDOW_IS_MAXIMIZED: "window:is-maximized",
   WINDOW_MAXIMIZED_CHANGED: "window:maximized-changed",
@@ -821,6 +926,7 @@ export const IPC = {
   SKILL_MARKETPLACE_INSTALL: "skill:marketplace-install",
   CHAT_LIST_SESSIONS: "chat:list-sessions",
   CHAT_LIST_ALL_SESSIONS: "chat:list-all-sessions",
+  CHAT_SEARCH_SESSIONS: "chat:search-sessions",
   CHAT_CREATE_SESSION: "chat:create-session",
   CHAT_DELETE_SESSION: "chat:delete-session",
   CHAT_UPDATE_SESSION_TITLE: "chat:update-session-title",
@@ -834,6 +940,7 @@ export const IPC = {
   CHAT_CANCEL_TOOL: "chat:cancel-tool",
   CHAT_READ_THREAD: "chat:read-thread",
   CHAT_READ_THREAD_UPDATE: "chat:read-thread-update",
+  CHAT_COMPACT: "chat:compact",
   CHAT_EVENT: "chat:event",
   CHAT_ITEM_EVENT: "chat:item-event",
   CHAT_PERMISSION_REQUEST: "chat:permission-request",

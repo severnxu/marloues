@@ -4,7 +4,7 @@
  */
 
 import { useCallback, useState } from "react";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ConfirmDialog } from "@/components/ui";
 
 interface ConfirmOptions {
   title: string;
@@ -24,22 +24,25 @@ export function useConfirmDialog() {
     | null
   >(null);
 
-  const showConfirm = useCallback((options: ConfirmOptions): Promise<boolean> => {
-    return new Promise((resolve) => {
-      setDialog({
-        ...options,
-        cancelLabel: options.cancelLabel ?? "取消",
-        onConfirm: () => {
-          setDialog(null);
-          resolve(true);
-        },
-        onCancel: () => {
-          setDialog(null);
-          resolve(false);
-        },
+  const showConfirm = useCallback(
+    (options: ConfirmOptions): Promise<boolean> => {
+      return new Promise((resolve) => {
+        setDialog({
+          ...options,
+          cancelLabel: options.cancelLabel ?? "取消",
+          onConfirm: () => {
+            setDialog(null);
+            resolve(true);
+          },
+          onCancel: () => {
+            setDialog(null);
+            resolve(false);
+          },
+        });
       });
-    });
-  }, []);
+    },
+    [],
+  );
 
   const DialogComponent = dialog ? <ConfirmDialog {...dialog} /> : null;
 

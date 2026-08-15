@@ -1,0 +1,309 @@
+/* Native-feeling shared title track for macOS and Windows. */
+@layer marloues-workbench {
+  .title-bar,
+  .window-chrome {
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 80;
+    display: flex;
+    width: 100%;
+    height: var(--titlebar-height);
+    align-items: center;
+    justify-content: space-between;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    pointer-events: none;
+    -webkit-app-region: drag;
+  }
+
+  .settings-surface-open .window-chrome {
+    z-index: 260;
+    pointer-events: auto;
+  }
+
+  .settings-surface-open .title-sidebar-toggle,
+  .settings-surface-open .title-return-main,
+  .settings-surface-open .title-new-session,
+  .settings-surface-open .title-product-lockup,
+  .settings-surface-open .title-global-search,
+  .settings-surface-open .title-runtime-status,
+  .settings-surface-open .thread-inspector-toggle,
+  .settings-surface-open .title-action--auxiliary-contract {
+    display: none;
+  }
+
+  .platform-windows .window-chrome::after {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: var(--shell-divider-width);
+    background: var(--shell-divider);
+    content: "";
+    pointer-events: none;
+  }
+
+  .platform-windows:is(
+      [data-page="schedules"],
+      [data-page="plugins"],
+      [data-page="replay"]
+    )
+    .window-chrome::after {
+    display: none;
+  }
+
+  .title-left,
+  .title-right,
+  .window-actions,
+  .window-chrome-leading,
+  .window-chrome-trailing,
+  .window-caption-controls {
+    display: flex;
+    height: 100%;
+    align-items: center;
+  }
+
+  .title-left,
+  .title-right,
+  .title-left *,
+  .title-right *,
+  .thread-inspector-toggle,
+  .global-search-overlay {
+    pointer-events: auto;
+    -webkit-app-region: no-drag;
+  }
+
+  .title-left {
+    min-width: 0;
+    gap: 0;
+    padding-left: var(--space-2);
+  }
+
+  .platform-macos .title-left {
+    position: absolute;
+    top: 9px;
+    left: calc(var(--window-leading-width) - 44px);
+    height: 28px;
+    padding-left: 0;
+  }
+
+  .platform-windows .title-left {
+    height: 30px;
+  }
+
+  .primary-open .title-left,
+  .primary-peeking .title-left {
+    width: var(--workbench-primary-width, var(--primary-sidebar-width));
+    padding-right: var(--space-2);
+  }
+
+  .platform-macos.primary-open .title-left,
+  .platform-macos.primary-peeking .title-left {
+    width: calc(
+      var(--workbench-primary-width, var(--primary-sidebar-width)) -
+        var(--window-leading-width) + 44px - var(--space-2)
+    );
+  }
+
+  .title-right {
+    margin-left: auto;
+  }
+
+  .window-chrome-control,
+  .title-left > button,
+  .title-action {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    place-items: center;
+    border: 0;
+    border-radius: var(--control-radius);
+    background: transparent;
+    color: var(--text-2);
+    transition:
+      background-color var(--motion-fast) var(--ease),
+      color var(--motion-fast) var(--ease);
+  }
+
+  .platform-macos .window-chrome-control,
+  .platform-macos .title-left > button,
+  .platform-macos .title-action {
+    width: 28px;
+    height: 28px;
+    flex-basis: 28px;
+  }
+
+  .window-chrome-control:hover,
+  .title-left > button:hover,
+  .title-action:hover {
+    background: var(--raised-2);
+    color: var(--text-1);
+  }
+
+  .window-chrome-control:focus-visible,
+  .title-left > button:focus-visible,
+  .title-action:focus-visible {
+    outline: 1px solid var(--focus-ring);
+    outline-offset: 1px;
+  }
+
+  .window-chrome-control:disabled,
+  .title-action:disabled {
+    background: transparent;
+    color: var(--text-3);
+    cursor: var(--cursor-disabled);
+    opacity: 0.6;
+  }
+
+  .title-sidebar-toggle {
+    position: relative;
+  }
+
+  .title-sidebar-activity {
+    position: absolute;
+    top: 5px;
+    right: 4px;
+  }
+
+  .title-product-lockup,
+  .window-product-lockup {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 6px;
+    margin-left: var(--space-1);
+    color: var(--text-2);
+    opacity: 0.84;
+  }
+
+  .title-product-mark {
+    display: grid;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-popover);
+    color: var(--text-1);
+    font-size: 10px;
+    font-weight: 650;
+  }
+
+  .title-global-search {
+    margin-left: auto;
+  }
+
+  .title-product-name {
+    overflow: hidden;
+    color: var(--text-2);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .window-actions,
+  .window-caption-controls {
+    margin-left: var(--space-1);
+  }
+
+  .window-actions button,
+  .window-caption-controls button {
+    display: grid;
+    width: 46px;
+    height: var(--titlebar-height);
+    place-items: center;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--text-2);
+    -webkit-app-region: no-drag;
+  }
+
+  .window-actions button:hover,
+  .window-caption-controls button:hover {
+    background: var(--raised-2);
+    color: var(--text-1);
+  }
+
+  .window-actions button.is-close:hover,
+  .window-caption-controls button.is-close:hover {
+    background: var(--window-close-hover);
+    color: var(--window-close-ink);
+  }
+
+  .title-action--auxiliary-contract {
+    margin-inline: var(--space-1);
+  }
+
+  .platform-windows.auxiliary-primary-overlay
+    .title-action--auxiliary-contract {
+    position: absolute;
+    top: 10px;
+    right: calc(
+      var(--windows-caption-controls-width) + var(--space-2) + 30px + 12px
+    );
+    width: 26px;
+    height: 26px;
+    margin: 0;
+  }
+
+  .platform-windows .window-caption-controls {
+    margin-left: 0;
+  }
+
+  .thread-inspector-toggle {
+    position: absolute;
+    top: 8px;
+    right: var(--space-2);
+    z-index: 2;
+  }
+
+  .platform-macos .thread-inspector-toggle {
+    top: 9px;
+    right: 14px;
+  }
+
+  .platform-windows .thread-inspector-toggle {
+    right: calc(var(--windows-caption-controls-width) + var(--space-3) + 6px);
+  }
+
+  .platform-windows .title-runtime-status {
+    position: absolute;
+    top: 50%;
+    right: calc(
+      var(--windows-caption-controls-width) + var(--space-2) + 30px + 12px
+    );
+    margin-left: 0;
+    pointer-events: none;
+    line-height: 15px;
+    transform: translateY(-50%);
+  }
+
+  .auxiliary-open .thread-inspector-toggle {
+    background: var(--raised-2);
+    color: var(--text-1);
+  }
+
+  .chat-header.title-hidden > span,
+  .chat-title-hidden .chat-header > span {
+    visibility: hidden;
+  }
+
+  .drag-region {
+    -webkit-app-region: drag;
+  }
+
+  .no-drag {
+    -webkit-app-region: no-drag;
+  }
+
+  @media (max-width: 760px) {
+    .title-product-name {
+      display: none;
+    }
+  }
+}

@@ -1,241 +1,87 @@
 /**
  * WorkflowChatPage renders the unified workflow-chat experience.
- * It keeps the marloues CSS hooks used by the existing layout.
+ * It keeps the neo-bot CSS hooks used by the existing layout.
  */
 
 import {
+  startTransition,
   useRef,
   useEffect,
-  useMemo,
   useState,
+  useMemo,
+  useCallback,
   type KeyboardEvent,
-  type ReactNode,
 } from "react";
 import { flushSync } from "react-dom";
-import {
-  X,
-  ChevronDown,
-  Check,
-  RotateCcw,
-  Play,
-  Maximize2,
-  GitBranch,
-  MessageSquarePlus,
-  Box,
-  Info,
-  Folder,
-} from "lucide-react";
 import { useUnifiedChatStore } from "@/stores/unified-chat-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useInspectorStore } from "@/stores/inspector-store";
 import { notify } from "@/lib/notifications";
-import { PermissionRequestOverlay } from "@/components/layout/PermissionRequestOverlay";
+import { STRINGS } from "@shared/strings.zh";
+import { CONVERSATION_PAGE_CONTRACT } from "@shared/conversation-page-contract";
+import { PermissionRequestPanel } from "@/components/workbench/interaction";
 import {
   ComposerShell,
   ReadThreadTurnList,
   ScrollToBottomButton,
+  useConversationScroll,
+  type WorkflowMessageBlock,
 } from "@/components/workflow-chat";
-import type { WorkflowMessageBlock } from "@/components/workflow-chat/workflow-consumption-model";
-import {
-  InteractionDock,
-  taskResultSummaryFromThread,
-  type SteerItem,
-} from "@/components/workbench";
+import { OPEN_GLOBAL_SEARCH_EVENT } from "@/components/workbench/events";
+import { WorkflowChatHeader } from "./WorkflowChatHeader";
 import type { UserMessageContent } from "../types";
 import type {
-  ChatRewindResult,
-  ContextActionRequest,
   PermissionDialogRequest,
+  ContextActionRequest,
 } from "@shared/types";
-
-interface RewindDialogState {
-  message: WorkflowMessageBlock;
-  preview: ChatRewindResult;
-  selectedFiles: string[];
-  applying: boolean;
-}
-
-interface PendingModelChangeNotice {
-  id: string;
-  sessionId: string;
-  fromModel: string;
-  toModel: string;
-  beforeUserMessageId?: string;
-}
-
-function isNearScrollBottom(element: HTMLElement, threshold = 96): boolean {
-  return (
-    element.scrollHeight - element.scrollTop - element.clientHeight < threshold
-  );
-}
-
-function formatSessionTitle(title?: string): string {
-  const value = title?.trim();
-  if (!value || value === "New chat" || value === "Untitled") {
-    return "New chat";
-  }
-  return value;
-}
-
-function workspaceDisplayName(
-  workspace?: { name?: string; path?: string } | null,
-): string {
-  const name = workspace?.name?.trim();
-  if (name) return name;
-  const path = workspace?.path?.trim();
-  if (!path) return "当前工作空间";
-  return path.split(/[\\/]/).filter(Boolean).pop() ?? "当前工作空间";
-}
-
-function genUiId(prefix: string): string {
-  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function ModelChangeDivider({
-  fromModel,
-  toModel,
-}: {
-  fromModel: string;
-  toModel: string;
-}) {
-  return (
-    <div
-      className="model-change-divider"
-      role="status"
-      aria-label={`模型已从 ${fromModel} 更改为 ${toModel}`}
-    >
-      <span className="model-change-divider-line" />
-      <span className="model-change-divider-label">
-        <Box size={14} />
-        <span>
-          模型已从 <strong>{fromModel}</strong> 更改为{" "}
-          <strong>{toModel}</strong>
-        </span>
-        <Info size={14} />
-      </span>
-      <span className="model-change-divider-line" />
-    </div>
-  );
-}
-
-function ModelSelector({
-  switchWarningVisible = false,
-}: {
-  switchWarningVisible?: boolean;
-}) {
-  const settings = useSettingsStore((s) => s.settings);
-  const setModel = useSettingsStore((s) => s.setModel);
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  const providerGroups =
-    settings?.providers
-      .filter((provider) => provider.enabled)
-      .map((provider) => ({
-        provider,
-        models: provider.models.filter((model) => model.enabled),
-      }))
-      .filter((group) => group.models.length > 0) ?? [];
-  const currentModelId = settings?.defaultModel.modelId;
-  const currentProviderId = settings?.defaultModel.providerId;
-  const currentProvider = settings?.providers.find(
-    (provider) => provider.id === currentProviderId,
-  );
-  const currentModel = currentProvider?.models.find(
-    (model) => model.id === currentModelId,
-  );
-  const currentProviderLabel =
-    currentProvider?.name ?? currentProviderId ?? "provider";
-  const currentLabel = currentModel?.label ?? currentModelId ?? "local-loop";
-
-  useEffect(() => {
-    if (!open) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (menuRef.current?.contains(target)) return;
-      setOpen(false);
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-    };
-  }, [open]);
-
-  if (providerGroups.length === 0) return null;
-
-  return (
-    <div className="model-selector-surface" ref={menuRef}>
-      {switchWarningVisible ? (
-        <div className="model-switch-warning-bubble" role="status">
-          在对话过程中切换模型会降低性能表现。
-        </div>
-      ) : null}
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="model-chip"
-        title={`${currentProviderLabel} / ${currentLabel}`}
-      >
-        <span>{currentProviderLabel}</span>
-        <strong>{currentLabel}</strong>
-        <ChevronDown size={14} />
-      </button>
-      {open && (
-        <div className="composer-popover model-popover">
-          <div className="popover-title">选择模型</div>
-          <div className="model-option-list">
-            {providerGroups.map(({ provider, models }) => (
-              <div className="model-provider-group" key={provider.id}>
-                <div className="model-provider-label">
-                  <span>{provider.name}</span>
-                  <small>{provider.purpose ?? "endpoint"}</small>
-                </div>
-                {models.map((model) => {
-                  const isActive =
-                    provider.id === currentProviderId &&
-                    model.id === currentModelId;
-                  return (
-                    <button
-                      key={`${provider.id}:${model.id}`}
-                      type="button"
-                      onClick={() => {
-                        void setModel(provider.id, model.id);
-                        setOpen(false);
-                      }}
-                      className={`model-option ${isActive ? "active" : ""}`}
-                    >
-                      <span className="model-avatar">
-                        {(provider.name || model.label || model.id || "M")
-                          .slice(0, 1)
-                          .toUpperCase()}
-                      </span>
-                      <span>
-                        <strong>{model.label || model.id}</strong>
-                        <small>{isActive ? "当前路由模型" : model.id}</small>
-                      </span>
-                      {isActive ? <Check size={16} /> : null}
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+import {
+  EMPTY_PENDING_STEERS,
+  SESSION_CONTENT_SETTLE_MS,
+  workspaceDisplayName,
+  genUiId,
+  summarizeWorkflowFileChanges,
+  firstWorkflowFileChangeTarget,
+  inferSendWorkMode,
+  copyToClipboard,
+} from "./workflow-chat-helpers";
+import { ModelSelector } from "./WorkflowChatModelSelector";
+import {
+  ModelChangeDivider,
+  PlanImplementationPromptCard,
+  ContextActionCard,
+} from "./WorkflowChatCards";
+import { useComposerCatalogs } from "./use-slash-commands";
+import { useModelChangeTracking } from "./use-model-change-tracking";
+import {
+  TaskContextPanel,
+  type TaskContextMode,
+  type TaskPresentationModel,
+} from "@/components/workflow-chat/task-context";
+import type { WorkflowChatHeaderThreadSummary } from "./WorkflowChatHeader";
 
 export function WorkflowChatPage({
   leftCollapsed = false,
-  headerTrailing,
+  titleHidden = false,
+  showHeader = true,
+  taskPresentation,
+  taskContextMode = "hidden",
+  taskContextControl,
+  taskContextGitLoading = false,
+  onTaskContextRefresh,
+  onTaskContextCloseFloating,
   permissionRequest,
   onPermissionRespond,
 }: {
   leftCollapsed?: boolean;
-  headerTrailing?: ReactNode;
+  titleHidden?: boolean;
+  showHeader?: boolean;
+  taskPresentation: TaskPresentationModel;
+  taskContextMode?: TaskContextMode;
+  taskContextControl?: WorkflowChatHeaderThreadSummary;
+  taskContextGitLoading?: boolean;
+  onTaskContextRefresh: () => void;
+  onTaskContextCloseFloating: () => void;
   permissionRequest?: PermissionDialogRequest;
   onPermissionRespond: (
     approved: boolean,
@@ -243,19 +89,40 @@ export function WorkflowChatPage({
     reason?: string,
   ) => void;
 }) {
-  const sessions = useUnifiedChatStore((s) => s.sessions);
   const activeSessionId = useUnifiedChatStore((s) => s.activeSessionId);
+  const openReview = useInspectorStore((state) => state.openReview);
+  const activeSession = useUnifiedChatStore((s) =>
+    activeSessionId
+      ? s.sessions.find((session) => session.id === activeSessionId)
+      : undefined,
+  );
   const inputText = useUnifiedChatStore((s) => s.inputText);
   const setInputText = useUnifiedChatStore((s) => s.setInputText);
   const sendMessage = useUnifiedChatStore((s) => s.sendMessage);
   const createSession = useUnifiedChatStore((s) => s.createSession);
-  const forkSession = useUnifiedChatStore((s) => s.forkSession);
-  const regenerateMessage = useUnifiedChatStore((s) => s.regenerateMessage);
-  const rewindFiles = useUnifiedChatStore((s) => s.rewindFiles);
-  const editAndResendMessage = useUnifiedChatStore(
-    (s) => s.editAndResendMessage,
+  const pendingSteers = useUnifiedChatStore((s) =>
+    activeSessionId
+      ? (s.pendingSteers[activeSessionId] ?? EMPTY_PENDING_STEERS)
+      : EMPTY_PENDING_STEERS,
   );
+  const steerQueuePaused = useUnifiedChatStore((s) =>
+    activeSessionId ? Boolean(s.steerQueuePaused[activeSessionId]) : false,
+  );
+  const resumeSteerQueue = useUnifiedChatStore((s) => s.resumeSteerQueue);
+  const cancelPendingSteer = useUnifiedChatStore((s) => s.cancelPendingSteer);
+  const applyPendingSteerNow = useUnifiedChatStore(
+    (s) => s.applyPendingSteerNow,
+  );
+  const reorderSteers = useUnifiedChatStore((s) => s.reorderSteers);
+  const planImplementationPrompt = useUnifiedChatStore(
+    (s) => s.planImplementationPrompt,
+  );
+  const dismissPlanImplementationPrompt = useUnifiedChatStore(
+    (s) => s.dismissPlanImplementationPrompt,
+  );
+  const forkSession = useUnifiedChatStore((s) => s.forkSession);
   const abort = useUnifiedChatStore((s) => s.abort);
+  const compactSession = useUnifiedChatStore((s) => s.compactSession);
   const contextActionRequest = useUnifiedChatStore(
     (s) => s.contextActionRequest,
   );
@@ -266,42 +133,196 @@ export function WorkflowChatPage({
     (s) => s.continueContextAction,
   );
   const loadReadThread = useUnifiedChatStore((s) => s.loadReadThread);
+  const loadMoreReadThread = useUnifiedChatStore((s) => s.loadMoreReadThread);
+  const readThreadPaging = useUnifiedChatStore((s) =>
+    activeSessionId ? s.readThreadPaging[activeSessionId] : undefined,
+  );
   const getActiveReadThreadModel = useUnifiedChatStore(
     (s) => s.getActiveReadThreadModel,
   );
   const activeReadThreadSnapshot = useUnifiedChatStore((s) =>
     s.activeSessionId ? s.readThreads[s.activeSessionId] : undefined,
   );
-  const liveTurns = useUnifiedChatStore((s) => s.liveTurns);
+  // Dual-source: UIEvent flag (real-time) OR snapshot thread status (cold-start
+  // fallback for sessions opened mid-stream — crash recovery, multi-window).
+  const isStreamingThisSession = useUnifiedChatStore((s) =>
+    activeSessionId
+      ? Boolean(s.streamingSessionIds[activeSessionId]) ||
+        s.readThreads[activeSessionId]?.thread.status.type === "active"
+      : false,
+  );
+  const currentRequestId = useUnifiedChatStore((s) => s.currentRequestId);
+  const activeExecution = useUnifiedChatStore((s) =>
+    activeSessionId ? s.executionBySession[activeSessionId] : undefined,
+  );
+  const sessionInitInfo = useUnifiedChatStore((s) =>
+    activeSessionId ? s.sessionInitInfo[activeSessionId] : undefined,
+  );
+
+  const { slashCommands, skills: composerSkills } =
+    useComposerCatalogs(sessionInitInfo);
+
   const settings = useSettingsStore((s) => s.settings);
   const setModel = useSettingsStore((s) => s.setModel);
+  const loadSettings = useSettingsStore((s) => s.load);
+  const saveSettings = useSettingsStore((s) => s.save);
   const workspace = useWorkspaceStore((s) => s.current);
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
-  const [rewindDialog, setRewindDialog] = useState<RewindDialogState | null>(
-    null,
-  );
-  const [pendingModelChangeNotice, setPendingModelChangeNotice] =
-    useState<PendingModelChangeNotice | null>(null);
-  const [modelSwitchWarningVisible, setModelSwitchWarningVisible] =
-    useState(false);
-  const [isAtBottom, setIsAtBottom] = useState(true);
-  const [steers, setSteers] = useState<SteerItem[]>([]);
-  const [steerFocusToken, setSteerFocusToken] = useState(0);
+  const composerEpoch = useUnifiedChatStore((s) => s.composerEpoch);
+  // Keep this outside React state: a second click/Enter can arrive before a
+  // render disables or clears the composer. Without it, each submission gets a
+  // fresh steer messageId and is correctly (but unexpectedly) queued by main.
+  const sendInFlightRef = useRef(false);
+  const [nextWorkModeOverride, setNextWorkModeOverride] = useState<
+    "execute" | "plan" | null
+  >(null);
 
-  const activeSession = sessions.find((s) => s.id === activeSessionId);
-  const messages = activeSession?.messages ?? [];
-  const activeLiveTurn = activeSessionId
-    ? liveTurns[activeSessionId]
-    : undefined;
-  const activeSessionIsStreaming =
-    activeLiveTurn?.status === "pending" ||
-    activeLiveTurn?.status === "running";
+  // Map composer access level to AgentSettings permissionMode + sandboxEnabled.
+  // Called when the user switches access level in the composer. On Windows,
+  // switching to "full" is intercepted by the composer's sandbox gate first;
+  // this handler only fires after the gate approves (or on non-Windows).
+  const handleAccessLevelChange = useCallback(
+    (level: "default" | "review" | "full") => {
+      if (!settings) return;
+      const permissionMode =
+        level === "full"
+          ? "bypassPermissions"
+          : level === "review"
+            ? "acceptEdits"
+            : "default";
+      void saveSettings({
+        ...settings,
+        permissionMode,
+        sandboxEnabled: true,
+      });
+    },
+    [settings, saveSettings],
+  );
+
+  // Reset permission mode to "default" when starting a new session so the
+  // elevated mode doesn't bleed into the next session.
+  const handleNewSession = useCallback(async () => {
+    if (settings && settings.permissionMode !== "default") {
+      await saveSettings({ ...settings, permissionMode: "default" });
+    }
+    await createSession();
+  }, [settings, saveSettings, createSession]);
+
+  const [contentSessionId, setContentSessionId] = useState(activeSessionId);
+  const contentSessionReady = contentSessionId === activeSessionId;
+
+  useEffect(() => {
+    if (contentSessionId === activeSessionId) return;
+    if (!activeSessionId) return;
+    // If the target session's readThread is already cached, switch content
+    // immediately — no settle delay needed since the data is in memory and
+    // there is nothing to debounce. The delay only helps for sessions that
+    // require a fresh fetch (uncached), where it coalesces rapid clicks.
+    if (useUnifiedChatStore.getState().readThreads[activeSessionId]) {
+      startTransition(() => setContentSessionId(activeSessionId));
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      startTransition(() => setContentSessionId(activeSessionId));
+    }, SESSION_CONTENT_SETTLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [activeSessionId, contentSessionId]);
+
+  // 空态下每次渲染都会新建 []，包一层 useMemo 避免 useMemo(messages) 依赖每次变化
+  const messages = useMemo(
+    () => (contentSessionReady ? (activeSession?.messages ?? []) : []),
+    [activeSession?.messages, contentSessionReady],
+  );
+  const activeSessionIsStreaming = isStreamingThisSession;
+  const displayReadThread = contentSessionReady
+    ? getActiveReadThreadModel()
+    : null;
+  // Phase 2→3: the snapshot's running turn is the canonical streaming source.
+  // streamingSessionIds provides the responsive pending/running boolean;
+  // per-event blocks/timeline/content are no longer read by the page.
+  const activeRunningTurn = useMemo(() => {
+    if (!displayReadThread) return undefined;
+    const ordered =
+      displayReadThread.page.order === "newest_first"
+        ? [...displayReadThread.turns].reverse()
+        : displayReadThread.turns;
+    return ordered.find((turn) => turn.status === "running");
+  }, [displayReadThread]);
+
+  const composerContextUsage = useUnifiedChatStore((s) =>
+    activeSessionId ? s.contextUsage[activeSessionId] : undefined,
+  );
+  const composerUsage = useMemo(() => {
+    if (!displayReadThread?.turns.length) return undefined;
+    for (const turn of displayReadThread.turns) {
+      if (turn.usage) return turn.usage;
+    }
+    return undefined;
+  }, [displayReadThread]);
+  const activePlanImplementationPrompt =
+    planImplementationPrompt?.sessionId === activeSessionId
+      ? planImplementationPrompt
+      : null;
+  const activeTaskProgress = useMemo(() => {
+    const turnId =
+      activeRunningTurn?.id ??
+      (isStreamingThisSession ? currentRequestId : undefined);
+    return Object.values(activeExecution?.tasks ?? {})
+      .filter((task) => !turnId || !task.turnId || task.turnId === turnId)
+      .sort((a, b) => a.ordinal - b.ordinal);
+  }, [
+    activeExecution?.tasks,
+    activeRunningTurn?.id,
+    isStreamingThisSession,
+    currentRequestId,
+  ]);
+  const hasIncompleteTasks = activeTaskProgress.some(
+    (task) => task.status === "creating" || task.status === "running",
+  );
   const activeContextActionRequest =
     contextActionRequest?.sessionId === activeSessionId
       ? contextActionRequest
       : null;
-  const displayReadThread = getActiveReadThreadModel();
-  const isEmpty = messages.length === 0;
+  // Streaming content signal derived from the snapshot's running turn,
+  // derived from the snapshot's running turn items.
+  const runningContentSignal = useMemo(() => {
+    const turn = activeRunningTurn;
+    if (!turn) return 0;
+    let len = 0;
+    for (const item of turn.items) {
+      if (item.type === "agentMessage") len += item.text.length;
+      else if (item.type === "reasoning") len += item.summary.length;
+    }
+    return len;
+  }, [activeRunningTurn]);
+  const isReadThreadLoading =
+    Boolean(activeSessionId) &&
+    (!contentSessionReady ||
+      (Boolean(readThreadPaging?.loading) && !displayReadThread?.turns.length));
+  const composerFileChanges = useMemo(() => {
+    const orderedTurns = displayReadThread
+      ? displayReadThread.page.order === "newest_first"
+        ? [...displayReadThread.turns].reverse()
+        : displayReadThread.turns
+      : [];
+    // Snapshot running turn is the canonical source; fall back to the last
+    // turn when none is running (pending / just-completed gap).
+    const readTurn = activeRunningTurn ?? orderedTurns.at(-1);
+    const summary = readTurn
+      ? summarizeWorkflowFileChanges(readTurn.items)
+      : undefined;
+    return {
+      summary,
+      target: readTurn
+        ? firstWorkflowFileChangeTarget(readTurn.items)
+        : undefined,
+    };
+  }, [activeRunningTurn, displayReadThread]);
+  const composerReviewTarget = composerFileChanges.target;
+  const composerPlaceholder = CONVERSATION_PAGE_CONTRACT.composer.placeholder;
+  const isEmpty =
+    !isReadThreadLoading &&
+    messages.length === 0 &&
+    !displayReadThread?.turns.length;
   const selectedProvider = settings?.providers.find(
     (provider) => provider.id === settings.defaultModel.providerId,
   );
@@ -311,256 +332,181 @@ export function WorkflowChatPage({
   const modelName =
     selectedModel?.label ?? settings?.defaultModel.modelId ?? "Marloues";
   const promptWorkspaceName = workspaceDisplayName(workspace);
-  const resultSummary = useMemo(
-    () => taskResultSummaryFromThread(displayReadThread),
-    [displayReadThread],
+
+  const {
+    pendingModelChangeNotice,
+    setPendingModelChangeNotice,
+    modelSwitchWarningVisible,
+  } = useModelChangeTracking(
+    activeSessionId,
+    activeSessionIsStreaming,
+    modelName,
+    settings,
   );
+  const activeRunningItemCount = activeRunningTurn?.items.length ?? 0;
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const shouldStickToBottomRef = useRef(true);
-  const lastModelRef = useRef<{ id: string; label: string } | null>(null);
-  const modelSwitchWarningTimerRef = useRef<number | null>(null);
-  const sendingQueuedSteerRef = useRef(false);
+  // 融合吸底 + 滚动位置记忆 + 向上加载更多的滚动 hook
+  const {
+    viewportRef: scrollRef,
+    contentRef: messagesContentRef,
+    handleScroll: handleMessagesScroll,
+    isAtBottom,
+    scrollToBottom,
+  } = useConversationScroll({
+    contentSignal: useMemo(
+      () => [
+        messages.length,
+        displayReadThread?.turns.length,
+        activeReadThreadSnapshot?.turns.length,
+        activeRunningItemCount,
+        runningContentSignal,
+      ],
+      [
+        messages.length,
+        displayReadThread?.turns.length,
+        activeReadThreadSnapshot?.turns.length,
+        activeRunningItemCount,
+        runningContentSignal,
+      ],
+    ),
+    sessionKey: activeSessionId ?? "default",
+    hasMore: Boolean(readThreadPaging?.hasMore),
+    loadingMore: Boolean(readThreadPaging?.loadingMore),
+    onLoadMore: () =>
+      activeSessionId ? loadMoreReadThread(activeSessionId) : Promise.resolve(),
+  });
 
-  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior });
-    shouldStickToBottomRef.current = true;
-    setIsAtBottom(true);
-  };
-
-  const handleMessagesScroll = () => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const nextIsAtBottom = isNearScrollBottom(el);
-    shouldStickToBottomRef.current = nextIsAtBottom;
-    setIsAtBottom(nextIsAtBottom);
-  };
-
+  // Scroll to bottom on session switch (model change notice reset is handled
+  // by useModelChangeTracking).
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    if (!shouldStickToBottomRef.current) {
-      setIsAtBottom(isNearScrollBottom(el));
-      return;
-    }
     requestAnimationFrame(() => {
       scrollToBottom("auto");
     });
-  }, [
-    messages.length,
-    displayReadThread?.turns.length,
-    activeReadThreadSnapshot?.turns.length,
-    activeLiveTurn?.blocks.length,
-    activeLiveTurn?.timeline.length,
-    activeLiveTurn?.content.length,
-  ]);
+  }, [activeSessionId, scrollToBottom]);
 
   useEffect(() => {
-    shouldStickToBottomRef.current = true;
-    setEditingMessageId(null);
-    setRewindDialog(null);
-    setPendingModelChangeNotice(null);
-    setModelSwitchWarningVisible(false);
-    setSteers([]);
-    requestAnimationFrame(() => {
-      scrollToBottom("auto");
-    });
-  }, [activeSessionId]);
-
-  useEffect(() => {
-    if (activeSessionIsStreaming) {
-      sendingQueuedSteerRef.current = false;
-      return;
-    }
-    if (steers.length === 0 || sendingQueuedSteerRef.current) return;
-    const nextSteer = steers[0];
-    sendingQueuedSteerRef.current = true;
-    setSteers((items) => items.filter((item) => item.id !== nextSteer.id));
-    shouldStickToBottomRef.current = true;
-    setIsAtBottom(true);
-    void sendMessage(nextSteer.text, nextSteer.attachments);
-  }, [activeSessionIsStreaming, sendMessage, steers]);
-
-  useEffect(() => {
-    return () => {
-      if (modelSwitchWarningTimerRef.current != null) {
-        window.clearTimeout(modelSwitchWarningTimerRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!settings || !activeSessionId) return;
-    const currentModel = {
-      id: `${settings.defaultModel.providerId}:${settings.defaultModel.modelId}`,
-      label: modelName,
-    };
-    const previousModel = lastModelRef.current;
-    lastModelRef.current = currentModel;
-    if (!previousModel || previousModel.id === currentModel.id) return;
-    if (!activeSessionIsStreaming) return;
-
-    setPendingModelChangeNotice((existing) => {
+    if (!activeSessionId) return;
+    const timer = window.setTimeout(() => {
+      const state = useUnifiedChatStore.getState();
       if (
-        existing?.sessionId === activeSessionId &&
-        !existing.beforeUserMessageId
+        state.activeSessionId !== activeSessionId ||
+        state.readThreads[activeSessionId] ||
+        state.readThreadPaging[activeSessionId]?.loading
       ) {
-        if (existing.fromModel === currentModel.label) return null;
-        return { ...existing, toModel: currentModel.label };
+        return;
       }
+      void loadReadThread(activeSessionId);
+    }, 60);
+    return () => window.clearTimeout(timer);
+  }, [activeSessionId, loadReadThread]);
 
-      notify({
-        title: "在对话过程中切换模型会降低性能表现。",
-        tone: "info",
-      });
-      setModelSwitchWarningVisible(true);
-      if (modelSwitchWarningTimerRef.current != null) {
-        window.clearTimeout(modelSwitchWarningTimerRef.current);
-      }
-      modelSwitchWarningTimerRef.current = window.setTimeout(() => {
-        setModelSwitchWarningVisible(false);
-        modelSwitchWarningTimerRef.current = null;
-      }, 2400);
-
-      return {
-        id: `${Date.now()}-${currentModel.id}`,
-        sessionId: activeSessionId,
-        fromModel: previousModel.label,
-        toModel: currentModel.label,
-      };
-    });
-  }, [activeSessionId, activeSessionIsStreaming, modelName, settings]);
-
+  // When a turn finishes, re-sync the model selector with persisted settings.
+  // Mid-turn model switches are persisted by the main process; this guarantees
+  // the input box reflects the user's last choice and is not reverted by any
+  // turn-completion data flow (e.g. read-thread reload carrying the request-time
+  // model snapshot). The re-read is a no-op when settings already match.
+  const prevStreamingRef = useRef(false);
   useEffect(() => {
-    if (!activeSessionId || isEmpty) return;
-    void loadReadThread(activeSessionId);
-  }, [activeSessionId, activeSessionIsStreaming, isEmpty, loadReadThread]);
+    const wasStreaming = prevStreamingRef.current;
+    prevStreamingRef.current = activeSessionIsStreaming;
+    if (wasStreaming && !activeSessionIsStreaming) {
+      void loadSettings();
+    }
+  }, [activeSessionIsStreaming, loadSettings]);
 
-  const handleSend = (attachments: UserMessageContent[] = []) => {
+  const handleSend = async (attachments: UserMessageContent[] = []) => {
+    // The form can receive Enter and a pointer submit before async IPC resolves.
+    // Treat those as one submission, otherwise the same steer is queued once per
+    // event with different message ids.
+    if (sendInFlightRef.current) return;
+
     const text = inputText.trim();
     if (!text && attachments.length === 0) return;
-    if (activeSessionIsStreaming) {
-      setSteers((items) => [
-        ...items,
-        { id: genUiId("steer"), text, attachments },
-      ]);
+    const isSteer = activeSessionIsStreaming;
+    if (!workspace?.path) {
+      notify({
+        title: "未选择工作区",
+        description: "请先在左侧边栏选择一个工作区目录。",
+        tone: "warning",
+      });
+      return;
+    }
+    // Local UI-side builtin commands: execute directly instead of forwarding
+    // the raw "/<cmd> ..." text to the LLM runtime.
+    const BUILTIN_LOCAL_COMMANDS: Record<string, () => Promise<void> | void> = {
+      compact: () => compactSession(activeSessionId ?? undefined),
+    };
+    const localCommandName = text.match(/^\/(\w+)\b/)?.[1];
+    const localHandler = localCommandName
+      ? BUILTIN_LOCAL_COMMANDS[localCommandName]
+      : undefined;
+    if (localHandler && !isSteer) {
+      void localHandler();
       setInputText("");
       return;
     }
-    const pendingNoticeForSend = pendingModelChangeNotice;
-    let clientMessageId: string | undefined;
-    if (
-      pendingNoticeForSend &&
-      activeSessionId &&
-      pendingNoticeForSend.sessionId === activeSessionId
-    ) {
-      clientMessageId = genUiId("user");
-      setPendingModelChangeNotice({
-        ...pendingNoticeForSend,
-        beforeUserMessageId: clientMessageId,
-      });
-    }
-    shouldStickToBottomRef.current = true;
-    setIsAtBottom(true);
-    if (editingMessageId) {
-      if (!text) return;
-      void editAndResendMessage(editingMessageId, text);
-      setEditingMessageId(null);
-    } else {
-      void sendMessage(text, attachments, clientMessageId);
-    }
-    setInputText("");
-  };
-
-  const handleEditMessage = (message: WorkflowMessageBlock) => {
-    if (activeSessionIsStreaming || !message.user.trim()) return;
-    setEditingMessageId(message.userMessageId ?? message.id);
-    setInputText(message.user);
-  };
-
-  const handlePreviewRewind = async (message: WorkflowMessageBlock) => {
-    if (!activeSessionId || activeSessionIsStreaming) return;
-    const userMessageId = message.userMessageId ?? message.id;
+    sendInFlightRef.current = true;
+    // 发送即吸底：让用户消息立即可见，并重新武装 shouldStick，
+    // 保证后续 AI 回复流式内容持续跟随（此前若用户上翻阅读历史，回复会在视口外）。
+    scrollToBottom("auto");
     try {
-      const preview = await rewindFiles(activeSessionId, userMessageId, {
-        dryRun: true,
-      });
-      if (!preview.canRewind) {
-        notify({
-          title: "Cannot preview rewind",
-          description:
-            preview.error ?? "No checkpoint is available for this message.",
-          tone: "warning",
+      const pendingNoticeForSend = pendingModelChangeNotice;
+      let clientMessageId: string | undefined;
+      if (
+        pendingNoticeForSend &&
+        activeSessionId &&
+        pendingNoticeForSend.sessionId === activeSessionId
+      ) {
+        clientMessageId = genUiId("user");
+        setPendingModelChangeNotice({
+          ...pendingNoticeForSend,
+          beforeUserMessageId: clientMessageId,
         });
-        return;
       }
-      const files = preview.filesChanged ?? [];
-      setRewindDialog({
-        message,
-        preview,
-        selectedFiles: files,
-        applying: false,
+      // 发送后由 contentSignal 变化驱动吸底（shouldStick 已在发送时重新武装）
+      const result = await sendMessage(text, attachments, clientMessageId, {
+        deliveryMode: isSteer ? "steer" : "normal",
+        workMode: isSteer
+          ? undefined
+          : (nextWorkModeOverride ??
+            inferSendWorkMode(text, settings?.workMode)),
       });
-    } catch (error) {
-      notify({
-        title: "Rewind preview failed",
-        description: error instanceof Error ? error.message : String(error),
-        tone: "error",
-      });
+      // 仅当消息被处理（ok）时清输入；失败时保留，供用户重发。
+      // steer 不可用会在 sendMessage 内降级为新 turn（仍 ok），消息不丢。
+      if (result.ok) setInputText("");
+      if (!isSteer) setNextWorkModeOverride(null);
+    } finally {
+      sendInFlightRef.current = false;
     }
   };
 
-  const applyRewind = async () => {
-    if (!rewindDialog || !activeSessionId) return;
-    const userMessageId =
-      rewindDialog.message.userMessageId ?? rewindDialog.message.id;
-    setRewindDialog((state) => (state ? { ...state, applying: true } : state));
-    try {
-      const result = await rewindFiles(activeSessionId, userMessageId, {
-        dryRun: false,
-        confirmedFiles: rewindDialog.selectedFiles,
-      });
-      if (!result.canRewind) {
-        notify({
-          title: "Rewind was not applied",
-          description:
-            result.error ?? "The selected files could not be rewound.",
-          tone: "warning",
-        });
-        setRewindDialog((state) =>
-          state ? { ...state, applying: false, preview: result } : state,
-        );
-        return;
-      }
-      notify({
-        title: "Files rewound",
-        description: `${result.filesChanged?.length ?? 0} file(s) updated`,
-        tone: "success",
-      });
-      setRewindDialog(null);
-    } catch (error) {
-      notify({
-        title: "Rewind failed",
-        description: error instanceof Error ? error.message : String(error),
-        tone: "error",
-      });
-      setRewindDialog((state) =>
-        state ? { ...state, applying: false } : state,
-      );
-    }
-  };
   const handleCopyMessage = async (text: string) => {
     try {
       await copyToClipboard(text);
     } catch (error) {
       notify({
-        title: "Copy failed",
+        title: "复制失败",
         description: error instanceof Error ? error.message : String(error),
         tone: "error",
       });
       throw error;
+    }
+  };
+  const handleForkConversation = async (message: WorkflowMessageBlock) => {
+    if (!activeSessionId) return;
+    try {
+      await forkSession(activeSessionId, message.id);
+      notify({
+        title: STRINGS.system.workflow.forkCreatedTitle,
+        description: STRINGS.system.workflow.forkCreatedDescription,
+        tone: "success",
+      });
+    } catch (error) {
+      notify({
+        title: STRINGS.system.update.branchCreateFailed,
+        description: error instanceof Error ? error.message : String(error),
+        tone: "error",
+      });
     }
   };
 
@@ -588,11 +534,14 @@ export function WorkflowChatPage({
       if (action === "create_small_model_branch" && activeSessionId) {
         await forkSession(activeSessionId);
         clearContextActionRequest();
-        notify({ title: "已创建精简分支", tone: "success" });
+        notify({
+          title: STRINGS.system.workflow.compactBranchCreated,
+          tone: "success",
+        });
         return;
       }
       if (action === "new_session") {
-        await createSession();
+        await handleNewSession();
         clearContextActionRequest();
         return;
       }
@@ -601,47 +550,20 @@ export function WorkflowChatPage({
       }
     } catch (error) {
       notify({
-        title: "上下文操作失败",
+        title: STRINGS.system.update.contextActionFailed,
         description: error instanceof Error ? error.message : String(error),
         tone: "error",
       });
     }
   };
 
-  const cancelEdit = () => {
-    setEditingMessageId(null);
-    setInputText("");
-  };
-
-  const guideSteer = (id: string) => {
-    setSteers((items) => {
-      const selected = items.find((item) => item.id === id);
-      if (!selected) return items;
-      return [selected, ...items.filter((item) => item.id !== id)];
-    });
-  };
-
-  const editSteer = (id: string) => {
-    const selected = steers.find((item) => item.id === id);
-    if (!selected) return;
-    setSteers((items) => items.filter((item) => item.id !== id));
-    setInputText(selected.text);
-    setSteerFocusToken((value) => value + 1);
-  };
-
-  const reorderSteer = (fromId: string, toId: string) => {
-    setSteers((items) => {
-      const fromIndex = items.findIndex((item) => item.id === fromId);
-      const toIndex = items.findIndex((item) => item.id === toId);
-      if (fromIndex < 0 || toIndex < 0) return items;
-      const next = [...items];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      return next;
-    });
-  };
-
   const handleComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    // IME composition in progress (e.g. typing pinyin then Enter to pick a
+    // Chinese candidate): let the input method own the keystroke so confirming
+    // a candidate does not also send the message.
+    if (event.nativeEvent.isComposing || event.keyCode === 229) {
+      return;
+    }
     const isModifierSend = event.key === "Enter" && event.metaKey;
     const isPlainEnter =
       event.key === "Enter" &&
@@ -652,8 +574,11 @@ export function WorkflowChatPage({
       event.key === "Enter" && event.ctrlKey && !event.metaKey;
 
     if (event.key.toLowerCase() === "k" && (event.ctrlKey || event.metaKey)) {
+      // ⌘K / Ctrl+K inside the composer should open the global search
+      // overlay, not silently clear the input (the previous behaviour was
+      // a bug). Dispatch the workbench event so WorkbenchRoot owns the state.
       event.preventDefault();
-      if (!activeSessionIsStreaming) setInputText("");
+      window.dispatchEvent(new CustomEvent(OPEN_GLOBAL_SEARCH_EVENT));
       return;
     }
 
@@ -681,45 +606,106 @@ export function WorkflowChatPage({
     }
   };
 
+  const implementPlan = (clearContext = false) => {
+    const prompt = activePlanImplementationPrompt;
+    if (!prompt) return;
+    dismissPlanImplementationPrompt();
+    void (async () => {
+      if (clearContext) {
+        await handleNewSession();
+        await sendMessage(
+          [
+            "A previous agent produced the plan below to accomplish the user's task.",
+            "Implement the plan in a fresh context. Treat the plan as the source of user intent, re-read files as needed, and carry the work through implementation and verification.",
+            "",
+            prompt.planText,
+          ].join("\n"),
+          [],
+          undefined,
+          { workMode: "execute" },
+        );
+        return;
+      }
+      await sendMessage("Implement the plan.", [], undefined, {
+        workMode: "execute",
+      });
+    })();
+  };
+
+  const continuePlanning = () => {
+    dismissPlanImplementationPrompt();
+    setNextWorkModeOverride("plan");
+    setInputText("继续完善这个计划：");
+  };
+
   return (
     <section
-      className={`chat-page ${isEmpty ? "chat-page-empty" : ""} ${leftCollapsed ? "left-collapsed" : ""}`}
+      className={`chat-page ${isEmpty ? "chat-page-empty" : ""} ${leftCollapsed ? "left-collapsed" : ""} ${titleHidden ? "chat-title-hidden" : ""} ${showHeader ? "has-inline-header" : ""} ${taskContextMode === "docked" ? "task-context-docked" : ""}`}
     >
-      <div className="chat-header">
-        <div className="chat-session-title">
-          <Folder size={14} aria-hidden="true" />
-          <span>{formatSessionTitle(activeSession?.title)}</span>
-        </div>
-        {headerTrailing ? (
-          <div className="workspace-header-trailing">{headerTrailing}</div>
-        ) : null}
-      </div>
+      {showHeader ? (
+        <WorkflowChatHeader
+          titleHidden={titleHidden}
+          threadSummary={taskContextControl}
+        />
+      ) : null}
+
+      <TaskContextPanel
+        model={taskPresentation}
+        mode={taskContextMode}
+        gitLoading={taskContextGitLoading}
+        onRefresh={onTaskContextRefresh}
+        onCloseFloating={onTaskContextCloseFloating}
+        onOpenChanges={
+          taskPresentation.changes?.reviewTarget
+            ? () => {
+                const { path, diff } = taskPresentation.changes!.reviewTarget!;
+                openReview(path, diff);
+              }
+            : undefined
+        }
+      />
 
       <div
         className="messages-scroll scrollbar-thin"
         ref={scrollRef}
         onScroll={handleMessagesScroll}
+        tabIndex={-1}
+        aria-label="会话内容"
       >
-        <div className="messages-inner">
+        <div ref={messagesContentRef} className="messages-inner">
+          {readThreadPaging?.hasMore ? (
+            <div className="load-more-indicator" aria-live="polite">
+              {readThreadPaging.loadingMore
+                ? "加载历史中…"
+                : "向上滚动加载更多"}
+            </div>
+          ) : null}
+          {isReadThreadLoading && !displayReadThread ? (
+            <div className="conversation-loading" role="status">
+              正在加载会话…
+            </div>
+          ) : null}
           {!isEmpty ? (
             <>
               {displayReadThread ? (
                 <ReadThreadTurnList
                   readThread={displayReadThread}
                   isStreaming={activeSessionIsStreaming}
+                  scrollParentRef={scrollRef}
                   stateScopeKey={activeSessionId ?? "default"}
                   modelName={modelName}
-                  onRegenerate={(message) => {
-                    if (!activeSessionIsStreaming)
-                      void regenerateMessage(
-                        message.userMessageId ?? message.id,
-                      );
-                  }}
-                  onEditMessage={handleEditMessage}
-                  onRewindMessage={(message) =>
-                    void handlePreviewRewind(message)
-                  }
+                  onFork={handleForkConversation}
                   onCopyMessage={handleCopyMessage}
+                  onEditUserMessage={(text) => {
+                    setInputText(text);
+                    requestAnimationFrame(() => {
+                      document
+                        .querySelector<HTMLTextAreaElement>(
+                          ".composer textarea",
+                        )
+                        ?.focus();
+                    });
+                  }}
                   renderBeforeTurn={(message) =>
                     pendingModelChangeNotice?.sessionId === activeSessionId &&
                     pendingModelChangeNotice.beforeUserMessageId &&
@@ -748,279 +734,90 @@ export function WorkflowChatPage({
         visible={!isEmpty && !isAtBottom}
         onClick={() => scrollToBottom("smooth")}
       />
-
-      {rewindDialog ? (
-        <RewindConfirmDialog
-          state={rewindDialog}
-          onClose={() => setRewindDialog(null)}
-          onApply={() => void applyRewind()}
-          onSelectionChange={(selectedFiles) =>
-            setRewindDialog((state) =>
-              state ? { ...state, selectedFiles } : state,
-            )
-          }
-        />
-      ) : null}
       {isEmpty ? (
         <h1 className="empty-composer-prompt">
-          我们应该在 {promptWorkspaceName} 中构建什么？
+          {workspace?.path
+            ? `我们应该在 ${promptWorkspaceName} 中构建什么？`
+            : "请先选择工作区目录"}
         </h1>
       ) : null}
-      <InteractionDock
-        resultSummary={activeSessionIsStreaming ? null : resultSummary}
-        steers={steers}
-        onGuideSteer={guideSteer}
-        onEditSteer={editSteer}
-        onRemoveSteer={(id) =>
-          setSteers((items) => items.filter((item) => item.id !== id))
-        }
-        onReorderSteer={reorderSteer}
+      {activePlanImplementationPrompt && !activeSessionIsStreaming ? (
+        <PlanImplementationPromptCard
+          planText={activePlanImplementationPrompt.planText}
+          onImplement={() => implementPlan(false)}
+          onImplementFresh={() => implementPlan(true)}
+          onStayInPlan={continuePlanning}
+          onDismiss={dismissPlanImplementationPrompt}
+        />
+      ) : null}
+      <ComposerShell
+        conversationKey={`${activeSessionId ?? "new-session"}:${composerEpoch}`}
+        input={inputText}
+        isGenerating={activeSessionIsStreaming}
         permissionPanel={
           permissionRequest ? (
-            <PermissionRequestOverlay
+            <PermissionRequestPanel
               request={permissionRequest}
               onRespond={onPermissionRespond}
-              variant="embedded"
             />
-          ) : null
+          ) : undefined
         }
-      >
-        <ComposerShell
-          input={inputText}
-          isGenerating={activeSessionIsStreaming}
-          selectedProvider={null}
-          onInputChange={setInputText}
-          onKeyDown={handleComposerKeyDown}
-          onSend={handleSend}
-          onStop={() => void abort(activeSessionId ?? undefined)}
-          modelControl={
-            <ModelSelector switchWarningVisible={modelSwitchWarningVisible} />
-          }
-          focusToken={`${editingMessageId ?? "composer"}-${steerFocusToken}`}
-          editingBanner={
-            editingMessageId ? (
-              <div className="composer-editing-banner">
-                <span>正在编辑上一条消息，发送后会从这里重新生成</span>
-                <button
-                  type="button"
-                  onClick={cancelEdit}
-                  aria-label="取消编辑"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            ) : null
-          }
-        />
-      </InteractionDock>
-    </section>
-  );
-}
-
-function RewindConfirmDialog({
-  state,
-  onClose,
-  onApply,
-  onSelectionChange,
-}: {
-  state: RewindDialogState;
-  onClose: () => void;
-  onApply: () => void;
-  onSelectionChange: (selectedFiles: string[]) => void;
-}) {
-  const files = state.preview.filesChanged ?? [];
-  const selected = new Set(state.selectedFiles);
-  const toggleFile = (file: string) => {
-    onSelectionChange(
-      selected.has(file)
-        ? state.selectedFiles.filter((item) => item !== file)
-        : [...state.selectedFiles, file],
-    );
-  };
-  const allSelected =
-    files.length > 0 && state.selectedFiles.length === files.length;
-
-  return (
-    <div className="rewind-overlay" role="presentation" onMouseDown={onClose}>
-      <section
-        className="rewind-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Preview file rewind"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="rewind-dialog-head">
-          <span className="rewind-dialog-icon">
-            <RotateCcw size={16} />
-          </span>
-          <div>
-            <h2>Preview file rewind</h2>
-            <p>
-              Select the files to restore to the checkpoint before this message.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="rewind-close"
-            onClick={onClose}
-            aria-label="Close rewind preview"
-          >
-            <X size={15} />
-          </button>
-        </div>
-
-        {state.preview.error ? (
-          <div className="rewind-error">{state.preview.error}</div>
-        ) : null}
-
-        <div className="rewind-select-row">
-          <label>
-            <input
-              type="checkbox"
-              checked={allSelected}
-              disabled={files.length === 0 || state.applying}
-              onChange={() => onSelectionChange(allSelected ? [] : files)}
-            />
-            <span>{files.length} file(s) available</span>
-          </label>
-          <small>{state.selectedFiles.length} selected</small>
-        </div>
-
-        <div className="rewind-file-list scrollbar-thin">
-          {files.length ? (
-            files.map((file) => (
-              <label className="rewind-file-item" key={file}>
-                <input
-                  type="checkbox"
-                  checked={selected.has(file)}
-                  disabled={state.applying}
-                  onChange={() => toggleFile(file)}
-                />
-                <span>{file}</span>
-              </label>
-            ))
-          ) : (
-            <div className="rewind-empty">
-              No changed files were recorded for this checkpoint.
-            </div>
-          )}
-        </div>
-
-        <div className="rewind-dialog-foot">
-          <button type="button" onClick={onClose} disabled={state.applying}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="apply"
-            onClick={onApply}
-            disabled={state.applying || state.selectedFiles.length === 0}
-          >
-            {state.applying ? "Applying..." : "Apply selected files"}
-          </button>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-async function copyToClipboard(text: string): Promise<void> {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-
-  const textarea = document.createElement("textarea");
-  textarea.value = text;
-  textarea.setAttribute("readonly", "");
-  textarea.style.position = "fixed";
-  textarea.style.opacity = "0";
-  textarea.style.pointerEvents = "none";
-  document.body.appendChild(textarea);
-  textarea.select();
-  try {
-    document.execCommand("copy");
-  } finally {
-    document.body.removeChild(textarea);
-  }
-}
-
-function ContextActionCard({
-  request,
-  onDismiss,
-  onAction,
-}: {
-  request: ContextActionRequest;
-  onDismiss: () => void;
-  onAction: (action: ContextActionRequest["actions"][number]) => void;
-}) {
-  const hasLargerModelAction =
-    request.actions.includes("switch_to_larger_model") &&
-    Boolean(request.largerModel);
-  const hasBranchAction = request.actions.includes("create_small_model_branch");
-  const hasNewSessionAction = request.actions.includes("new_session");
-  const hasContinueAction = request.actions.includes("continue_anyway");
-
-  return (
-    <section
-      className="context-action-card"
-      role="group"
-      aria-labelledby="context-action-title"
-    >
-      <button
-        type="button"
-        className="context-action-dismiss"
-        onClick={onDismiss}
-        aria-label="关闭上下文提示"
-      >
-        <X size={14} />
-      </button>
-      <div className="context-action-main">
-        <div className="context-action-copy">
-          <h2 id="context-action-title">{request.title}</h2>
-          <span>{request.detail ?? "当前会话接近模型上下文上限。"}</span>
-        </div>
-      </div>
-      <div className="context-action-buttons" aria-label="上下文操作">
-        {hasLargerModelAction ? (
-          <button
-            type="button"
-            className="primary"
-            onClick={() => onAction("switch_to_larger_model")}
-          >
-            <Maximize2 size={14} />
-            切换到大模型
-          </button>
-        ) : null}
-        {hasBranchAction ? (
-          <button
-            type="button"
-            className={hasLargerModelAction ? undefined : "primary"}
-            onClick={() => onAction("create_small_model_branch")}
-          >
-            <GitBranch size={14} />
-            创建精简分支
-          </button>
-        ) : null}
-        {hasNewSessionAction ? (
-          <button
-            type="button"
-            className={
-              hasLargerModelAction || hasBranchAction ? undefined : "primary"
-            }
-            onClick={() => onAction("new_session")}
-          >
-            <MessageSquarePlus size={14} />
-            新会话
-          </button>
-        ) : null}
-        {hasContinueAction ? (
-          <button type="button" onClick={() => onAction("continue_anyway")}>
-            <Play size={14} />
-            继续发送
-          </button>
-        ) : null}
-      </div>
+        taskProgress={
+          activeSessionIsStreaming || hasIncompleteTasks
+            ? activeTaskProgress
+            : undefined
+        }
+        fileChangeSummary={
+          activeSessionIsStreaming || hasIncompleteTasks
+            ? composerFileChanges.summary
+            : undefined
+        }
+        onFileChangeSummaryClick={
+          composerReviewTarget
+            ? () => {
+                const { path, diff } = composerReviewTarget;
+                openReview(path, diff);
+              }
+            : undefined
+        }
+        selectedProvider={null}
+        placeholder={composerPlaceholder}
+        onInputChange={setInputText}
+        onKeyDown={handleComposerKeyDown}
+        onSend={handleSend}
+        onStop={() => void abort(activeSessionId ?? undefined)}
+        onAccessLevelChange={handleAccessLevelChange}
+        modelControl={
+          <ModelSelector switchWarningVisible={modelSwitchWarningVisible} />
+        }
+        slashCommands={slashCommands}
+        skills={composerSkills}
+        workspacePath={workspace?.path}
+        contextUsage={composerContextUsage}
+        usage={composerUsage}
+        pendingSteers={pendingSteers}
+        steerQueuePaused={steerQueuePaused}
+        onResumeSteerQueue={() => {
+          if (activeSessionId) void resumeSteerQueue(activeSessionId);
+        }}
+        onApplyPendingSteer={(messageId) => {
+          if (!activeSessionId) return;
+          void applyPendingSteerNow(activeSessionId, messageId);
+        }}
+        onCancelPendingSteer={(messageId) => {
+          if (!activeSessionId) return;
+          void cancelPendingSteer(activeSessionId, messageId);
+        }}
+        onEditPendingSteer={(messageId, text) => {
+          if (!activeSessionId) return;
+          void cancelPendingSteer(activeSessionId, messageId);
+          setInputText(text);
+        }}
+        onReorderPendingSteer={(orderedIds) => {
+          if (!activeSessionId) return;
+          void reorderSteers(activeSessionId, orderedIds);
+        }}
+      />
     </section>
   );
 }

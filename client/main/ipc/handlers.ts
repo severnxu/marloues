@@ -9,6 +9,7 @@ import { IPC } from "./channels";
 import { logInfo } from "../core/logging/app-logger";
 import type {
   ChatSendRequest,
+  ChatSendReceipt,
   ChatResendRequest,
   ChatForkRequest,
   ChatRewindRequest,
@@ -24,6 +25,7 @@ import type {
   ModelProviderConfig,
   SkillDetail,
   SkillInfo,
+  SessionSearchResult,
 } from "@shared/types";
 import {
   getRuntime,
@@ -102,6 +104,8 @@ import {
   toggleSkill as toggleSkillFromService,
 } from "../services/skill-service";
 import type { MessageItem } from "@shared/workflow-types";
+import type { WorkflowTurnItem } from "@shared/workflow-read-thread-contract";
+import { messageItemToWorkflowTurnItem } from "@shared/adapters/message-item-to-workflow-turn-item";
 import type { Message, Thread } from "@shared/agent-runtime";
 import type { WorkflowReadThreadResponse } from "@shared/workflow-read-thread-contract";
 import { workspacePathsEqual } from "@shared/workspace-path";
@@ -297,38 +301,22 @@ function sanitizeChatMessageForRenderer(
   };
 }
 
-function sanitizeMessageItemForRenderer(item: MessageItem): MessageItem {
-  return {
-    ...item,
-    text:
-      item.text === undefined
-        ? undefined
-        : truncateText(item.text, RENDERER_TEXT_LIMIT),
-    command:
-      item.command === undefined
-        ? undefined
-        : truncateText(item.command, RENDERER_ITEM_TEXT_LIMIT),
-    shell: item.shell === undefined ? undefined : truncateText(item.shell, 80),
-    aggregated_output:
-      item.aggregated_output === undefined
-        ? undefined
-        : truncateText(item.aggregated_output, RENDERER_ITEM_TEXT_LIMIT),
-    message:
-      item.message === undefined
-        ? undefined
-        : truncateText(item.message, RENDERER_ITEM_TEXT_LIMIT),
-    reason:
-      item.reason === undefined
-        ? undefined
-        : truncateText(item.reason, RENDERER_ITEM_TEXT_LIMIT),
-    args: sanitizeUnknownForRenderer(item.args, 0),
-    arguments: sanitizeUnknownForRenderer(item.arguments, 0),
-    result: sanitizeUnknownForRenderer(item.result, 0),
-    rawItem: sanitizeUnknownForRenderer(item.rawItem, 0),
-    error: item.error
-      ? { message: truncateText(item.error.message, RENDERER_ITEM_TEXT_LIMIT) }
-      : undefined,
-  };
+function sanitizeMessageItemForRenderer(
+  item: WorkflowTurnItem,
+): WorkflowTurnItem {
+  if (item.type === "agentMessage" || item.type === "plan") {
+    return { ...item, text: truncateText(item.text, RENDERER_TEXT_LIMIT) };
+  }
+  if (item.type === "reasoning") {
+    return {
+      ...item,
+      summary: truncateText(item.summary, RENDERER_ITEM_TEXT_LIMIT),
+    };
+  }
+  if (item.type === "unknown") {
+    return { ...item, raw: sanitizeUnknownForRenderer(item.raw, 0) };
+  }
+  return item;
 }
 
 function sanitizeTimelineItemForRenderer(item: TimelineItem): TimelineItem {
@@ -700,8 +688,8 @@ function renderMessageMarkdown(message: ChatMessageRecord): string {
 
 function assistantTextFromMessageItems(message: ChatMessageRecord): string {
   return (message.items ?? [])
-    .filter((item) => item.type === "agent_message")
-    .map((item) => item.text ?? "")
+    .filter((item) => item.type === "agentMessage")
+    .map((item) => ("text" in item ? (item.text ?? "") : ""))
     .join("")
     .trim();
 }
@@ -942,13 +930,22 @@ function truncateStoredSession(
   return sessionRecordFromStoredSession(next);
 }
 
-async function sendChatTurn(request: ChatSendRequest): Promise<string> {
+async function sendChatTurn(
+  request: ChatSendRequest,
+): Promise<ChatSendReceipt> {
   const runtime = getRuntime();
   const threadId = request.sessionId;
   const content = request.text;
   let runtimeContent = content;
   const mainWindow = getMainWindow();
-  if (!mainWindow) return "";
+  if (!mainWindow) {
+    return {
+      status: "failed",
+      sessionId: threadId,
+      messageId: request.clientMessageId ?? "",
+      reason: "no_window",
+    };
+  }
 
   const turnId = crypto.randomUUID();
   const startedAt = Date.now();
@@ -1379,7 +1376,9 @@ async function sendChatTurn(request: ChatSendRequest): Promise<string> {
               modelId: turnModelSnapshot.modelId,
               modelName: turnModelSnapshot.modelName,
               usage: tokenUsage,
-              items: Array.from(items.values()),
+              items: Array.from(items.values()).map(
+                messageItemToWorkflowTurnItem,
+              ),
             },
             undefined,
             uiEvent.sdkSessionId,
@@ -1429,7 +1428,9 @@ async function sendChatTurn(request: ChatSendRequest): Promise<string> {
             modelId: turnModelSnapshot.modelId,
             modelName: turnModelSnapshot.modelName,
             usage: tokenUsage,
-            items: Array.from(items.values()),
+            items: Array.from(items.values()).map(
+              messageItemToWorkflowTurnItem,
+            ),
           });
         }
       }
@@ -1463,12 +1464,17 @@ async function sendChatTurn(request: ChatSendRequest): Promise<string> {
         modelId: turnModelSnapshot.modelId,
         modelName: turnModelSnapshot.modelName,
         usage: tokenUsage,
-        items: Array.from(items.values()),
+        items: Array.from(items.values()).map(messageItemToWorkflowTurnItem),
       });
     }
   })();
 
-  return turnId;
+  return {
+    status: "started",
+    sessionId: threadId,
+    messageId: userMessageId,
+    turnId,
+  };
 }
 
 export function registerHandlers(): void {
@@ -1505,6 +1511,13 @@ export function registerHandlers(): void {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (win?.isMaximized()) win.unmaximize();
     else win?.maximize();
+  });
+  ipcMain.handle(IPC.WINDOW_SET_MAXIMIZED, (event, maximized: boolean) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return false;
+    if (maximized) win.maximize();
+    else win.unmaximize();
+    return win.isMaximized();
   });
   ipcMain.on(IPC.WINDOW_CLOSE, (event) =>
     BrowserWindow.fromWebContents(event.sender)?.close(),
@@ -1547,6 +1560,40 @@ export function registerHandlers(): void {
     const threads = await runtime.listThreads();
     return mergeRuntimeAndStoredSessions(threads);
   });
+
+  ipcMain.handle(
+    IPC.CHAT_SEARCH_SESSIONS,
+    async (_e, query: string, limit?: number) => {
+      const threads = await getRuntime().listThreads();
+      const sessions = mergeRuntimeAndStoredSessions(
+        threads,
+        currentWorkspace()?.path,
+      );
+      const needle = query.trim().toLowerCase();
+      if (!needle) return [];
+      const results: SessionSearchResult[] = [];
+      for (const session of sessions) {
+        if (limit && results.length >= limit) break;
+        const matches = session.messages
+          .filter((message) => message.content.toLowerCase().includes(needle))
+          .slice(0, 20);
+        for (const message of matches) {
+          if (limit && results.length >= limit) break;
+          const excerpt = truncateText(message.content, 160);
+          results.push({
+            sessionId: session.id,
+            turnId: message.id,
+            ordinal: 0,
+            title: session.title,
+            workspacePath: session.workspacePath,
+            excerpt,
+            updatedAt: message.createdAt,
+          });
+        }
+      }
+      return results;
+    },
+  );
 
   ipcMain.handle(IPC.CHAT_CREATE_SESSION, async () => {
     const runtime = getRuntime();
@@ -1700,7 +1747,7 @@ export function registerHandlers(): void {
         includeMessage: false,
       });
       truncateStoredSession(request.sessionId, request.fromMessageId, false);
-      const requestId = await sendChatTurn({
+      const receipt = await sendChatTurn({
         sessionId: request.sessionId,
         text: trimmedText,
         clientMessageId: request.fromMessageId,
@@ -1711,7 +1758,7 @@ export function registerHandlers(): void {
 
       return {
         ...sessionRecordFromStoredSession(session),
-        requestId,
+        requestId: receipt.turnId ?? receipt.messageId,
       };
     },
   );
@@ -1735,6 +1782,28 @@ export function registerHandlers(): void {
       throw new Error(`${runtime.name} does not support tool cancellation`);
     }
     await runtime.cancelTool(toolCallId);
+  });
+
+  ipcMain.handle(IPC.CHAT_COMPACT, async (_e, sessionId: string) => {
+    const stored = store.getSession(sessionId);
+    if (!stored) return;
+    const settings = getAgentSettings();
+    const modelProvider = resolveModelProvider(settings);
+    const contextMgmt = settings.contextManagement;
+    const sessionRecord = sessionRecordFromStoredSession(stored);
+    const sessionTokens = estimateSessionTokens(sessionRecord);
+    const threshold = contextMgmt?.compactThresholdPercent ?? 75;
+    const targetTokens = Math.max(
+      1,
+      Math.round((sessionTokens * threshold) / 100),
+    );
+    await compactAndRecordSessionState({
+      session: sessionRecord,
+      modelProvider,
+      targetTokens,
+      reason: "manual",
+    });
+    sendReadThreadUpdate(sessionId);
   });
 
   ipcMain.on(

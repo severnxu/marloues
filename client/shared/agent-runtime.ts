@@ -2,7 +2,13 @@
  * AgentRuntime SPI shared by SDK, binary, and local runtime implementations.
  */
 
-import type { AgentSettings, ContextUsageRecord, MemoryRecallRecord, ModelOption, TokenUsage } from "./types";
+import type {
+  AgentSettings,
+  ContextUsageRecord,
+  MemoryRecallRecord,
+  ModelOption,
+  TokenUsage,
+} from "./types";
 import type {
   WorkflowReadThreadInput,
   WorkflowSubscribeThreadInput,
@@ -15,9 +21,35 @@ export type RuntimeEvent =
   | { kind: "turn-start"; payload: { turnId: string; timestamp: number } }
   | { kind: "text-chunk"; payload: { turnId: string; content: string } }
   | { kind: "thinking-chunk"; payload: { turnId: string; content: string } }
-  | { kind: "tool-start"; payload: { turnId: string; toolId: string; toolName: string; input: unknown } }
-  | { kind: "tool-progress"; payload: { turnId: string; toolId: string; toolName: string; partialInput?: string; input?: unknown; isReady?: boolean } }
-  | { kind: "tool-complete"; payload: { turnId: string; toolId: string; output: unknown; isError: boolean } }
+  | {
+      kind: "tool-start";
+      payload: {
+        turnId: string;
+        toolId: string;
+        toolName: string;
+        input: unknown;
+      };
+    }
+  | {
+      kind: "tool-progress";
+      payload: {
+        turnId: string;
+        toolId: string;
+        toolName: string;
+        partialInput?: string;
+        input?: unknown;
+        isReady?: boolean;
+      };
+    }
+  | {
+      kind: "tool-complete";
+      payload: {
+        turnId: string;
+        toolId: string;
+        output: unknown;
+        isError: boolean;
+      };
+    }
   | {
       kind: "turn-complete";
       payload: {
@@ -28,16 +60,75 @@ export type RuntimeEvent =
         sdkSessionId?: string;
       };
     }
-  | { kind: "approval-request"; payload: { requestId: string; toolName: string; reason: string; timeout: number } }
-  | { kind: "context-usage"; payload: { turnId: string; phase?: "turn_start" | "turn_end"; percentage: number; limit: number; usage?: ContextUsageRecord } }
-  | { kind: "context-warning"; payload: { turnId: string; level: "low" | "medium" | "high" | "critical"; message: string; percentage?: number } }
+  | {
+      kind: "approval-request";
+      payload: {
+        requestId: string;
+        toolName: string;
+        reason: string;
+        timeout: number;
+        allowSession?: boolean;
+      };
+    }
+  | {
+      kind: "context-usage";
+      payload: {
+        turnId: string;
+        phase?: "turn_start" | "turn_end";
+        percentage: number;
+        limit: number;
+        usage?: ContextUsageRecord;
+      };
+    }
+  | {
+      kind: "context-warning";
+      payload: {
+        turnId: string;
+        level: "low" | "medium" | "high" | "critical";
+        message: string;
+        percentage?: number;
+      };
+    }
   | { kind: "token-usage"; payload: { turnId: string; usage: TokenUsage } }
-  | { kind: "runtime-status"; payload: { turnId: string; id?: string; label: string; detail?: string; status?: "pending" | "running" | "completed" | "error" } }
-  | { kind: "session-info"; payload: { turnId: string; skills: string[]; slashCommands: string[]; agents: string[] } }
-  | { kind: "mcp-status"; payload: { turnId: string; servers: unknown[]; tools?: string[] } }
-  | { kind: "memory-recall"; payload: { turnId: string; mode: "select" | "synthesize"; memories: MemoryRecallRecord[] } }
-  | { kind: "prompt-suggestion"; payload: { turnId: string; suggestion: string } }
-  | { kind: "error"; payload: { code: string; message: string; recoverable: boolean } };
+  | {
+      kind: "runtime-status";
+      payload: {
+        turnId: string;
+        id?: string;
+        label: string;
+        detail?: string;
+        status?: "pending" | "running" | "completed" | "error";
+      };
+    }
+  | {
+      kind: "session-info";
+      payload: {
+        turnId: string;
+        skills: string[];
+        slashCommands: string[];
+        agents: string[];
+      };
+    }
+  | {
+      kind: "mcp-status";
+      payload: { turnId: string; servers: unknown[]; tools?: string[] };
+    }
+  | {
+      kind: "memory-recall";
+      payload: {
+        turnId: string;
+        mode: "select" | "synthesize";
+        memories: MemoryRecallRecord[];
+      };
+    }
+  | {
+      kind: "prompt-suggestion";
+      payload: { turnId: string; suggestion: string };
+    }
+  | {
+      kind: "error";
+      payload: { code: string; message: string; recoverable: boolean };
+    };
 
 export type RuntimeEventStream = AsyncIterable<RuntimeEvent>;
 
@@ -105,15 +196,28 @@ export interface AgentRuntime {
   getAvailableModels?(): Promise<ModelOption[]>;
   setPermissionMode?(mode: PermissionMode): Promise<void>;
 
-  registerTool?(tool: ToolDefinition, handler: (args: unknown) => Promise<unknown>): void;
+  registerTool?(
+    tool: ToolDefinition,
+    handler: (args: unknown) => Promise<unknown>,
+  ): void;
   listTools(): Promise<ToolDefinition[]>;
   cancelTool?(toolCallId: string): Promise<void>;
-  truncateThread?(threadId: string, opts: { fromMessageId: string; includeMessage?: boolean }): Promise<Thread>;
+  truncateThread?(
+    threadId: string,
+    opts: { fromMessageId: string; includeMessage?: boolean },
+  ): Promise<Thread>;
 
-  readThread?(input: WorkflowReadThreadInput): Promise<WorkflowReadThreadResponse>;
+  readThread?(
+    input: WorkflowReadThreadInput,
+  ): Promise<WorkflowReadThreadResponse>;
   subscribeThread?(
     input: WorkflowSubscribeThreadInput,
   ): AsyncIterable<WorkflowReadThreadResponse | WorkflowThreadPatch>;
 
-  respondApproval(requestId: string, approved: boolean, scope: "once" | "session", reason?: string): void;
+  respondApproval(
+    requestId: string,
+    approved: boolean,
+    scope: "once" | "session",
+    reason?: string,
+  ): void;
 }

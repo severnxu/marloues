@@ -7,15 +7,17 @@ export function SettingsCard({
   icon,
   action,
   children,
+  surface = "list",
 }: {
   title: string;
   description: string;
   icon?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
+  surface?: "list" | "plain";
 }) {
   return (
-    <div className="settings-card">
+    <div className={`settings-card settings-card--${surface}`}>
       <div className="settings-card-head">
         <div className="settings-card-title">
           {icon ? <span className="settings-card-icon">{icon}</span> : null}
@@ -83,7 +85,12 @@ export function SegmentedOptions({
 }: {
   value: string;
   onChange: (value: string) => void;
-  options: Array<{ value: string; title: string; description: string; icon: ReactNode }>;
+  options: Array<{
+    value: string;
+    title: string;
+    description: string;
+    icon: ReactNode;
+  }>;
 }) {
   return (
     <div className="settings-segmented-options">
@@ -103,7 +110,13 @@ export function SegmentedOptions({
   );
 }
 
-export function EmptySettingsState({ title, body }: { title: string; body: string }) {
+export function EmptySettingsState({
+  title,
+  body,
+}: {
+  title: string;
+  body: string;
+}) {
   return (
     <div className="settings-empty-state">
       <strong>{title}</strong>
@@ -112,7 +125,13 @@ export function EmptySettingsState({ title, body }: { title: string; body: strin
   );
 }
 
-export function SettingsStat({ label, value }: { label: string; value: string }) {
+export function SettingsStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
     <div className="settings-stat-card">
       <small>{label}</small>

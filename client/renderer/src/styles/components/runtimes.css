@@ -1,0 +1,206 @@
+/* runtimes component styles. Theme values come from ../tokens.css. */
+
+@layer marloues-components.cascade-0100 {
+  .runtime-panel {
+    max-width: 768px;
+    margin: 10px auto 0;
+    overflow: hidden;
+    border: var(--component-runtimes-runtime-panel-border-ea992a3);
+    border-radius: 12px;
+    background: var(--component-runtimes-runtime-panel-background-0107479);
+    color: var(--component-runtimes-runtime-panel-color-8525e10);
+    font-size: 12px;
+  }
+
+  .runtime-panel summary {
+    display: flex;
+    cursor: pointer;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 9px 12px;
+    list-style: none;
+  }
+
+  .runtime-panel summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .runtime-panel summary span {
+    color: var(--component-runtimes-runtime-panel-color-8ebaaed);
+    font-weight: 650;
+  }
+
+  .runtime-panel summary strong {
+    border-radius: 999px;
+    background: var(--component-runtimes-runtime-panel-background-316ff6a);
+    color: var(--component-runtimes-runtime-panel-color-fb5a1a6);
+    padding: 3px 7px;
+    font-size: 11px;
+  }
+
+  .runtime-list {
+    border-top: var(--component-runtimes-runtime-list-border-top-fd60319);
+    padding: 4px 12px 12px;
+  }
+}
+
+@layer marloues-components.cascade-0104 {
+  .runtime-panel code {
+    border-radius: 8px;
+    background: var(--component-runtimes-runtime-panel-background-456384f);
+    padding: 8px;
+    color: var(--component-runtimes-runtime-panel-color-601aea3);
+    font-size: 11px;
+  }
+}
+
+@layer marloues-components.cascade-0153 {
+  .runtimes-page {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .runtimes-tabs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .runtimes-tabs button {
+    padding: 6px 12px;
+    border: var(--component-runtimes-runtimes-tabs-border-69c7d1c);
+    border-radius: 6px;
+    background: var(--component-runtimes-runtimes-tabs-background-b741122);
+    color: var(--component-runtimes-runtimes-tabs-color-7024a5c);
+    font-size: 12px;
+    cursor: pointer;
+    transition:
+      color var(--settings-transition),
+      border-color var(--settings-transition),
+      background var(--settings-transition);
+  }
+
+  .runtimes-tabs button:hover {
+    color: var(--component-runtimes-runtimes-tabs-color-f92f26e);
+    border-color: var(--component-runtimes-runtimes-tabs-border-color-a249a25);
+  }
+
+  .runtimes-tabs button.active {
+    color: var(--component-runtimes-runtimes-tabs-color-c4ec613);
+    border-color: var(--component-runtimes-runtimes-tabs-border-color-92fd95e);
+    background: var(--component-runtimes-runtimes-tabs-background-125fb9b);
+  }
+
+  .runtimes-refresh {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: var(--component-runtimes-runtimes-refresh-border-9199bdc);
+    border-radius: 6px;
+    background: var(--component-runtimes-runtimes-refresh-background-6f66456);
+    color: var(--component-runtimes-runtimes-refresh-color-1245980);
+    cursor: pointer;
+    transition:
+      color var(--settings-transition),
+      border-color var(--settings-transition);
+  }
+
+  .runtimes-refresh:hover {
+    color: var(--component-runtimes-runtimes-refresh-color-1c03698);
+    border-color: var(
+      --component-runtimes-runtimes-refresh-border-color-52fa61c
+    );
+  }
+}
+
+@layer marloues-components.cascade-0158 {
+  .runtime-card-list {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .runtime-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 12px;
+    width: 100%;
+    border: var(--component-runtimes-runtime-card-border-8ab42af);
+    border-radius: 10px;
+    background: var(--component-runtimes-runtime-card-background-823de0c);
+    color: var(--component-runtimes-runtime-card-color-7b0dbd1);
+    padding: 12px;
+    text-align: left;
+    transition:
+      border-color var(--settings-transition),
+      background var(--settings-transition),
+      opacity var(--settings-transition);
+  }
+
+  .runtime-card:hover:not(:disabled) {
+    border-color: var(--component-runtimes-runtime-card-border-color-16429b8);
+    background: var(--component-runtimes-runtime-card-background-cd6e4a3);
+  }
+
+  .runtime-card:focus-visible:not(:disabled) {
+    border-color: var(--component-runtimes-runtime-card-border-color-6c3a869);
+    background: var(--component-runtimes-runtime-card-background-bae22c2);
+  }
+
+  .runtime-card.active {
+    border-color: var(--component-runtimes-runtime-card-border-color-9d432b0);
+    background: var(--component-runtimes-runtime-card-background-fa2d1ad);
+  }
+
+  .runtime-card:disabled {
+    cursor: not-allowed;
+    opacity: var(--component-runtimes-runtime-card-opacity-d21df47);
+  }
+
+  .runtime-card span {
+    display: grid;
+    min-width: 0;
+    gap: 4px;
+  }
+
+  .runtime-card strong {
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .runtime-card small {
+    grid-column: 1 / -1;
+    color: var(--component-runtimes-runtime-card-color-f7ba494);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .runtime-card em {
+    align-self: start;
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-style: normal;
+    font-weight: 700;
+  }
+
+  .runtime-card em.ok {
+    background: var(--component-runtimes-runtime-card-background-ff80b06);
+    color: var(--component-runtimes-runtime-card-color-841113a);
+  }
+
+  .runtime-card em.pending {
+    background: var(--component-runtimes-runtime-card-background-ea48b91);
+    color: var(--component-runtimes-runtime-card-color-f7185de);
+  }
+
+  .runtime-card em.error {
+    background: var(--component-runtimes-runtime-card-background-6e0ab43);
+    color: var(--component-runtimes-runtime-card-color-2ff28b7);
+  }
+}

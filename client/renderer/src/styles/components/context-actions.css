@@ -1,0 +1,127 @@
+/* context-actions component styles. Theme values come from ../tokens.css. */
+
+.context-action-card {
+  position: relative;
+  display: grid;
+  width: 100%;
+  max-width: 768px;
+  gap: 0;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent) 46%, transparent);
+  border-radius: 14px;
+  background: var(--surface-popover);
+  box-shadow: var(--shadow-md);
+}
+
+.context-action-main {
+  display: grid;
+  gap: 12px;
+  padding: 16px 44px 16px 16px;
+}
+
+.context-action-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.context-action-copy h2 {
+  margin: 0;
+  color: var(--text-1);
+  font-size: 14px;
+  font-weight: 720;
+  line-height: 1.45;
+}
+
+.context-action-copy span {
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.context-action-dismiss {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-3);
+  transition:
+    background var(--motion-fast) var(--ease),
+    border-color var(--motion-fast) var(--ease),
+    color var(--motion-fast) var(--ease);
+}
+
+.context-action-dismiss:hover {
+  border-color: var(--border-strong);
+  background: var(--raised-2);
+  color: var(--text-1);
+}
+
+.context-action-dismiss:focus-visible {
+  border-color: var(--border-strong);
+  background: var(--raised-2);
+  color: var(--text-1);
+  outline: 0;
+  box-shadow:
+    0 0 0 2px var(--surface-popover),
+    0 0 0 3px var(--focus-ring);
+}
+
+.context-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding: 10px 12px 12px;
+}
+
+.context-action-buttons button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--raised-1);
+  color: var(--text-2);
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  transition:
+    background var(--motion-fast) var(--ease),
+    border-color var(--motion-fast) var(--ease),
+    color var(--motion-fast) var(--ease),
+    transform var(--motion-fast) var(--ease);
+}
+
+.context-action-buttons button:hover {
+  border-color: var(--border-strong);
+  background: var(--raised-2);
+  color: var(--text-1);
+  transform: translateY(-1px);
+}
+
+.context-action-buttons button:focus-visible {
+  border-color: var(--border-strong);
+  background: var(--raised-2);
+  color: var(--text-1);
+  outline: 0;
+  box-shadow:
+    0 0 0 2px var(--surface-popover),
+    0 0 0 3px var(--focus-ring);
+  transform: translateY(-1px);
+}
+
+.context-action-buttons button.primary {
+  border-color: transparent;
+  background: var(--primary-fill);
+  color: var(--primary-ink);
+}

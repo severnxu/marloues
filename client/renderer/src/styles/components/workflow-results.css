@@ -1,0 +1,420 @@
+/* Persistent result cards shown after an assistant turn. */
+
+.workflow-result-stack {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: 12px;
+}
+
+.workflow-result-card {
+  position: relative;
+  min-width: 0;
+  overflow: visible;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--card-radius);
+  background: var(--raised-1);
+  box-shadow: none;
+  color: var(--text-2);
+  transition:
+    border-color var(--motion-fast) var(--ease),
+    background var(--motion-fast) var(--ease);
+}
+
+.workflow-result-card:hover {
+  border-color: var(--border-strong);
+  background: var(--raised-2);
+}
+
+.workflow-result-card-head,
+.workflow-result-preview-card {
+  display: grid;
+  box-sizing: border-box;
+  min-height: 48px;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+}
+
+.workflow-result-card > .workflow-result-card-head {
+  min-height: 46px;
+}
+
+.workflow-result-card-icon {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  color: var(--text-3);
+}
+
+.workflow-result-card-icon.is-accent {
+  color: var(--accent);
+}
+
+.workflow-result-card-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.workflow-result-card-copy {
+  min-width: 0;
+}
+
+.workflow-result-card-title,
+.workflow-result-card-subtitle {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-result-card-title {
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 17px;
+}
+
+.workflow-result-card-subtitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-3);
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 15px;
+}
+
+.workflow-result-card-actions {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+
+.workflow-result-card-action.is-review {
+  min-width: auto;
+  height: 28px;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 10px;
+}
+
+.workflow-result-card-action.is-review:hover,
+.workflow-result-card-action.is-review:focus-visible {
+  border: 0;
+  background: transparent;
+  color: var(--text-1);
+}
+
+.workflow-result-card-action.is-undo {
+  position: absolute;
+  right: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.workflow-result-card:hover .workflow-result-card-action.is-review {
+  opacity: 0;
+}
+
+.workflow-result-card:hover .workflow-result-card-action.is-undo,
+.workflow-result-card-action.is-undo:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.workflow-result-card-action {
+  display: inline-flex;
+  min-width: 26px;
+  height: 26px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  outline: 0;
+  background: var(--surface-popover);
+  color: var(--text-2);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-xs);
+  line-height: 1;
+  text-decoration: none;
+  transition:
+    border-color var(--motion-fast) var(--ease),
+    background var(--motion-fast) var(--ease),
+    color var(--motion-fast) var(--ease);
+}
+
+.workflow-result-card-action:hover,
+.workflow-result-card-action:focus-visible {
+  border-color: var(--border-strong);
+  background: var(--raised-2);
+  color: var(--text-1);
+}
+
+.workflow-result-card-action svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+
+.workflow-result-diff-stats {
+  display: inline-flex;
+  flex: none;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.workflow-result-diff-stats b {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.workflow-result-diff-stats em {
+  color: var(--danger);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.workflow-result-image-card {
+  overflow: hidden;
+}
+
+.workflow-result-image-preview {
+  padding: 10px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--raised-1);
+}
+
+.workflow-result-image-button {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  cursor: zoom-in;
+  text-align: left;
+}
+
+.workflow-result-image-button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.workflow-result-image {
+  display: block;
+  max-width: 100%;
+  max-height: 360px;
+  border-radius: var(--radius-sm);
+  object-fit: contain;
+}
+
+.workflow-result-file-list {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.workflow-result-file-row {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 36px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-3);
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  background: transparent;
+  text-align: left;
+  border-top: 1px solid var(--border-subtle);
+  outline: 0;
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: var(--text-xs);
+}
+
+.workflow-result-file-expand {
+  display: flex;
+  width: 100%;
+  height: 36px;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-xs);
+}
+
+.workflow-result-file-expand svg {
+  width: 12px;
+  height: 12px;
+  transition: transform var(--motion-fast) var(--ease);
+}
+
+.workflow-result-file-expand svg.is-expanded {
+  transform: rotate(180deg);
+}
+
+.workflow-result-card-icon {
+  width: 40px;
+  height: 40px;
+}
+
+.workflow-result-card-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.workflow-result-review-default {
+  display: inline-flex;
+  gap: 6px;
+  font-family: var(--font-mono);
+}
+
+.workflow-result-review-default b {
+  color: var(--success);
+}
+.workflow-result-review-default em {
+  color: var(--danger);
+  font-style: normal;
+}
+.workflow-result-review-hover {
+  display: none;
+  align-items: center;
+  gap: 2px;
+}
+.workflow-result-review-hover svg {
+  width: 12px;
+  height: 12px;
+}
+.workflow-result-review-head:hover .workflow-result-review-default {
+  display: none;
+}
+.workflow-result-review-head:hover .workflow-result-review-hover {
+  display: inline-flex;
+}
+
+.workflow-result-file-row:first-child {
+  border-top: 0;
+}
+
+.workflow-result-file-row:hover,
+.workflow-result-file-row:focus-visible {
+  background: var(--raised-2);
+  color: var(--text-1);
+}
+
+.workflow-result-file-path {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-result-diff-card .workflow-result-card-copy {
+  position: relative;
+}
+
+.workflow-result-file-popover {
+  position: absolute;
+  z-index: 45;
+  top: calc(100% + 6px);
+  right: 0;
+  display: none;
+  width: min(620px, 82vw);
+  max-height: 360px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-popover);
+  box-shadow: var(--shadow-lg);
+}
+
+.workflow-result-file-row:hover .workflow-result-file-popover,
+.workflow-result-file-row:focus-within .workflow-result-file-popover,
+.workflow-result-diff-card
+  .workflow-result-card-copy:hover
+  .workflow-result-file-popover,
+.workflow-result-diff-card
+  .workflow-result-card-copy:focus-within
+  .workflow-result-file-popover {
+  display: block;
+}
+
+.workflow-result-file-popover-head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 9px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-1);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.workflow-result-file-popover-head svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.workflow-result-file-popover-head span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-result-file-popover-body {
+  max-height: 318px;
+  overflow: auto;
+}
+
+@media (max-width: 560px) {
+  .workflow-result-card-head,
+  .workflow-result-preview-card {
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    gap: var(--space-2);
+    padding-inline: 10px;
+  }
+
+  .workflow-result-card-actions .workflow-result-card-action {
+    width: 28px;
+    padding: 0;
+    overflow: hidden;
+    color: transparent;
+    gap: 0;
+  }
+
+  .workflow-result-card-actions .workflow-result-card-action svg {
+    color: var(--text-2);
+  }
+
+  .workflow-result-file-popover {
+    right: calc(-1 * var(--space-2));
+    width: min(620px, calc(100vw - 24px));
+  }
+}

@@ -5,7 +5,10 @@ interface WorkflowScrollToBottomButtonProps {
   onClick: () => void;
 }
 
-export function WorkflowScrollToBottomButton({ visible, onClick }: WorkflowScrollToBottomButtonProps) {
+export function WorkflowScrollToBottomButton({
+  visible,
+  onClick,
+}: WorkflowScrollToBottomButtonProps) {
   if (!visible) return null;
 
   return (

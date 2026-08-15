@@ -14,7 +14,6 @@ function nextTextChunkIndex(sessionId: string, turnId: string): number {
   return next;
 }
 
-
 export function translateRuntimeEventToUIEvent(
   evt: RuntimeEvent,
   sessionId: string,
@@ -27,7 +26,12 @@ export function translateRuntimeEventToUIEvent(
       textChunkCounters.set(turnCounterKey(sessionId, turnId), 0);
       return { ...base, type: "turn.start", timestamp: evt.payload.timestamp };
     case "text-chunk":
-      return { ...base, type: "text.chunk", content: evt.payload.content, index: nextTextChunkIndex(sessionId, turnId) };
+      return {
+        ...base,
+        type: "text.chunk",
+        content: evt.payload.content,
+        index: nextTextChunkIndex(sessionId, turnId),
+      };
     case "thinking-chunk":
       return { ...base, type: "thinking.chunk", content: evt.payload.content };
     case "tool-start":
@@ -134,6 +138,10 @@ export function translateRuntimeEventToUIEvent(
         toolName: evt.payload.toolName,
         reason: evt.payload.reason,
         timeout: evt.payload.timeout,
+        allowSession:
+          typeof evt.payload.allowSession === "boolean"
+            ? evt.payload.allowSession
+            : true,
       };
     case "error":
       return {

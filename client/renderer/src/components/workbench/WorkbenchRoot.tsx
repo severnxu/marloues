@@ -1,102 +1,231 @@
+// WorkbenchRoot is the application-shell composition root. Its concerns are
+// split across:
+//   - layout-model.ts (state/types/reducer)
+//   - use-workbench-layout.ts (reducer + pointer/resize)
+//   - use-workbench-transitions.ts (region transitions)
+//   - WindowChrome.tsx (title bar + window controls)
+//   - WorkbenchRegions.tsx (3 structural shells)
+//   - WorkbenchViewHost.tsx (page routing)
+
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { OPEN_SETTINGS_EVENT } from "@/components/workflow-chat/EmptyChatState";
-import { OPEN_AUXILIARY_PANEL_EVENT } from "./events";
+import { SettingsDialog } from "@/components/settings/SettingsDialog";
+import type { SettingsSection } from "@/components/settings/types";
+import {
+  getAuxiliarySessionScope,
+  isAuxiliaryOpenForSession,
+} from "./auxiliary-visibility";
+import { GlobalSearchOverlay } from "./overlays/GlobalSearchOverlay";
+import { PrimarySidebar } from "./primary-sidebar";
+import type { Page } from "./types";
+import { useInspectorStore } from "@/stores/inspector-store";
+import { useSettingsDialogStore } from "@/stores/settings-dialog-store";
 import { useUnifiedChatStore } from "@/stores/unified-chat-store";
-import type { Page, SettingsSection } from "@/components/layout/types";
+import type { ThemeMode } from "@/stores/theme-store";
 import type { PermissionDialogRequest } from "@shared/types";
+import { deriveAuxiliaryMode } from "./layout-model";
+import {
+  readPreviewPlatform,
+  readReviewAcceptanceMode,
+  resolveWorkbenchPlatform,
+} from "./resolve-platform";
+import { useWorkbenchLayout } from "./use-workbench-layout";
+import { useWorkbenchTransitions } from "./use-workbench-transitions";
+import { WindowChrome } from "./WindowChrome";
+import { ResizeHandle } from "./ResizeHandle";
 import {
   MainWorkspaceShell,
-  PlatformWindow,
   PrimarySidebarShell,
-  ResizeHandle,
-  WorkbenchViewHost,
-  WindowChrome,
-  type WorkbenchPlatform,
-  resolveWorkbenchPlatform,
-  useAuxiliaryTransition,
-  useWorkbenchLayout,
-} from ".";
+  WorkbenchLayout,
+  WorkbenchMainColumns,
+  WorkbenchOverlayHost,
+} from "./WorkbenchRegions";
+import { PlatformWindow } from "./PlatformWindow";
+import { WorkbenchAuxiliaryHost } from "./WorkbenchAuxiliaryHost";
+import { KeepAliveWorkbenchView, WorkbenchViewHost } from "./WorkbenchViewHost";
+import { CREATE_NEW_SESSION_EVENT, OPEN_GLOBAL_SEARCH_EVENT } from "./events";
 
 export function WorkbenchRoot({
   page,
   onPage,
   settingsSection,
   onSettingsSection,
+  isDark,
+  themeMode,
+  onToggleTheme,
   permissionRequest,
+  pendingPermissionSessionIds,
   onPermissionRespond,
 }: {
   page: Page;
   onPage: (page: Page) => void;
   settingsSection: SettingsSection;
   onSettingsSection: (section: SettingsSection) => void;
+  isDark: boolean;
+  themeMode: ThemeMode;
+  onToggleTheme: () => void;
   permissionRequest?: PermissionDialogRequest;
+  pendingPermissionSessionIds?: readonly string[];
   onPermissionRespond: (
     approved: boolean,
     scope?: "once" | "session",
     reason?: string,
   ) => void;
 }) {
+  const activeSessionId = useUnifiedChatStore((state) => state.activeSessionId);
+  const layout = useWorkbenchLayout(activeSessionId);
   const {
     state,
     dispatch,
-    contentFrameRef,
-    startResize,
+    setAuxiliaryOpen,
     showPrimaryPeek,
-    hidePrimaryPeek,
-  } = useWorkbenchLayout();
+    schedulePrimaryPeekHide,
+    startResize,
+  } = layout;
+  const {
+    auxiliarySwitching,
+    togglePrimary,
+    toggleAuxiliary,
+    toggleAuxiliaryPrimary,
+  } = useWorkbenchTransitions(layout, activeSessionId);
+
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
-  const { switching: auxiliarySwitching, transition: transitionAuxiliary } =
-    useAuxiliaryTransition(dispatch);
-  const createSession = useUnifiedChatStore((store) => store.createSession);
-  const activeTurn = useUnifiedChatStore((store) =>
-    store.activeSessionId ? store.liveTurns[store.activeSessionId] : undefined,
+  const [isMaximized, setIsMaximized] = useState(false);
+  const createSession = useUnifiedChatStore((s) => s.createSession);
+
+  // ---- OPEN_GLOBAL_SEARCH_EVENT (⌘K / Ctrl+K handler from anywhere) ----
+  useEffect(() => {
+    const handler = () => setGlobalSearchOpen(true);
+    window.addEventListener(OPEN_GLOBAL_SEARCH_EVENT, handler);
+    return () => window.removeEventListener(OPEN_GLOBAL_SEARCH_EVENT, handler);
+  }, []);
+
+  // ---- CREATE_NEW_SESSION_EVENT (⌘N / Ctrl+N handler from anywhere) -----
+  useEffect(() => {
+    const handler = () => {
+      void createSession();
+      onPage("chat");
+    };
+    window.addEventListener(CREATE_NEW_SESSION_EVENT, handler);
+    return () => window.removeEventListener(CREATE_NEW_SESSION_EVENT, handler);
+  }, [createSession, onPage]);
+
+  // ---- Global ⌘K / ⌘N keyboard shortcuts (work even when no input has focus) -
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      // Skip when typing in an editable field — the field's own handler should
+      // own the keystroke. Composer uses Cmd+Enter to send, Cmd+K to clear, so
+      // we don't want to also pop the search overlay from there.
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      const isEditable =
+        tag === "input" ||
+        tag === "textarea" ||
+        tag === "select" ||
+        target?.isContentEditable === true;
+      if (isEditable) return;
+      if (event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        setGlobalSearchOpen(true);
+        return;
+      }
+      if (event.key.toLowerCase() === "n" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        void createSession();
+        onPage("chat");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [createSession, onPage]);
+
+  // ---- Window maximize/restore state --------------------------------------
+  // The platform IPC exposes `setMaximized(boolean)` for true toggle. We track
+  // the current state via a local hint that flips on every dblclick so the
+  // next dblclick restores. main.ts owns the actual maximize state but the
+  // IPC bridge is one-way, so this hint is the renderer-side source of truth
+  // for the toggle.
+  const handleDoubleClickTitleBar = () => {
+    if (isMacOS) return; // macOS native frame handles this
+    const next = !isMaximized;
+    void window.marloues.window.setMaximized(next);
+    setIsMaximized(next);
+  };
+
+  // ---- reviewTarget auto-expands the auxiliary region --------------------
+  const reviewTarget = useInspectorStore((state) => state.reviewTarget);
+  useEffect(() => {
+    if (!reviewTarget) return;
+    setAuxiliaryOpen(true);
+    dispatch({ type: "auxiliary.width.ensureMin" });
+  }, [reviewTarget, reviewTarget?.seq, setAuxiliaryOpen, dispatch]);
+
+  // ---- setVisibleSession visibility sync ---------------------------------
+  const setVisibleSession = useUnifiedChatStore(
+    (store) => store.setVisibleSession,
   );
-  const isRunning =
-    activeTurn?.status === "pending" || activeTurn?.status === "running";
-  const previewPlatform = import.meta.env.DEV
-    ? new URLSearchParams(window.location.search).get("platform")
-    : null;
-  const platform: WorkbenchPlatform = resolveWorkbenchPlatform(
+  useEffect(() => {
+    const syncVisibleSession = () => {
+      const chatIsVisible =
+        page === "chat" &&
+        document.visibilityState === "visible" &&
+        document.hasFocus();
+      setVisibleSession(chatIsVisible ? activeSessionId : null);
+    };
+    syncVisibleSession();
+    document.addEventListener("visibilitychange", syncVisibleSession);
+    window.addEventListener("focus", syncVisibleSession);
+    window.addEventListener("blur", syncVisibleSession);
+    return () => {
+      document.removeEventListener("visibilitychange", syncVisibleSession);
+      window.removeEventListener("focus", syncVisibleSession);
+      window.removeEventListener("blur", syncVisibleSession);
+      setVisibleSession(null);
+    };
+  }, [activeSessionId, page, setVisibleSession]);
+
+  // ---- revealSubagentSeq auto-expands the auxiliary region ---------------
+  const revealSubagentSeq = useUnifiedChatStore((store) =>
+    activeSessionId
+      ? store.executionBySession[activeSessionId]?.revealSubagentSeq
+      : undefined,
+  );
+  useEffect(() => {
+    if (!revealSubagentSeq) return;
+    setAuxiliaryOpen(true);
+    dispatch({ type: "auxiliary.width.ensureMin" });
+  }, [revealSubagentSeq, setAuxiliaryOpen, dispatch]);
+
+  // ---- Derived platform + page flags --------------------------------------
+  const previewPlatform = readPreviewPlatform();
+  const platform = resolveWorkbenchPlatform(
     window.marloues.app.platform,
     previewPlatform,
   );
+  const isMacOS = platform === "macos";
+  const reviewAcceptance = readReviewAcceptanceMode();
   const settingsPage = page === "settings";
-  const primaryOpen = settingsPage || state.primaryOpen;
-  const auxiliaryMode = settingsPage ? "closed" : state.auxiliaryMode;
 
-  useEffect(() => {
-    const openSettings = (event: Event) => {
-      const detail = (event as CustomEvent<{ section?: SettingsSection }>)
-        .detail;
-      onPage("settings");
-      if (detail?.section) onSettingsSection(detail.section);
-    };
-    window.addEventListener(OPEN_SETTINGS_EVENT, openSettings);
-    return () => window.removeEventListener(OPEN_SETTINGS_EVENT, openSettings);
-  }, [onPage, onSettingsSection]);
-
-  useEffect(() => {
-    const openAuxiliaryPanel = () => {
-      if (state.auxiliaryMode === "closed") {
-        dispatch({ type: "auxiliary.mode.set", mode: "open" });
-      }
-    };
-    window.addEventListener(OPEN_AUXILIARY_PANEL_EVENT, openAuxiliaryPanel);
-    return () =>
-      window.removeEventListener(
-        OPEN_AUXILIARY_PANEL_EVENT,
-        openAuxiliaryPanel,
-      );
-  }, [dispatch, state.auxiliaryMode]);
-
-  const toggleAuxiliary = () => {
-    if (auxiliaryMode === "primary-overlay") {
-      transitionAuxiliary("closed");
-      return;
-    }
-    dispatch({ type: "auxiliary.toggle" });
-  };
+  // ---- Derived layout values ---------------------------------------------
+  const auxiliaryScope = getAuxiliarySessionScope(activeSessionId);
+  const auxiliaryOpen = isAuxiliaryOpenForSession(
+    state.auxiliaryOpenScopes,
+    auxiliaryScope,
+  );
+  const auxiliaryMode = deriveAuxiliaryMode(
+    auxiliaryOpen,
+    state.auxiliaryPrimaryOverlay,
+  );
+  const effectiveAuxiliaryMode = page === "chat" ? auxiliaryMode : "closed";
+  const sidebarVisible = state.primaryOpen || settingsPage;
+  const leftResizable = state.primaryOpen && !settingsPage;
+  const sidebarFloating =
+    !state.primaryOpen && !settingsPage && state.primaryPeeking;
+  const sidebarIsCollapsed = !state.primaryOpen && !settingsPage;
+  const hideTitleBarExtras =
+    effectiveAuxiliaryMode === "primary-overlay" && sidebarIsCollapsed;
+  // Quick pages temporarily close the visible auxiliary column, but the
+  // hidden chat tree keeps the layout props it had before the page switch.
+  const hideChatTitle = auxiliaryMode === "primary-overlay";
 
   const shellStyle = useMemo(
     () =>
@@ -107,89 +236,147 @@ export function WorkbenchRoot({
     [state.auxiliaryWidth, state.primaryWidth],
   );
 
-  const openSettings = (section?: SettingsSection) => {
-    if (section) onSettingsSection(section);
-    onPage("settings");
-  };
+  // ---- OPEN_SETTINGS dialog shortcut via GlobalSearchOverlay --------------
+  const openSettingsDialog = useSettingsDialogStore((s) => s.openSection);
+
+  // The macOS vs standard WindowChrome variants only differ by a positioning
+  // Props are identical across platforms, so the chrome is rendered once.
+  const windowChrome = (
+    <WindowChrome
+      sidebarOpen={state.primaryOpen}
+      page={page}
+      isDark={isDark}
+      themeMode={themeMode}
+      onPage={onPage}
+      globalSearchOpen={globalSearchOpen}
+      onOpenSearch={() => setGlobalSearchOpen(true)}
+      onToggleSidebar={togglePrimary}
+      sidebarPeeking={sidebarFloating}
+      titleExtrasHidden={hideTitleBarExtras}
+      onSidebarTogglePointerEnter={showPrimaryPeek}
+      onSidebarTogglePointerLeave={schedulePrimaryPeekHide}
+      onToggleTheme={onToggleTheme}
+      auxiliaryOpen={auxiliaryOpen}
+      onToggleAuxiliary={toggleAuxiliary}
+      auxiliaryMode={effectiveAuxiliaryMode}
+      auxiliarySwitching={auxiliarySwitching}
+      // Windows mirrors the contract action in the trailing title-bar controls.
+      // macOS keeps that action in AuxiliaryHeader.
+      onToggleAuxiliaryPrimary={isMacOS ? undefined : toggleAuxiliaryPrimary}
+      onReturnToMain={toggleAuxiliaryPrimary}
+      isMacOS={isMacOS}
+      onDoubleClickTitleBar={isMacOS ? undefined : handleDoubleClickTitleBar}
+    />
+  );
 
   return (
     <PlatformWindow
       platform={platform}
-      primaryOpen={primaryOpen}
-      primaryPeeking={state.primaryPeeking}
-      auxiliaryMode={auxiliaryMode}
+      page={page}
+      primaryOpen={sidebarVisible}
+      primaryPeeking={sidebarFloating}
+      primaryTransition={state.primaryTransition}
+      auxiliaryMode={effectiveAuxiliaryMode}
       auxiliarySwitching={auxiliarySwitching}
+      reviewAcceptance={reviewAcceptance}
       style={shellStyle}
     >
-      <WindowChrome
-        platform={platform}
-        primaryOpen={primaryOpen}
-        primaryPeeking={state.primaryPeeking}
-        auxiliaryMode={auxiliaryMode}
-        isRunning={isRunning}
-        searchOpen={globalSearchOpen}
-        page={page}
-        onPage={onPage}
-        onOpenSettings={openSettings}
-        onTogglePrimary={() => dispatch({ type: "primary.toggle" })}
-        onNewThread={() => void createSession()}
-        onToggleAuxiliary={toggleAuxiliary}
-        onReturnToMain={() => transitionAuxiliary("open")}
-        onToggleAuxiliaryPrimary={() =>
-          transitionAuxiliary(
-            auxiliaryMode === "primary-overlay" ? "open" : "primary-overlay",
-          )
-        }
-        onCloseSearch={() => setGlobalSearchOpen(false)}
-        onPrimaryPointerEnter={showPrimaryPeek}
-        onPrimaryPointerLeave={hidePrimaryPeek}
-      />
-
-      <div
-        className={`workspace workbench-layout ${settingsPage ? "settings-paper-workspace" : ""}`}
-      >
+      {windowChrome}
+      <WorkbenchLayout settingsPage={settingsPage}>
         <PrimarySidebarShell
+          open={sidebarVisible}
+          peeking={sidebarFloating}
           width={state.primaryWidth}
-          open={primaryOpen}
-          peeking={state.primaryPeeking}
+          regionRef={(node) => {
+            layout.primaryRef.current = node;
+          }}
           onPointerEnter={showPrimaryPeek}
-          onPointerLeave={hidePrimaryPeek}
+          onPointerLeave={schedulePrimaryPeekHide}
         >
-          <Sidebar
+          <PrimarySidebar
             page={page}
             onPage={onPage}
-            onOpenSettings={openSettings}
-            onOpenSearch={() => setGlobalSearchOpen(true)}
+            isMacOS={isMacOS}
             settingsSection={settingsSection}
             onSettingsSection={onSettingsSection}
+            pendingPermissionSessionIds={pendingPermissionSessionIds}
           />
         </PrimarySidebarShell>
-
-        {state.primaryOpen && !settingsPage ? (
-          <ResizeHandle target="primary" onPointerDown={startResize} />
-        ) : null}
-
-        <MainWorkspaceShell
-          className={settingsPage ? "settings-paper-main" : ""}
-        >
-          <WorkbenchViewHost
-            page={page}
-            platform={platform}
-            primaryOpen={state.primaryOpen}
-            auxiliaryMode={auxiliaryMode}
-            auxiliaryWidth={state.auxiliaryWidth}
-            auxiliarySwitching={auxiliarySwitching}
-            isRunning={isRunning}
-            settingsSection={settingsSection}
-            permissionRequest={permissionRequest}
-            contentFrameRef={contentFrameRef}
-            onSettingsSection={onSettingsSection}
-            onPermissionRespond={onPermissionRespond}
-            onStartResize={startResize}
-            onAuxiliaryMode={transitionAuxiliary}
+        {leftResizable ? (
+          <ResizeHandle
+            target="primary"
+            ariaLabel="调整左侧边栏宽度"
+            onPointerDown={(event) => startResize("primary", event)}
           />
-        </MainWorkspaceShell>
-      </div>
+        ) : null}
+        <WorkbenchMainColumns
+          regionRef={(node) => {
+            layout.contentFrameRef.current = node;
+          }}
+        >
+          <MainWorkspaceShell
+            settingsPage={settingsPage}
+            obscured={auxiliaryMode === "primary-overlay"}
+          >
+            <WorkbenchViewHost
+              page={page}
+              settingsSection={settingsSection}
+              onSettingsSection={onSettingsSection}
+              isMacOS={isMacOS}
+              sidebarOpen={state.primaryOpen}
+              hideChatTitle={hideChatTitle}
+              auxiliaryObscuresMain={auxiliaryMode === "primary-overlay"}
+              permissionRequest={permissionRequest}
+              onPermissionRespond={onPermissionRespond}
+            />
+          </MainWorkspaceShell>
+
+          <WorkbenchAuxiliaryHost
+            mode={effectiveAuxiliaryMode}
+            width={state.auxiliaryWidth}
+            busy={auxiliarySwitching}
+            onTogglePrimary={toggleAuxiliaryPrimary}
+            onStartResize={startResize}
+            regionRef={(node) => {
+              layout.auxiliaryRef.current = node;
+            }}
+          />
+
+          <KeepAliveWorkbenchView
+            name="schedules"
+            active={false}
+            className="quick-page-overlay-host scheduled-tasks-page-host"
+          >
+            <></>
+          </KeepAliveWorkbenchView>
+
+          <KeepAliveWorkbenchView
+            name="plugins"
+            active={false}
+            className="quick-page-overlay-host plugins-page-host"
+          >
+            <></>
+          </KeepAliveWorkbenchView>
+
+          <KeepAliveWorkbenchView
+            name="replay"
+            active={false}
+            className="quick-page-overlay-host replay-page-host"
+          >
+            <></>
+          </KeepAliveWorkbenchView>
+        </WorkbenchMainColumns>
+      </WorkbenchLayout>
+
+      <WorkbenchOverlayHost>
+        <GlobalSearchOverlay
+          open={globalSearchOpen}
+          onClose={() => setGlobalSearchOpen(false)}
+          onPage={onPage}
+          onOpenSettings={openSettingsDialog}
+        />
+      </WorkbenchOverlayHost>
+      <SettingsDialog />
     </PlatformWindow>
   );
 }

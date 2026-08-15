@@ -5,8 +5,10 @@ export type InputVariant = "default" | "error";
 export type InputSize = "sm" | "md";
 export type InputType = "text" | "password" | "search" | "number";
 
-export interface InputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size" | "type"> {
+export interface InputProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  "size" | "type"
+> {
   variant?: InputVariant;
   inputSize?: InputSize;
   type?: InputType;
@@ -29,7 +31,13 @@ const variantStyles: Record<InputVariant, string> = {
  */
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   (
-    { className, variant = "default", inputSize = "md", type = "text", ...props },
+    {
+      className,
+      variant = "default",
+      inputSize = "md",
+      type = "text",
+      ...props
+    },
     ref,
   ) => {
     const isError = variant === "error";

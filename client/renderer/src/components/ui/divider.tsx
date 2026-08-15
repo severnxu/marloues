@@ -20,7 +20,12 @@ export function Divider({
   const style: React.CSSProperties =
     orientation === "horizontal"
       ? { width: "100%", height: 1, display: "block" }
-      : { height: "100%", width: 1, display: "inline-block", alignSelf: "stretch" };
+      : {
+          height: "100%",
+          width: 1,
+          display: "inline-block",
+          alignSelf: "stretch",
+        };
 
   return (
     <span

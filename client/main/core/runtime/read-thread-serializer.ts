@@ -67,7 +67,8 @@ export function serializeWorkflowThread(
     page: {
       order: "newest_first",
       limit,
-      nextCursor: nextOffset < newestFirstTurns.length ? String(nextOffset) : null,
+      nextCursor:
+        nextOffset < newestFirstTurns.length ? String(nextOffset) : null,
       hasMore: nextOffset < newestFirstTurns.length,
     },
     turns: pageTurns.map(serializeTurn),
@@ -77,6 +78,7 @@ export function serializeWorkflowThread(
 function serializeTurn(turn: WorkflowThreadStoreTurn): WorkflowTurn {
   return {
     id: turn.id,
+    zone: "workspace",
     status: turn.status,
     error: turn.error,
     startedAt: turn.startedAt ?? null,

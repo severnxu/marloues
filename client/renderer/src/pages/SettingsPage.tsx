@@ -1,5 +1,4 @@
-import { SettingsWorkbench } from "@/components/settings/SettingsWorkbench";
-import type { SettingsSection } from "@/components/layout/types";
+import { SettingsWorkbench, type SettingsSection } from "@/components/settings";
 
 export function SettingsPage({
   section,

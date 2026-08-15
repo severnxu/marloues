@@ -12,12 +12,20 @@ export interface NotifyOptions {
   tone?: NotificationTone;
 }
 
-export function notify({ title, description, tone = "info" }: NotifyOptions): void {
+export function notify({
+  title,
+  description,
+  tone = "info",
+}: NotifyOptions): void {
   const shownTitle = truncateText(title, MAX_TITLE_LENGTH);
   const shownDescription = truncateDescription(description);
   const key = `${tone}:${shownTitle}:${shownDescription ?? ""}`;
   const now = Date.now();
-  if (lastNotification?.key === key && now - lastNotification.createdAt < DEDUPE_WINDOW_MS) return;
+  if (
+    lastNotification?.key === key &&
+    now - lastNotification.createdAt < DEDUPE_WINDOW_MS
+  )
+    return;
   lastNotification = { key, createdAt: now };
 
   const options = {
@@ -39,8 +47,12 @@ export function notify({ title, description, tone = "info" }: NotifyOptions): vo
   toast(shownTitle, options);
 }
 
-function truncateDescription(description: string | undefined): string | undefined {
-  return description ? truncateText(description, MAX_DESCRIPTION_LENGTH) : undefined;
+function truncateDescription(
+  description: string | undefined,
+): string | undefined {
+  return description
+    ? truncateText(description, MAX_DESCRIPTION_LENGTH)
+    : undefined;
 }
 
 function truncateText(text: string, maxLength: number): string {

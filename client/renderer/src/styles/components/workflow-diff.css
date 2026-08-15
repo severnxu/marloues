@@ -1,0 +1,169 @@
+/* File-change details shared by chat activity and the auxiliary review panel. */
+
+.workflow-file-change-details {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.workflow-patch-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--raised-1);
+}
+
+.workflow-patch-card-body {
+  min-width: 0;
+  overflow: hidden;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.55;
+}
+
+.workflow-patch-diff-view,
+.workflow-patch-card-body diffs-container {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  --diffs-font-family: var(--font-mono);
+  --diffs-font-size: 12px;
+  --diffs-line-height: 19px;
+}
+
+.workflow-patch-diff-view pre {
+  margin: 0;
+}
+
+.workflow-patch-line {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  padding: 0 var(--space-2);
+  color: var(--text-2);
+}
+
+.workflow-patch-line.add {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.workflow-patch-line.remove {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.workflow-patch-line.meta {
+  background: var(--raised-1);
+  color: var(--text-3);
+}
+
+.workflow-patch-empty {
+  padding: var(--space-2) 10px;
+  color: var(--text-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.workflow-diffs-custom-header {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.workflow-diffs-custom-title {
+  display: inline-flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.workflow-diffs-file-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workflow-diffs-counts {
+  display: inline-flex;
+  flex: none;
+  gap: var(--space-1);
+}
+
+.workflow-diffs-count {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.workflow-diffs-count-add {
+  color: var(--success);
+}
+
+.workflow-diffs-count-delete {
+  color: var(--danger);
+}
+
+.workflow-diffs-custom-actions {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.workflow-diffs-custom-actions button {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-2);
+  padding: 0 7px;
+  font-size: var(--text-xs);
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    background var(--motion-fast) var(--ease),
+    border-color var(--motion-fast) var(--ease),
+    color var(--motion-fast) var(--ease);
+}
+
+.workflow-diffs-custom-actions button:hover,
+.workflow-diffs-custom-actions button:focus-visible {
+  border-color: var(--border-subtle);
+  outline: 0;
+  background: var(--raised-2);
+  color: var(--text-1);
+}
+
+.workflow-diffs-custom-actions button svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.workflow-diffs-custom-actions .workflow-patch-copy {
+  width: 24px;
+  padding: 0;
+}
+
+@media (max-width: 560px) {
+  .workflow-diffs-custom-header {
+    gap: var(--space-2);
+    padding-inline: var(--space-2);
+  }
+}

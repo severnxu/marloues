@@ -1,0 +1,125 @@
+/* Classified execution errors shown within assistant turns. */
+
+.message-error-card {
+  position: relative;
+  display: grid;
+  max-width: 100%;
+  gap: var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--danger) 28%, var(--border));
+  border-radius: var(--radius-md);
+  background: var(--raised-1);
+  color: var(--text-2);
+  padding: 12px 42px 12px 12px;
+}
+
+.message-error-card > .workflow-detail-copy-button {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+}
+
+.message-error-head {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.message-error-head > svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  margin-top: 2px;
+  color: var(--danger);
+}
+
+.message-error-head > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.message-error-head strong {
+  color: var(--text-1);
+  font-size: var(--text-md);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.message-error-head span {
+  color: var(--text-3);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+.message-error-primary {
+  margin: 0 0 0 24px;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.message-error-actions {
+  margin-left: 24px;
+}
+
+.message-error-actions ul {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  list-style: none;
+}
+
+.message-error-actions li {
+  display: flex;
+  min-width: 0;
+  gap: var(--space-2);
+}
+
+.message-error-actions li::before {
+  width: 4px;
+  height: 4px;
+  flex: none;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: var(--danger);
+  content: "";
+  opacity: 0.65;
+}
+
+.message-error-toolhint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0 0 0 24px;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-3);
+  padding-top: var(--space-2);
+  font-size: var(--text-xs);
+  line-height: 1.55;
+}
+
+.message-error-toolhint svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  margin-top: 2px;
+}
+
+@media (max-width: 560px) {
+  .message-error-card {
+    padding: 10px 38px 10px 10px;
+  }
+
+  .message-error-primary,
+  .message-error-actions,
+  .message-error-toolhint {
+    margin-left: 0;
+  }
+}

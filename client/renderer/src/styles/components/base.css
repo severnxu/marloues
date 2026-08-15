@@ -1,0 +1,250 @@
+/* Global renderer reset, motion, typography, and shared keyframes. */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: none !important;
+  transition-delay: 0ms !important;
+}
+
+:root.platform-darwin {
+  --traffic-light-safe-area: 76px;
+  --titlebar-collapse-width: 228px;
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue",
+    "PingFang SC", "Noto Sans SC", sans-serif;
+  --font-code:
+    "SF Mono", ui-monospace, Menlo, "Cascadia Code", Consolas, monospace;
+  --mono: var(--font-code);
+  --font-mono: var(--font-code);
+}
+
+:root.platform-win32 {
+  --font-ui:
+    "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", sans-serif;
+  --font-code: "Cascadia Code", Consolas, "Microsoft YaHei UI", monospace;
+  --font-mono: var(--font-code);
+  --mono: var(--font-code);
+  --control-radius: 6px;
+}
+
+* {
+  box-sizing: border-box;
+  scrollbar-color: auto;
+  scrollbar-width: auto;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background: var(--surface-workspace);
+  color: var(--text-1);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: var(--cursor-control);
+}
+
+.accent {
+  color: var(--accent);
+}
+
+.muted {
+  color: var(--text-2);
+}
+
+.primary {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: var(--control-radius);
+  background: var(--primary-fill);
+  box-shadow: none;
+  color: var(--primary-ink);
+  padding: 7px 11px;
+  font-size: var(--text-xs);
+  font-weight: 650;
+  transition:
+    background-color var(--motion-fast) ease,
+    opacity var(--motion-fast) ease;
+}
+
+.primary:hover {
+  opacity: 0.86;
+}
+
+#marloues-watermark-container {
+  opacity: 0.16;
+}
+
+@keyframes auth-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes dialog-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes overlay-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes status-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes runtime-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes workflow-thinking-shimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+  28%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes workflow-thinking-dot {
+  0%,
+  70%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  35% {
+    opacity: 0.95;
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes typing-dot {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes lightbox-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes model-switch-warning-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes sidebar-update-ready-pulse {
+  to {
+    text-shadow: 0 0 8px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+}
+
+@keyframes sidebar-update-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,954 @@
+/* mcp-list component styles. Theme values come from ../tokens.css. */
+@layer marloues-components.cascade-0172 {
+  @media (max-width: 860px) {
+    .mcp-provider-summary {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 860px) {
+    .mcp-provider-create {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 860px) {
+    .mcp-provider-fields {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 860px) {
+    .mcp-provider-config-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 860px) {
+    .mcp-server-head {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 860px) {
+    .mcp-server-body {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+@layer marloues-components.cascade-0176 {
+  @media (max-width: 860px) {
+    .mcp-server-actions {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  }
+  @media (max-width: 860px) {
+    .mcp-server-actions {
+      justify-content: flex-start;
+    }
+  }
+}
+@layer marloues-components.cascade-0179 {
+  @media (max-width: 860px) {
+    .mcp-server-summary {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  }
+}
+@layer marloues-components.cascade-0180 {
+  .mcp-server-list {
+    display: grid;
+    gap: 10px;
+  }
+}
+@layer marloues-components.cascade-0202 {
+  .mcp-server-meta small {
+    color: var(--component-mcp-list-mcp-server-meta-color-8831035);
+    font-size: 11px;
+    line-height: 1.55;
+  }
+}
+@layer marloues-components.cascade-0203 {
+  .mcp-server-actions button {
+    display: inline-flex;
+    min-height: 32px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: var(--component-mcp-list-mcp-server-actions-border-11c9bf0);
+    border-radius: 8px;
+    background: var(--component-mcp-list-mcp-server-actions-background-ebf2ca6);
+    color: var(--component-mcp-list-mcp-server-actions-color-864a631);
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 650;
+    transition:
+      border-color var(--settings-transition),
+      background var(--settings-transition),
+      color var(--settings-transition);
+  }
+  .mcp-server-actions button:hover {
+    border-color: var(
+      --component-mcp-list-mcp-server-actions-border-color-52cd315
+    );
+    background: var(--component-mcp-list-mcp-server-actions-background-1c8395b);
+  }
+  .mcp-server-actions button:disabled {
+    cursor: not-allowed;
+    color: var(--component-mcp-list-mcp-server-actions-color-ac50fea);
+    opacity: var(--component-mcp-list-mcp-server-actions-opacity-c9951ea);
+  }
+}
+@layer marloues-components.cascade-0205 {
+  .mcp-server-list {
+    gap: 12px;
+  }
+  .mcp-server-card {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+    border: var(--component-mcp-list-mcp-server-card-border-f6501e2);
+    border-radius: 8px;
+    background: var(--component-mcp-list-mcp-server-card-background-532de28);
+    padding: 14px;
+    transition:
+      border-color var(--settings-transition),
+      background var(--settings-transition),
+      box-shadow var(--settings-transition),
+      opacity var(--settings-transition);
+  }
+  .mcp-server-card:hover {
+    border-color: var(
+      --component-mcp-list-mcp-server-card-border-color-de0e414
+    );
+    background: var(--component-mcp-list-mcp-server-card-background-3ac31c3);
+  }
+  .mcp-server-card:focus-within {
+    border-color: var(
+      --component-mcp-list-mcp-server-card-border-color-fcb1292
+    );
+    background: var(--component-mcp-list-mcp-server-card-background-66b0849);
+  }
+  .mcp-server-card.disabled {
+    opacity: var(--component-mcp-list-mcp-server-card-opacity-7ac3d7a);
+  }
+}
+@layer marloues-components.cascade-0207 {
+  .mcp-server-head {
+    display: grid;
+    min-width: 0;
+    gap: 12px;
+  }
+  .mcp-server-body {
+    display: grid;
+    min-width: 0;
+    gap: 12px;
+  }
+  .mcp-server-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+  .mcp-server-identity {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .mcp-server-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: var(--component-mcp-list-mcp-server-dot-background-66454b8);
+    box-shadow: var(--component-mcp-list-mcp-server-dot-box-shadow-fdca454);
+  }
+  .mcp-server-title {
+    display: grid;
+    min-width: 0;
+    gap: 2px;
+  }
+  .mcp-server-title strong {
+    overflow: hidden;
+    color: var(--component-mcp-list-mcp-server-title-color-36f3d22);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 14px;
+    font-weight: 740;
+  }
+  .mcp-server-title small {
+    color: var(--component-mcp-list-mcp-server-title-color-0d1079e);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .mcp-server-dot.ok {
+    background: var(--component-mcp-list-mcp-server-dot-background-586e177);
+    box-shadow: var(--component-mcp-list-mcp-server-dot-box-shadow-fbc9a26);
+  }
+  .mcp-server-dot.running {
+    background: var(--component-mcp-list-mcp-server-dot-background-13b1871);
+    box-shadow: var(--component-mcp-list-mcp-server-dot-box-shadow-54feb9d);
+    animation: pulse 1.1s ease-in-out infinite;
+  }
+  .mcp-server-dot.error {
+    background: var(--component-mcp-list-mcp-server-dot-background-ac6286b);
+    box-shadow: var(--component-mcp-list-mcp-server-dot-box-shadow-edd3fc0);
+  }
+  .mcp-server-dot.disconnected {
+    background: var(--component-mcp-list-mcp-server-dot-background-502067f);
+    box-shadow: var(--component-mcp-list-mcp-server-dot-box-shadow-5fa19a3);
+  }
+  .mcp-server-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 7px;
+  }
+  .mcp-server-actions .icon-button {
+    width: 32px;
+    padding-right: 0;
+    padding-left: 0;
+  }
+  .mcp-server-body {
+    grid-template-columns: minmax(180px, 0.36fr) minmax(0, 1fr);
+    align-items: stretch;
+    border-top: var(--component-mcp-list-mcp-server-body-border-top-f41f609);
+    padding-top: 12px;
+  }
+}
+@layer marloues-components.cascade-0209 {
+  .mcp-server-summary {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .mcp-server-summary small {
+    color: var(--component-mcp-list-mcp-server-summary-color-8e6b634);
+    font-size: 11px;
+  }
+}
+@layer marloues-components.cascade-0213 {
+  .mcp-server-rail {
+    min-width: 0;
+    border: var(--component-mcp-list-mcp-server-rail-border-fef760c);
+    border-radius: 8px;
+    background: var(--component-mcp-list-mcp-server-rail-background-39a36de);
+  }
+  .mcp-server-rail {
+    display: grid;
+    align-content: start;
+    gap: 12px;
+    padding: 12px;
+  }
+}
+@layer marloues-components.cascade-0215 {
+  .mcp-rail-list {
+    display: grid;
+    gap: 6px;
+  }
+  .mcp-rail-empty {
+    border: var(--component-mcp-list-mcp-rail-empty-border-deb83c4);
+    border-radius: 8px;
+    color: var(--component-mcp-list-mcp-rail-empty-color-97fd5a0);
+    padding: 18px 12px;
+    text-align: center;
+    font-size: 12px;
+  }
+  .mcp-rail-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    min-height: 54px;
+    border: var(--component-mcp-list-mcp-rail-item-border-0065877);
+    border-radius: 8px;
+    background: var(--component-mcp-list-mcp-rail-item-background-93eabf2);
+    color: var(--component-mcp-list-mcp-rail-item-color-507b513);
+    padding: 9px 10px;
+    text-align: left;
+    transition:
+      border-color var(--settings-transition),
+      background var(--settings-transition),
+      opacity var(--settings-transition);
+  }
+  .mcp-rail-item:hover {
+    border-color: var(--component-mcp-list-mcp-rail-item-border-color-6073fe7);
+    background: var(--component-mcp-list-mcp-rail-item-background-b18c6c4);
+  }
+  .mcp-rail-item.active {
+    border-color: var(--component-mcp-list-mcp-rail-item-border-color-a724e83);
+    background: var(--component-mcp-list-mcp-rail-item-background-7427327);
+  }
+  .mcp-rail-item.disabled {
+    opacity: var(--component-mcp-list-mcp-rail-item-opacity-5803baa);
+  }
+  .mcp-rail-item span:last-child {
+    display: grid;
+    min-width: 0;
+    gap: 2px;
+  }
+  .mcp-rail-item strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mcp-rail-item small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mcp-rail-item strong {
+    color: var(--component-mcp-list-mcp-rail-item-color-4535323);
+    font-size: 12px;
+    font-weight: 720;
+  }
+  .mcp-rail-item small {
+    color: var(--component-mcp-list-mcp-rail-item-color-e4e2c8e);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+}
+@layer marloues-components.cascade-0229 {
+  .mcp-side-dock button {
+    display: inline-flex;
+    min-height: 38px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: var(--component-mcp-list-mcp-side-dock-border-7f61257);
+    border-radius: 8px;
+    background: var(--component-mcp-list-mcp-side-dock-background-5a6fa3a);
+    color: var(--component-mcp-list-mcp-side-dock-color-5e9423a);
+    padding: 9px 12px;
+    font-size: 12px;
+    font-weight: 730;
+    transition:
+      border-color var(--settings-transition),
+      background var(--settings-transition),
+      color var(--settings-transition),
+      transform var(--settings-transition);
+  }
+  .mcp-side-dock button:hover {
+    border-color: var(--component-mcp-list-mcp-side-dock-border-color-3194dce);
+    background: var(--component-mcp-list-mcp-side-dock-background-c06e1ed);
+    transform: translateY(-1px);
+  }
+}
+@layer marloues-components.cascade-0231 {
+  .mcp-server-stack {
+    min-width: 0;
+    border: var(--component-mcp-list-mcp-server-stack-border-b3689dc);
+    border-radius: 8px;
+    background: var(--component-mcp-list-mcp-server-stack-background-2afd5fc);
+    box-shadow: var(--component-mcp-list-mcp-server-stack-box-shadow-65a9aef);
+  }
+  .mcp-side-dock {
+    min-width: 0;
+    border: var(--component-mcp-list-mcp-side-dock-border-b5d957a);
+    border-radius: 8px;
+    background: var(--component-mcp-list-mcp-side-dock-background-35846fe);
+    box-shadow: var(--component-mcp-list-mcp-side-dock-box-shadow-d01d078);
+  }
+  .mcp-server-stack {
+    display: grid;
+    align-content: start;
+    gap: 8px;
+    padding: 12px;
+  }
+  .mcp-side-dock {
+    display: grid;
+    align-content: start;
+    gap: 8px;
+    padding: 12px;
+  }
+}
+@layer marloues-components.cascade-0235 {
+  .mcp-server-tile {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    min-height: 62px;
+    border: var(--component-mcp-list-mcp-server-tile-border-f814d12);
+    border-radius: 8px;
+    background: var(--component-mcp-list-mcp-server-tile-background-48b2d9f);
+    color: var(--component-mcp-list-mcp-server-tile-color-f047aac);
+    padding: 10px;
+    text-align: left;
+    transition:
+      border-color var(--settings-transition),
+      background var(--settings-transition),
+      opacity var(--settings-transition),
+      transform var(--settings-transition);
+  }
+  .mcp-server-tile:hover {
+    border-color: var(
+      --component-mcp-list-mcp-server-tile-border-color-c32a7ad
+    );
+    background: var(--component-mcp-list-mcp-server-tile-background-4b6a501);
+    transform: translateX(2px);
+  }
+  .mcp-server-tile.active {
+    border-color: var(
+      --component-mcp-list-mcp-server-tile-border-color-2aea98d
+    );
+    background: var(--component-mcp-list-mcp-server-tile-background-d02accd);
+    transform: translateX(2px);
+  }
+  .mcp-server-tile.disabled {
+    opacity: var(--component-mcp-list-mcp-server-tile-opacity-cd5a02a);
+  }
+}
+@layer marloues-components.cascade-0242 {
+  .mcp-side-dock > button {
+    justify-content: flex-start;
+    min-height: 58px;
+    text-align: left;
+  }
+  .mcp-side-dock > button span {
+    display: grid;
+    gap: 2px;
+  }
+  .mcp-side-dock > button strong {
+    color: var(--component-mcp-list-mcp-side-dock-color-028985d);
+    font-size: 12px;
+  }
+}
+@layer marloues-components.cascade-0243 {
+  .mcp-side-dock > button small {
+    color: var(--component-mcp-list-mcp-side-dock-color-80a7a5e);
+    font-size: 11px;
+  }
+}
+@layer marloues-components.cascade-0246 {
+  .mcp-provider-page {
+    display: grid;
+    gap: 14px;
+  }
+  .mcp-provider-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+    gap: 12px;
+  }
+  .mcp-provider-summary > span {
+    display: grid;
+    min-height: 68px;
+    min-width: 0;
+    align-content: center;
+    gap: 7px;
+    border: var(--component-mcp-list-mcp-provider-summary-border-cd20081);
+    border-radius: 8px;
+    background: var(
+      --component-mcp-list-mcp-provider-summary-background-14af648
+    );
+    padding: 13px 15px;
+  }
+  .mcp-provider-summary strong {
+    color: var(--component-mcp-list-mcp-provider-summary-color-a6d872d);
+    font-size: 20px;
+    line-height: 1;
+    font-weight: 720;
+  }
+  .mcp-provider-summary small {
+    order: -1;
+    color: var(--component-mcp-list-mcp-provider-summary-color-3bb2a66);
+    font-size: 11px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+}
+@layer marloues-components.cascade-0248 {
+  .mcp-provider-create {
+    display: grid;
+    gap: 12px;
+    border: var(--component-mcp-list-mcp-provider-create-border-07907fa);
+    border-radius: 8px;
+    background: var(
+      --component-mcp-list-mcp-provider-create-background-3bb8b0e
+    );
+    padding: 13px;
+  }
+}
+@layer marloues-components.cascade-0252 {
+  .mcp-provider-create-actions {
+    grid-area: actions;
+    align-self: end;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    gap: 8px;
+    border-left: var(
+      --component-mcp-list-mcp-provider-create-actions-border-left-b9c4adf
+    );
+    padding-left: 12px;
+  }
+}
+@layer marloues-components.cascade-0254 {
+  .mcp-provider-row.disabled {
+    opacity: var(--component-mcp-list-mcp-provider-row-opacity-3e758b6);
+  }
+}
+@layer marloues-components.cascade-0258 {
+  .mcp-provider-row .icon-button {
+    width: 32px;
+    min-height: 32px;
+    padding: 0;
+  }
+  .mcp-provider-body {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    background: var(--component-mcp-list-mcp-provider-body-background-db8e993);
+    padding: 14px;
+  }
+}
+@layer marloues-components.cascade-0260 {
+  .mcp-provider-fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  .mcp-provider-fields input {
+    min-height: 34px;
+    font-size: 12px;
+  }
+  .mcp-provider-fields .mcp-args-builder {
+    display: grid;
+    min-width: 0;
+    gap: 7px;
+    color: var(--component-mcp-list-mcp-provider-fields-color-ab3360a);
+    font-size: 12px;
+    font-weight: 650;
+  }
+}
+@layer marloues-components.cascade-0262 {
+  .mcp-provider-tools {
+    display: grid;
+    align-content: start;
+    gap: 10px;
+    min-width: 0;
+    border-top: var(--component-mcp-list-mcp-provider-tools-border-top-a084a79);
+    padding-top: 11px;
+  }
+}
+@layer marloues-components.cascade-0264 {
+  .mcp-provider-empty-tools {
+    display: grid;
+    min-height: 84px;
+    place-items: center;
+    align-content: center;
+    gap: 4px;
+    border: var(--component-mcp-list-mcp-provider-empty-tools-border-776ebc2);
+    border-radius: 8px;
+    color: var(--component-mcp-list-mcp-provider-empty-tools-color-87e59c3);
+    text-align: center;
+    padding: 12px;
+  }
+  .mcp-provider-empty-tools strong {
+    color: var(--component-mcp-list-mcp-provider-empty-tools-color-aa84d7c);
+    font-size: 12px;
+    font-weight: 680;
+  }
+  .mcp-provider-empty-tools small {
+    max-width: 220px;
+    color: var(--component-mcp-list-mcp-provider-empty-tools-color-7ee9e6e);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+}
+@layer marloues-components.cascade-0268 {
+  @media (max-width: 860px) {
+    .mcp-provider-summary {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+@layer marloues-components.cascade-0269 {
+  @media (max-width: 860px) {
+    .mcp-provider-create {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 860px) {
+    .mcp-provider-fields {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 860px) {
+    .mcp-provider-body {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+@layer marloues-components.cascade-0273 {
+  @media (max-width: 860px) {
+    .mcp-provider-create-actions {
+      border-left: 0;
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+      padding-left: 0;
+    }
+  }
+  @media (max-width: 560px) {
+    .mcp-provider-create-actions {
+      justify-content: flex-start;
+    }
+  }
+}
+@layer marloues-components.cascade-0283 {
+  .mcp-side-dock button {
+    min-height: 36px;
+    border-color: var(--component-mcp-list-mcp-side-dock-border-color-8980025);
+    box-shadow: var(--component-mcp-list-mcp-side-dock-box-shadow-78a3592);
+  }
+  .mcp-side-dock button:disabled {
+    cursor: not-allowed;
+    opacity: var(--component-mcp-list-mcp-side-dock-opacity-9c59219);
+    transform: none;
+  }
+}
+@layer marloues-components.cascade-0285 {
+  .mcp-server-stack {
+    gap: 9px;
+    padding: 11px;
+  }
+  .mcp-side-dock {
+    gap: 9px;
+    padding: 11px;
+  }
+}
+@layer marloues-components.cascade-0287 {
+  .mcp-server-tile {
+    position: relative;
+    min-height: 60px;
+    border-color: var(
+      --component-mcp-list-mcp-server-tile-border-color-3485d60
+    );
+    padding: 10px 10px 10px 11px;
+  }
+  .mcp-server-tile::before {
+    position: absolute;
+    top: 12px;
+    bottom: 12px;
+    left: 0;
+    width: 3px;
+    border-radius: 0 999px 999px 0;
+    background: var(--component-mcp-list-mcp-server-tile-background-86e7208);
+    content: "";
+  }
+  .mcp-server-tile:hover {
+    transform: none;
+  }
+  .mcp-server-tile.active {
+    transform: none;
+  }
+  .mcp-server-tile.active {
+    border-color: var(
+      --component-mcp-list-mcp-server-tile-border-color-2aea98d
+    );
+    background: var(--component-mcp-list-mcp-server-tile-background-d02accd);
+  }
+  .mcp-server-tile.active::before {
+    background: var(--component-mcp-list-mcp-server-tile-background-23a4aed);
+  }
+}
+@layer marloues-components.cascade-0289 {
+  .mcp-server-tile.disabled .mcp-tile-meta {
+    border-color: var(
+      --component-mcp-list-mcp-server-tile-border-color-89361d8
+    );
+    background: var(--component-mcp-list-mcp-server-tile-background-275f091);
+    color: var(--component-mcp-list-mcp-server-tile-color-9748862);
+  }
+}
+@layer marloues-components.cascade-0294 {
+  .mcp-side-dock > button {
+    min-height: 57px;
+  }
+}
+/* Theme token bindings. The dark theme falls back to the component layer. */
+.mcp-server-card {
+  border-color: var(
+    --theme-mcp-list-mcp-server-card-border-color-6bd9ae2,
+    revert-layer
+  );
+  background: var(
+    --theme-mcp-list-mcp-server-card-background-be75ec3,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-mcp-list-mcp-server-card-box-shadow-97343f2,
+    revert-layer
+  );
+  color: var(--theme-mcp-list-mcp-server-card-color-c180fd6, revert-layer);
+}
+.mcp-server-meta {
+  border-color: var(
+    --theme-mcp-list-mcp-server-meta-border-color-52996a1,
+    revert-layer
+  );
+  background: var(
+    --theme-mcp-list-mcp-server-meta-background-756e469,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-mcp-list-mcp-server-meta-box-shadow-ddfdb1c,
+    revert-layer
+  );
+  color: var(--theme-mcp-list-mcp-server-meta-color-a73c1cc, revert-layer);
+}
+.mcp-server-summary small {
+  color: var(--theme-mcp-list-mcp-server-summary-color-d216207, revert-layer);
+}
+.mcp-server-rail {
+  border-color: var(
+    --theme-mcp-list-mcp-server-rail-border-color-a573377,
+    revert-layer
+  );
+  background: var(
+    --theme-mcp-list-mcp-server-rail-background-9e6be94,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-mcp-list-mcp-server-rail-box-shadow-5650c0a,
+    revert-layer
+  );
+  color: var(--theme-mcp-list-mcp-server-rail-color-d82addb, revert-layer);
+}
+.mcp-rail-item:hover {
+  background: var(
+    --theme-mcp-list-mcp-rail-item-background-60c1115,
+    revert-layer
+  );
+  border-color: var(
+    --theme-mcp-list-mcp-rail-item-border-color-7b9ae9a,
+    revert-layer
+  );
+  background: var(
+    --theme-mcp-list-mcp-rail-item-background-60c1115,
+    revert-layer
+  ) !important;
+  color: var(--theme-mcp-list-mcp-rail-item-color-7353203, revert-layer);
+  box-shadow: var(
+    --theme-mcp-list-mcp-rail-item-box-shadow-a60955a,
+    revert-layer
+  );
+}
+.mcp-rail-item.active {
+  background: var(
+    --theme-mcp-list-mcp-rail-item-background-eeb78ee,
+    revert-layer
+  );
+  border-color: var(
+    --theme-mcp-list-mcp-rail-item-border-color-166f98b,
+    revert-layer
+  );
+  background: var(
+    --theme-mcp-list-mcp-rail-item-background-eeb78ee,
+    revert-layer
+  ) !important;
+  color: var(--theme-mcp-list-mcp-rail-item-color-932221e, revert-layer);
+  box-shadow: var(
+    --theme-mcp-list-mcp-rail-item-box-shadow-84a8396,
+    revert-layer
+  );
+}
+.mcp-server-card:hover {
+  background: var(
+    --theme-mcp-list-mcp-server-card-background-af5a70d,
+    revert-layer
+  );
+  border-color: var(
+    --theme-mcp-list-mcp-server-card-border-color-f2ac931,
+    revert-layer
+  );
+  color: var(--theme-mcp-list-mcp-server-card-color-5bb9d37, revert-layer);
+  box-shadow: var(
+    --theme-mcp-list-mcp-server-card-box-shadow-cae842f,
+    revert-layer
+  );
+}
+.mcp-server-card:focus-within {
+  background: var(
+    --theme-mcp-list-mcp-server-card-background-8de95d1,
+    revert-layer
+  );
+  border-color: var(
+    --theme-mcp-list-mcp-server-card-border-color-404ded2,
+    revert-layer
+  );
+  color: var(--theme-mcp-list-mcp-server-card-color-382b7b5, revert-layer);
+  box-shadow: var(
+    --theme-mcp-list-mcp-server-card-box-shadow-7c8e10e,
+    revert-layer
+  );
+}
+.mcp-server-stack {
+  background: var(
+    --theme-mcp-list-mcp-server-stack-background-375cbd5,
+    revert-layer
+  );
+  border-color: var(
+    --theme-mcp-list-mcp-server-stack-border-color-7acc0ee,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-mcp-list-mcp-server-stack-box-shadow-13f8096,
+    revert-layer
+  );
+  color: var(--theme-mcp-list-mcp-server-stack-color-2b2f999, revert-layer);
+}
+.mcp-side-dock {
+  background: var(
+    --theme-mcp-list-mcp-side-dock-background-36a2e5a,
+    revert-layer
+  );
+  border-color: var(
+    --theme-mcp-list-mcp-side-dock-border-color-cd6cfb1,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-mcp-list-mcp-side-dock-box-shadow-e2a179c,
+    revert-layer
+  );
+  color: var(--theme-mcp-list-mcp-side-dock-color-686eed1, revert-layer);
+}
+.mcp-side-dock button {
+  background: var(
+    --theme-mcp-list-mcp-side-dock-background-660f4c0,
+    revert-layer
+  );
+  border-color: var(
+    --theme-mcp-list-mcp-side-dock-border-color-27708dc,
+    revert-layer
+  );
+  color: var(--theme-mcp-list-mcp-side-dock-color-3348043, revert-layer);
+}
+.mcp-provider-create {
+  border-color: var(
+    --theme-mcp-list-mcp-provider-create-border-color-48d3d64,
+    revert-layer
+  );
+  background: var(
+    --theme-mcp-list-mcp-provider-create-background-b0fb9f1,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-mcp-list-mcp-provider-create-box-shadow-4ffcd23,
+    revert-layer
+  );
+  color: var(--theme-mcp-list-mcp-provider-create-color-24dd594, revert-layer);
+}
+.mcp-provider-summary > span {
+  border-color: var(
+    --theme-mcp-list-mcp-provider-summary-border-color-5259099,
+    revert-layer
+  );
+  background: var(
+    --theme-mcp-list-mcp-provider-summary-background-adb7d6c,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-mcp-list-mcp-provider-summary-box-shadow-4bcc475,
+    revert-layer
+  );
+  color: var(--theme-mcp-list-mcp-provider-summary-color-777247e, revert-layer);
+}
+.mcp-provider-tools {
+  border-top-color: var(
+    --theme-mcp-list-mcp-provider-tools-border-top-color-b7685f4,
+    revert-layer
+  );
+}
+.mcp-provider-create-actions {
+  border-left-color: var(
+    --theme-mcp-list-mcp-provider-create-actions-border-left-color-5711bcf,
+    revert-layer
+  );
+}
+.mcp-provider-empty-tools {
+  border-color: var(
+    --theme-mcp-list-mcp-provider-empty-tools-border-color-12d5f35,
+    revert-layer
+  );
+  background: var(
+    --theme-mcp-list-mcp-provider-empty-tools-background-2eb3f8f,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-mcp-list-mcp-provider-empty-tools-box-shadow-cbcc512,
+    revert-layer
+  );
+  color: var(
+    --theme-mcp-list-mcp-provider-empty-tools-color-8d54e81,
+    revert-layer
+  );
+}
+.mcp-server-tile.active {
+  border-color: var(
+    --theme-mcp-list-mcp-server-tile-border-color-fe6b12d,
+    revert-layer
+  );
+  background: var(
+    --theme-mcp-list-mcp-server-tile-background-b6a05e6,
+    revert-layer
+  );
+  background: var(
+    --theme-mcp-list-mcp-server-tile-background-b6a05e6,
+    revert-layer
+  ) !important;
+  color: var(--theme-mcp-list-mcp-server-tile-color-0111e68, revert-layer);
+  box-shadow: var(
+    --theme-mcp-list-mcp-server-tile-box-shadow-d4ac5a3,
+    revert-layer
+  );
+}
+.mcp-server-actions button:hover {
+  border-color: var(
+    --theme-mcp-list-mcp-server-actions-border-color-a221f5e,
+    revert-layer
+  );
+  background: var(
+    --theme-mcp-list-mcp-server-actions-background-a8d89ac,
+    revert-layer
+  );
+  color: var(--theme-mcp-list-mcp-server-actions-color-c7aefee, revert-layer);
+  box-shadow: var(
+    --theme-mcp-list-mcp-server-actions-box-shadow-fc2c6bf,
+    revert-layer
+  );
+}
+.mcp-server-tile:hover {
+  border-color: var(
+    --theme-mcp-list-mcp-server-tile-border-color-63d6f95,
+    revert-layer
+  );
+  background: var(
+    --theme-mcp-list-mcp-server-tile-background-6d10583,
+    revert-layer
+  ) !important;
+  color: var(--theme-mcp-list-mcp-server-tile-color-d27b966, revert-layer);
+  box-shadow: var(
+    --theme-mcp-list-mcp-server-tile-box-shadow-8d432cd,
+    revert-layer
+  );
+}
+.mcp-provider-fields input {
+  border-color: var(
+    --theme-mcp-list-mcp-provider-fields-border-color-b50d143,
+    revert-layer
+  );
+  background: var(
+    --theme-mcp-list-mcp-provider-fields-background-87fb8fe,
+    revert-layer
+  );
+  color: var(--theme-mcp-list-mcp-provider-fields-color-9d061cb, revert-layer);
+}
+.mcp-server-actions button {
+  border-color: var(
+    --theme-mcp-list-mcp-server-actions-border-color-76db126,
+    revert-layer
+  );
+  background: var(
+    --theme-mcp-list-mcp-server-actions-background-54d8e2c,
+    revert-layer
+  );
+  color: var(--theme-mcp-list-mcp-server-actions-color-3d9f09a, revert-layer);
+}
