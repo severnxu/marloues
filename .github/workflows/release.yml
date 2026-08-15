@@ -82,6 +82,9 @@ jobs:
         run: ${{ matrix.command }}
         env:
           MARLOUES_BUILD_ENV: production
+          MARLOUES_CLIENT_UPDATE_PROVIDER: github
+          MARLOUES_HOT_UPDATE_URL: ${{ vars.MARLOUES_HOT_UPDATE_URL }}
+          MARLOUES_REQUIRE_HOT_UPDATE: "1"
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
