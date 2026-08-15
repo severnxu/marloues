@@ -28,7 +28,9 @@ async function launchApp() {
   return { app, window };
 }
 
-async function dismissOnboarding(window: Awaited<ReturnType<typeof launchApp>>["window"]): Promise<void> {
+async function dismissOnboarding(
+  window: Awaited<ReturnType<typeof launchApp>>["window"],
+): Promise<void> {
   const overlay = window.locator(".onboarding-overlay");
   if (!(await overlay.isVisible().catch(() => false))) return;
   await overlay.getByRole("button", { name: "开始使用" }).click();
@@ -52,8 +54,19 @@ test("settings page opens from sidebar user menu", async () => {
     await expect(window.locator(".app-shell")).toBeVisible();
     await dismissOnboarding(window);
     await window.getByTitle("用户信息").click();
-    await window.getByRole("dialog", { name: "用户信息" }).getByRole("button", { name: "设置" }).click();
+    await window
+      .getByRole("dialog", { name: "用户信息" })
+      .getByRole("button", { name: "设置" })
+      .click();
     await expect(window.locator(".settings-sidebar")).toBeVisible();
+    await window.locator(".settings-side-nav button").last().click();
+    await expect(window.locator(".update-settings")).toBeVisible();
+    await expect(
+      window.locator(".update-settings .settings-stat-card"),
+    ).toHaveCount(3);
+    await expect(
+      window.locator(".update-settings .settings-switch"),
+    ).toHaveCount(3);
   } finally {
     await app.close();
   }

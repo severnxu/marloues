@@ -49,6 +49,19 @@ import {
 import { exportDiagnostics } from "../services/diagnostics-service";
 import { getAuthStatus, logout, openAuthPage } from "../services/auth-service";
 import {
+  applyUpdatePreferences,
+  checkForUpdatesManual,
+  downloadUpdateNow,
+  getUpdateState,
+  installUpdateNow,
+} from "../services/auto-update-service";
+import {
+  getUpdatePreferences,
+  saveUpdatePreferences,
+} from "../services/update-preferences-service";
+import { getAppVersionInfo } from "../hot-update/package-store";
+import { markRendererReady } from "../hot-update/renderer-controller";
+import {
   listEndpointModels,
   testEndpointModel,
   testEndpointProfile,
@@ -1463,7 +1476,25 @@ export function registerHandlers(): void {
   // ---------- App ----------
 
   ipcMain.handle(IPC.APP_GET_VERSION, () => app.getVersion());
+  ipcMain.handle(IPC.APP_GET_VERSION_INFO, () => getAppVersionInfo());
+  ipcMain.handle(IPC.APP_RENDERER_READY, (_event, payload: unknown) =>
+    markRendererReady(payload),
+  );
   ipcMain.handle(IPC.APP_EXPORT_DIAGNOSTICS, () => exportDiagnostics());
+
+  ipcMain.handle(IPC.UPDATE_GET_STATE, () => getUpdateState());
+  ipcMain.handle(IPC.UPDATE_GET_PREFERENCES, () => getUpdatePreferences());
+  ipcMain.handle(IPC.UPDATE_SAVE_PREFERENCES, (_event, value: unknown) => {
+    const previous = getUpdatePreferences();
+    const preferences = saveUpdatePreferences(value);
+    applyUpdatePreferences(preferences, {
+      channelChanged: previous.channel !== preferences.channel,
+    });
+    return preferences;
+  });
+  ipcMain.handle(IPC.UPDATE_CHECK, () => checkForUpdatesManual());
+  ipcMain.handle(IPC.UPDATE_DOWNLOAD, () => downloadUpdateNow());
+  ipcMain.handle(IPC.UPDATE_INSTALL_NOW, () => installUpdateNow());
 
   // ---------- Window ----------
 

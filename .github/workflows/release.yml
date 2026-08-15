@@ -45,11 +45,16 @@ jobs:
             artifact-path: |
               client/release/*.AppImage
               client/release/*.deb
+              client/release/*.blockmap
+              client/release/latest-linux.yml
           - platform: Windows
             runner: windows-2025
             command: npm run package:win
             artifact: marloues-windows
-            artifact-path: client/release/*.exe
+            artifact-path: |
+              client/release/*.exe
+              client/release/*.blockmap
+              client/release/latest.yml
           - platform: macOS
             runner: macos-15
             command: npm run package:mac
@@ -57,6 +62,8 @@ jobs:
             artifact-path: |
               client/release/*.dmg
               client/release/*.zip
+              client/release/*.blockmap
+              client/release/latest-mac.yml
 
     steps:
       - name: Checkout
@@ -74,6 +81,7 @@ jobs:
       - name: Build installers
         run: ${{ matrix.command }}
         env:
+          MARLOUES_BUILD_ENV: production
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}

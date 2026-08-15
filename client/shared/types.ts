@@ -1,7 +1,15 @@
 import type { WorkflowReadThreadResponse } from "./workflow-read-thread-contract";
+import type {
+  AppVersionInfo,
+  RendererReadyInfo,
+  RendererReadyReceipt,
+  UpdatePreferences,
+  UpdateState,
+} from "./hot-update";
 
 /** Stable code for failures that would otherwise persist an API key without OS-backed encryption. */
-export const SECRET_ENCRYPTION_UNAVAILABLE_CODE = "SECRET_ENCRYPTION_UNAVAILABLE";
+export const SECRET_ENCRYPTION_UNAVAILABLE_CODE =
+  "SECRET_ENCRYPTION_UNAVAILABLE";
 
 /** Recognizes the error after Electron has serialized it across IPC. */
 export function isSecretEncryptionUnavailableError(error: unknown): boolean {
@@ -636,7 +644,18 @@ export interface MarlouesAPI {
   app: {
     platform: NodeJS.Platform;
     getVersion(): Promise<string>;
+    getVersionInfo(): Promise<AppVersionInfo>;
+    markRendererReady(info: RendererReadyInfo): Promise<RendererReadyReceipt>;
     exportDiagnostics(): Promise<string | null>;
+  };
+  update: {
+    getState(): Promise<UpdateState>;
+    getPreferences(): Promise<UpdatePreferences>;
+    savePreferences(preferences: UpdatePreferences): Promise<UpdatePreferences>;
+    check(): Promise<UpdateState>;
+    download(): Promise<UpdateState>;
+    installNow(): Promise<void>;
+    onState(callback: (state: UpdateState) => void): () => void;
   };
   window: {
     minimize(): void;
@@ -749,7 +768,16 @@ export const IPC = {
   AUTH_LOGOUT: "auth:logout",
   AUTH_STATUS_CHANGED: "auth:status-changed",
   APP_GET_VERSION: "app:get-version",
+  APP_GET_VERSION_INFO: "app:get-version-info",
+  APP_RENDERER_READY: "app:renderer-ready",
   APP_EXPORT_DIAGNOSTICS: "app:export-diagnostics",
+  UPDATE_GET_STATE: "update:get-state",
+  UPDATE_GET_PREFERENCES: "update:get-preferences",
+  UPDATE_SAVE_PREFERENCES: "update:save-preferences",
+  UPDATE_CHECK: "update:check",
+  UPDATE_DOWNLOAD: "update:download",
+  UPDATE_INSTALL_NOW: "update:install-now",
+  UPDATE_STATE: "update:state",
   WINDOW_MINIMIZE: "window:minimize",
   WINDOW_MAXIMIZE: "window:maximize",
   WINDOW_CLOSE: "window:close",
