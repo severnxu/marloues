@@ -1,5 +1,4 @@
 import {
-  ArchiveRestore,
   Blocks,
   CalendarClock,
   SquarePen,
@@ -8,7 +7,7 @@ import {
 import type { Page } from "../types";
 
 interface QuickAccessEntry {
-  id: "schedules" | "plugins" | "replay";
+  id: "schedules" | "plugins";
   label: string;
   page: Page;
   icon: LucideIcon;
@@ -22,26 +21,19 @@ const QUICK_ACCESS_ENTRIES: readonly QuickAccessEntry[] = [
     icon: CalendarClock,
   },
   { id: "plugins", label: "插件", page: "plugins", icon: Blocks },
-  { id: "replay", label: "会话回放", page: "replay", icon: ArchiveRestore },
 ];
 
 export function QuickAccessZone({
   page,
   isMacOS,
-  showReplay = true,
   onNewConversation,
   onPage,
 }: {
   page: Page;
   isMacOS: boolean;
-  showReplay?: boolean;
   onNewConversation: () => void | Promise<void>;
   onPage: (page: Page) => void;
 }) {
-  const entries = showReplay
-    ? QUICK_ACCESS_ENTRIES
-    : QUICK_ACCESS_ENTRIES.filter((entry) => entry.id !== "replay");
-
   return (
     <nav
       className="sidebar-command-list quick-access-zone"
@@ -58,7 +50,7 @@ export function QuickAccessZone({
         <kbd>{isMacOS ? "⌘N" : "Ctrl+N"}</kbd>
       </button>
 
-      {entries.map((entry) => {
+      {QUICK_ACCESS_ENTRIES.map((entry) => {
         const Icon = entry.icon;
         const active = page === entry.page;
         return (

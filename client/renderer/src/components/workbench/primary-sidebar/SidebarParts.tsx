@@ -425,7 +425,7 @@ export function SessionContextMenu({
       </button>
       <button onClick={() => onExportMarloues(session)}>
         <ArchiveRestore size={14} />
-        导出 .marloues 会话包
+        导出为 Markdown
       </button>
       <button className="danger" onClick={() => onDelete(session)}>
         <Trash2 size={14} />

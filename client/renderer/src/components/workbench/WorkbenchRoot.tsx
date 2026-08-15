@@ -357,14 +357,6 @@ export function WorkbenchRoot({
           >
             <></>
           </KeepAliveWorkbenchView>
-
-          <KeepAliveWorkbenchView
-            name="replay"
-            active={false}
-            className="quick-page-overlay-host replay-page-host"
-          >
-            <></>
-          </KeepAliveWorkbenchView>
         </WorkbenchMainColumns>
       </WorkbenchLayout>
 

@@ -44,14 +44,14 @@ describe("workbench region contracts", () => {
 
   it("keeps inactive page content mounted", () => {
     const markup = renderToStaticMarkup(
-      <KeepAliveWorkbenchView name="replay" active={false}>
-        <span>replay-state</span>
+      <KeepAliveWorkbenchView name="plugins" active={false}>
+        <span>plugins-state</span>
       </KeepAliveWorkbenchView>,
     );
 
-    expect(markup).toContain('data-view="replay"');
+    expect(markup).toContain('data-view="plugins"');
     expect(markup).toContain("hidden");
-    expect(markup).toContain("replay-state");
+    expect(markup).toContain("plugins-state");
   });
 
   it("does not remove product chrome in acceptance review mode", () => {
