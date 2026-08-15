@@ -17,12 +17,21 @@ import type {
 } from "@shared/agent-runtime";
 import type {
   AgentSettings,
+  AgentPermissionMode,
   MemoryRecallRecord,
   ModelOption,
   TokenUsage,
 } from "@shared/types";
-import { queryClaude, type ClaudeQuery } from "../sdk/claude-sdk";
-import { getAgentSettings, buildSdkEnv } from "../../services/config-service";
+import {
+  queryClaude,
+  forkClaudeSession,
+  type ClaudeQuery,
+} from "../sdk/claude-sdk";
+import {
+  getAgentSettings,
+  saveAgentSettings,
+  buildSdkEnv,
+} from "../../services/config-service";
 import { recordMcpRuntimeStatus } from "../../services/mcp-service";
 import { evaluateContextPolicy } from "../context/context-policy";
 import { resolveModelProvider } from "../config/model-provider";
@@ -687,9 +696,7 @@ function readNumber(value: unknown): number | undefined {
     : undefined;
 }
 
-export function normalizeContextUsage(
-  value: unknown,
-): {
+export function normalizeContextUsage(value: unknown): {
   usage: import("@shared/types").ContextUsageRecord;
   percentage: number;
   limit: number;
@@ -911,6 +918,12 @@ export class ClaudeRuntime implements AgentRuntime {
   >();
   private toolStormBreaker = new ToolStormBreaker();
   private sessionApprovedTools = new Set<string>();
+  /** 运行时模型覆盖（setModel 设置，sendMessage 时优先生效）。 */
+  private modelOverride: string | null = null;
+  /** 运行时权限模式覆盖（setPermissionMode 设置，canUseTool 时生效）。 */
+  private permissionModeOverride: PermissionMode | null = null;
+  /** threadId → SDK sessionId 映射（forkThread 走 SDK forkSession 用）。 */
+  private threadSdkSession = new Map<string, string>();
 
   // ---------- Session lifecycle ----------
 
@@ -958,7 +971,6 @@ export class ClaudeRuntime implements AgentRuntime {
   }
 
   async forkThread(threadId: string, upToMessageId?: string): Promise<Thread> {
-    // MVP: create a local thread record when the SDK does not return one.
     const src = threads.get(threadId);
     const t: Thread = {
       id: genId(),
@@ -967,6 +979,24 @@ export class ClaudeRuntime implements AgentRuntime {
       createdAt: now(),
       updatedAt: now(),
     };
+    // 真实 SDK fork：有已记录的 sdkSessionId 且 SDK 支持时，创建独立 SDK 会话
+    // 继承原线程上下文；失败或不可用时回退本地复制壳。
+    const sdkSessionId = this.threadSdkSession.get(threadId);
+    if (sdkSessionId) {
+      try {
+        const forked = await forkClaudeSession(sdkSessionId, {
+          resume: upToMessageId,
+        });
+        if (forked?.sessionId) {
+          this.threadSdkSession.set(t.id, forked.sessionId);
+        }
+      } catch (error) {
+        logWarn("claude.forkSdkFailed", {
+          threadId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
     threads.set(t.id, t);
     workflowThreadStore.cloneThread(threadId, t.id, {
       title: t.title,
@@ -1024,7 +1054,16 @@ export class ClaudeRuntime implements AgentRuntime {
     };
     pushMessage(opts.threadId, userMsg);
     const settings = opts.settingsSnapshot ?? getAgentSettings();
-    const modelSnapshot = modelSnapshotFromSettings(settings);
+    const effectiveSettings: AgentSettings = this.modelOverride
+      ? {
+          ...settings,
+          defaultModel: {
+            ...settings.defaultModel,
+            modelId: this.modelOverride,
+          },
+        }
+      : settings;
+    const modelSnapshot = modelSnapshotFromSettings(effectiveSettings);
     workflowThreadStore.startTurn({
       threadId: opts.threadId,
       turnId,
@@ -1038,12 +1077,12 @@ export class ClaudeRuntime implements AgentRuntime {
     });
 
     // Apply context policy before sending.
-    const sdkEnv = buildSdkEnv(settings);
+    const sdkEnv = buildSdkEnv(effectiveSettings);
     const queue = new RuntimeEventQueue();
 
     // Prepare tool permission callbacks for SDK canUseTool.
     const options = buildClaudeRuntimeOptions({
-      settings,
+      settings: effectiveSettings,
       cwd: opts.cwd || process.cwd(),
       env: sdkEnv,
       canUseTool: async (
@@ -1067,7 +1106,13 @@ export class ClaudeRuntime implements AgentRuntime {
           toolName,
           input,
           permissionMode:
-            settings.workMode === "plan" ? "plan" : settings.permissionMode,
+            settings.workMode === "plan"
+              ? "plan"
+              : this.permissionModeOverride
+                ? this.permissionModeOverride === "bypass"
+                  ? "bypassPermissions"
+                  : this.permissionModeOverride
+                : settings.permissionMode,
           policy: settings.toolPermissionPolicy,
           sessionAllowedTools: this.sessionApprovedTools,
         });
@@ -1146,6 +1191,8 @@ export class ClaudeRuntime implements AgentRuntime {
     // Emit the user message before the SDK response starts.
     const query = await queryClaude(opts.content, options);
     this.activeQuery = query;
+    // 捕获实例引用供 wrapStream 使用（普通函数生成器不绑定 this）。
+    const threadSdkSession = this.threadSdkSession;
 
     // Start the SDK query and stream normalized events.
     async function* wrapStream(): AsyncIterable<RuntimeEvent> {
@@ -1220,6 +1267,15 @@ export class ClaudeRuntime implements AgentRuntime {
             // Ignore callbacks that arrive after the turn has closed.
             if (event.kind === "text-chunk") {
               assistantText += event.payload.content;
+            }
+            if (
+              event.kind === "turn-complete" &&
+              "sdkSessionId" in event.payload &&
+              typeof event.payload.sdkSessionId === "string" &&
+              event.payload.sdkSessionId
+            ) {
+              // 记录 threadId → SDK sessionId，供 forkThread 走 SDK forkSession。
+              threadSdkSession.set(opts.threadId, event.payload.sdkSessionId);
             }
             workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, event);
             yield event;
@@ -1358,17 +1414,23 @@ export class ClaudeRuntime implements AgentRuntime {
 
   // ---------- Model selection ----------
 
-  async setModel(_modelId: string): Promise<void> {
-    // MVP: store runtime model preference in settings.
-    // Claude SDK reads the model from query options.
+  async setModel(modelId: string): Promise<void> {
+    // 记录运行时覆盖，sendMessage 构造选项时优先生效；
+    // 持久化由 manager.setRuntimeModel 写回 settings.defaultModel。
+    this.modelOverride = modelId;
   }
 
   async getAvailableModels(): Promise<ModelOption[]> {
     return configuredRuntimeModels();
   }
 
-  async setPermissionMode(_mode: PermissionMode): Promise<void> {
-    // Permission mode is currently enforced by canUseTool callbacks.
+  async setPermissionMode(mode: PermissionMode): Promise<void> {
+    this.permissionModeOverride = mode;
+    // 持久化：settings.permissionMode 用 AgentPermissionMode 值（bypass → bypassPermissions）。
+    const settings = getAgentSettings();
+    const mapped: AgentPermissionMode =
+      mode === "bypass" ? "bypassPermissions" : mode;
+    saveAgentSettings({ ...settings, permissionMode: mapped });
   }
 
   // ---------- Tool ----------

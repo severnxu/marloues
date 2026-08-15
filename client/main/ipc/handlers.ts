@@ -1220,6 +1220,21 @@ async function sendChatTurn(
         const ts = Date.now();
         const uiEvent = translateRuntimeEventToUIEvent(evt, threadId, turnId);
         if (!uiEvent) continue;
+        // 状态类事件全量转发（对齐 neobot emitChatEvent 行为）：adapter 已把
+        // session.info/mcp.status/memory.recall/prompt.suggestion/context.warning/
+        // runtime.status 翻译出来，必须送达 renderer 的 handleStatusEvents。
+        // 实时流事件（text/thinking/tool/approval/turn 生命周期）继续走
+        // CHAT_ITEM_EVENT 通道，避免双通道重复消费。
+        if (
+          uiEvent.type === "session.info" ||
+          uiEvent.type === "mcp.status" ||
+          uiEvent.type === "memory.recall" ||
+          uiEvent.type === "prompt.suggestion" ||
+          uiEvent.type === "context.warning" ||
+          uiEvent.type === "runtime.status"
+        ) {
+          mainWindow.webContents.send(IPC.CHAT_EVENT, uiEvent);
+        }
         if (uiEvent.type === "usage" || uiEvent.type === "context.usage") {
           mainWindow.webContents.send(IPC.CHAT_EVENT, uiEvent);
         }
