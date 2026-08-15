@@ -20,6 +20,7 @@ import {
   SquarePen,
   Wrench,
   LoaderCircle,
+  RefreshCw,
 } from "lucide-react";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { notify } from "@/lib/notifications";
@@ -431,6 +432,12 @@ export function Sidebar({
         label: "安全",
         description: "网络与脱敏",
         icon: <ShieldOff size={16} />,
+      },
+      {
+        id: "update" as const,
+        label: "更新",
+        description: "版本、通道与热更新",
+        icon: <RefreshCw size={16} />,
       },
     ];
 
