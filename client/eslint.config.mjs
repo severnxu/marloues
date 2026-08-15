@@ -54,7 +54,9 @@ export default tseslint.config(
   {
     files: [
       "main/codex/**",
+      "client/main/codex/**",
       "main/gateway/**",
+      "client/main/gateway/**",
     ],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",

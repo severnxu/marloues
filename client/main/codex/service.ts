@@ -1,6 +1,6 @@
 import { EventEmitter } from "events";
 import { randomUUID } from "crypto";
-import { store, Provider } from "../store";
+import { store } from "../store";
 import { CodexAppServerSession } from "./session";
 import {
   createCodexTransport,
@@ -18,6 +18,12 @@ import { log } from "../logger";
 import { logWarn } from "../core/logging/app-logger";
 import { eventLog, type EventLogEntry } from "./event-log";
 import type { NormalizedThreadItem } from "./normalize";
+import {
+  getAgentSettings,
+  saveAgentSettings,
+} from "../services/config-service";
+import { resolveModelProvider } from "../core/config/model-provider";
+import type { ModelProviderConfig } from "@shared/types";
 
 function svcLog(...args: unknown[]): void {
   log("[svc]", ...args);
@@ -27,18 +33,14 @@ function tomlString(value: string): string {
   return JSON.stringify(value);
 }
 
-function buildCodexConfigArgs(
-  provider: Provider,
-  gatewayPort: number,
-): string[] {
+function buildCodexConfigArgs(model: string, gatewayPort: number): string[] {
   const gatewayBase = `http://127.0.0.1:${gatewayPort}`;
-  const model = provider.model || "MiniMax-M2.7-highspeed";
   const config = [
     `model=${tomlString(model)}`,
     `model_provider=${tomlString("codex-web-gateway")}`,
     `model_providers.codex-web-gateway.name=${tomlString("codex-web-gateway")}`,
     `model_providers.codex-web-gateway.base_url=${tomlString(`${gatewayBase}/v1`)}`,
-    `model_providers.codex-web-gateway.env_key=${tomlString("MINIMAX_API_KEY")}`,
+    `model_providers.codex-web-gateway.env_key=${tomlString("OPENAI_API_KEY")}`,
     `model_providers.codex-web-gateway.wire_api=${tomlString("responses")}`,
   ];
 
@@ -164,7 +166,9 @@ function eventThreadId(event: {
 export class CodexService {
   private sessions: Map<string, Session> = new Map();
   private eventEmitter = new EventEmitter();
-  private currentProvider: Provider | null = null;
+  private currentProvider: ModelProviderConfig | null = null;
+  private currentApiKey: string | undefined = undefined;
+  private currentModel: string | undefined = undefined;
   private abortControllers: Map<string, AbortController> = new Map();
   private binaryPath: string = "codex";
   private binaryPathDirs: string[] = [];
@@ -179,14 +183,24 @@ export class CodexService {
   }
 
   refreshProvider(): void {
-    const provider = store.getSelectedProvider();
-    if (!provider) return;
-    this.currentProvider = provider;
+    // 配置统一：binary 内核从 AgentSettings（settings.json）解析 provider，
+    // 与 sdk/self-built 共用同一配置源，不再读旧 SimpleStore。
+    const settings = getAgentSettings();
+    const resolved = resolveModelProvider(settings);
+    this.currentProvider = resolved.provider;
+    this.currentApiKey = resolved.apiKey;
+    this.currentModel = resolved.model;
   }
 
   setApiKey(apiKey: string): void {
     if (this.currentProvider) {
-      store.updateProvider(this.currentProvider.id, { apiKey });
+      // 更新统一配置的 provider apiKey（settings.json），与 UI 设置同步。
+      const settings = getAgentSettings();
+      const providers = settings.providers.map((p) =>
+        p.id === this.currentProvider?.id ? { ...p, apiKey } : p,
+      );
+      saveAgentSettings({ ...settings, providers });
+      this.currentApiKey = apiKey;
     }
   }
 
@@ -194,16 +208,25 @@ export class CodexService {
     // Working directory is set per-session
   }
 
-  async createSession(sessionId: string): Promise<string> {
+  async createSession(
+    sessionId: string,
+    options?: { cwd?: string },
+  ): Promise<string> {
     svcLog("[svc] createSession called:", sessionId);
     const provider = this.currentProvider;
-    if (!provider?.apiKey) {
+    const apiKey = this.currentApiKey ?? provider?.apiKey;
+    if (!apiKey) {
       svcLog("[svc] No API key configured");
       throw new Error("API key not configured");
     }
 
-    const settings = store.getSettings();
-    const workingDir = settings.workingDirectory || process.cwd();
+    // 配置统一：cwd/权限/沙箱从 AgentSettings 派生（替代旧 SimpleStore）。
+    const agentSettings = getAgentSettings();
+    const workingDir = options?.cwd || process.cwd();
+    const model = this.currentModel || provider?.models?.[0]?.id || "default";
+    const baseUrl = provider?.baseUrl;
+    const permissionMode = agentSettings.permissionMode;
+    const sandboxEnabled = agentSettings.sandboxEnabled ?? false;
     let gatewayPort = getGatewayPort();
     if (!gatewayPort) {
       const started = await startGateway();
@@ -221,12 +244,12 @@ export class CodexService {
       gatewayPort,
     );
     svcLog(
-      "[svc] Sandbox:",
-      settings.sandboxMode,
+      "[svc] Model:",
+      model,
+      "Sandbox:",
+      sandboxEnabled,
       "Approval:",
-      settings.approvalPolicy,
-      "WebSearch:",
-      settings.webSearch,
+      permissionMode,
     );
 
     // Create transport for Codex CLI
@@ -235,27 +258,32 @@ export class CodexService {
       cwd: workingDir,
       env: {
         ...process.env,
-        // Pass provider credentials via env as well (belt-and-suspenders)
-        MINIMAX_API_KEY: provider.apiKey,
-        MINIMAX_BASE_URL: provider.baseUrl,
-        MINIMAX_MODEL: provider.model || "MiniMax-M2.7-highspeed",
-        OPENAI_API_KEY: provider.apiKey,
-        OPENAI_BASE_URL: `http://127.0.0.1:${gatewayPort}/v1`,
+        // Pass provider credentials via env (belt-and-suspenders)
+        OPENAI_API_KEY: apiKey,
+        OPENAI_BASE_URL: baseUrl,
+        OPENAI_MODEL: model,
         // Tell Codex CLI to use our gateway as the API server
         CODEX_API_BASE_URL: `http://127.0.0.1:${gatewayPort}`,
         CODEX_DISABLE_TELEMETRY: "1",
-        // Pass web search setting
-        CODEX_ENABLE_WEB_SEARCH: settings.webSearch ? "1" : "0",
       },
       pathDirs: this.binaryPathDirs,
-      args: ["app-server", ...buildCodexConfigArgs(provider, gatewayPort)],
+      args: ["app-server", ...buildCodexConfigArgs(model, gatewayPort)],
       onStderr: (chunk) => {
         svcLog("[codex-stderr]", chunk.trim());
       },
     });
 
     const rpc = new JsonRpcClient(transport);
-    const codexSession = new CodexAppServerSession(sessionId, rpc, transport);
+    const codexSession = new CodexAppServerSession(sessionId, rpc, transport, {
+      cwd: workingDir,
+      approvalPolicy:
+        permissionMode === "bypassPermissions"
+          ? "bypass"
+          : permissionMode === "acceptEdits"
+            ? "acceptEdits"
+            : "on-request",
+      sandbox: sandboxEnabled ? "workspace-write" : "read-only",
+    });
 
     // Set up event forwarding from Codex session
     codexSession.onEvent((event) => {
@@ -479,8 +507,8 @@ export class CodexService {
       session = this.sessions.get(sessionId)!;
     }
 
-    const provider = this.currentProvider;
-    if (!provider?.apiKey) {
+    const apiKey = this.currentApiKey ?? this.currentProvider?.apiKey;
+    if (!apiKey) {
       this.eventEmitter.emit("error", sessionId, "API key not configured");
       return;
     }
@@ -661,13 +689,15 @@ export class CodexService {
     return Array.from(this.sessions.values());
   }
 
-  // Inline protocol conversion: OpenAI Responses API -> MiniMax Chat Completions
+  // Inline protocol conversion: OpenAI Responses API -> OpenAI Chat Completions
   async convertAndCallMiniMax(
     responsesRequest: unknown,
-    provider: Provider,
     signal: AbortSignal,
   ): Promise<IrResponse> {
     const requestId = randomUUID();
+    const apiKey = this.currentApiKey ?? this.currentProvider?.apiKey;
+    const baseUrl = this.currentProvider?.baseUrl;
+    const model = this.currentModel || "default";
 
     // Decode OpenAI Responses API request to IR
     const irRequest = decodeRequest(
@@ -676,21 +706,20 @@ export class CodexService {
       requestId,
     );
 
-    // Encode IR to OpenAI Chat Completions format for MiniMax
+    // Encode IR to OpenAI Chat Completions format
     const { body: chatBody, headers: chatHeaders } = encodeRequest(
       "openai-chat",
       irRequest,
     );
-    (chatBody as { model: string }).model =
-      provider.model || "MiniMax-M2.7-highspeed";
+    (chatBody as { model: string }).model = model;
 
-    // Call MiniMax
-    const url = `${provider.baseUrl.replace(/\/$/, "")}/chat/completions`;
+    // Call the configured provider
+    const url = `${(baseUrl ?? "").replace(/\/$/, "")}/chat/completions`;
     const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${provider.apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         ...chatHeaders,
       },
       body: JSON.stringify(chatBody),
@@ -699,7 +728,7 @@ export class CodexService {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`MiniMax API error: ${response.status} - ${errorText}`);
+      throw new Error(`Provider API error: ${response.status} - ${errorText}`);
     }
 
     const chatResponse = await response.json();
