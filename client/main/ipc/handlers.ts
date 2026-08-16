@@ -514,6 +514,10 @@ function sanitizeUnknownForRenderer(value: unknown, depth: number): unknown {
 }
 
 function truncateText(text: string, limit: number): string {
+  // Stored sessions may predate current schemas (e.g. agentMessage/plan items
+  // persisted without text). Pass those through untouched instead of crashing
+  // chat:list-sessions for the whole renderer.
+  if (!text) return text;
   if (text.length <= limit) return text;
   const omitted = text.length - limit;
   return `${text.slice(0, limit)}\n\n[truncated ${omitted} chars for renderer stability]`;
