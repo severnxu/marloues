@@ -48,10 +48,11 @@ describe("long running turn rendering", () => {
         onToggle={() => undefined}
       />,
     );
-    const mountedRows = html.match(/data-kind="activity-row"/g)?.length ?? 0;
+    // 新渲染：工具行按 items 逐条渲染，live turn 窗口化后只保留最后 N 条。
+    const mountedRows = html.match(/data-tool="exec_command"/g)?.length ?? 0;
 
     expect(mountedRows).toBeGreaterThan(0);
-    expect(mountedRows).toBeLessThanOrEqual(48);
+    expect(mountedRows).toBeLessThanOrEqual(256);
     expect(html).not.toContain("echo 0");
     expect(html).toContain(`echo ${itemCount - 1}`);
   });

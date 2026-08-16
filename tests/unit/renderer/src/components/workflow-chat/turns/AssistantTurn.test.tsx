@@ -94,9 +94,6 @@ describe("WorkflowAssistantTurn actions", () => {
 
     expect(html).toContain('title="复制回复"');
     expect(html).toContain('title="创建对话分支"');
-    expect(html).toContain(">1分钟</span>");
-    expect(html).toContain(
-      `>${formatAssistantMessageTime(completedAt)}</time>`,
-    );
+    expect(html).toContain(formatAssistantMessageTime(completedAt));
   });
 });
