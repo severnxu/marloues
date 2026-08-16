@@ -6,7 +6,7 @@
   "author": "Marloues",
   "repository": {
     "type": "git",
-    "url": "https://github.com/marloues/marloues.git"
+    "url": "https://github.com/severnxu/marloues.git"
   },
   "engines": {
     "node": ">=22.22.1 <23",
@@ -128,7 +128,9 @@
     "asar": true,
     "publish": [
       {
-        "provider": "github"
+        "provider": "github",
+        "owner": "severnxu",
+        "repo": "marloues"
       }
     ],
     "afterSign": "./scripts/notarize.cjs",
