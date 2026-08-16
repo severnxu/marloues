@@ -1,13 +1,21 @@
 import { create } from "zustand";
-import type { UpdateState } from "@shared/types";
+import type {
+  AppVersionInfo,
+  UpdatePreferences,
+  UpdateState,
+} from "@shared/types";
 import { ipc } from "@/lib/ipc-client";
 
 interface UpdateStore {
   state: UpdateState | null;
+  versionInfo: AppVersionInfo | null;
+  preferences: UpdatePreferences | null;
   isChecking: boolean;
   isDownloading: boolean;
   applyState: (state: UpdateState) => void;
   load: () => Promise<void>;
+  savePreferences: (next: UpdatePreferences) => Promise<UpdatePreferences>;
+  ignoreVersion: (version: string) => Promise<void>;
   check: () => Promise<void>;
   download: () => Promise<void>;
   installNow: () => Promise<void>;
@@ -24,6 +32,8 @@ function toErrorState(error: unknown): UpdateState {
 /** Shared update lifecycle for the compact control in the sidebar footer. */
 export const useUpdateStore = create<UpdateStore>((set, get) => ({
   state: null,
+  versionInfo: null,
+  preferences: null,
   isChecking: false,
   isDownloading: false,
 
@@ -36,11 +46,39 @@ export const useUpdateStore = create<UpdateStore>((set, get) => ({
   },
 
   load: async () => {
-    try {
-      get().applyState(await ipc.update.getState());
-    } catch (error) {
-      get().applyState(toErrorState(error));
-    }
+    await Promise.all([
+      ipc.update
+        .getState()
+        .then((state) => get().applyState(state))
+        .catch((error) => get().applyState(toErrorState(error))),
+      ipc.app.getVersionInfo().then(
+        (versionInfo) => set({ versionInfo }),
+        () => set({ versionInfo: null }),
+      ),
+      ipc.update.getPreferences().then(
+        (preferences) => set({ preferences }),
+        () => undefined,
+      ),
+    ]);
+  },
+
+  savePreferences: async (next) => {
+    const saved = await ipc.update.savePreferences(next);
+    set({ preferences: saved });
+    return saved;
+  },
+
+  ignoreVersion: async (version) => {
+    await get().savePreferences({
+      ...(get().preferences ?? {
+        channel: "stable",
+        autoCheck: true,
+        autoDownload: false,
+        autoApplyUi: false,
+      }),
+      ignoredVersion: version,
+    });
+    get().applyState({ status: "idle" });
   },
 
   check: async () => {

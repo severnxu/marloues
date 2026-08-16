@@ -1,34 +1,7 @@
-import { useEffect, useState } from "react";
 import { Info, MonitorCog, Package } from "lucide-react";
 import { SettingRow, SettingsCard } from "@/components/settings";
 import type { AppVersionInfo } from "@shared/hot-update";
 import { STRINGS } from "@shared/strings.zh";
-
-export function VersionSettings() {
-  const [versionInfo, setVersionInfo] = useState<AppVersionInfo | null>(null);
-  const [loadFailed, setLoadFailed] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void window.marloues.app
-      .getVersionInfo()
-      .then((info) => {
-        if (!cancelled) setVersionInfo(info);
-      })
-      .catch(() => {
-        if (!cancelled) setLoadFailed(true);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return (
-    <VersionSettingsView versionInfo={versionInfo} loadFailed={loadFailed} />
-  );
-}
 
 export function VersionSettingsView({
   versionInfo,

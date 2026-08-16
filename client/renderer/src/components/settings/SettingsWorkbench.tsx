@@ -13,7 +13,7 @@ const {
   AuditSettings,
   RuntimeSettings,
   SkillsSettings,
-  VersionSettings,
+  UpdateSettings,
 } = Sections;
 import { buildRuntimeSnapshot, statusToastTitle } from "@/components/settings";
 import { ProviderSection } from "./ProviderSection";
@@ -290,7 +290,7 @@ export function SettingsWorkbench({
             />
           ) : null}
 
-          {section === "version" ? <VersionSettings /> : null}
+          {section === "version" ? <UpdateSettings /> : null}
         </div>
       </div>
     </section>

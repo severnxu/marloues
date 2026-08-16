@@ -1338,3 +1338,70 @@
     grid-column: 1;
   }
 }
+
+/* Update & hot-update management page */
+.workbench :global(.update-settings) {
+  display: grid;
+  gap: var(--space-8);
+}
+
+.workbench :global(.settings-row-actions) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.workbench :global(.update-status-panel) {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-workspace);
+  padding: var(--space-4);
+}
+
+.workbench :global(.update-status-panel strong) {
+  color: var(--text-1);
+  font-size: var(--text-sm);
+  font-weight: 620;
+  line-height: 18px;
+}
+
+.workbench :global(.update-status-panel small),
+.workbench :global(.update-status-panel p) {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  line-height: 16px;
+}
+
+.workbench :global(.update-status-panel .update-error) {
+  color: var(--danger);
+}
+
+.workbench :global(.update-progress) {
+  position: relative;
+  height: 6px;
+  margin: var(--space-2) 0 var(--space-6);
+  border-radius: 999px;
+  background: var(--raised-2);
+}
+
+.workbench :global(.update-progress > span) {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 160ms ease;
+}
+
+.workbench :global(.update-progress > small) {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  line-height: 16px;
+}

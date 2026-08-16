@@ -3,9 +3,9 @@ import {
   ArrowLeft,
   Bot,
   FileText,
-  Info,
   MessagesSquare,
   MonitorCog,
+  Rocket,
   ServerCog,
   Terminal,
   Wrench,
@@ -55,7 +55,7 @@ const NAV_ITEMS: NavItem[] = [
     description: "企微 / 飞书双向桥接",
     Icon: MessagesSquare,
   },
-  { id: "version", label: "版本", description: "应用与组件版本", Icon: Info },
+  { id: "version", label: "更新", description: "版本与热更新", Icon: Rocket },
 ];
 
 export function SettingsDialog() {
