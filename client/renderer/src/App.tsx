@@ -118,6 +118,9 @@ function AuthenticatedApp() {
   const handleReadThread = useUnifiedChatStore(
     (state) => state.handleReadThread,
   );
+  const applyPendingState = useUnifiedChatStore(
+    (state) => state.applyPendingState,
+  );
 
   useEffect(() => {
     void (async () => {
@@ -191,6 +194,11 @@ function AuthenticatedApp() {
         ]);
       },
     );
+    const unsubscribePendingState = window.marloues.chat.onPendingState(
+      (snapshot) => {
+        applyPendingState(snapshot);
+      },
+    );
     const unsubscribeUpdateState = window.marloues.update.onState((state) => {
       useUpdateStore.getState().applyState(state);
     });
@@ -202,12 +210,14 @@ function AuthenticatedApp() {
       itemEventBatcher.dispose();
       unsubscribeReadThread();
       unsubscribePermission();
+      unsubscribePendingState();
       unsubscribeUpdateState();
     };
   }, [
     handleEvent,
     handleItemEvent,
     handleReadThread,
+    applyPendingState,
     loadSettings,
     loadWorkspace,
   ]);

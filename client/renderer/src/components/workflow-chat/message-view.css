@@ -1,0 +1,105 @@
+/* 消息区渲染全局样式：running 行的扫光动画 + 时间戳 hover 显示 */
+
+[data-state='running'] > [data-disclosure-row]::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 300px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--bg) 60%, transparent) 55%,
+    transparent 100%
+  );
+  animation: message-row-sweep 2.6s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes message-row-sweep {
+  0% { left: -300px; }
+  90%, 100% { left: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-state='running'] > [data-disclosure-row]::after {
+    animation: none;
+  }
+}
+
+/* 时间戳 hover 显示（data-time-hover-root 方案）：
+   只在该消息容器自身 hover 时淡入，不依赖 React group 类。 */
+[data-time-hover-root] [data-time-hover-label] {
+  opacity: 0;
+  transition: opacity 80ms ease;
+}
+
+[data-time-hover-root]:hover [data-time-hover-label],
+[data-time-hover-root]:focus-within [data-time-hover-label] {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  [data-time-hover-root] [data-time-hover-label] {
+    opacity: 1;
+  }
+}
+
+/* leading 图标 hover 时替换为 chevron：
+   纯 CSS，只在该行自身 hover 时生效。 */
+.message-row-leading-chevron {
+  opacity: 0;
+  transition: opacity 100ms ease;
+}
+
+.message-disclosure-row:hover .message-row-leading-icon {
+  opacity: 0;
+}
+
+.message-disclosure-row:hover .message-row-leading-chevron {
+  opacity: 1;
+}
+
+.message-disclosure-row:focus-visible .message-row-leading-icon {
+  opacity: 0;
+}
+
+.message-disclosure-row:focus-visible .message-row-leading-chevron {
+  opacity: 1;
+}
+
+/* 消息区顶部的流式状态条（"正在思考"固定在顶部，流式期间一直显示）。 */
+.conversation-thinking-top {
+  padding: 2px 0 10px;
+}
+
+/* "正在思考"文字流光：text 渐变流动，表示活跃处理中。
+   与 workflow-thinking-shimmer 同一手法，但使用当前消息区 token。 */
+.message-status-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--tw-text-subtle)) 20%,
+    hsl(var(--tw-text-normal)) 50%,
+    hsl(var(--tw-text-subtle)) 80%
+  );
+  background-size: 220% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: message-status-shimmer 1.8s linear infinite;
+}
+
+@keyframes message-status-shimmer {
+  to {
+    background-position: -220% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-status-shimmer {
+    animation: none;
+    background: none;
+    color: inherit;
+  }
+}

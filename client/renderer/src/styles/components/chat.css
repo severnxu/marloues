@@ -156,7 +156,8 @@
   max-width: none;
   min-width: 0;
   margin-inline: auto;
-  padding: 15px 0 var(--interaction-dock-safe-area);
+  /* safe-area = composer 高度；额外 24px 让最后一条消息与输入框保持舒适距离。 */
+  padding: 15px 0 calc(var(--interaction-dock-safe-area) + 24px);
 }
 
 .chat-page.task-context-docked .messages-inner,

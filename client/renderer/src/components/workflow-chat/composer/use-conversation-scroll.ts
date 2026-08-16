@@ -69,6 +69,10 @@ export function useConversationScroll({
   const programmaticScrollRef = useRef(false);
   const manuallyDetachedRef = useRef(false);
   const lastScrollTopRef = useRef(0);
+  /** 程序性滚动记账：每次吸底/恢复/加载补偿写入 scrollTop 时同步记录，
+   *  scroll 事件据此区分「程序性滚动」与「读者移动」——程序性滚动不重判吸底，
+   *  避免流式内容增长竞争窗口里被误判为滚离底部（滚动到底部按钮误显示）。 */
+  const observedTopRef = useRef(0);
   const [isAtBottom, setIsAtBottom] = useState(true);
 
   const setStickiness = useCallback((next: boolean) => {
@@ -79,17 +83,24 @@ export function useConversationScroll({
   const handleScroll = useCallback(() => {
     const el = viewportRef.current;
     if (!el) return;
+    const floor = Math.max(0, el.scrollHeight - el.clientHeight);
+    // 程序性滚动（吸底跟随/位置恢复/加载补偿）不参与吸底重判；
+    // 只有读者真正移动 scrollTop 时才更新 stickiness。
+    const movedByReader =
+      Math.abs(el.scrollTop - Math.min(observedTopRef.current, floor)) > 0.5;
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     const nearBottom = distanceFromBottom < nearBottomThreshold;
     const scrollingDown = el.scrollTop > lastScrollTopRef.current;
     lastScrollTopRef.current = el.scrollTop;
-    if (distanceFromBottom <= 1 || (scrollingDown && nearBottom)) {
-      manuallyDetachedRef.current = false;
-      setStickiness(true);
-    } else if (manuallyDetachedRef.current) {
-      setStickiness(false);
-    } else {
-      setStickiness(nearBottom);
+    if (movedByReader) {
+      if (distanceFromBottom <= 1 || (scrollingDown && nearBottom)) {
+        manuallyDetachedRef.current = false;
+        setStickiness(true);
+      } else if (manuallyDetachedRef.current) {
+        setStickiness(false);
+      } else {
+        setStickiness(nearBottom);
+      }
     }
 
     // 保存距底部距离（仅恢复后保存，避免初始化污染）
@@ -99,6 +110,7 @@ export function useConversationScroll({
 
     // 向上加载更多
     if (
+      movedByReader &&
       hasMore &&
       !loadingMore &&
       !loadTriggeredRef.current &&
@@ -113,6 +125,7 @@ export function useConversationScroll({
           if (viewportRef.current) {
             viewportRef.current.scrollTop =
               prevTop + (viewportRef.current.scrollHeight - prevHeight);
+            observedTopRef.current = viewportRef.current.scrollTop;
           }
         });
       });
@@ -134,10 +147,12 @@ export function useConversationScroll({
       programmaticScrollRef.current = true;
       manuallyDetachedRef.current = false;
       el.scrollTo({ top: el.scrollHeight, behavior });
+      observedTopRef.current = el.scrollTop;
       setStickiness(true);
       requestAnimationFrame(() => {
         programmaticScrollRef.current = false;
         lastScrollTopRef.current = el.scrollTop;
+        observedTopRef.current = el.scrollTop;
       });
     },
     [setStickiness],
@@ -230,6 +245,7 @@ export function useConversationScroll({
       manuallyDetachedRef.current = true;
       const target = el.scrollHeight - el.clientHeight - savedDistance;
       el.scrollTop = Math.max(0, target);
+      observedTopRef.current = el.scrollTop;
       lastScrollTopRef.current = el.scrollTop;
       // 巩固一次，防止后续布局变化竞争
       requestAnimationFrame(() => {
@@ -239,9 +255,11 @@ export function useConversationScroll({
           viewportRef.current.clientHeight -
           savedDistance;
         viewportRef.current.scrollTop = Math.max(0, t);
+        observedTopRef.current = viewportRef.current.scrollTop;
       });
     } else {
       el.scrollTop = el.scrollHeight;
+      observedTopRef.current = el.scrollTop;
       shouldStickRef.current = true;
       manuallyDetachedRef.current = false;
       lastScrollTopRef.current = el.scrollTop;

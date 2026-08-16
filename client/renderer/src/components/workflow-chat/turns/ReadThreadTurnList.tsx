@@ -54,9 +54,10 @@ export function WorkflowReadThreadTurnList({
   scrollParentRef,
 }: Props) {
   const workflowTurns = useMemo(() => {
-    return workflowReadThreadTurnsInRenderOrder(readThread).filter(
+    const turns = workflowReadThreadTurnsInRenderOrder(readThread).filter(
       (turn) => turn.items.length > 0,
     );
+    return turns;
   }, [readThread]);
   const collapseMessages = useMemo(
     () => workflowTurns.map(workflowTurnToCollapseMessage),
@@ -88,13 +89,18 @@ export function WorkflowReadThreadTurnList({
   );
 
   const scope = stateScopeKey ?? readThread.thread.id;
+  // 展开态锚定 running turn 的 id（稳定）：若用 isStreaming 条件决定
+  // defaultExpandedMessageId，流式中 thread.status/streamingSessionIds 的
+  // 瞬时抖动会让 running turn 在展开/折叠间反复横跳，导致 MarkdownContent
+  // 反复 remount（流式缓冲 timer 被 unmount 清理，文本不渐进显示）。
+  const runningTurnId =
+    workflowTurns.find((turn) => turn.status === "running")?.id ??
+    (isStreaming ? workflowTurns.at(-1)?.id : undefined);
   const { isTurnExpanded, setTurnExpanded } = useWorkflowCollapseState({
     isStreaming,
     scope,
     workflowMessages: collapseMessages,
-    defaultExpandedMessageId: isStreaming
-      ? workflowTurns.at(-1)?.id
-      : undefined,
+    defaultExpandedMessageId: runningTurnId,
   });
   const [scrollParent, setScrollParent] = useState<HTMLDivElement | null>(null);
   useLayoutEffect(() => {

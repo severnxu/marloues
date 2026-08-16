@@ -1,14 +1,12 @@
 /**
  * Steer slice — pending steer queue management.
  *
- * Marloues main process does not implement a durable steer/outbox backend yet:
- * the queue stays local to the renderer, "apply now" degrades to a normal
- * message send, and cancel/reorder/resume are purely local mutations.
+ * Owns: pendingSteers, steerQueuePaused, turnSteerActivity
  */
 
 import { notify } from "@/lib/notifications";
 import { STRINGS } from "@shared/strings.zh";
-import type { UnifiedChatStore } from "./types";
+import type { PendingSteerPreview, UnifiedChatStore } from "./types";
 
 type Set = (
   partial:
@@ -27,6 +25,29 @@ export function createSteerSlice(
     turnSteerActivity: {},
 
     cancelPendingSteer: async (sessionId, messageId) => {
+      try {
+        const receipt = await window.marloues.chat.cancelSteer(
+          sessionId,
+          messageId,
+        );
+        if (receipt.status === "applying" || receipt.status === "failed") {
+          if (receipt.status === "failed") {
+            notify({
+              title: STRINGS.chat.steer.cancelFailedTitle,
+              description: receipt.error || STRINGS.chat.steer.cancelFailedQueue,
+              tone: "warning",
+            });
+          }
+          return;
+        }
+      } catch (error) {
+        notify({
+          title: STRINGS.chat.steer.cancelFailedTitle,
+          description: error instanceof Error ? error.message : String(error),
+          tone: "warning",
+        });
+        return;
+      }
       set((state) => ({
         pendingSteers: {
           ...state.pendingSteers,
@@ -38,22 +59,79 @@ export function createSteerSlice(
     },
 
     applyPendingSteerNow: async (sessionId, messageId) => {
-      const item = get().pendingSteers[sessionId]?.find(
-        (candidate) => candidate.id === messageId,
-      );
-      // Remove the queued steer first, then degrade to a normal send so the
-      // user's text is never lost.
       set((state) => ({
         pendingSteers: {
           ...state.pendingSteers,
-          [sessionId]: (state.pendingSteers[sessionId] ?? []).filter(
-            (candidate) => candidate.id !== messageId,
+          [sessionId]: (state.pendingSteers[sessionId] ?? []).map((item) =>
+            item.id === messageId ? { ...item, status: "applying" } : item,
           ),
         },
       }));
-      if (!item) return;
       try {
-        await get().sendMessage(item.text, item.attachments);
+        const receipt = await window.marloues.chat.applySteerNow(
+          sessionId,
+          messageId,
+        );
+        if (
+          receipt.status === "applied" ||
+          receipt.status === "already_dispatched"
+        ) {
+          set((state) => ({
+            pendingSteers: {
+              ...state.pendingSteers,
+              [sessionId]: (state.pendingSteers[sessionId] ?? []).filter(
+                (item) => item.id !== messageId,
+              ),
+            },
+          }));
+          return;
+        }
+        if (receipt.status === "applying") return;
+        if (receipt.status === "canceled") {
+          set((state) => ({
+            pendingSteers: {
+              ...state.pendingSteers,
+              [sessionId]: (state.pendingSteers[sessionId] ?? []).filter(
+                (item) => item.id !== messageId,
+              ),
+            },
+          }));
+          return;
+        }
+        if (receipt.status === "boundary_closed") {
+          const resumed = await window.marloues.chat.resumeOutbox(
+            sessionId,
+            messageId,
+          );
+          if (resumed.status === "failed") {
+            set((state) => ({
+              pendingSteers: {
+                ...state.pendingSteers,
+                [sessionId]: (state.pendingSteers[sessionId] ?? []).map(
+                  (item) =>
+                    item.id === messageId
+                      ? { ...item, status: "queued" }
+                      : item,
+                ),
+              },
+              steerQueuePaused: {
+                ...state.steerQueuePaused,
+                [sessionId]: true,
+              },
+            }));
+          }
+          return;
+        }
+        const stillPending = get().pendingSteers[sessionId]?.some(
+          (item) => item.id === messageId,
+        );
+        if (stillPending) {
+          notify({
+            title: STRINGS.chat.steer.cannotApplyTitle,
+            description: STRINGS.chat.steer.cannotApplyDescription,
+            tone: "warning",
+          });
+        }
       } catch (error) {
         notify({
           title: STRINGS.chat.steer.applyFailedTitle,
@@ -61,6 +139,14 @@ export function createSteerSlice(
           tone: "error",
         });
       }
+      set((state) => ({
+        pendingSteers: {
+          ...state.pendingSteers,
+          [sessionId]: (state.pendingSteers[sessionId] ?? []).map((item) =>
+            item.id === messageId ? { ...item, status: "queued" } : item,
+          ),
+        },
+      }));
     },
 
     reorderSteers: async (sessionId, orderedIds) => {
@@ -78,12 +164,10 @@ export function createSteerSlice(
             },
           };
         });
-      // Optimistic reorder; ids not present in orderedIds are appended to the
-      // tail (protects steers that arrived during the drag).
       set((state) => {
         const visible = state.pendingSteers[sessionId] ?? [];
         const byId = new Map(visible.map((item) => [item.id, item]));
-        const reordered = [];
+        const reordered: PendingSteerPreview[] = [];
         for (const id of orderedIds) {
           const item = byId.get(id);
           if (item) {
@@ -96,20 +180,55 @@ export function createSteerSlice(
           pendingSteers: { ...state.pendingSteers, [sessionId]: reordered },
         };
       });
-      void rollback;
+      try {
+        const receipt = await window.marloues.chat.reorderSteers(
+          sessionId,
+          orderedIds,
+        );
+        if (receipt.status !== "reordered") {
+          rollback();
+        }
+      } catch {
+        rollback();
+      }
     },
 
     resumeSteerQueue: async (sessionId) => {
-      set((state) => ({
-        steerQueuePaused: {
-          ...state.steerQueuePaused,
-          [sessionId]: undefined,
-        },
-      }));
+      try {
+        const receipt = await window.marloues.chat.resumeOutbox(sessionId);
+        if (receipt.status === "failed") {
+          notify({
+            title: STRINGS.chat.steer.resumeFailedTitle,
+            description: receipt.error ?? STRINGS.chat.steer.resumeFailedQueue,
+            tone: "error",
+          });
+        }
+      } catch (error) {
+        notify({
+          title: STRINGS.chat.steer.resumeFailedTitle,
+          description: error instanceof Error ? error.message : String(error),
+          tone: "error",
+        });
+      }
     },
 
-    applyPendingState: () => {
-      // No durable outbox on Marloues main process: nothing to recover.
+    applyPendingState: (snapshot) => {
+      const pendingSteers: UnifiedChatStore["pendingSteers"] = {};
+      const steerQueuePaused: UnifiedChatStore["steerQueuePaused"] = {};
+      for (const outbox of snapshot.outboxes) {
+        if (outbox.items.length === 0) continue;
+        pendingSteers[outbox.sessionId] = outbox.items.map((item) => ({
+          id: item.messageId,
+          sessionId: item.sessionId,
+          turnId: item.turnId ?? null,
+          text: item.displayContent,
+          createdAt: item.createdAt,
+          status: item.state === "applying" ? "applying" : "queued",
+          attachments: item.userContent?.filter((c) => c.type !== "text"),
+        }));
+        steerQueuePaused[outbox.sessionId] = outbox.paused || undefined;
+      }
+      set({ pendingSteers, steerQueuePaused });
     },
   };
 }

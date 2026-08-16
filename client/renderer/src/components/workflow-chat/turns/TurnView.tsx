@@ -1,10 +1,15 @@
-﻿import { memo, useEffect, useRef, useState } from "react";
-import { WorkflowAssistantTurn } from "./AssistantTurn";
-import { useMemo } from "react";
-import { WorkflowUserMessage } from "./UserMessage";
-import { workflowTurnDurationLabel } from "./turn-status";
+import { memo } from "react";
 import type { WorkflowMessageBlock as WorkflowMessageBlock } from "../../../../../shared/adapters/workflow-messages-to-read-thread";
-import { buildTurnPresentationModel } from "./turn-presentation-model";
+import { AssistantTurnHeader } from "./AssistantTurnHeader";
+import { WorkflowTurnFooterView } from "./TurnFooterView";
+import { WorkflowUserMessage } from "./UserMessage";
+import {
+  workflowTurnDurationLabel,
+  workflowTurnStatusLabel,
+  workflowTurnStatusTone,
+} from "./turn-status";
+import { WorkflowMarkdownContent } from "../content/MarkdownContent";
+import { MessageItemView, MessageStatusRow } from "../message-view";
 
 interface Props {
   message: WorkflowMessageBlock;
@@ -22,108 +27,109 @@ interface Props {
   onDelete?: (id: string) => void;
 }
 
-export const WorkflowTurnView = memo(function WorkflowTurnView({
-  message,
-  sessionId,
-  expanded,
-  isLastStreaming,
-  disableResponseTimer,
-  modelName,
-  plainTextAnswers,
-  showFooterMetadata,
-  onToggle,
-  onCopy,
-  onEditUserMessage,
-  onFork,
-  onDelete,
-}: Props) {
-  const presentationModel = useMemo(
-    () =>
-      buildTurnPresentationModel(message, {
-        isLastStreaming,
-        modelName,
-        liveItemWindow: LIVE_TURN_ITEM_WINDOW,
-      }),
-    [isLastStreaming, message, modelName],
-  );
-  const duration = presentationModel.runtime.showDuration ? (
-    <WorkflowTurnDuration
-      canonicalDurationMs={presentationModel.runtime.durationMs}
-      completedAt={presentationModel.runtime.completedAt}
-      disableTimer={Boolean(disableResponseTimer)}
-      running={presentationModel.runtime.running}
-      startedAt={presentationModel.runtime.startedAt}
-    />
-  ) : null;
-
-  return (
-    <section
-      className="workflow-turn"
-      data-kind="workflow-turn"
-      data-turn-expanded={String(expanded)}
-    >
-      <WorkflowUserMessage
-        text={presentationModel.prompt.text}
-        content={presentationModel.prompt.content}
-        createdAt={presentationModel.prompt.createdAt}
-        onCopy={onCopy}
-        onEdit={
-          onEditUserMessage && presentationModel.prompt.text
-            ? () => onEditUserMessage(presentationModel.prompt.text)
-            : undefined
-        }
-      />
-
-      <WorkflowAssistantTurn
-        duration={duration}
-        expanded={expanded}
-        model={presentationModel}
-        sessionId={sessionId}
-        plainTextAnswers={plainTextAnswers}
-        showFooterMetadata={showFooterMetadata}
-        onToggle={onToggle}
-        onCopy={onCopy}
-        onFork={onFork}
-        onDelete={onDelete}
-      />
-    </section>
-  );
-});
-
+/** 超大 live turn 的 items 窗口：只渲染最后 N 条，防止渲染工作集爆炸。 */
 const LIVE_TURN_ITEM_WINDOW = 256;
 
-function WorkflowTurnDuration({
-  canonicalDurationMs,
-  completedAt,
-  disableTimer,
-  running,
-  startedAt,
-}: {
-  canonicalDurationMs: number | null;
-  completedAt: number | null;
-  disableTimer: boolean;
-  running: boolean;
-  startedAt: number | null;
-}) {
-  const fallbackStartedAt = useRef(Date.now());
-  const stoppedAt = useRef<number | null>(null);
-  const [now, setNow] = useState(Date.now);
+export const WorkflowTurnView = memo(function WorkflowTurnView(props: Props) {
+  const { message, isLastStreaming, onCopy, onFork, onDelete, onEditUserMessage, onToggle, expanded, modelName } = props;
+  const running =
+    isLastStreaming ||
+    message.status === "running" ||
+    message.activity === "thinking" ||
+    message.activity === "running" ||
+    message.activity === "responding";
 
-  if (running) stoppedAt.current = null;
-  else stoppedAt.current ??= completedAt ?? Date.now();
+  // live turn 窗口化：运行中的超大 turn 只渲染最后 N 条 items。
+  const items =
+    running && message.items.length > LIVE_TURN_ITEM_WINDOW
+      ? message.items.slice(-LIVE_TURN_ITEM_WINDOW)
+      : message.items;
 
-  useEffect(() => {
-    if (disableTimer || !running) return undefined;
-    const interval = window.setInterval(() => setNow(Date.now()), 1_000);
-    return () => window.clearInterval(interval);
-  }, [disableTimer, running]);
+  // 折叠语义：保留 AI 回复的总结——最后一条 agentMessage（Claude 完成任务时的总结段），
+  // 其余（过程叙述/思考/工具）全部折叠。
+  const summaryText = (() => {
+    const texts = items
+      .filter((item) => item.type === "agentMessage")
+      .map((item) => ("text" in item ? item.text ?? "" : ""))
+      .filter(Boolean);
+    return texts.length > 0 ? texts[texts.length - 1] : null;
+  })();
 
-  const effectiveStartedAt = startedAt ?? fallbackStartedAt.current;
-  const durationMs = disableTimer
-    ? canonicalDurationMs
-    : running
-      ? Math.max(0, now - effectiveStartedAt)
-      : (canonicalDurationMs ??
-        Math.max(0, (stoppedAt.current ?? now) - effectiveStartedAt));
-  return <>{workflowTurnDurationLabel(durationMs, { running })}</>;
-}
+  const finalText = message.items
+    .filter((item) => item.type === "agentMessage")
+    .map((item) => ("text" in item ? item.text ?? "" : ""))
+    .filter(Boolean)
+    .join("\n\n");
+
+  const turnModelName = message.modelName ?? message.modelId ?? modelName;
+  const hasActivityItems = message.items.length > 0;
+  const durationMs = running
+    ? null
+    : message.completedAt !== undefined && message.startedAt !== undefined
+      ? Math.max(0, message.completedAt - message.startedAt)
+      : (message.durationMs ?? null);
+  const label = workflowTurnStatusLabel(message, { hasActivityItems, isLastStreaming });
+  const tone = workflowTurnStatusTone(message);
+
+  return (
+    <div className="group relative" data-kind="assistant-turn">
+      <section className="space-y-2" data-kind="workflow-turn" data-turn-expanded={String(expanded)}>
+        <WorkflowUserMessage
+          text={message.user}
+          content={message.userContent}
+          createdAt={message.startedAt}
+          onCopy={onCopy}
+          onEdit={
+            onEditUserMessage && message.user
+              ? () => onEditUserMessage(message.user ?? "")
+              : undefined
+          }
+        />
+
+        {!message.continuesPreviousTurn ? (
+          <AssistantTurnHeader
+            activity={message.activity}
+            duration={durationMs != null ? workflowTurnDurationLabel(durationMs, { running }) : null}
+            expanded={expanded}
+            hasActivityItems={hasActivityItems}
+            canToggle={!running && hasActivityItems}
+            label={label}
+            tone={tone}
+            usage={message.usage}
+            modelName={turnModelName}
+            onToggle={onToggle}
+          />
+        ) : null}
+
+        {expanded ? (
+          <div className="space-y-2">
+            {items.map((item) => (
+              <MessageItemView key={item.id} item={item} />
+            ))}
+          </div>
+        ) : (
+          summaryText ? (
+            <div className="text-[16px] leading-[28px]" data-kind="message-turn-summary">
+              <WorkflowMarkdownContent content={summaryText} />
+            </div>
+          ) : null
+        )}
+
+        {/* 流式状态：只显示在真正活跃的（最后一个）turn 上；引导的前置段保持
+            running 但不再显示"正在思考"。 */}
+        {isLastStreaming && expanded ? <MessageStatusRow startedAt={message.startedAt} /> : null}
+
+        <WorkflowTurnFooterView
+          finalText={finalText}
+          isRunning={running}
+          messageId={message.id}
+          createdAt={message.completedAt ?? message.startedAt}
+          showFooterMetadata={props.showFooterMetadata}
+          onCopy={onCopy}
+          onFork={onFork}
+          onDelete={onDelete}
+        />
+      </section>
+    </div>
+  );
+});

@@ -10,12 +10,24 @@
   margin: 0;
   padding: var(--interaction-dock-fade-inset) var(--space-8)
     var(--interaction-dock-bottom-gap);
+  pointer-events: none;
+}
+
+/* Fade mask so the transcript reads under the composer. Inset on the right
+   by the scrollbar's real layout width (the chat scrollbar renders at the
+   system default width, ~17px on Windows) so the opaque band never covers
+   it. z-index: -1 keeps it behind the dock's in-flow children (steer queue,
+   task progress) instead of painting over them. */
+.composer-wrap::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0 17px 0 0;
   background: linear-gradient(
     to bottom,
     transparent,
     var(--surface-workspace) 26%
   );
-  pointer-events: none;
 }
 
 .chat-page-empty .composer-wrap {
@@ -39,7 +51,7 @@
   width: min(100%, var(--chat-max-width));
   min-height: 0;
   margin: 0 auto;
-  border: 0;
+  border: 1px solid var(--border-strong);
   border-radius: 24px;
   background: var(--surface-popover);
   box-shadow: var(--shadow-md);

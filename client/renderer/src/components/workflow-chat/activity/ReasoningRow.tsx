@@ -21,7 +21,9 @@ export function WorkflowReasoningRow({ item, defaultOpen = false }: Props) {
       .filter(Boolean)
       .join("\n\n") || item.summary;
   const hasDetail = Boolean(text?.trim());
-  const thinking = !item.settled;
+  // 有内容就显示内容（host 快照里 settled 可能缺失，但思考文本已在 summary/content）；
+  // 只有真正无内容且未完成时才显示"正在思考…"占位。
+  const thinking = !item.settled && !hasDetail;
   const encrypted = item.encrypted && !text;
 
   if (encrypted) {

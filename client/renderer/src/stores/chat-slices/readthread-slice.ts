@@ -184,19 +184,18 @@ export function createReadThreadSlice(
       if (!activeSessionId) return null;
 
       const readThread = state.readThreads[activeSessionId];
-      const activeSessionIsStreaming = Boolean(
-        state.streamingSessionIds[activeSessionId],
-      );
 
       // Completed/cached sessions already have the exact model the UI needs.
       // Return it before constructing the legacy fallback: that construction
       // walks and converts the entire conversation and used to block every
       // session switch even though its result was immediately discarded.
-      if (readThread && !activeSessionIsStreaming) {
-        return readThread;
-      }
-
-      if (readThread?.turns.some((turn) => turn.status === "running")) {
+      if (readThread) {
+        // readThread 快照的 turn id 稳定（host serializer 的 turn uuid），
+        // 而 legacy 路径的 turn id 是 user-message id / 累积拼接 id，流式中
+        // 每次构建都可能变化 → Virtuoso 按 key remount 整个 turn 子树 →
+        // MarkdownContent 流式缓冲 timer 被 unmount 清理，文本不渐进显示。
+        // 因此只要有缓存（无论是否含 running turn）就用缓存，legacy 仅兜底
+        // 冷启动（缓存尚未建立）。
         return readThread;
       }
 
@@ -205,10 +204,10 @@ export function createReadThreadSlice(
       // may already be cached from the main-process push broadcast; return
       // it instead of null so the UI shows content immediately.
       const session = state.sessions.find((s) => s.id === activeSessionId);
-      if (!session) return readThread ?? null;
+      if (!session) return null;
 
       const workflowMessages = activeWorkflowMessages(state, session);
-      if (!workflowMessages.length) return readThread ?? null;
+      if (!workflowMessages.length) return null;
       return workflowMessagesToWorkflowReadThreadResponse(workflowMessages, {
         threadId: session.id,
         title: session.title,
