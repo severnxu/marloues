@@ -4,9 +4,12 @@
 
 import type {
   AgentSettings,
+  ChatSendReceipt,
   ContextUsageRecord,
   MemoryRecallRecord,
   ModelOption,
+  OutboxSnapshot,
+  SteerActionReceipt,
   TokenUsage,
 } from "./types";
 import type {
@@ -14,7 +17,10 @@ import type {
   WorkflowSubscribeThreadInput,
   WorkflowThreadPatch,
 } from "./workflow-thread-data-source";
-import type { WorkflowReadThreadResponse } from "./workflow-read-thread-contract";
+import type {
+  WorkflowReadThreadResponse,
+  WorkflowUserMessageContent,
+} from "./workflow-read-thread-contract";
 
 // Runtime event stream exposed to the UI layer.
 export type RuntimeEvent =
@@ -54,10 +60,23 @@ export type RuntimeEvent =
       kind: "turn-complete";
       payload: {
         turnId: string;
-        result: "success" | "error" | "aborted";
+        result: "success" | "error" | "aborted" | "interrupted";
         content?: string;
         error?: string;
         sdkSessionId?: string;
+        /** False only for the intermediate boundary created by an immediate steer. */
+        final?: boolean;
+      };
+    }
+  | {
+      kind: "steer-message";
+      payload: {
+        turnId: string;
+        messageId: string;
+        text: string;
+        content: WorkflowUserMessageContent[];
+        status?: "queued" | "sent" | "applied" | "canceled";
+        timestamp: number;
       };
     }
   | {
@@ -191,6 +210,29 @@ export interface AgentRuntime {
   }): Promise<RuntimeEventStream>;
 
   interruptTurn?(turnId: string): Promise<void>;
+
+  // Optional steer surface (implemented by the Claude SDK runtime).
+  steerTurn?(opts: {
+    threadId: string;
+    content: string;
+    displayContent?: string;
+    userContent?: WorkflowUserMessageContent[];
+    attachments?: unknown[];
+    messageId?: string;
+  }): Promise<ChatSendReceipt>;
+  applyPendingSteerNow?(
+    threadId: string,
+    messageId: string,
+  ): Promise<SteerActionReceipt>;
+  cancelSteerMessage?(
+    threadId: string,
+    messageId: string,
+  ): Promise<SteerActionReceipt>;
+  reorderSteers?(
+    threadId: string,
+    orderedMessageIds: string[],
+  ): Promise<SteerActionReceipt>;
+  getOutboxSnapshots?(sessionId?: string): OutboxSnapshot[];
 
   setModel?(modelId: string): Promise<void>;
   getAvailableModels?(): Promise<ModelOption[]>;

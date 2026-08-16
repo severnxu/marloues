@@ -18,10 +18,14 @@ import type {
 import type {
   AgentSettings,
   AgentPermissionMode,
+  ChatSendReceipt,
   MemoryRecallRecord,
   ModelOption,
+  OutboxSnapshot,
+  SteerActionReceipt,
   TokenUsage,
 } from "@shared/types";
+import type { WorkflowUserMessageContent } from "@shared/workflow-read-thread-contract";
 import {
   queryClaude,
   forkClaudeSession,
@@ -42,6 +46,25 @@ import { workflowThreadStore } from "./workflow-thread-store";
 import { evaluateToolPermission } from "../permissions/tool-permission-engine";
 import { ToolStormBreaker } from "./tool-storm-breaker";
 import { logInfo, logWarn } from "../logging/app-logger";
+import { SteerQueue } from "./steer-queue";
+import { createMessageChannel } from "./message-channel";
+import { buildSdkUserContent } from "./sdk-content";
+import {
+  RuntimeEventQueue,
+  createTurnLifetime,
+  type ActiveTurn,
+  type SteerDeliveryRecord,
+} from "./turn-state";
+import { recoverApplyingOutbox } from "../../services/outbox-service";
+
+/** 可续终态：query.interrupt() / apply steer 触发的软中断，不走 error 收尾。 */
+const CONTINUABLE_TERMINAL_REASONS = new Set([
+  "aborted_streaming",
+  "aborted_tools",
+  "stop_hook_prevented",
+  "hook_stopped",
+  "tool_deferred",
+]);
 
 // ========================
 //  helpers
@@ -597,10 +620,18 @@ export function normalizeSdkMessage(
 
   // ---------- Result messages ----------
   if (msg.type === "result") {
+    const terminalReason =
+      typeof msg.terminal_reason === "string"
+        ? (msg.terminal_reason as string)
+        : undefined;
+    const isInterrupted =
+      terminalReason !== undefined &&
+      CONTINUABLE_TERMINAL_REASONS.has(terminalReason);
     const isError =
-      Boolean(msg.is_error) ||
-      (msg.subtype as string) === "error_during_execution" ||
-      (msg.subtype as string) === "error_max_turns";
+      !isInterrupted &&
+      (Boolean(msg.is_error) ||
+        (msg.subtype as string) === "error_during_execution" ||
+        (msg.subtype as string) === "error_max_turns");
     const usage = normalizeTokenUsage(msg.usage);
 
     if (usage) {
@@ -623,6 +654,17 @@ export function normalizeSdkMessage(
       events.push({
         kind: "turn-complete",
         payload: { turnId, result: "error", error: errorMessage },
+      });
+    } else if (isInterrupted) {
+      events.push({
+        kind: "turn-complete",
+        payload: {
+          turnId,
+          result: "interrupted",
+          content: typeof msg.result === "string" ? msg.result : undefined,
+          sdkSessionId:
+            typeof msg.session_id === "string" ? msg.session_id : undefined,
+        },
       });
     } else {
       events.push({
@@ -893,6 +935,20 @@ function pushMessage(threadId: string, msg: Message): void {
   t.updatedAt = now();
 }
 
+async function* canceledTurnStream(
+  threadId: string,
+  turnId: string,
+): AsyncIterable<RuntimeEvent> {
+  yield {
+    kind: "turn-start",
+    payload: { turnId, timestamp: now() },
+  };
+  yield {
+    kind: "turn-complete",
+    payload: { turnId, result: "aborted" },
+  };
+}
+
 // ========================
 // ClaudeRuntime
 // ========================
@@ -910,8 +966,11 @@ export class ClaudeRuntime implements AgentRuntime {
     sandbox: false,
   };
 
-  private activeQuery: ClaudeQuery | null = null;
-  private activeTurnId: string | null = null;
+  private activeTurns = new Map<string, ActiveTurn>();
+  private steerQueue = new SteerQueue({
+    getActiveTurn: (threadId) => this.activeTurns.get(threadId),
+    pushMessage: (threadId, message) => pushMessage(threadId, message),
+  });
   private pendingApprovals = new Map<
     string,
     { resolve: (approved: boolean) => void; toolName: string }
@@ -928,6 +987,7 @@ export class ClaudeRuntime implements AgentRuntime {
   // ---------- Session lifecycle ----------
 
   async initialize(): Promise<void> {
+    recoverApplyingOutbox();
     try {
       await import("@anthropic-ai/claude-agent-sdk");
     } catch {
@@ -936,10 +996,18 @@ export class ClaudeRuntime implements AgentRuntime {
   }
 
   async destroy(): Promise<void> {
-    if (this.activeQuery?.close) {
-      this.activeQuery.close();
+    for (const [threadId, entry] of this.activeTurns) {
+      if (entry.channel && !entry.channel.isClosed()) entry.channel.close();
+      if (entry.query?.close) {
+        try {
+          entry.query.close();
+        } catch {
+          /* best-effort */
+        }
+      }
+      this.activeTurns.delete(threadId);
+      entry.finish();
     }
-    this.activeQuery = null;
     this.resolvePendingApprovals(false);
     this.sessionApprovedTools.clear();
   }
@@ -966,6 +1034,21 @@ export class ClaudeRuntime implements AgentRuntime {
   }
 
   async deleteThread(threadId: string): Promise<void> {
+    const active = this.activeTurns.get(threadId);
+    if (active) {
+      active.canceled = true;
+      active.acceptingSteers = false;
+      if (active.channel && !active.channel.isClosed()) active.channel.close();
+      if (active.query?.close) {
+        try {
+          active.query.close();
+        } catch {
+          /* best-effort */
+        }
+      }
+      this.activeTurns.delete(threadId);
+      active.finish();
+    }
     threads.delete(threadId);
     workflowThreadStore.deleteThread(threadId);
   }
@@ -1041,7 +1124,11 @@ export class ClaudeRuntime implements AgentRuntime {
   }): Promise<AsyncIterable<RuntimeEvent>> {
     ensureThread(opts.threadId);
     const turnId = opts.turnId ?? genId();
-    this.activeTurnId = turnId;
+    if (this.activeTurns.has(opts.threadId)) {
+      throw new Error(
+        `会话正在运行中（thread=${opts.threadId}），请等待当前回合结束后再发送。`,
+      );
+    }
     this.toolStormBreaker.resetTurn(turnId);
     const displayContent = opts.displayContent ?? opts.content;
 
@@ -1078,7 +1165,22 @@ export class ClaudeRuntime implements AgentRuntime {
 
     // Apply context policy before sending.
     const sdkEnv = buildSdkEnv(effectiveSettings);
-    const queue = new RuntimeEventQueue();
+    const channel = createMessageChannel();
+    const entry: ActiveTurn = {
+      turnId,
+      query: null,
+      channel,
+      eventQueue: new RuntimeEventQueue(),
+      pendingSteers: [],
+      canceled: false,
+      stopRequested: false,
+      applyInterruptPhase: "idle",
+      acceptingSteers: true,
+      ...createTurnLifetime(),
+      status: "running",
+    };
+    this.activeTurns.set(opts.threadId, entry);
+    const queue = entry.eventQueue!;
 
     // Prepare tool permission callbacks for SDK canUseTool.
     const options = buildClaudeRuntimeOptions({
@@ -1188,11 +1290,47 @@ export class ClaudeRuntime implements AgentRuntime {
       });
     }
 
-    // Emit the user message before the SDK response starts.
-    const query = await queryClaude(opts.content, options);
-    this.activeQuery = query;
+    const provider = resolveModelProvider(effectiveSettings);
+    const supportsVision =
+      provider.provider?.models?.find((m) => m.id === provider.model)
+        ?.supportsVision ?? false;
+    const sdkContent = buildSdkUserContent(
+      opts.content,
+      opts.attachments,
+      supportsVision,
+    );
+
+    let query: ClaudeQuery;
+    try {
+      query = await queryClaude(channel.generator, options);
+    } catch (err) {
+      this.activeTurns.delete(opts.threadId);
+      entry.finish();
+      throw err;
+    }
+    if (entry.canceled) {
+      try {
+        query.close?.();
+      } catch {
+        /* best-effort */
+      }
+      this.activeTurns.delete(opts.threadId);
+      entry.finish();
+      return canceledTurnStream(opts.threadId, turnId);
+    }
+    entry.query = query;
+
+    // Enqueue the initial user message into the persistent channel.
+    channel.enqueue({
+      type: "user",
+      message: { role: "user", content: sdkContent },
+      parent_tool_use_id: null,
+    });
     // 捕获实例引用供 wrapStream 使用（普通函数生成器不绑定 this）。
     const threadSdkSession = this.threadSdkSession;
+    const activeTurns = this.activeTurns;
+    const flushNextPendingSteerAtBoundary =
+      this.flushNextPendingSteerAtBoundary.bind(this);
 
     // Start the SDK query and stream normalized events.
     async function* wrapStream(): AsyncIterable<RuntimeEvent> {
@@ -1203,7 +1341,7 @@ export class ClaudeRuntime implements AgentRuntime {
       };
 
       let assistantText = "";
-      let sawTurnComplete = false;
+      let yieldedTerminal = false;
 
       async function getContextUsageEvent(
         phase: "turn_start" | "turn_end",
@@ -1263,20 +1401,90 @@ export class ClaudeRuntime implements AgentRuntime {
           nextSdk = iterator.next();
           const sdkMsg = sdkResult.value;
           const events = normalizeSdkMessage(opts.threadId, turnId, sdkMsg);
+          let flushedSteer = false;
           for (const event of events) {
-            // Ignore callbacks that arrive after the turn has closed.
             if (event.kind === "text-chunk") {
               assistantText += event.payload.content;
             }
-            if (
-              event.kind === "turn-complete" &&
-              "sdkSessionId" in event.payload &&
-              typeof event.payload.sdkSessionId === "string" &&
-              event.payload.sdkSessionId
-            ) {
-              // 记录 threadId → SDK sessionId，供 forkThread 走 SDK forkSession。
-              threadSdkSession.set(opts.threadId, event.payload.sdkSessionId);
+
+            if (event.kind === "turn-complete") {
+              if (
+                "sdkSessionId" in event.payload &&
+                typeof event.payload.sdkSessionId === "string" &&
+                event.payload.sdkSessionId
+              ) {
+                // 记录 threadId → SDK sessionId，供 forkThread 走 SDK forkSession。
+                threadSdkSession.set(opts.threadId, event.payload.sdkSessionId);
+              }
+              const resultVal = event.payload.result;
+              if (resultVal === "success") {
+                // Natural boundary: FIFO inject the next queued steer (if any)
+                // and keep this same runtime turn alive instead of closing.
+                if (
+                  flushNextPendingSteerAtBoundary(opts.threadId, entry)
+                ) {
+                  logInfo("claude.turn.steer.flushPending", {
+                    threadId: opts.threadId,
+                    turnId,
+                    remainingSteers: entry.pendingSteers.length,
+                  });
+                  flushedSteer = true;
+                  break;
+                }
+                entry.acceptingSteers = false;
+                const terminalEvent: RuntimeEvent = {
+                  ...event,
+                  payload: { ...event.payload, final: true },
+                };
+                workflowThreadStore.applyRuntimeEvent(
+                  opts.threadId,
+                  turnId,
+                  terminalEvent,
+                );
+                yield terminalEvent;
+                yieldedTerminal = true;
+                const contextUsageEvent =
+                  await getContextUsageEvent("turn_end");
+                if (contextUsageEvent) {
+                  workflowThreadStore.applyRuntimeEvent(
+                    opts.threadId,
+                    turnId,
+                    contextUsageEvent,
+                  );
+                  yield contextUsageEvent;
+                }
+                channel.close();
+                sdkDone = true;
+                break;
+              } else if (resultVal === "interrupted") {
+                // Soft boundary from an immediate steer (apply-now): keep the
+                // loop alive; the priority:"now" message continues the query.
+                const interruptedEvent: RuntimeEvent = {
+                  ...event,
+                  payload: { ...event.payload, final: false },
+                };
+                workflowThreadStore.applyRuntimeEvent(
+                  opts.threadId,
+                  turnId,
+                  interruptedEvent,
+                );
+                yield interruptedEvent;
+              } else {
+                entry.acceptingSteers = false;
+                workflowThreadStore.applyRuntimeEvent(
+                  opts.threadId,
+                  turnId,
+                  event,
+                );
+                yield event;
+                yieldedTerminal = true;
+                channel.close();
+                sdkDone = true;
+                break;
+              }
+              continue;
             }
+
             workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, event);
             yield event;
             if (event.kind === "mcp-status") {
@@ -1297,40 +1505,11 @@ export class ClaudeRuntime implements AgentRuntime {
                 yield contextUsageEvent;
               }
             }
-            if (event.kind === "turn-complete") {
-              sawTurnComplete = true;
-              const contextUsageEvent = await getContextUsageEvent("turn_end");
-              if (contextUsageEvent) {
-                workflowThreadStore.applyRuntimeEvent(
-                  opts.threadId,
-                  turnId,
-                  contextUsageEvent,
-                );
-                yield contextUsageEvent;
-                if (
-                  contextUsageEvent.kind === "context-usage" &&
-                  contextUsageEvent.payload.usage
-                ) {
-                  const policyEvent = buildContextPolicyWarningEvent(
-                    settings,
-                    turnId,
-                    contextUsageEvent.payload.usage,
-                  );
-                  if (policyEvent) {
-                    workflowThreadStore.applyRuntimeEvent(
-                      opts.threadId,
-                      turnId,
-                      policyEvent,
-                    );
-                    yield policyEvent;
-                  }
-                }
-              }
-            }
           }
+          if (flushedSteer) continue;
         }
         yield* queue.drainSync();
-        if (!sawTurnComplete) {
+        if (!yieldedTerminal) {
           const contextUsageEvent = await getContextUsageEvent("turn_end");
           if (contextUsageEvent) {
             workflowThreadStore.applyRuntimeEvent(
@@ -1340,9 +1519,14 @@ export class ClaudeRuntime implements AgentRuntime {
             );
             yield contextUsageEvent;
           }
+          const resultVal = entry.canceled
+            ? "aborted"
+            : entry.stopRequested
+              ? "interrupted"
+              : "success";
           const completeEvent: RuntimeEvent = {
             kind: "turn-complete",
-            payload: { turnId, result: "success" },
+            payload: { turnId, result: resultVal },
           };
           workflowThreadStore.applyRuntimeEvent(
             opts.threadId,
@@ -1353,7 +1537,6 @@ export class ClaudeRuntime implements AgentRuntime {
         }
       } catch (err) {
         yield* queue.drainSync();
-        // Track SDK query completion.
         const errorEvent: RuntimeEvent = {
           kind: "error",
           payload: {
@@ -1382,6 +1565,12 @@ export class ClaudeRuntime implements AgentRuntime {
           completeEvent,
         );
         yield completeEvent;
+      } finally {
+        if (!channel.isClosed()) channel.close();
+        if (activeTurns.get(opts.threadId) === entry) {
+          activeTurns.delete(opts.threadId);
+        }
+        entry.finish();
       }
 
       // Persist final assistant state.
@@ -1404,12 +1593,88 @@ export class ClaudeRuntime implements AgentRuntime {
   // ---------- Turn control ----------
 
   async interruptTurn(turnId: string): Promise<void> {
-    if (this.activeQuery?.interrupt) {
-      await this.activeQuery.interrupt();
+    let targetThreadId: string | undefined;
+    let target: ActiveTurn | undefined;
+    for (const [threadId, entry] of this.activeTurns) {
+      if (entry.turnId === turnId) {
+        targetThreadId = threadId;
+        target = entry;
+        break;
+      }
     }
-    if (this.activeTurnId === turnId) {
-      this.activeTurnId = null;
+    if (!target) return;
+    target.stopRequested = true;
+    target.acceptingSteers = false;
+    if (target.query?.interrupt) {
+      try {
+        await target.query.interrupt();
+      } catch {
+        /* best-effort */
+      }
     }
+    if (target.channel && !target.channel.isClosed()) {
+      target.channel.close();
+    }
+    this.resolvePendingApprovals(false, "canceled", targetThreadId);
+  }
+
+  // ---------- Steer surface ----------
+
+  async steerTurn(opts: {
+    threadId: string;
+    content: string;
+    displayContent?: string;
+    userContent?: WorkflowUserMessageContent[];
+    attachments?: unknown[];
+    messageId?: string;
+  }): Promise<ChatSendReceipt> {
+    return this.steerQueue.queue(opts);
+  }
+
+  async applyPendingSteerNow(
+    threadId: string,
+    messageId: string,
+  ): Promise<SteerActionReceipt> {
+    return this.steerQueue.applyNow(threadId, messageId);
+  }
+
+  async cancelSteerMessage(
+    threadId: string,
+    messageId: string,
+  ): Promise<SteerActionReceipt> {
+    return this.steerQueue.cancel(threadId, messageId);
+  }
+
+  async reorderSteers(
+    threadId: string,
+    orderedMessageIds: string[],
+  ): Promise<SteerActionReceipt> {
+    return this.steerQueue.reorder(threadId, orderedMessageIds);
+  }
+
+  getOutboxSnapshots(sessionId?: string): OutboxSnapshot[] {
+    return this.steerQueue.listSnapshots(sessionId, (active) =>
+      Boolean(
+        active?.channel &&
+          !active.channel.isClosed() &&
+          active.acceptingSteers &&
+          !active.canceled,
+      ),
+    );
+  }
+
+  private rememberSteerDelivery(
+    record: Omit<SteerDeliveryRecord, "updatedAt">,
+    options: { persist?: boolean } = {},
+  ): void {
+    this.steerQueue.rememberDelivery(record, options);
+  }
+
+  private flushNextPendingSteerAtBoundary(
+    threadId: string,
+    entry: ActiveTurn,
+  ): boolean {
+    return this.steerQueue.flushNextAtBoundary(threadId, entry);
   }
 
   // ---------- Model selection ----------
@@ -1496,37 +1761,14 @@ export class ClaudeRuntime implements AgentRuntime {
     });
   }
 
-  private resolvePendingApprovals(approved: boolean): void {
+  private resolvePendingApprovals(
+    approved: boolean,
+    _scope?: string,
+    _threadId?: string,
+  ): void {
     for (const [requestId, pending] of this.pendingApprovals) {
       this.pendingApprovals.delete(requestId);
       pending.resolve(approved);
-    }
-  }
-}
-
-class RuntimeEventQueue {
-  private events: RuntimeEvent[] = [];
-  private waiters: Array<(event: RuntimeEvent) => void> = [];
-
-  push(event: RuntimeEvent): void {
-    const waiter = this.waiters.shift();
-    if (waiter) {
-      waiter(event);
-      return;
-    }
-    this.events.push(event);
-  }
-
-  next(): Promise<RuntimeEvent> {
-    const event = this.events.shift();
-    if (event) return Promise.resolve(event);
-    return new Promise((resolve) => this.waiters.push(resolve));
-  }
-
-  *drainSync(): Iterable<RuntimeEvent> {
-    while (this.events.length) {
-      const event = this.events.shift();
-      if (event) yield event;
     }
   }
 }

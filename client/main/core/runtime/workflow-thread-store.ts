@@ -126,6 +126,7 @@ class WorkflowThreadStore {
         updatedAt: timestamp,
         turnOrder: [],
         turns: new Map(),
+        displayTurnIds: new Map(),
       };
       this.threads.set(threadId, thread);
     } else {
@@ -271,7 +272,75 @@ class WorkflowThreadStore {
     timestamp = now(),
   ): void {
     const thread = this.ensureThread(threadId);
-    const turn = this.ensureTurn(thread, turnId, timestamp);
+
+    // A steer is a second user input that arrives while the SDK is still
+    // executing the same runtime turn. The conversation UI must nevertheless
+    // place it chronologically between the assistant output before and after
+    // it. We start a new display segment and route all later events for this
+    // still-running runtime turn into that segment beginning with the steer.
+    if (
+      event.kind === "steer-message" &&
+      (event.payload.status === "sent" ||
+        event.payload.status === "applied" ||
+        !event.payload.status)
+    ) {
+      const previousTurnId = thread.displayTurnIds.get(turnId) ?? turnId;
+      const previousTurn = this.ensureTurn(thread, previousTurnId, timestamp);
+      const steerTurnId = `${turnId}:steer:${event.payload.messageId}`;
+
+      if (!thread.turns.has(steerTurnId)) {
+        // 引导（立即引导）不结束原 turn：保持 running，直到引导续跑也结束才收尾。
+        if (event.payload.status === "applied") {
+          previousTurn.continuationFragment = true;
+        }
+        const item: WorkflowTurnItem = {
+          type: "userMessage",
+          id: event.payload.messageId,
+          content: event.payload.content.length
+            ? event.payload.content
+            : event.payload.text
+              ? [{ type: "text", text: event.payload.text }]
+              : [],
+        };
+        thread.turnOrder.push(steerTurnId);
+        thread.turns.set(steerTurnId, {
+          id: steerTurnId,
+          status: "running",
+          error: null,
+          startedAt: previousTurn.startedAt ?? timestamp,
+          completedAt: null,
+          durationMs: null,
+          modelId: previousTurn.modelId ?? null,
+          modelName: previousTurn.modelName ?? null,
+          continuesPreviousTurn: event.payload.status === "applied" || undefined,
+          appliedInterruptPending: event.payload.status === "applied",
+          itemOrder: [item.id],
+          items: new Map([[item.id, { item }]]),
+        });
+      }
+      thread.displayTurnIds.set(turnId, steerTurnId);
+      thread.status = { type: "active", activeFlags: {} };
+      thread.preview =
+        event.payload.text.trim().slice(0, 160) || thread.preview;
+      thread.updatedAt = timestamp;
+      this.emit(threadId);
+      return;
+    }
+
+    const displayTurnId = thread.displayTurnIds.get(turnId) ?? turnId;
+    const turn = this.ensureTurn(thread, displayTurnId, timestamp);
+
+    // Any substantive follow-up event (assistant text, tools, etc.) means the
+    // SDK has started the priority:"now" continuation turn — clear the
+    // applied-interrupt guard so a later manual stop is honored.
+    if (
+      turn.appliedInterruptPending &&
+      event.kind !== "turn-complete" &&
+      event.kind !== "token-usage" &&
+      event.kind !== "runtime-status"
+    ) {
+      turn.appliedInterruptPending = false;
+    }
 
     if (event.kind === "text-chunk") {
       this.appendAgentText(turn, event.payload.content, timestamp);
@@ -330,22 +399,63 @@ class WorkflowThreadStore {
         rawType: "runtime-status",
         raw: event.payload,
       });
+    } else if (event.kind === "steer-message") {
+      // A flushed steer is a chronological user input in the same runtime turn.
+      // canceled steers never reached the agent, so they are not recorded.
+      if (event.payload.status !== "canceled") {
+        this.upsertItem(turn, {
+          type: "userMessage",
+          id: event.payload.messageId,
+          content: event.payload.content,
+        });
+      }
     } else if (event.kind === "token-usage") {
       turn.usage = event.payload.usage;
     } else if (event.kind === "turn-complete") {
-      turn.status =
-        event.payload.result === "success"
-          ? "completed"
-          : event.payload.result === "aborted"
-            ? "cancelled"
-            : "failed";
-      turn.completedAt = timestamp;
-      turn.durationMs =
-        typeof turn.startedAt === "number" ? timestamp - turn.startedAt : null;
-      turn.error = event.payload.error
-        ? { message: event.payload.error }
-        : null;
-      thread.status = { type: "idle" };
+      // Immediate steer closes only the interrupted display fragment. Drop this
+      // intermediate boundary (it belongs to the already-finalized predecessor).
+      if (event.payload.final === false) {
+        turn.appliedInterruptPending = false;
+        thread.updatedAt = timestamp;
+        this.emit(threadId);
+        return;
+      }
+      // apply (priority:"now") 中断：SDK 先发 turn.complete(interrupted) 收尾
+      // 被中断的前一段，再续跑 steer 段。该 stray 终态因 displayTurnIds 已切换
+      // 而路由到 steer 段，但它属于已收尾的前一段，不可把 steer 段标成完成。
+      if (turn.appliedInterruptPending && event.payload.result === "interrupted") {
+        turn.appliedInterruptPending = false;
+      } else {
+        this.finalizeTurn(
+          turn,
+          event.payload.result,
+          event.payload.error,
+          timestamp,
+        );
+        // steer 续跑结束：沿 continuation 链向前收尾所有被引导打断的段
+        // （一次 turn 里可能连续引导多次）。
+        if (turn.continuesPreviousTurn) {
+          const index = thread.turnOrder.indexOf(turn.id);
+          for (let i = index - 1; i >= 0; i -= 1) {
+            const predecessor = thread.turns.get(thread.turnOrder[i]);
+            if (!predecessor) break;
+            if (predecessor.status !== "running") break;
+            if (
+              !predecessor.continuationFragment &&
+              !predecessor.continuesPreviousTurn
+            ) {
+              break;
+            }
+            this.finalizeTurn(
+              predecessor,
+              event.payload.result,
+              event.payload.error,
+              timestamp,
+            );
+          }
+        }
+        thread.status = { type: "idle" };
+      }
     } else if (event.kind === "error") {
       turn.status = "failed";
       turn.error = {
@@ -444,6 +554,33 @@ class WorkflowThreadStore {
     turn.items.set(item.id, { item });
   }
 
+  private finalizeTurn(
+    turn: WorkflowThreadStoreTurn,
+    result: "success" | "error" | "aborted" | "interrupted",
+    error: string | undefined,
+    timestamp: number,
+  ): void {
+    turn.status =
+      result === "success"
+        ? "completed"
+        : result === "aborted"
+          ? "cancelled"
+          : "failed";
+    turn.completedAt = timestamp;
+    turn.durationMs =
+      typeof turn.startedAt === "number" ? timestamp - turn.startedAt : null;
+    turn.error = error ? { message: error } : null;
+    // finalize 流式不变量：所有 agentMessage 标记为已稳定，
+    // 渲染端从"节流 + 增量渲染"切回全量渲染（最后一次）。
+    for (const itemId of turn.itemOrder) {
+      const entry = turn.items.get(itemId);
+      const item = entry?.item;
+      if (item?.type === "agentMessage" && item.settled !== true) {
+        this.upsertItem(turn, { ...item, settled: true, phase: "finalized" });
+      }
+    }
+  }
+
   private appendAgentText(
     turn: WorkflowThreadStoreTurn,
     delta: string,
@@ -461,6 +598,9 @@ class WorkflowThreadStore {
       id,
       text,
       phase: "updated",
+      // 流式不变量：chunk 期间 settled=false，turn 完成时 finalize 为 true。
+      // 渲染端据此走节流 + 增量渲染路径，避免每 chunk 同步全量重解析。
+      settled: false,
     };
     this.upsertItem(turn, item);
     updateItemTime(item, timestamp);

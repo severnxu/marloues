@@ -178,13 +178,41 @@ const api: MarlouesAPI = {
       ipcRenderer.invoke(IPC.CHAT_CANCEL_TOOL, toolCallId),
     compact: (sessionId: string) =>
       ipcRenderer.invoke(IPC.CHAT_COMPACT, sessionId),
+    getPendingState: (sessionId?: string) =>
+      ipcRenderer.invoke(IPC.CHAT_GET_PENDING_STATE, sessionId),
+    resumeOutbox: (sessionId: string, messageId?: string) =>
+      ipcRenderer.invoke(IPC.CHAT_RESUME_OUTBOX, sessionId, messageId),
+    cancelSteer: (sessionId: string, messageId: string) =>
+      ipcRenderer.invoke(IPC.CHAT_CANCEL_STEER, sessionId, messageId),
+    applySteerNow: (sessionId: string, messageId: string) =>
+      ipcRenderer.invoke(IPC.CHAT_APPLY_STEER_NOW, sessionId, messageId),
+    reorderSteers: (sessionId: string, messageIds: string[]) =>
+      ipcRenderer.invoke(IPC.CHAT_REORDER_STEERS, sessionId, messageIds),
+    onPendingState: (
+      callback: (
+        snapshot: Awaited<
+          ReturnType<MarlouesAPI["chat"]["getPendingState"]>
+        >,
+      ) => void,
+    ) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        snapshot: Awaited<
+          ReturnType<MarlouesAPI["chat"]["getPendingState"]>
+        >,
+      ) => callback(snapshot);
+      ipcRenderer.on(IPC.CHAT_PENDING_STATE_UPDATE, listener);
+      return () => ipcRenderer.off(IPC.CHAT_PENDING_STATE_UPDATE, listener);
+    },
     readThread: (sessionId: string) =>
       ipcRenderer.invoke(IPC.CHAT_READ_THREAD, sessionId),
     onReadThread: (callback) => {
       const listener = (
         _event: Electron.IpcRendererEvent,
         snapshot: Awaited<ReturnType<MarlouesAPI["chat"]["readThread"]>>,
-      ) => callback(snapshot);
+      ) => {
+        callback(snapshot);
+      };
       ipcRenderer.on(IPC.CHAT_READ_THREAD_UPDATE, listener);
       return () => ipcRenderer.off(IPC.CHAT_READ_THREAD_UPDATE, listener);
     },

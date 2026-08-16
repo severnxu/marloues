@@ -24,6 +24,12 @@ export interface WorkflowThreadStoreTurn {
   modelId?: string | null;
   modelName?: string | null;
   usage?: TokenUsage;
+  /** This slice has later output in the same visual turn. */
+  continuationFragment?: boolean;
+  /** This slice continues the visual turn started by a previous slice. */
+  continuesPreviousTurn?: boolean;
+  /** Set on an applied-steer segment until the follow-up SDK turn starts. */
+  appliedInterruptPending?: boolean;
   itemOrder: string[];
   items: Map<string, WorkflowThreadStoreItem>;
 }
@@ -38,6 +44,8 @@ export interface WorkflowThreadStoreThread {
   updatedAt?: number | string | null;
   turnOrder: string[];
   turns: Map<string, WorkflowThreadStoreTurn>;
+  /** Runtime turn id -> currently rendered conversation segment id. */
+  displayTurnIds: Map<string, string>;
 }
 
 export function serializeWorkflowThread(
@@ -87,6 +95,8 @@ function serializeTurn(turn: WorkflowThreadStoreTurn): WorkflowTurn {
     modelId: turn.modelId ?? null,
     modelName: turn.modelName ?? null,
     usage: turn.usage,
+    continuationFragment: turn.continuationFragment,
+    continuesPreviousTurn: turn.continuesPreviousTurn,
     items: turn.itemOrder
       .map((itemId) => turn.items.get(itemId)?.item)
       .filter((item): item is WorkflowTurnItem => Boolean(item)),

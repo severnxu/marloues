@@ -78,26 +78,60 @@ export interface SessionSearchResult {
   updatedAt: number;
 }
 
+export type OutboxMessageState =
+  | "queued"
+  | "applying"
+  | "dispatched"
+  | "canceled";
+
 export interface OutboxMessageRecord {
-  messageId: string;
   sessionId: string;
+  messageId: string;
   turnId?: string;
   displayContent: string;
-  userContent?: import("./workflow-read-thread-contract").WorkflowUserMessageContent[];
-  state: "queued" | "applying" | "sent";
-  paused?: boolean;
+  userContent: import("./workflow-read-thread-contract").WorkflowUserMessageContent[];
+  sdkContent: string;
+  state: OutboxMessageState;
+  position: number;
+  attemptCount: number;
+  lastError?: string;
   createdAt: number;
+  updatedAt: number;
 }
 
 export interface OutboxSnapshot {
   sessionId: string;
+  revision: number;
+  /** No active accepting turn exists; the head must be resumed as a new turn. */
+  paused: boolean;
   items: OutboxMessageRecord[];
-  paused?: boolean;
 }
 
 export interface PendingStateSnapshot {
   outboxes: OutboxSnapshot[];
   approvals: PermissionDialogRequest[];
+}
+
+export type SteerActionReceiptStatus =
+  | "applied"
+  | "applying"
+  | "queued"
+  | "canceled"
+  | "reordered"
+  | "already_dispatched"
+  | "boundary_closed"
+  | "not_found"
+  | "failed";
+
+export interface SteerActionReceipt {
+  action: "apply" | "cancel" | "reorder";
+  status: SteerActionReceiptStatus;
+  sessionId: string;
+  messageId?: string;
+  turnId?: string;
+  order?: string[];
+  interrupt?: "succeeded" | "failed" | "unsupported";
+  error?: string;
 }
 
 export type ChatRole = "user" | "assistant" | "system";
@@ -992,6 +1026,26 @@ export interface MarlouesAPI {
     abort(requestId: string): Promise<void>;
     cancelTool(toolCallId: string): Promise<void>;
     compact(sessionId: string): Promise<void>;
+    getPendingState(sessionId?: string): Promise<PendingStateSnapshot>;
+    resumeOutbox(
+      sessionId: string,
+      messageId?: string,
+    ): Promise<ChatSendReceipt>;
+    cancelSteer(
+      sessionId: string,
+      messageId: string,
+    ): Promise<SteerActionReceipt>;
+    applySteerNow(
+      sessionId: string,
+      messageId: string,
+    ): Promise<SteerActionReceipt>;
+    reorderSteers(
+      sessionId: string,
+      messageIds: string[],
+    ): Promise<SteerActionReceipt>;
+    onPendingState(
+      callback: (snapshot: PendingStateSnapshot) => void,
+    ): () => void;
     readThread(sessionId: string): Promise<WorkflowReadThreadResponse | null>;
     onReadThread(
       callback: (snapshot: WorkflowReadThreadResponse | null) => void,
@@ -1094,6 +1148,12 @@ export const IPC = {
   CHAT_RESEND_FROM_MESSAGE: "chat:resend-from-message",
   CHAT_ABORT: "chat:abort",
   CHAT_CANCEL_TOOL: "chat:cancel-tool",
+  CHAT_GET_PENDING_STATE: "chat:get-pending-state",
+  CHAT_RESUME_OUTBOX: "chat:resume-outbox",
+  CHAT_CANCEL_STEER: "chat:cancel-steer",
+  CHAT_APPLY_STEER_NOW: "chat:apply-steer-now",
+  CHAT_REORDER_STEERS: "chat:reorder-steers",
+  CHAT_PENDING_STATE_UPDATE: "chat:pending-state-update",
   CHAT_READ_THREAD: "chat:read-thread",
   CHAT_READ_THREAD_UPDATE: "chat:read-thread-update",
   CHAT_COMPACT: "chat:compact",

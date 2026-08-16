@@ -267,6 +267,40 @@ function migrate(database: Database.Database): void {
     `);
     logInfo("stateDb.migrated", { version: 6, dbPath: getStateDbPath() });
   }
+
+  const afterSessionsVersion = database.pragma("user_version", { simple: true }) as number;
+  if (afterSessionsVersion < 7) {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS outbox_messages (
+        session_id TEXT NOT NULL,
+        message_id TEXT NOT NULL,
+        turn_id TEXT,
+        kind TEXT NOT NULL DEFAULT 'steer',
+        display_content TEXT NOT NULL,
+        user_content_json TEXT NOT NULL,
+        sdk_content TEXT NOT NULL,
+        state TEXT NOT NULL DEFAULT 'queued',
+        position INTEGER NOT NULL DEFAULT 0,
+        attempt_count INTEGER NOT NULL DEFAULT 0,
+        last_error TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (session_id, message_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_outbox_session_state_position
+        ON outbox_messages(session_id, state, position);
+      CREATE INDEX IF NOT EXISTS idx_outbox_updated
+        ON outbox_messages(updated_at DESC);
+
+      CREATE TABLE IF NOT EXISTS outbox_revisions (
+        session_id TEXT PRIMARY KEY,
+        revision INTEGER NOT NULL DEFAULT 0
+      );
+      PRAGMA user_version = 7;
+    `);
+    logInfo("stateDb.migrated", { version: 7, dbPath: getStateDbPath() });
+  }
 }
 
 function tableHasColumn(database: Database.Database, tableName: string, columnName: string): boolean {

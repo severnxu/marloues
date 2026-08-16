@@ -69,7 +69,18 @@ export function translateRuntimeEventToUIEvent(
         content: evt.payload.content,
         error: evt.payload.error,
         sdkSessionId: evt.payload.sdkSessionId,
+        final: evt.payload.final,
         timestamp: Date.now(),
+      };
+    case "steer-message":
+      return {
+        ...base,
+        type: "steer.message",
+        messageId: evt.payload.messageId,
+        text: evt.payload.text,
+        content: evt.payload.content,
+        status: evt.payload.status,
+        timestamp: evt.payload.timestamp,
       };
     case "runtime-status":
       return {

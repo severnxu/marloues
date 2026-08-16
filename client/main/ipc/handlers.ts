@@ -16,6 +16,8 @@ import type {
   ChatRewindRequest,
   ChatRewindResult,
   ChatMessageRecord,
+  PendingStateSnapshot,
+  SteerActionReceipt,
   TimelineItem,
   RuntimeKind,
   WorkspaceInfo,
@@ -30,6 +32,7 @@ import type {
   ScheduledTaskRecord,
   ScheduledTaskRunRecord,
 } from "@shared/types";
+import type { WorkflowUserMessageContent } from "@shared/workflow-read-thread-contract";
 import {
   getRuntime,
   getRuntimeState,
@@ -41,6 +44,7 @@ import {
   estimateSessionTokens,
   evaluateContextPolicy,
 } from "../core/context/context-policy";
+import { createReadThreadPushCoalescer } from "../core/runtime/read-thread-push-coalescer";
 import { translateRuntimeEventToUIEvent } from "@shared/runtime-event-adapter";
 import {
   getAgentSettings,
@@ -128,6 +132,12 @@ import {
   captureWorkspaceCheckpoint,
   previewWorkspaceRewind,
 } from "../services/workspace-checkpoint-service";
+import {
+  claimNextOutboxMessage,
+  updateOutboxState,
+  subscribeOutbox,
+  cancelSessionOutbox,
+} from "../services/outbox-service";
 
 const pendingApprovalItems = new Map<
   string,
@@ -165,22 +175,43 @@ async function sendReadThreadUpdate(threadId: string): Promise<void> {
   const mainWindow = getMainWindow();
   if (!mainWindow) return;
   try {
-    mainWindow.webContents.send(
-      IPC.CHAT_READ_THREAD_UPDATE,
-      await readRuntimeThreadSnapshot(threadId),
-    );
+    const snapshot = await readRuntimeThreadSnapshot(threadId);
+    mainWindow.webContents.send(IPC.CHAT_READ_THREAD_UPDATE, snapshot);
   } catch {
+    // 静默兜底：推送失败时发送 null，渲染端自行回退。
     mainWindow.webContents.send(IPC.CHAT_READ_THREAD_UPDATE, null);
   }
 }
 
 let readThreadBroadcastRegistered = false;
 
+/**
+ * 流式期间每个 text-chunk 都会 emit 一次 thread 更新；text-chunk 可高达每
+ * 秒数十个，每次都做完整序列化 + IPC 全量快照会压垮 renderer。这里把推送
+ * 合并为固定间隔的最新快照：间隔窗口内多次 emit 只发送最后一份，且严格串行
+ * （前一次发送完成后再取最新值），避免 async 乱序。
+ *
+ * 合并器是 drain-safe 的：推送进行中到达的更新会进入下一轮推送，绝不被丢弃。
+ * 这一点对 turn 收尾至关重要——最后一批 text-chunk / turn-complete 的 emit
+ * 若被丢弃，渲染端会停在过期快照（文本缺尾），直到 turn.complete 触发
+ * loadReadThread 全量重载才一次性显示完整文本。
+ */
+const READ_THREAD_PUSH_INTERVAL_MS = 100;
+
+const readThreadPushCoalescer = createReadThreadPushCoalescer({
+  intervalMs: READ_THREAD_PUSH_INTERVAL_MS,
+  send: sendReadThreadUpdate,
+});
+
+function scheduleReadThreadPush(threadId: string): void {
+  readThreadPushCoalescer.notify(threadId);
+}
+
 function registerReadThreadBroadcast(): void {
   if (readThreadBroadcastRegistered) return;
   readThreadBroadcastRegistered = true;
   workflowThreadStore.addListener((threadId) => {
-    void sendReadThreadUpdate(threadId);
+    scheduleReadThreadPush(threadId);
   });
 }
 
@@ -188,6 +219,49 @@ function getMainWindow(): BrowserWindow | null {
   const wins = BrowserWindow.getAllWindows();
   return wins.find((w) => !w.isDestroyed()) ?? null;
 }
+
+async function buildPendingStateSnapshot(
+  sessionId?: string,
+): Promise<PendingStateSnapshot> {
+  const runtime = getRuntime();
+  return {
+    outboxes: runtime.getOutboxSnapshots?.(sessionId) ?? [],
+    approvals: Array.from(pendingApprovalItems.values())
+      .filter((item) => !sessionId || item.sessionId === sessionId)
+      .map((item) => ({
+        id: `approval-${item.turnId}-${item.toolName}`,
+        sessionId: item.sessionId,
+        turnId: item.turnId,
+        toolName: item.toolName,
+        reason: item.reason,
+        inputSummary: item.reason,
+      })),
+  };
+}
+
+async function broadcastPendingState(): Promise<void> {
+  const mainWindow = getMainWindow();
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  try {
+    mainWindow.webContents.send(
+      IPC.CHAT_PENDING_STATE_UPDATE,
+      await buildPendingStateSnapshot(),
+    );
+  } catch (error) {
+    logInfo("chat.pendingState.broadcastFailed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+let pendingStateBroadcastRegistered = false;
+
+function registerPendingStateBroadcast(): void {
+  if (pendingStateBroadcastRegistered) return;
+  pendingStateBroadcastRegistered = true;
+  subscribeOutbox(() => void broadcastPendingState());
+}
+
 
 function isDefaultSessionTitle(title: string): boolean {
   return title === "New chat" || title === "Untitled";
@@ -312,12 +386,15 @@ function sanitizeMessageItemForRenderer(
   item: WorkflowTurnItem,
 ): WorkflowTurnItem {
   if (item.type === "agentMessage" || item.type === "plan") {
-    return { ...item, text: truncateText(item.text, RENDERER_TEXT_LIMIT) };
+    return {
+      ...item,
+      text: truncateText(item.text ?? "", RENDERER_TEXT_LIMIT),
+    };
   }
   if (item.type === "reasoning") {
     return {
       ...item,
-      summary: truncateText(item.summary, RENDERER_ITEM_TEXT_LIMIT),
+      summary: truncateText(item.summary ?? "", RENDERER_ITEM_TEXT_LIMIT),
     };
   }
   if (item.type === "unknown") {
@@ -943,18 +1020,24 @@ function truncateStoredSession(
 
 async function sendChatTurn(
   request: ChatSendRequest,
+  overrides: {
+    displayContent?: string;
+    runtimeContent?: string;
+    userContent?: WorkflowUserMessageContent[];
+  } = {},
 ): Promise<ChatSendReceipt> {
   const runtime = getRuntime();
   const threadId = request.sessionId;
-  const content = request.text;
-  let runtimeContent = content;
+  const content = overrides.displayContent ?? request.text;
+  let runtimeContent = overrides.runtimeContent ?? content;
   const mainWindow = getMainWindow();
   if (!mainWindow) {
     return {
       status: "failed",
       sessionId: threadId,
-      messageId: request.clientMessageId ?? "",
+      messageId: request.clientMessageId || `user-${crypto.randomUUID()}`,
       reason: "no_window",
+      error: "Main window is not available",
     };
   }
 
@@ -970,13 +1053,50 @@ async function sendChatTurn(
   const nativeRuntimeThreadId =
     savedSession?.runtimeThreadIds?.[activeRuntimeId] ??
     (activeRuntimeId === "sdk" ? savedSession?.runtimeThreadId : undefined);
+  const userContent =
+    overrides.userContent ??
+    userContentFromAttachments(content, request.attachments);
+
+  // Steer path: route to the runtime's steer queue instead of starting a turn.
+  let fellBackFromSteer = false;
+  if (request.deliveryMode === "steer") {
+    if (runtime.steerTurn) {
+      const steerContent = appendAttachmentSummaryToPrompt(
+        runtimeContent,
+        request.attachments,
+      );
+      const result = await runtime.steerTurn({
+        threadId,
+        content: steerContent,
+        displayContent: content,
+        userContent,
+        attachments: request.attachments,
+        messageId: userMessageId,
+      });
+      if (result.status === "queued") {
+        logInfo("chat.turnSteered", {
+          sessionId: threadId,
+          turnId: result.turnId,
+          messageId: result.messageId,
+        });
+        return result;
+      }
+      fellBackFromSteer = true;
+      logInfo("chat.turnSteerFallback", {
+        sessionId: threadId,
+        reason: result.reason,
+        previousTurnId: result.turnId,
+      });
+    } else {
+      fellBackFromSteer = true;
+    }
+  }
+
   logInfo("chat.turnStarted", {
     sessionId: threadId,
     model: turnModelSnapshot.modelName,
     runtime: runtime.name,
   });
-
-  const userContent = userContentFromAttachments(content, request.attachments);
 
   appendStoredMessage(
     threadId,
@@ -1224,6 +1344,16 @@ async function sendChatTurn(
         const ts = Date.now();
         const uiEvent = translateRuntimeEventToUIEvent(evt, threadId, turnId);
         if (!uiEvent) continue;
+        if (uiEvent.type === "steer.message") {
+          mainWindow.webContents.send(IPC.CHAT_EVENT, uiEvent);
+          continue;
+        }
+        if (uiEvent.type === "turn.complete" && uiEvent.final === false) {
+          // Intermediate boundary from an immediate steer (apply-now): keep the
+          // runtime turn alive and just forward the boundary event.
+          mainWindow.webContents.send(IPC.CHAT_EVENT, uiEvent);
+          continue;
+        }
         // 状态类事件全量转发（对齐 neobot emitChatEvent 行为）：adapter 已把
         // session.info/mcp.status/memory.recall/prompt.suggestion/context.warning/
         // runtime.status 翻译出来，必须送达 renderer 的 handleStatusEvents。
@@ -1496,15 +1626,17 @@ async function sendChatTurn(
   })();
 
   return {
-    status: "started",
+    status: fellBackFromSteer ? "fallback" : "started",
     sessionId: threadId,
     messageId: userMessageId,
     turnId,
+    ...(fellBackFromSteer ? { reason: "turn_boundary" as const } : {}),
   };
 }
 
 export function registerHandlers(): void {
   registerReadThreadBroadcast();
+  registerPendingStateBroadcast();
   // ---------- App ----------
 
   ipcMain.handle(IPC.APP_GET_VERSION, () => app.getVersion());
@@ -1646,6 +1778,7 @@ export function registerHandlers(): void {
   ipcMain.handle(IPC.CHAT_DELETE_SESSION, async (_e, sessionId: string) => {
     const runtime = getRuntime();
     await runtime.deleteThread(sessionId);
+    cancelSessionOutbox(sessionId);
     store.deleteSession(sessionId);
     logInfo("chat.sessionDeleted", { sessionId });
   });
@@ -1797,6 +1930,114 @@ export function registerHandlers(): void {
       // ignore
     }
   });
+
+  ipcMain.handle(
+    IPC.CHAT_GET_PENDING_STATE,
+    async (_e, sessionId?: string): Promise<PendingStateSnapshot> =>
+      buildPendingStateSnapshot(sessionId),
+  );
+
+  ipcMain.handle(
+    IPC.CHAT_RESUME_OUTBOX,
+    async (_e, sessionId: string, messageId?: string): Promise<ChatSendReceipt> => {
+      const claimed = claimNextOutboxMessage(sessionId, messageId);
+      if (!claimed) {
+        return {
+          status: "failed",
+          sessionId,
+          messageId: "",
+          reason: "rejected",
+          error: "No queued message is available to resume.",
+        };
+      }
+      const receipt = await sendChatTurn(
+        {
+          sessionId,
+          text: claimed.displayContent,
+          clientMessageId: claimed.messageId,
+          deliveryMode: "normal",
+        },
+        {
+          displayContent: claimed.displayContent,
+          runtimeContent: claimed.sdkContent,
+          userContent: claimed.userContent,
+        },
+      );
+      if (receipt.status === "started" || receipt.status === "fallback") {
+        updateOutboxState(sessionId, claimed.messageId, "dispatched", {
+          turnId: receipt.turnId,
+        });
+      } else {
+        updateOutboxState(sessionId, claimed.messageId, "queued", {
+          lastError: receipt.error ?? "Resume failed before the turn started.",
+        });
+      }
+      return receipt;
+    },
+  );
+
+  ipcMain.handle(
+    IPC.CHAT_CANCEL_STEER,
+    async (_e, sessionId: string, messageId: string): Promise<SteerActionReceipt> => {
+      const runtime = getRuntime();
+      try {
+        if (!runtime.cancelSteerMessage) {
+          throw new Error(`${runtime.name} does not support steer cancellation`);
+        }
+        return await runtime.cancelSteerMessage(sessionId, messageId);
+      } catch (error) {
+        return {
+          action: "cancel",
+          status: "failed",
+          sessionId,
+          messageId,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC.CHAT_APPLY_STEER_NOW,
+    async (_e, sessionId: string, messageId: string): Promise<SteerActionReceipt> => {
+      const runtime = getRuntime();
+      try {
+        if (!runtime.applyPendingSteerNow) {
+          throw new Error(`${runtime.name} does not support steer`);
+        }
+        return await runtime.applyPendingSteerNow(sessionId, messageId);
+      } catch (error) {
+        return {
+          action: "apply",
+          status: "failed",
+          sessionId,
+          messageId,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC.CHAT_REORDER_STEERS,
+    async (_e, sessionId: string, messageIds: string[]): Promise<SteerActionReceipt> => {
+      const runtime = getRuntime();
+      try {
+        if (!runtime.reorderSteers) {
+          throw new Error(`${runtime.name} does not support steer reorder`);
+        }
+        return await runtime.reorderSteers(sessionId, messageIds);
+      } catch (error) {
+        return {
+          action: "reorder",
+          status: "failed",
+          sessionId,
+          order: messageIds,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    },
+  );
 
   ipcMain.handle(IPC.CHAT_READ_THREAD, async (_e, sessionId: string) =>
     readRuntimeThreadSnapshot(sessionId),
