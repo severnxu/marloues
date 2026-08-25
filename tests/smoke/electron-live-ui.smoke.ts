@@ -154,6 +154,15 @@ async function verifyProviderRoutingSettings(
   const dialog = window.getByRole("dialog", { name: "添加模型" });
   await expect(dialog.getByRole("tab", { name: "内置供应商" })).toBeVisible();
   await expect(dialog.getByText("Base URL", { exact: true })).toHaveCount(0);
+  await expect(
+    dialog.getByText("还没有模型。获取模型或手动添加一个。"),
+  ).toBeVisible();
+  await expect(
+    dialog.locator('input[name="add-endpoint-default-model"]'),
+  ).toHaveCount(0);
+  await expect(
+    dialog.getByRole("button", { name: "确定", exact: true }),
+  ).toBeDisabled();
   await window.screenshot({
     path: join(artifactsDir, "02-provider-builtin-hidden-routes.png"),
     fullPage: true,
@@ -161,6 +170,9 @@ async function verifyProviderRoutingSettings(
 
   await dialog.getByRole("tab", { name: "自定义", exact: true }).click();
   await expect(dialog.getByText("Base URL", { exact: true })).toHaveCount(1);
+  await expect(
+    dialog.locator('input[name="add-endpoint-default-model"]'),
+  ).toHaveCount(0);
   await dialog.getByRole("button", { name: "添加端点" }).click();
   await expect(dialog.getByText("Base URL", { exact: true })).toHaveCount(2);
   await window.screenshot({

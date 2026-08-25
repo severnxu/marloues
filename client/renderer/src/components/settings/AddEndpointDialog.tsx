@@ -62,9 +62,7 @@ export function AddEndpointDialog({
   ]);
   const [apiKey, setApiKey] = useState("");
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
-  const [models, setModels] = useState<ModelOption[]>(() =>
-    modelsForPreset("deepseek"),
-  );
+  const [models, setModels] = useState<ModelOption[]>([]);
   const [defaultModelId, setDefaultModelId] = useState<string | null>(null);
   const [importDraft, setImportDraft] = useState<{
     models: ModelOption[];
@@ -117,8 +115,8 @@ export function AddEndpointDialog({
   );
 
   useEffect(() => {
-    if (kind !== "builtin") return;
-    setModels(modelsForPreset(presetId));
+    setModels([]);
+    setDefaultModelId(null);
     setImportDraft(null);
   }, [kind, presetId]);
 
@@ -873,12 +871,6 @@ function createEndpoint(index: number): ModelProviderEndpoint {
     enabled: true,
     priority: index * 10,
   };
-}
-
-function modelsForPreset(presetId: BuiltinProviderPresetId): ModelOption[] {
-  return (builtinProviderMetadata(presetId)?.models ?? []).map((id) =>
-    withModelMetadataDefaults({ id, label: id, enabled: true }),
-  );
 }
 
 function providerIsComplete(
