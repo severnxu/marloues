@@ -9,7 +9,10 @@ import {
   logConsole,
   logError,
   logInfo,
+  logQuiet,
   logWarn,
+  disableConsoleEcho,
+  isBrokenStreamError,
 } from "./core/logging/app-logger";
 import {
   isAllowedApplicationNavigation,
@@ -341,9 +344,50 @@ function mapRendererConsoleLevel(
   return "info";
 }
 
+const SUPPRESSED_ERROR_LOG_INTERVAL_MS = 60_000;
+let lastSuppressedErrorLogAt = 0;
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error ?? "");
+}
+
+function logSuppressedProcessError(event: string, error: unknown): void {
+  const now = Date.now();
+  if (
+    lastSuppressedErrorLogAt !== 0 &&
+    now - lastSuppressedErrorLogAt < SUPPRESSED_ERROR_LOG_INTERVAL_MS
+  ) {
+    return;
+  }
+  lastSuppressedErrorLogAt = now;
+  logQuiet(event, { message: getErrorMessage(error) });
+}
+
+function handleProcessStreamError(
+  streamName: "stdout" | "stderr",
+  error: unknown,
+): void {
+  if (isBrokenStreamError(error)) {
+    disableConsoleEcho(`process.${streamName}: ${getErrorMessage(error)}`);
+    logSuppressedProcessError("process.suppressedStreamError", error);
+    return;
+  }
+  logError(`process.${streamName}.error`, error);
+}
+
+process.stdout?.on("error", (error) => {
+  handleProcessStreamError("stdout", error);
+});
+process.stderr?.on("error", (error) => {
+  handleProcessStreamError("stderr", error);
+});
+
 process.on("uncaughtException", (error) => {
   if (isSuppressedError(error)) {
-    logWarn("process.suppressedException", { message: error.message });
+    if (isBrokenStreamError(error)) {
+      disableConsoleEcho(`process.uncaught: ${getErrorMessage(error)}`);
+    }
+    logSuppressedProcessError("process.suppressedException", error);
   } else {
     logError("process.uncaughtException", error);
   }
@@ -351,9 +395,10 @@ process.on("uncaughtException", (error) => {
 
 process.on("unhandledRejection", (reason) => {
   if (isSuppressedError(reason)) {
-    logWarn("process.suppressedRejection", {
-      message: reason instanceof Error ? reason.message : String(reason),
-    });
+    if (isBrokenStreamError(reason)) {
+      disableConsoleEcho(`process.rejection: ${getErrorMessage(reason)}`);
+    }
+    logSuppressedProcessError("process.suppressedRejection", reason);
   } else {
     logError("process.unhandledRejection", reason);
   }

@@ -45,7 +45,7 @@ type ConsoleSource = "main" | "renderer" | "process";
 
 const MAX_LOG_BYTES = 5 * 1024 * 1024;
 const MAX_HTTP_LOG_BYTES = 20 * 1024 * 1024;
-const CONSOLE_ECHO_ENABLED = process.env.MARLOUES_LOG_CONSOLE !== "0";
+let consoleEchoEnabled = process.env.MARLOUES_LOG_CONSOLE !== "0";
 const COLOR_ENABLED =
   process.env.MARLOUES_LOG_COLOR !== "0" && !process.env.NO_COLOR;
 const loggers = new Map<string, Logger>();
@@ -96,6 +96,7 @@ export function onDeveloperModeChange(listener: DevModeListener): () => void {
 // ── Error Classification ──
 const SUPPRESSED_ERROR_PATTERNS = [
   "EPIPE",
+  "EIO",
   "ETIMEDOUT",
   "ETIMEOUT",
   "ECONNRESET",
@@ -117,6 +118,22 @@ const SUPPRESSED_ERROR_PATTERNS = [
 export function isSuppressedError(error: unknown): boolean {
   const msg = error instanceof Error ? error.message : String(error ?? "");
   return SUPPRESSED_ERROR_PATTERNS.some((pattern) => msg.includes(pattern));
+}
+
+export function isBrokenStreamError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error ?? "");
+  return (
+    msg.includes("EPIPE") ||
+    msg.includes("EIO") ||
+    msg.toLowerCase().includes("broken pipe")
+  );
+}
+
+/** Broken stdout/stderr streams must not be echoed back to the broken stream. */
+export function disableConsoleEcho(reason: string): void {
+  if (!consoleEchoEnabled) return;
+  consoleEchoEnabled = false;
+  logQuiet("logging.consoleEchoDisabled", { reason });
 }
 
 export function getAppLogPath(): string {
@@ -406,7 +423,7 @@ function echoToConsole(
   payload: string,
   data: Record<string, unknown>,
 ): void {
-  if (!CONSOLE_ECHO_ENABLED) return;
+  if (!consoleEchoEnabled) return;
   if (filePath === getConsoleLogPath() && data["source"] === "main") return;
   // HTTP logs are verbose — only echo when DevMode is ON
   if (filePath === getHttpLogPath() && !developerMode) return;
@@ -438,6 +455,8 @@ function echoKVs(
   event: string,
   kvs: { key: string; value: string }[],
 ): void {
+  if (!consoleEchoEnabled) return;
+
   const stream =
     level === "error" || level === "warn" ? process.stderr : process.stdout;
 
