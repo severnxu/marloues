@@ -2008,6 +2008,16 @@ async function sendChatTurn(
         runtimeContent,
         request.attachments,
       );
+      runtime.forwardDeferredEvent = (evt) => {
+        const deferredUiEvent = translateRuntimeEventToUIEvent(
+          evt,
+          threadId,
+          turnId,
+        );
+        if (deferredUiEvent?.type !== "context.usage") return;
+        emitImUIEvent(imTarget, threadId, turnId, deferredUiEvent);
+        mainWindow.webContents.send(IPC.CHAT_EVENT, deferredUiEvent);
+      };
       const eventStream = await runtime.sendMessage({
         threadId,
         turnId,

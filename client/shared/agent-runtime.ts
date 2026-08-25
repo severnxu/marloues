@@ -188,6 +188,8 @@ export interface RuntimeCapabilities {
 export interface AgentRuntime {
   readonly name: string;
   readonly capabilities: RuntimeCapabilities;
+  /** Optional sink for events that resolve after the main event stream ends. */
+  forwardDeferredEvent?: (event: RuntimeEvent) => void;
 
   initialize(): Promise<void>;
   destroy(): Promise<void>;

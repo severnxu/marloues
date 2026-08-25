@@ -968,6 +968,7 @@ export class ClaudeRuntime implements AgentRuntime {
   };
 
   private activeTurns = new Map<string, ActiveTurn>();
+  forwardDeferredEvent?: (event: RuntimeEvent) => void;
   private steerQueue = new SteerQueue({
     getActiveTurn: (threadId) => this.activeTurns.get(threadId),
     pushMessage: (threadId, message) => pushMessage(threadId, message),
@@ -1011,6 +1012,7 @@ export class ClaudeRuntime implements AgentRuntime {
     }
     this.resolvePendingApprovals(false);
     this.sessionApprovedTools.clear();
+    this.forwardDeferredEvent = undefined;
   }
 
   // ---------- Thread API ----------
@@ -1368,6 +1370,14 @@ export class ClaudeRuntime implements AgentRuntime {
     // 捕获实例引用供 wrapStream 使用（普通函数生成器不绑定 this）。
     const threadSdkSession = this.threadSdkSession;
     const activeTurns = this.activeTurns;
+    const getDeferredEventSink = () => this.forwardDeferredEvent;
+    const clearDeferredEventSink = (
+      sink: ((event: RuntimeEvent) => void) | undefined,
+    ) => {
+      if (this.forwardDeferredEvent === sink) {
+        this.forwardDeferredEvent = undefined;
+      }
+    };
     const flushNextPendingSteerAtBoundary =
       this.flushNextPendingSteerAtBoundary.bind(this);
 
@@ -1382,9 +1392,7 @@ export class ClaudeRuntime implements AgentRuntime {
       let assistantText = "";
       let yieldedTerminal = false;
 
-      async function getContextUsageEvent(
-        phase: "turn_start" | "turn_end",
-      ): Promise<RuntimeEvent | null> {
+      async function getContextUsageEvent(): Promise<RuntimeEvent | null> {
         if (!query.getContextUsage) return null;
         try {
           const normalized = normalizeContextUsage(
@@ -1395,7 +1403,7 @@ export class ClaudeRuntime implements AgentRuntime {
             kind: "context-usage",
             payload: {
               turnId,
-              phase,
+              phase: "turn_end",
               percentage: normalized.percentage,
               limit: normalized.limit,
               usage: normalized.usage,
@@ -1405,12 +1413,35 @@ export class ClaudeRuntime implements AgentRuntime {
           if (isClosedQueryContextUsageError(error)) return null;
           logWarn("sdk.contextUsage.failed", {
             turnId,
-            phase,
             error: error instanceof Error ? error.message : String(error),
           });
           return null;
         }
       }
+
+      const emitDeferredContextUsage = (): void => {
+        // The SDK probe issues several token-count requests and can take
+        // seconds. Never let it block streaming or turn teardown.
+        const deferredSink = getDeferredEventSink();
+        void getContextUsageEvent()
+          .then((contextUsageEvent) => {
+            if (!contextUsageEvent) return;
+            try {
+              workflowThreadStore.applyRuntimeEvent(
+                opts.threadId,
+                turnId,
+                contextUsageEvent,
+              );
+              deferredSink?.(contextUsageEvent);
+            } catch (error) {
+              logWarn("sdk.contextUsage.deferredFailed", {
+                turnId,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          })
+          .finally(() => clearDeferredEventSink(deferredSink));
+      };
 
       try {
         const iterator = query[Symbol.asyncIterator]();
@@ -1480,16 +1511,7 @@ export class ClaudeRuntime implements AgentRuntime {
                 );
                 yield terminalEvent;
                 yieldedTerminal = true;
-                const contextUsageEvent =
-                  await getContextUsageEvent("turn_end");
-                if (contextUsageEvent) {
-                  workflowThreadStore.applyRuntimeEvent(
-                    opts.threadId,
-                    turnId,
-                    contextUsageEvent,
-                  );
-                  yield contextUsageEvent;
-                }
+                emitDeferredContextUsage();
                 channel.close();
                 sdkDone = true;
                 break;
@@ -1530,32 +1552,15 @@ export class ClaudeRuntime implements AgentRuntime {
                 event.payload.tools,
               );
             }
-            if (event.kind === "session-info") {
-              const contextUsageEvent =
-                await getContextUsageEvent("turn_start");
-              if (contextUsageEvent) {
-                workflowThreadStore.applyRuntimeEvent(
-                  opts.threadId,
-                  turnId,
-                  contextUsageEvent,
-                );
-                yield contextUsageEvent;
-              }
-            }
+            // Do not call getContextUsage() on session-info. The SDK handles
+            // that control request as several token-count probes, which can
+            // block this consumer loop and delay every streamed token.
           }
           if (flushedSteer) continue;
         }
         yield* queue.drainSync();
         if (!yieldedTerminal) {
-          const contextUsageEvent = await getContextUsageEvent("turn_end");
-          if (contextUsageEvent) {
-            workflowThreadStore.applyRuntimeEvent(
-              opts.threadId,
-              turnId,
-              contextUsageEvent,
-            );
-            yield contextUsageEvent;
-          }
+          emitDeferredContextUsage();
           const resultVal = entry.canceled
             ? "aborted"
             : entry.stopRequested
