@@ -9,9 +9,17 @@ function settings(): AgentSettings {
       {
         id: "reviewer",
         name: "Reviewer",
-        type: "openai-compatible",
+        kind: "custom",
         enabled: true,
-        baseUrl: "https://models.example.test/v1",
+        endpoints: [
+          {
+            id: "reviewer-chat",
+            protocol: "openai-chat",
+            baseUrl: "https://models.example.test/v1",
+            enabled: true,
+            priority: 10,
+          },
+        ],
         apiKey: "test-key",
         models: [
           { id: "main-model", label: "Main", enabled: true },
@@ -114,8 +122,17 @@ describe("Guardian reviewer", () => {
 
   it("ignores reasoning blocks and parses the final structured decision", async () => {
     const anthropicSettings = settings();
-    anthropicSettings.providers[0].baseUrl = "https://api.anthropic.com";
-    anthropicSettings.providers[0].type = "anthropic";
+    const provider = anthropicSettings.providers[0];
+    if (provider.kind !== "custom") throw new Error("expected custom provider");
+    provider.endpoints = [
+      {
+        id: "reviewer-anthropic",
+        protocol: "anthropic",
+        baseUrl: "https://api.anthropic.com",
+        enabled: true,
+        priority: 10,
+      },
+    ];
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({

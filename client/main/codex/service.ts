@@ -1,5 +1,5 @@
 import { EventEmitter } from "events";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { mkdirSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { store } from "../store";
@@ -15,7 +15,7 @@ import {
   parseResponse,
   type IrResponse,
 } from "../gateway/protocol";
-import { getGatewayPort, startGateway } from "../gateway";
+import { startGateway } from "../gateway";
 import { log } from "../logger";
 import { logWarn } from "../core/logging/app-logger";
 import { eventLog, type EventLogEntry } from "./event-log";
@@ -26,6 +26,7 @@ import {
 } from "../services/config-service";
 import { getRuntimeConfigDir } from "../app-paths";
 import { resolveModelProvider } from "../core/config/model-provider";
+import { resolveRuntimeProviderRoutes } from "../core/config/provider-routing";
 import {
   codexWorkspaceFilesystemConfig,
   codexSandboxProfileFromSettings,
@@ -43,15 +44,14 @@ function tomlString(value: string): string {
 
 function buildCodexConfigArgs(
   model: string,
-  gatewayPort: number,
+  apiBaseUrl: string,
   sandboxProfile: SandboxProfile,
 ): string[] {
-  const gatewayBase = `http://127.0.0.1:${gatewayPort}`;
   const config = [
     `model=${tomlString(model)}`,
     `model_provider=${tomlString("codex-web-gateway")}`,
     `model_providers.codex-web-gateway.name=${tomlString("codex-web-gateway")}`,
-    `model_providers.codex-web-gateway.base_url=${tomlString(`${gatewayBase}/v1`)}`,
+    `model_providers.codex-web-gateway.base_url=${tomlString(apiBaseUrl)}`,
     `model_providers.codex-web-gateway.env_key=${tomlString("OPENAI_API_KEY")}`,
     `model_providers.codex-web-gateway.wire_api=${tomlString("responses")}`,
     "features.request_permissions_tool=true",
@@ -268,18 +268,33 @@ export class CodexService {
     options?: { cwd?: string },
   ): Promise<string> {
     svcLog("[svc] createSession called:", sessionId);
-    const provider = this.currentProvider;
-    const apiKey = this.currentApiKey ?? provider?.apiKey;
-    if (!apiKey) {
-      svcLog("[svc] No API key configured");
-      throw new Error("API key not configured");
-    }
-
     // 配置统一：cwd/权限/沙箱从 AgentSettings 派生（替代旧 SimpleStore）。
     const agentSettings = getAgentSettings();
+    const routePlan = resolveRuntimeProviderRoutes(agentSettings, {
+      runtimeId: "binary",
+    });
+    if (!routePlan.routes.length) {
+      svcLog("[svc] No compatible provider route configured");
+      throw new Error("当前供应商没有可用于 Binary 运行时的模型端点");
+    }
+    const directRoute = routePlan.directRoute;
+    const connection = directRoute
+      ? {
+          apiKey: directRoute.apiKey,
+          apiBaseUrl: codexApiBaseUrl(directRoute.baseUrl),
+          transportBaseUrl: directRoute.baseUrl,
+          routeId: directRoute.endpointId,
+          fingerprint: directRouteFingerprint(directRoute),
+        }
+      : await startGateway().then((gateway) => ({
+          apiKey: gateway.token,
+          apiBaseUrl: `${gateway.baseUrl}/v1`,
+          transportBaseUrl: gateway.baseUrl,
+          routeId: `gateway:${routePlan.routes.map((route) => route.endpointId).join(",")}`,
+          fingerprint: `gateway:${routePlan.routes.map((route) => route.endpointId).join(",")}`,
+        }));
     const workingDir = canonicalWorkingDirectory(options?.cwd || process.cwd());
-    const model = this.currentModel || provider?.models?.[0]?.id || "default";
-    const baseUrl = provider?.baseUrl;
+    const model = routePlan.routes[0].model;
     const permissionMode = agentSettings.permissionMode;
     const sandboxEnabled = agentSettings.sandboxEnabled;
     const sandboxProfile = codexSandboxProfileFromSettings({
@@ -289,22 +304,17 @@ export class CodexService {
     const securityFingerprint = sessionSecurityFingerprint(
       permissionMode,
       sandboxProfile,
+      routePlan.routes[0].providerId,
+      model,
+      connection.fingerprint,
     );
-    let gatewayPort = getGatewayPort();
-    if (!gatewayPort) {
-      const started = await startGateway();
-      gatewayPort = started?.port ?? 0;
-    }
-    if (!gatewayPort) {
-      throw new Error("Gateway not initialized");
-    }
     svcLog(
       "[svc] Working dir:",
       workingDir,
       "Binary:",
       this.binaryPath,
-      "Gateway port:",
-      gatewayPort,
+      "Route:",
+      connection.routeId,
     );
     svcLog(
       "[svc] Model:",
@@ -323,21 +333,19 @@ export class CodexService {
       cwd: workingDir,
       env: {
         ...process.env,
-        // Pass provider credentials via env (belt-and-suspenders)
-        OPENAI_API_KEY: apiKey,
-        OPENAI_BASE_URL: baseUrl,
+        OPENAI_API_KEY: connection.apiKey,
+        OPENAI_BASE_URL: connection.apiBaseUrl,
         OPENAI_MODEL: model,
         // 运行时状态统一：codex 的 config.toml / 会话 JSONL / auth 落入
         // runtime-config/codex，而不是默认的 ~/.codex。
         CODEX_HOME: codexHome,
-        // Tell Codex CLI to use our gateway as the API server
-        CODEX_API_BASE_URL: `http://127.0.0.1:${gatewayPort}`,
+        CODEX_API_BASE_URL: connection.transportBaseUrl,
         CODEX_DISABLE_TELEMETRY: "1",
       },
       pathDirs: this.binaryPathDirs,
       args: [
         "app-server",
-        ...buildCodexConfigArgs(model, gatewayPort, sandboxProfile),
+        ...buildCodexConfigArgs(model, connection.apiBaseUrl, sandboxProfile),
       ],
       onStderr: (chunk) => {
         svcLog("[codex-stderr]", chunk.trim());
@@ -589,6 +597,7 @@ export class CodexService {
     const currentSecurityFingerprint = sessionSecurityFingerprint(
       currentSettings.permissionMode,
       currentSandboxProfile,
+      ...binaryRouteFingerprint(currentSettings),
     );
     if (
       session &&
@@ -603,7 +612,7 @@ export class CodexService {
       session = this.sessions.get(sessionId)!;
     }
 
-    const apiKey = this.currentApiKey ?? this.currentProvider?.apiKey;
+    const apiKey = resolveModelProvider(currentSettings).apiKey;
     if (!apiKey) {
       this.eventEmitter.emit("error", sessionId, "API key not configured");
       return;
@@ -801,9 +810,12 @@ export class CodexService {
     signal: AbortSignal,
   ): Promise<IrResponse> {
     const requestId = randomUUID();
-    const apiKey = this.currentApiKey ?? this.currentProvider?.apiKey;
-    const baseUrl = this.currentProvider?.baseUrl;
-    const model = this.currentModel || "default";
+    const route = resolveRuntimeProviderRoutes(getAgentSettings(), {
+      sourceProtocol: "openai-chat",
+    }).routes[0];
+    if (!route)
+      throw new Error("No OpenAI-compatible provider route configured");
+    const { apiKey, baseUrl, model } = route;
 
     // Decode OpenAI Responses API request to IR
     const irRequest = decodeRequest(
@@ -861,8 +873,41 @@ function canonicalWorkingDirectory(cwd: string): string {
 function sessionSecurityFingerprint(
   permissionMode: AgentSettings["permissionMode"],
   sandboxProfile: SandboxProfile,
+  providerId: string,
+  model: string,
+  routeId: string,
 ): string {
-  return `${permissionMode}:${sandboxProfile}`;
+  return `${permissionMode}:${sandboxProfile}:${providerId}:${model}:${routeId}`;
+}
+
+function binaryRouteFingerprint(
+  settings: AgentSettings,
+): [providerId: string, model: string, routeId: string] {
+  const plan = resolveRuntimeProviderRoutes(settings, { runtimeId: "binary" });
+  const route = plan.routes[0];
+  const routeFingerprint = plan.directRoute
+    ? directRouteFingerprint(plan.directRoute)
+    : `gateway:${plan.routes.map((item) => item.endpointId).join(",")}`;
+  return [
+    route?.providerId ?? "unconfigured",
+    route?.model ?? "unconfigured",
+    routeFingerprint,
+  ];
+}
+
+function directRouteFingerprint(
+  route: ReturnType<typeof resolveRuntimeProviderRoutes>["routes"][number],
+): string {
+  const credentialHash = createHash("sha256")
+    .update(route.apiKey)
+    .digest("hex")
+    .slice(0, 16);
+  return `${route.endpointId}:${route.baseUrl}:${credentialHash}`;
+}
+
+function codexApiBaseUrl(baseUrl: string): string {
+  const normalized = baseUrl.replace(/\/+$/, "");
+  return normalized.endsWith("/v1") ? normalized : `${normalized}/v1`;
 }
 
 export const codexService = new CodexService();

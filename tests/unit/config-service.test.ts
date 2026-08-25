@@ -46,6 +46,47 @@ describe("config-service", () => {
     expect(after.activeRuntimeId).toBe("binary");
   });
 
+  it("never persists endpoint addresses on built-in providers", async () => {
+    const { getAgentSettings, saveAgentSettings } = await loadConfigService();
+    const { getSettingsPath } = await import("../../client/main/app-paths");
+    const before = getAgentSettings();
+    const pollutedProvider = {
+      id: "deepseek-builtin",
+      name: "DeepSeek",
+      kind: "builtin" as const,
+      presetId: "deepseek",
+      enabled: true,
+      models: [{ id: "deepseek-v4-flash", enabled: true }],
+      baseUrl: "https://must-not-persist.example/v1",
+      endpoints: [
+        {
+          id: "must-not-persist",
+          protocol: "openai-chat" as const,
+          baseUrl: "https://must-not-persist.example/v1",
+          enabled: true,
+          priority: 10,
+        },
+      ],
+    };
+
+    saveAgentSettings({
+      ...before,
+      providers: [pollutedProvider],
+      defaultModel: {
+        providerId: pollutedProvider.id,
+        modelId: pollutedProvider.models[0].id,
+      },
+    });
+
+    const persisted = JSON.parse(readFileSync(getSettingsPath(), "utf8")) as {
+      agentSettings: { providers: Array<Record<string, unknown>> };
+    };
+    expect(persisted.agentSettings.providers[0]).not.toHaveProperty("baseUrl");
+    expect(persisted.agentSettings.providers[0]).not.toHaveProperty(
+      "endpoints",
+    );
+  });
+
   it("persists under MARLOUES_HOME", async () => {
     const { getSettingsPath } = await import("../../client/main/app-paths");
     const path = getSettingsPath();
@@ -62,19 +103,33 @@ describe("config-service", () => {
       providers: [
         {
           ...provider,
-          baseUrl: "https://provider.example",
+          kind: "custom" as const,
+          endpoints: [
+            {
+              id: "provider-anthropic",
+              protocol: "anthropic" as const,
+              baseUrl: "https://provider.example",
+              enabled: true,
+              priority: 10,
+            },
+          ],
           apiKey: "provider-key",
         },
       ],
     };
 
-    expect(buildSdkEnv(routedSettings).ANTHROPIC_BASE_URL).toBe(
-      "https://provider.example",
-    );
     expect(
-      buildSdkEnv(routedSettings, null, "http://127.0.0.1:45678")
-        .ANTHROPIC_BASE_URL,
+      buildSdkEnv(routedSettings, null, {
+        baseUrl: "http://127.0.0.1:45678",
+        apiKey: "gateway-token",
+      }).ANTHROPIC_BASE_URL,
     ).toBe("http://127.0.0.1:45678");
+    expect(
+      buildSdkEnv(routedSettings, null, {
+        baseUrl: "http://127.0.0.1:45678",
+        apiKey: "gateway-token",
+      }).ANTHROPIC_API_KEY,
+    ).toBe("gateway-token");
   });
 
   it("propagates encryption failures without overwriting the existing config", async () => {

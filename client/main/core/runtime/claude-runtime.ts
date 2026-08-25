@@ -17,7 +17,6 @@ import type {
 } from "@shared/agent-runtime";
 import type {
   AgentSettings,
-  AgentPermissionMode,
   ChatSendReceipt,
   MemoryRecallRecord,
   ModelOption,
@@ -25,6 +24,7 @@ import type {
   SteerActionReceipt,
   TokenUsage,
 } from "@shared/types";
+import { applySecurityMode } from "@shared/security-policy";
 import type { WorkflowUserMessageContent } from "@shared/workflow-read-thread-contract";
 import {
   queryClaude,
@@ -39,6 +39,7 @@ import {
 import { recordMcpRuntimeStatus } from "../../services/mcp-service";
 import { evaluateContextPolicy } from "../context/context-policy";
 import { resolveModelProvider } from "../config/model-provider";
+import { resolveRuntimeProviderRoutes } from "../config/provider-routing";
 import { buildClaudeRuntimeOptions } from "../config/options-builder";
 import { configuredMcpTools } from "./mcp-tools";
 import { configuredRuntimeModels } from "./runtime-models";
@@ -1226,13 +1227,25 @@ export class ClaudeRuntime implements AgentRuntime {
     });
 
     // Apply context policy before sending.
-    const gateway = await startGateway();
-    if (!gateway) throw new Error("Gateway not initialized");
-    const sdkEnv = buildSdkEnv(
-      effectiveSettings,
-      undefined,
-      `http://127.0.0.1:${gateway.port}`,
-    );
+    const routePlan = resolveRuntimeProviderRoutes(effectiveSettings, {
+      runtimeId: "sdk",
+    });
+    if (!routePlan.routes.length) {
+      throw new Error("当前供应商没有可用于 SDK 运行时的模型端点");
+    }
+    const directRoute = routePlan.directRoute;
+    const connection = directRoute
+      ? {
+          baseUrl: directRoute.baseUrl,
+          apiKey: directRoute.apiKey,
+          model: directRoute.model,
+        }
+      : await startGateway().then((gateway) => ({
+          baseUrl: gateway.baseUrl,
+          apiKey: gateway.token,
+          model: routePlan.routes[0].model,
+        }));
+    const sdkEnv = buildSdkEnv(effectiveSettings, undefined, connection);
     const channel = createMessageChannel();
     const entry: ActiveTurn = {
       turnId,
@@ -1873,11 +1886,13 @@ export class ClaudeRuntime implements AgentRuntime {
 
   async setPermissionMode(mode: PermissionMode): Promise<void> {
     this.permissionModeOverride = mode;
-    // 持久化：settings.permissionMode 用 AgentPermissionMode 值（bypass → bypassPermissions）。
     const settings = getAgentSettings();
-    const mapped: AgentPermissionMode =
-      mode === "bypass" ? "bypassPermissions" : mode;
-    saveAgentSettings({ ...settings, permissionMode: mapped });
+    saveAgentSettings(
+      applySecurityMode(
+        settings,
+        mode === "bypass" ? "full-access" : "request",
+      ),
+    );
   }
 
   // ---------- Tool ----------

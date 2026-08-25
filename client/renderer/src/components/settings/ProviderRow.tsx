@@ -10,7 +10,12 @@ import {
   RefreshCcw,
   Trash2,
 } from "lucide-react";
-import type { ModelProviderConfig, ModelSelection } from "@shared/types";
+import type {
+  ModelEndpointProtocol,
+  ModelProviderConfig,
+  ModelSelection,
+} from "@shared/types";
+import { builtinProviderMetadata } from "@shared/builtin-provider-metadata";
 import { STRINGS } from "@shared/strings.zh";
 import { ProviderModelCard } from "./ProviderModelCard";
 import { SettingsSelect } from "./shared";
@@ -45,6 +50,10 @@ export function ProviderRow({
   const isApiKeyVisible = visibleApiKeyProviderIds.has(provider.id);
   const isCheckingEndpoint = checkingEndpointIds.has(provider.id);
   const isFetchingModels = fetchingModelIds.has(provider.id);
+  const builtinMetadata =
+    provider.kind === "builtin"
+      ? builtinProviderMetadata(provider.presetId)
+      : undefined;
 
   return (
     <div
@@ -65,9 +74,9 @@ export function ProviderRow({
             <strong>{provider.name || "未命名模型"}</strong>
           </div>
           <small>
-            {provider.models.length === 0
-              ? "暂无模型"
-              : `${provider.models.length} 个模型（已启用 ${provider.models.filter((model) => model.enabled).length} 个）`}
+            {provider.kind === "builtin"
+              ? `内置供应商 · 自动适配运行时 · ${provider.models.length} 个模型`
+              : `${provider.endpoints.length} 个端点 · ${provider.models.length} 个模型（已启用 ${provider.models.filter((model) => model.enabled).length} 个）`}
           </small>
         </div>
         <div className="settings-row-actions provider-actions">
@@ -107,10 +116,10 @@ export function ProviderRow({
             onClick={() => void pm.removeEndpointProfile(provider.id)}
             title={
               provider.locked
-                ? "企业预置端点配置不可删除"
+                ? "企业预置供应商不可删除"
                 : canEdit
-                  ? "删除端点配置"
-                  : "企业策略禁止删除本地端点配置"
+                  ? "删除供应商"
+                  : "企业策略禁止删除本地供应商"
             }
           >
             <Trash2 size={14} />
@@ -121,60 +130,31 @@ export function ProviderRow({
         <div className={`provider-row-body ${isNew ? "draft" : ""}`}>
           {/* ── Provider fields grid ── */}
           <div className="provider-fields-grid">
-            <label>
-              Profile 名称
-              <input
-                value={provider.name}
-                disabled={provider.locked || !canEdit}
-                onChange={(event) =>
-                  pm.updateProviderField(
-                    provider.id,
-                    "name",
-                    event.target.value,
-                  )
-                }
-                placeholder="Profile 名称"
-              />
-            </label>
-            <label>
-              API 协议
-              <SettingsSelect
-                ariaLabel="API 协议"
-                value={
-                  provider.type === "openai-compatible"
-                    ? "openai-chat"
-                    : provider.type
-                }
-                options={[
-                  { value: "openai-chat", label: "OpenAI Chat" },
-                  { value: "openai-responses", label: "OpenAI Responses" },
-                  { value: "anthropic", label: "Anthropic" },
-                ]}
-                disabled={provider.locked || !canEdit}
-                onChange={(value) =>
-                  pm.updateProviderField(
-                    provider.id,
-                    "type",
-                    value as ModelProviderConfig["type"],
-                  )
-                }
-              />
-            </label>
-            <label className="provider-field-wide">
-              Base URL
-              <input
-                value={provider.baseUrl ?? ""}
-                disabled={provider.locked || !canEdit}
-                onChange={(event) =>
-                  pm.updateProviderField(
-                    provider.id,
-                    "baseUrl",
-                    event.target.value,
-                  )
-                }
-                placeholder="Base URL"
-              />
-            </label>
+            {provider.kind === "builtin" ? (
+              <div className="provider-builtin-summary provider-field-wide">
+                <strong>{builtinMetadata?.name ?? provider.name}</strong>
+                <span>
+                  内置地址由 Marloues
+                  维护，当前运行时会自动选择可用协议；地址不可查看或修改。
+                </span>
+              </div>
+            ) : (
+              <label className="provider-field-wide">
+                供应商名称
+                <input
+                  value={provider.name}
+                  disabled={provider.locked || !canEdit}
+                  onChange={(event) =>
+                    pm.updateProviderField(
+                      provider.id,
+                      "name",
+                      event.target.value,
+                    )
+                  }
+                  placeholder="供应商名称"
+                />
+              </label>
+            )}
             <label className="provider-field-wide">
               API Key
               <div className="api-key-input-wrap">
@@ -203,6 +183,141 @@ export function ProviderRow({
               </div>
             </label>
           </div>
+
+          {provider.kind === "custom" ? (
+            <div className="provider-endpoint-section">
+              <div className="provider-model-section-head">
+                <span>模型端点</span>
+                <div className="settings-row-actions">
+                  <button
+                    disabled={provider.locked || !canEdit}
+                    onClick={() => pm.addProviderEndpoint(provider.id)}
+                  >
+                    <Plus size={14} />
+                    添加端点
+                  </button>
+                </div>
+              </div>
+              <div className="provider-endpoint-list">
+                {provider.endpoints.map((endpoint, index) => {
+                  const endpointCheckId = `${provider.id}:${endpoint.id}`;
+                  return (
+                    <div className="provider-endpoint-row" key={endpoint.id}>
+                      <div className="provider-endpoint-head">
+                        <label className="settings-inline-check">
+                          <input
+                            type="checkbox"
+                            checked={endpoint.enabled}
+                            disabled={provider.locked || !canEdit}
+                            onChange={(event) =>
+                              pm.updateProviderEndpoint(
+                                provider.id,
+                                endpoint.id,
+                                { enabled: event.target.checked },
+                              )
+                            }
+                          />
+                          端点 {index + 1}
+                        </label>
+                        <div className="settings-row-actions">
+                          <button
+                            className="icon-button"
+                            disabled={checkingEndpointIds.has(endpointCheckId)}
+                            title="测试此端点"
+                            onClick={() =>
+                              void pm.testEndpointProfile(
+                                provider.id,
+                                endpoint.id,
+                              )
+                            }
+                          >
+                            {checkingEndpointIds.has(endpointCheckId) ? (
+                              <RefreshCcw size={14} />
+                            ) : (
+                              <PlugZap size={14} />
+                            )}
+                          </button>
+                          <button
+                            className="icon-button"
+                            disabled={
+                              provider.locked ||
+                              !canEdit ||
+                              provider.endpoints.length === 1
+                            }
+                            title="删除端点"
+                            onClick={() =>
+                              pm.removeProviderEndpoint(
+                                provider.id,
+                                endpoint.id,
+                              )
+                            }
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="provider-endpoint-fields">
+                        <label>
+                          协议
+                          <SettingsSelect
+                            ariaLabel={`端点 ${index + 1} 协议`}
+                            value={endpoint.protocol}
+                            options={[
+                              { value: "openai-chat", label: "OpenAI Chat" },
+                              {
+                                value: "openai-responses",
+                                label: "OpenAI Responses",
+                              },
+                              { value: "anthropic", label: "Anthropic" },
+                            ]}
+                            disabled={provider.locked || !canEdit}
+                            onChange={(value) =>
+                              pm.updateProviderEndpoint(
+                                provider.id,
+                                endpoint.id,
+                                { protocol: value as ModelEndpointProtocol },
+                              )
+                            }
+                          />
+                        </label>
+                        <label>
+                          优先级
+                          <input
+                            type="number"
+                            min={0}
+                            value={endpoint.priority}
+                            disabled={provider.locked || !canEdit}
+                            onChange={(event) =>
+                              pm.updateProviderEndpoint(
+                                provider.id,
+                                endpoint.id,
+                                { priority: Number(event.target.value) || 0 },
+                              )
+                            }
+                          />
+                        </label>
+                        <label className="provider-endpoint-url">
+                          Base URL
+                          <input
+                            value={endpoint.baseUrl}
+                            disabled={provider.locked || !canEdit}
+                            onChange={(event) =>
+                              pm.updateProviderEndpoint(
+                                provider.id,
+                                endpoint.id,
+                                { baseUrl: event.target.value },
+                              )
+                            }
+                            placeholder="https://api.example.com/v1"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
 
           {/* ── Model section ── */}
           <div className="provider-model-section">

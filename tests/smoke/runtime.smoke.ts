@@ -105,9 +105,17 @@ async function bootstrapConfig(): Promise<void> {
       {
         id: "deepseek",
         name: "DeepSeek",
-        type: "openai-compatible",
+        kind: "custom",
         enabled: true,
-        baseUrl,
+        endpoints: [
+          {
+            id: "deepseek-openai",
+            protocol: "openai-chat",
+            baseUrl,
+            enabled: true,
+            priority: 10,
+          },
+        ],
         apiKey,
         models: [{ id: modelId, label: "DeepSeek Chat", enabled: true }],
       },

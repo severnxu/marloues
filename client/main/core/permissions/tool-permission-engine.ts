@@ -38,6 +38,7 @@ const SENSITIVE_BUILTIN_TOOLS = [
   "MultiEdit",
   "Write",
   "NotebookEdit",
+  "Permissions",
 ];
 const SENSITIVE_TOOL_NAME_PATTERN =
   /(bash|shell|exec|write|edit|patch|undo|delete|remove|move|copy|upload|download|browser|playwright)/i;

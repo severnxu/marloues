@@ -38,6 +38,7 @@ async function main(): Promise<void> {
   }
 
   const { apiKey, baseUrl, model } = loadCcSwitchClaudeSettings();
+  const presetId = builtinPresetForBaseUrl(baseUrl);
   const liveHome = mkdtempSync(join(tmpdir(), "marloues-electron-live-"));
   const workspace = join(liveHome, "workspace");
   const configDir = join(liveHome, "config");
@@ -82,6 +83,10 @@ async function main(): Promise<void> {
       path: join(artifactsDir, "01-shell-ready.png"),
       fullPage: true,
     });
+    await verifyProviderRoutingSettings(window, presetId);
+    console.info(
+      "Provider settings: built-in hidden routes/custom multi-endpoint ok",
+    );
     await verifyUnifiedSecurityControls(window);
     console.info("UI controls: unified modes/full-access confirmation ok");
     await verifySecurityCenter(window);
@@ -120,6 +125,53 @@ async function main(): Promise<void> {
   } finally {
     await app.close();
   }
+}
+
+async function verifyProviderRoutingSettings(
+  window: ElectronPage,
+  presetId: string | null,
+): Promise<void> {
+  await window.locator('button[title="用户信息"]').click();
+  const userMenu = window.getByRole("dialog", { name: "用户信息" });
+  await userMenu.getByRole("button", { name: "设置" }).click();
+  const settings = window.getByRole("dialog", { name: "设置" });
+  await settings.getByRole("button", { name: "模型" }).click();
+  await expect(
+    settings.getByRole("heading", { name: "模型", exact: true }),
+  ).toBeVisible();
+
+  if (presetId) {
+    const providerRow = settings.locator(".provider-row").first();
+    await expect(providerRow).toContainText("内置供应商 · 自动适配运行时");
+    await providerRow.locator(".provider-expand-button").click();
+    await expect(providerRow).toContainText("地址不可查看或修改");
+    await expect(
+      providerRow.getByText("Base URL", { exact: true }),
+    ).toHaveCount(0);
+  }
+
+  await settings.getByRole("button", { name: "添加供应商" }).click();
+  const dialog = window.getByRole("dialog", { name: "添加模型" });
+  await expect(
+    dialog.getByRole("button", { name: "内置供应商" }),
+  ).toBeVisible();
+  await expect(dialog.getByText("Base URL", { exact: true })).toHaveCount(0);
+  await window.screenshot({
+    path: join(artifactsDir, "02-provider-builtin-hidden-routes.png"),
+    fullPage: true,
+  });
+
+  await dialog.getByRole("button", { name: "自定义", exact: true }).click();
+  await expect(dialog.getByText("Base URL", { exact: true })).toHaveCount(1);
+  await dialog.getByRole("button", { name: "添加端点" }).click();
+  await expect(dialog.getByText("Base URL", { exact: true })).toHaveCount(2);
+  await window.screenshot({
+    path: join(artifactsDir, "03-provider-custom-multi-endpoint.png"),
+    fullPage: true,
+  });
+  await dialog.getByRole("button", { name: "关闭" }).click();
+  await settings.getByRole("button", { name: "返回工作区" }).click();
+  await expect(window.locator(".app-shell")).toBeVisible();
 }
 
 async function verifyUnifiedSecurityControls(
@@ -681,25 +733,44 @@ function writeLiveSettings(
     activeRuntimeId: "sdk" | "binary";
   },
 ): void {
+  const presetId = builtinPresetForBaseUrl(input.baseUrl);
+  const provider = presetId
+    ? {
+        id: `builtin-${presetId}`,
+        name: builtinProviderName(presetId),
+        kind: "builtin",
+        presetId,
+        enabled: true,
+        apiKeyEnv: "CCSWITCH_LIVE_API_KEY",
+        purpose: "test",
+        models: [{ id: input.model, label: input.model, enabled: true }],
+      }
+    : {
+        id: "cc-switch-claude",
+        name: "cc-switch Claude",
+        kind: "custom",
+        enabled: true,
+        endpoints: [
+          {
+            id: "cc-switch-anthropic",
+            protocol: "anthropic",
+            baseUrl: input.baseUrl,
+            enabled: true,
+            priority: 10,
+          },
+        ],
+        apiKeyEnv: "CCSWITCH_LIVE_API_KEY",
+        purpose: "test",
+        models: [{ id: input.model, label: input.model, enabled: true }],
+      };
   writeFileSync(
     join(configDir, "settings.json"),
     JSON.stringify(
       {
         agentSettings: {
-          providers: [
-            {
-              id: "cc-switch-claude",
-              name: "cc-switch Claude",
-              type: "anthropic",
-              enabled: true,
-              baseUrl: input.baseUrl,
-              apiKeyEnv: "CCSWITCH_LIVE_API_KEY",
-              purpose: "test",
-              models: [{ id: input.model, label: input.model, enabled: true }],
-            },
-          ],
+          providers: [provider],
           defaultModel: {
-            providerId: "cc-switch-claude",
+            providerId: provider.id,
             modelId: input.model,
           },
           activeRuntimeId: input.activeRuntimeId,
@@ -748,6 +819,23 @@ function writeLiveSettings(
     ),
     "utf-8",
   );
+}
+
+function builtinPresetForBaseUrl(baseUrl: string): string | null {
+  const normalized = baseUrl.toLowerCase();
+  if (normalized.includes("deepseek.com")) return "deepseek";
+  if (normalized.includes("minimaxi.com") || normalized.includes("minimax")) {
+    return "minimax";
+  }
+  if (normalized.includes("bigmodel.cn")) return "zhipu";
+  return null;
+}
+
+function builtinProviderName(presetId: string): string {
+  if (presetId === "deepseek") return "DeepSeek";
+  if (presetId === "minimax") return "MiniMax";
+  if (presetId === "zhipu") return "智谱 GLM";
+  return presetId;
 }
 
 function writeWorkspaceSettings(configDir: string, workspace: string): void {

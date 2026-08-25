@@ -1,18 +1,24 @@
 import type {
   EndpointModelsResult,
   EndpointTestResult,
+  ModelProviderEndpoint,
   ModelOption,
   ModelProviderConfig,
 } from "@shared/types";
 import { diagnoseEndpointModel } from "../core/sdk/endpoint-diagnostics";
+import { configuredProviderEndpoints } from "../core/config/provider-routing";
+import { resolveProviderApiKey } from "../core/config/model-provider";
+import { buildProviderEndpointUrl } from "../core/config/provider-endpoint-url";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
 export async function listEndpointModels(
   profile: ModelProviderConfig,
+  endpointId?: string,
 ): Promise<EndpointModelsResult> {
   const startedAt = Date.now();
-  const validation = validateProfile(profile);
+  const endpoint = resolveEndpoint(profile, endpointId, true);
+  const validation = validateEndpoint(profile, endpoint);
   if (validation)
     return {
       ok: false,
@@ -25,18 +31,19 @@ export async function listEndpointModels(
   const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
   try {
-    const response = await fetch(endpointUrl(profile, "/models"), {
+    const response = await fetch(endpointUrl(endpoint!, "/models"), {
       method: "GET",
-      headers: endpointHeaders(profile),
+      headers: endpointHeaders(profile, endpoint!),
       signal: controller.signal,
     });
     const body = await readJson(response);
     const models = extractModels(body);
 
     if (!response.ok) {
-      if (shouldTryRootModelsFallback(profile, response.status)) {
+      if (shouldTryRootModelsFallback(endpoint!, response.status)) {
         const fallback = await listRootEndpointModels(
           profile,
+          endpoint!,
           startedAt,
           controller.signal,
         );
@@ -78,9 +85,11 @@ export async function listEndpointModels(
 export async function testEndpointModel(
   profile: ModelProviderConfig,
   modelId: string,
+  endpointId?: string,
 ): Promise<EndpointTestResult> {
   const startedAt = Date.now();
-  const validation = validateProfile(profile);
+  const endpoint = resolveEndpoint(profile, endpointId);
+  const validation = validateEndpoint(profile, endpoint);
   if (validation)
     return {
       ok: false,
@@ -96,10 +105,10 @@ export async function testEndpointModel(
     };
 
   const result = await diagnoseEndpointModel({
-    baseUrl: profile.baseUrl,
+    baseUrl: endpoint!.baseUrl,
     apiKey: resolveApiKey(profile),
     model,
-    protocol: diagnosticProtocol(profile.type),
+    protocol: endpoint!.protocol,
     timeoutMs: DEFAULT_TIMEOUT_MS,
   });
 
@@ -115,8 +124,9 @@ export async function testEndpointModel(
 
 export async function testEndpointProfile(
   profile: ModelProviderConfig,
+  endpointId?: string,
 ): Promise<EndpointTestResult> {
-  const result = await listEndpointModels(profile);
+  const result = await listEndpointModels(profile, endpointId);
   return {
     ok: result.ok,
     status: result.status,
@@ -125,18 +135,14 @@ export async function testEndpointProfile(
   };
 }
 
-function validateProfile(profile: ModelProviderConfig): string | null {
-  if (
-    profile.type !== "openai-compatible" &&
-    profile.type !== "openai-chat" &&
-    profile.type !== "openai-responses" &&
-    profile.type !== "anthropic"
-  ) {
-    return `Unsupported endpoint type: ${profile.type}`;
-  }
-  if (!profile.baseUrl?.trim()) return "Base URL cannot be empty.";
+function validateEndpoint(
+  profile: ModelProviderConfig,
+  endpoint: ModelProviderEndpoint | undefined,
+): string | null {
+  if (!endpoint) return "Provider has no enabled model endpoint.";
+  if (!endpoint.baseUrl.trim()) return "Base URL cannot be empty.";
   try {
-    new URL(profile.baseUrl.trim());
+    new URL(endpoint.baseUrl.trim());
   } catch {
     return "Base URL must be a valid URL.";
   }
@@ -144,23 +150,19 @@ function validateProfile(profile: ModelProviderConfig): string | null {
   return null;
 }
 
-function endpointUrl(profile: ModelProviderConfig, path: string): string {
-  const url = new URL(profile.baseUrl?.trim() ?? "");
-  const basePath = url.pathname.replace(/\/+$/, "");
-  url.pathname = `${basePath.endsWith("/v1") ? basePath : `${basePath}/v1`}${path}`;
-  url.search = "";
-  url.hash = "";
-  return url.toString();
+function endpointUrl(endpoint: ModelProviderEndpoint, path: string): string {
+  return buildProviderEndpointUrl(endpoint.baseUrl.trim(), `/v1${path}`);
 }
 
 async function listRootEndpointModels(
   profile: ModelProviderConfig,
+  endpoint: ModelProviderEndpoint,
   startedAt: number,
   signal: AbortSignal,
 ): Promise<EndpointModelsResult> {
-  const response = await fetch(rootEndpointUrl(profile, "/models"), {
+  const response = await fetch(rootEndpointUrl(endpoint, "/models"), {
     method: "GET",
-    headers: endpointHeaders(profile),
+    headers: endpointHeaders(profile, endpoint),
     signal,
   });
   const body = await readJson(response);
@@ -189,12 +191,12 @@ async function listRootEndpointModels(
 }
 
 function shouldTryRootModelsFallback(
-  profile: ModelProviderConfig,
+  endpoint: ModelProviderEndpoint,
   status: number,
 ): boolean {
   if (status !== 404 && status !== 405) return false;
   try {
-    const url = new URL(profile.baseUrl ?? "");
+    const url = new URL(endpoint.baseUrl);
     const path = url.pathname.replace(/\/+$/, "");
     return path !== "" && path !== "/";
   } catch {
@@ -202,20 +204,26 @@ function shouldTryRootModelsFallback(
   }
 }
 
-function rootEndpointUrl(profile: ModelProviderConfig, path: string): string {
-  const url = new URL(profile.baseUrl ?? "");
+function rootEndpointUrl(
+  endpoint: ModelProviderEndpoint,
+  path: string,
+): string {
+  const url = new URL(endpoint.baseUrl);
   url.pathname = path;
   url.search = "";
   url.hash = "";
   return url.toString();
 }
 
-function endpointHeaders(profile: ModelProviderConfig): Record<string, string> {
+function endpointHeaders(
+  profile: ModelProviderConfig,
+  endpoint: ModelProviderEndpoint,
+): Record<string, string> {
   const apiKey = resolveApiKey(profile);
   const headers: Record<string, string> = {
     Accept: "application/json",
   };
-  if (profile.type === "anthropic") {
+  if (endpoint.protocol === "anthropic") {
     headers["x-api-key"] = apiKey;
     headers["anthropic-version"] = "2023-06-01";
   } else {
@@ -224,18 +232,29 @@ function endpointHeaders(profile: ModelProviderConfig): Record<string, string> {
   return headers;
 }
 
-function diagnosticProtocol(
-  type: ModelProviderConfig["type"],
-): "anthropic" | "openai-chat" | "openai-responses" {
-  if (type === "anthropic") return "anthropic";
-  if (type === "openai-responses") return "openai-responses";
-  return "openai-chat";
+function resolveApiKey(profile: ModelProviderConfig): string {
+  return resolveProviderApiKey(profile) ?? "";
 }
 
-function resolveApiKey(profile: ModelProviderConfig): string {
-  const envKey = profile.apiKeyEnv?.trim();
-  if (envKey && process.env[envKey]) return process.env[envKey] ?? "";
-  return profile.apiKey?.trim() ?? "";
+function resolveEndpoint(
+  profile: ModelProviderConfig,
+  endpointId?: string,
+  preferModelListing = false,
+): ModelProviderEndpoint | undefined {
+  const endpoints = configuredProviderEndpoints(profile);
+  if (endpointId) {
+    return endpoints.find((endpoint) => endpoint.id === endpointId);
+  }
+  if (preferModelListing) {
+    return (
+      endpoints.find((endpoint) => endpoint.protocol === "openai-chat") ??
+      endpoints.find((endpoint) => endpoint.protocol === "openai-responses") ??
+      endpoints[0]
+    );
+  }
+  return [...endpoints].sort(
+    (left, right) => left.priority - right.priority,
+  )[0];
 }
 
 async function readJson(response: Response): Promise<unknown> {

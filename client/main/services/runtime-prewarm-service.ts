@@ -1,4 +1,5 @@
 import { resolveModelProvider } from "../core/config/model-provider";
+import { resolveRuntimeProviderRoutes } from "../core/config/provider-routing";
 import { logInfo, logRuntime, logWarn } from "../core/logging/app-logger";
 import { diagnoseEndpointModel } from "../core/sdk/endpoint-diagnostics";
 import { getAgentSettings } from "./config-service";
@@ -20,11 +21,10 @@ async function prewarmRuntimeDependencies(): Promise<void> {
   logInfo("runtime.prewarm.started");
   try {
     const settings = getAgentSettings();
-    const modelProvider = resolveModelProvider(settings);
 
     prepareSkillRuntimeCache("startup");
 
-    void prewarmEndpoint(modelProvider);
+    void prewarmEndpoint(settings);
     void prewarmMcpProbe(settings.mcpServers);
 
     logInfo("runtime.prewarm.scheduled", { elapsedMs: Date.now() - startedAt });
@@ -37,10 +37,12 @@ async function prewarmRuntimeDependencies(): Promise<void> {
 }
 
 async function prewarmEndpoint(
-  modelProvider: ReturnType<typeof resolveModelProvider>,
+  settings: ReturnType<typeof getAgentSettings>,
 ): Promise<void> {
   const startedAt = Date.now();
-  if (!modelProvider.baseUrl || !modelProvider.apiKey || !modelProvider.model) {
+  const modelProvider = resolveModelProvider(settings);
+  const route = resolveRuntimeProviderRoutes(settings).routes[0];
+  if (!route) {
     logRuntime("prewarm.endpoint.skipped", {
       elapsedMs: Date.now() - startedAt,
       reason: "missing endpoint configuration",
@@ -52,15 +54,10 @@ async function prewarmEndpoint(
 
   try {
     const result = await diagnoseEndpointModel({
-      baseUrl: modelProvider.baseUrl,
-      apiKey: modelProvider.apiKey,
-      model: modelProvider.model,
-      protocol:
-        modelProvider.provider.type === "anthropic"
-          ? "anthropic"
-          : modelProvider.provider.type === "openai-responses"
-            ? "openai-responses"
-            : "openai-chat",
+      baseUrl: route.baseUrl,
+      apiKey: route.apiKey,
+      model: route.model,
+      protocol: route.protocol,
       timeoutMs: 3000,
     });
     logRuntime("prewarm.endpoint", {

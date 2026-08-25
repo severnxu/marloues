@@ -19,7 +19,7 @@ export function ProviderSection({
   return (
     <>
       <div className="settings-stat-grid">
-        <SettingsStat label="端点配置" value={String(draft.providers.length)} />
+        <SettingsStat label="供应商" value={String(draft.providers.length)} />
         <SettingsStat
           label="启用模型"
           value={`${draft.providers.reduce(
@@ -44,7 +44,7 @@ export function ProviderSection({
       </div>
       <SettingsCard
         title="模型池"
-        description="模型负责连接配置，并进入默认模型池参与下一次 SDK 会话。"
+        description="供应商进入统一模型池，运行时会自动选择兼容的协议端点。"
         icon={<ServerCog size={16} />}
         surface="plain"
         action={
@@ -52,19 +52,19 @@ export function ProviderSection({
             disabled={!canEdit}
             onClick={() => setAddDialogOpen(true)}
             title={
-              canEdit ? "新增端点配置" : "企业策略禁止新增或修改本地端点配置"
+              canEdit ? "添加模型供应商" : "企业策略禁止新增或修改本地供应商"
             }
           >
             <Plus size={14} />
-            添加模型
+            添加供应商
           </button>
         }
       >
         <div className="provider-list">
           {draft.providers.length === 0 ? (
             <EmptySettingsState
-              title="还没有配置任何模型"
-              body="先添加一个模型，再选择默认模型进入下一次 SDK 会话。"
+              title="还没有配置任何供应商"
+              body="先添加供应商和模型，运行时会自动选择兼容的协议端点。"
             />
           ) : null}
           {draft.providers.map((provider) => (

@@ -234,7 +234,7 @@ export function GlobalSearchOverlay({
       {
         id: `provider-${provider.id}`,
         title: provider.name || provider.id || "未命名 Provider",
-        detail: `${provider.enabled ? "已启用" : "已停用"} · ${provider.baseUrl ?? provider.type}`,
+        detail: `${provider.enabled ? "已启用" : "已停用"} · ${provider.kind === "builtin" ? "内置供应商 · 自动适配运行时" : `${provider.endpoints.length} 个自定义端点`}`,
         section: "providers",
         icon: "provider",
       },

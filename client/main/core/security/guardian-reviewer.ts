@@ -1,8 +1,8 @@
 import type { AgentSettings } from "@shared/types";
-import { providerTargetProtocol } from "../../gateway";
 import { encodeRequest } from "../../gateway/protocol";
 import type { IrRequest } from "../../gateway/types";
-import { resolveModelProvider } from "../config/model-provider";
+import { resolveRuntimeProviderRoutes } from "../config/provider-routing";
+import { buildProviderEndpointUrl } from "../config/provider-endpoint-url";
 import { logWarn } from "../logging/app-logger";
 import type { SecurityDecision } from "./security-host";
 
@@ -45,10 +45,12 @@ export async function runGuardianReview(
   settings: AgentSettings,
   context: GuardianReviewContext = {},
 ): Promise<GuardianReviewResult> {
-  const provider = resolveModelProvider(settings);
-  if (!provider.baseUrl?.trim() || !provider.apiKey?.trim()) {
+  const routePlan = resolveRuntimeProviderRoutes(settings, {
+    runtimeId: settings.activeRuntimeId,
+  });
+  if (!routePlan.routes.length) {
     return failedClosed(
-      provider.model,
+      settings.defaultModel.modelId,
       0,
       "隔离审查器缺少可用的端点或 API Key。",
     );
@@ -59,13 +61,15 @@ export async function runGuardianReview(
   let attemptCount = 0;
   while (attemptCount < GUARDIAN_REVIEW_MAX_ATTEMPTS && Date.now() < deadline) {
     attemptCount += 1;
+    const route =
+      routePlan.routes[(attemptCount - 1) % routePlan.routes.length];
     try {
       return {
         ...(await requestGuardianReview({
-          baseUrl: provider.baseUrl,
-          apiKey: provider.apiKey,
-          model: provider.model,
-          protocol: providerTargetProtocol(provider.provider),
+          baseUrl: route.baseUrl,
+          apiKey: route.apiKey,
+          model: route.model,
+          protocol: route.protocol,
           decision,
           context,
           timeoutMs: Math.min(
@@ -73,7 +77,7 @@ export async function runGuardianReview(
             Math.max(1, deadline - Date.now()),
           ),
         })),
-        model: provider.model,
+        model: route.model,
         attemptCount,
       };
     } catch (error) {
@@ -81,7 +85,8 @@ export async function runGuardianReview(
       const retryable =
         !(error instanceof GuardianAttemptError) || error.retryable;
       logWarn("security.guardian.failed", {
-        model: provider.model,
+        model: route.model,
+        endpointId: route.endpointId,
         operationId: decision.operation.id,
         attemptCount,
         retryable,
@@ -93,7 +98,7 @@ export async function runGuardianReview(
   }
 
   return failedClosed(
-    provider.model,
+    routePlan.routes[0].model,
     attemptCount,
     `隔离审查失败，已按安全策略拒绝执行：${lastError}`,
   );
@@ -150,7 +155,7 @@ async function requestGuardianReview(input: {
       : { authorization: `Bearer ${input.apiKey}` }),
   };
   const response = await fetchWithHardTimeout(
-    buildProviderUrl(input.baseUrl, encoded.path),
+    buildProviderEndpointUrl(input.baseUrl, encoded.path),
     {
       method: "POST",
       headers,
@@ -175,15 +180,6 @@ async function requestGuardianReview(input: {
     throw new GuardianAttemptError("审查器没有返回有效的结构化裁决。", true);
   }
   return parsed;
-}
-
-function buildProviderUrl(baseUrl: string, path: string): string {
-  const url = new URL(baseUrl);
-  const basePath = url.pathname.replace(/\/+$/, "");
-  url.pathname = `${basePath.endsWith("/v1") ? basePath.slice(0, -3) : basePath}${path}`;
-  url.search = "";
-  url.hash = "";
-  return url.toString();
 }
 
 async function fetchWithHardTimeout(

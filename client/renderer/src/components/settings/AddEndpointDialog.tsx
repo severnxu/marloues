@@ -12,10 +12,16 @@ import {
   X,
 } from "lucide-react";
 import type {
+  ModelEndpointProtocol,
   ModelOption,
   ModelProviderConfig,
-  ModelProviderType,
+  ModelProviderEndpoint,
 } from "@shared/types";
+import {
+  BUILTIN_PROVIDER_METADATA,
+  builtinProviderMetadata,
+  type BuiltinProviderPresetId,
+} from "@shared/builtin-provider-metadata";
 import { STRINGS } from "@shared/strings.zh";
 import { SettingsSelect } from "./shared";
 import { withModelMetadataDefaults } from "./SettingsWorkbench.utils";
@@ -26,6 +32,12 @@ type StatusTone = "info" | "ok" | "error";
 export interface AddEndpointStatus {
   (message: string, tone?: StatusTone): void;
 }
+
+const PROTOCOL_OPTIONS = [
+  { value: "openai-chat", label: "OpenAI Chat" },
+  { value: "openai-responses", label: "OpenAI Responses" },
+  { value: "anthropic", label: "Anthropic" },
+];
 
 export function AddEndpointDialog({
   index,
@@ -42,13 +54,17 @@ export function AddEndpointDialog({
   onStatus: AddEndpointStatus;
 }) {
   const [providerId] = useState(() => crypto.randomUUID());
-  const [name, setName] = useState(`Endpoint ${index}`);
-  const [providerType, setProviderType] =
-    useState<ModelProviderType>("openai-chat");
-  const [baseUrl, setBaseUrl] = useState("");
+  const [kind, setKind] = useState<"builtin" | "custom">("builtin");
+  const [presetId, setPresetId] = useState<BuiltinProviderPresetId>("deepseek");
+  const [name, setName] = useState(`自定义供应商 ${index}`);
+  const [endpoints, setEndpoints] = useState<ModelProviderEndpoint[]>(() => [
+    createEndpoint(1),
+  ]);
   const [apiKey, setApiKey] = useState("");
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
-  const [models, setModels] = useState<ModelOption[]>([]);
+  const [models, setModels] = useState<ModelOption[]>(() =>
+    modelsForPreset("deepseek"),
+  );
   const [defaultModelId, setDefaultModelId] = useState<string | null>(null);
   const [importDraft, setImportDraft] = useState<{
     models: ModelOption[];
@@ -57,26 +73,54 @@ export function AddEndpointDialog({
   const [manualId, setManualId] = useState("");
   const [fetching, setFetching] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [testingEndpointIds, setTestingEndpointIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [testingModelIds, setTestingModelIds] = useState<Set<string>>(
     () => new Set(),
   );
   const [error, setError] = useState<string | null>(null);
 
   const firstFieldRef = useRef<HTMLInputElement | null>(null);
-  const providerName = name.trim() || `Endpoint ${index}`;
+  const preset = builtinProviderMetadata(presetId);
+  const providerName =
+    kind === "builtin"
+      ? preset?.name || presetId
+      : name.trim() || `自定义供应商 ${index}`;
 
   const buildProvider = useCallback(
-    (): ModelProviderConfig => ({
-      id: providerId,
-      name: name.trim() || `Endpoint ${index}`,
-      type: providerType,
-      enabled: true,
-      baseUrl: baseUrl.trim(),
-      apiKey: apiKey.trim(),
-      models,
-    }),
-    [providerId, name, index, providerType, baseUrl, apiKey, models],
+    (): ModelProviderConfig =>
+      kind === "builtin"
+        ? {
+            id: providerId,
+            name: providerName,
+            kind: "builtin",
+            presetId,
+            enabled: true,
+            apiKey: apiKey.trim(),
+            models,
+          }
+        : {
+            id: providerId,
+            name: providerName,
+            kind: "custom",
+            endpoints: endpoints.map((endpoint) => ({
+              ...endpoint,
+              name: endpoint.name?.trim(),
+              baseUrl: endpoint.baseUrl.trim(),
+            })),
+            enabled: true,
+            apiKey: apiKey.trim(),
+            models,
+          },
+    [kind, providerId, providerName, presetId, apiKey, models, endpoints],
   );
+
+  useEffect(() => {
+    if (kind !== "builtin") return;
+    setModels(modelsForPreset(presetId));
+    setImportDraft(null);
+  }, [kind, presetId]);
 
   // Esc to cancel (Enter handled per-field)
   useEffect(() => {
@@ -116,7 +160,7 @@ export function AddEndpointDialog({
   };
 
   const handleFetchModels = async () => {
-    if (!baseUrl.trim() || !apiKey.trim()) {
+    if (!providerIsComplete(kind, apiKey, endpoints)) {
       flash(STRINGS.model.missingEndpointFields, "error");
       return;
     }
@@ -232,7 +276,7 @@ export function AddEndpointDialog({
   };
 
   const handleTest = async () => {
-    if (!baseUrl.trim() || !apiKey.trim()) {
+    if (!providerIsComplete(kind, apiKey, endpoints)) {
       flash(STRINGS.model.missingEndpointFields, "error");
       return;
     }
@@ -262,8 +306,36 @@ export function AddEndpointDialog({
     }
   };
 
+  const handleTestEndpoint = async (endpointId: string) => {
+    if (!providerIsComplete(kind, apiKey, endpoints)) {
+      flash(STRINGS.model.missingEndpointFields, "error");
+      return;
+    }
+    setTestingEndpointIds((ids) => new Set(ids).add(endpointId));
+    try {
+      const result = await window.marloues.config.testEndpointProfile(
+        buildProvider(),
+        endpointId,
+      );
+      flash(
+        STRINGS.model.endpointResult(
+          providerName,
+          result.message,
+          result.latencyMs,
+        ),
+        result.ok ? "ok" : "error",
+      );
+    } finally {
+      setTestingEndpointIds((ids) => {
+        const next = new Set(ids);
+        next.delete(endpointId);
+        return next;
+      });
+    }
+  };
+
   const handleTestModel = async (modelId: string) => {
-    if (!baseUrl.trim() || !apiKey.trim()) {
+    if (!providerIsComplete(kind, apiKey, endpoints)) {
       flash(STRINGS.model.missingEndpointFields, "error");
       return;
     }
@@ -305,7 +377,7 @@ export function AddEndpointDialog({
   };
 
   const handleConfirm = () => {
-    if (!baseUrl.trim() || !apiKey.trim()) {
+    if (!providerIsComplete(kind, apiKey, endpoints)) {
       flash(STRINGS.model.missingEndpointFields, "error");
       return;
     }
@@ -327,8 +399,10 @@ export function AddEndpointDialog({
       >
         <div className={styles.head}>
           <div className={styles.headTitle}>
-            <strong>添加模型</strong>
-            <small>配置一个端点，并至少添加一个模型进入模型池。</small>
+            <strong>添加模型供应商</strong>
+            <small>
+              内置供应商自动匹配运行时协议；自定义供应商可配置多个端点。
+            </small>
           </div>
           <button
             type="button"
@@ -341,39 +415,59 @@ export function AddEndpointDialog({
         </div>
 
         <div className={`${styles.body} scrollbar-thin`}>
+          <div className={styles.kindSwitch} aria-label="供应商类型">
+            <button
+              type="button"
+              className={kind === "builtin" ? styles.kindActive : undefined}
+              onClick={() => setKind("builtin")}
+            >
+              内置供应商
+            </button>
+            <button
+              type="button"
+              className={kind === "custom" ? styles.kindActive : undefined}
+              onClick={() => setKind("custom")}
+            >
+              自定义
+            </button>
+          </div>
+
           <div className={styles.fieldGrid}>
-            <label className={styles.field}>
-              <span>Profile 名称</span>
-              <input
-                ref={firstFieldRef}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Profile 名称"
-              />
-            </label>
-            <label className={styles.field}>
-              <span>API 协议</span>
-              <SettingsSelect
-                ariaLabel="API 协议"
-                value={providerType}
-                options={[
-                  { value: "openai-chat", label: "OpenAI Chat" },
-                  { value: "openai-responses", label: "OpenAI Responses" },
-                  { value: "anthropic", label: "Anthropic" },
-                ]}
-                onChange={(value) =>
-                  setProviderType(value as ModelProviderType)
-                }
-              />
-            </label>
-            <label className={styles.field}>
-              <span>Base URL</span>
-              <input
-                value={baseUrl}
-                onChange={(event) => setBaseUrl(event.target.value)}
-                placeholder="https://api.example.com/v1"
-              />
-            </label>
+            {kind === "builtin" ? (
+              <>
+                <label className={styles.field}>
+                  <span>供应商</span>
+                  <SettingsSelect
+                    ariaLabel="供应商"
+                    value={presetId}
+                    options={BUILTIN_PROVIDER_METADATA.map((item) => ({
+                      value: item.id,
+                      label: item.name,
+                    }))}
+                    onChange={(value) =>
+                      setPresetId(value as BuiltinProviderPresetId)
+                    }
+                  />
+                </label>
+                <div className={styles.routingNote}>
+                  <strong>运行时自动适配</strong>
+                  <span>
+                    地址由 Marloues 内置维护，使用时按 SDK、Binary
+                    或自研运行时自动选择协议。
+                  </span>
+                </div>
+              </>
+            ) : (
+              <label className={styles.field}>
+                <span>供应商名称</span>
+                <input
+                  ref={firstFieldRef}
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="供应商名称"
+                />
+              </label>
+            )}
             <label className={styles.field}>
               <span>API Key</span>
               <div className={styles.apiKeyWrap}>
@@ -394,6 +488,139 @@ export function AddEndpointDialog({
               </div>
             </label>
           </div>
+
+          {kind === "custom" ? (
+            <div className={styles.endpointSection}>
+              <div className={styles.modelSectionHead}>
+                <span>模型端点</span>
+                <button
+                  type="button"
+                  className={styles.addEndpointButton}
+                  onClick={() =>
+                    setEndpoints((current) => [
+                      ...current,
+                      createEndpoint(current.length + 1),
+                    ])
+                  }
+                >
+                  <Plus size={14} />
+                  添加端点
+                </button>
+              </div>
+              <div className={styles.endpointList}>
+                {endpoints.map((endpoint, endpointIndex) => (
+                  <div className={styles.endpointRow} key={endpoint.id}>
+                    <div className={styles.endpointRowHead}>
+                      <label className={styles.configCheck}>
+                        <input
+                          type="checkbox"
+                          checked={endpoint.enabled}
+                          onChange={(event) =>
+                            setEndpoints((current) =>
+                              current.map((item) =>
+                                item.id === endpoint.id
+                                  ? { ...item, enabled: event.target.checked }
+                                  : item,
+                              ),
+                            )
+                          }
+                        />
+                        端点 {endpointIndex + 1}
+                      </label>
+                      <div className={styles.rowActions}>
+                        <button
+                          type="button"
+                          className={styles.iconButton}
+                          disabled={testingEndpointIds.has(endpoint.id)}
+                          title="测试此端点"
+                          onClick={() => void handleTestEndpoint(endpoint.id)}
+                        >
+                          {testingEndpointIds.has(endpoint.id) ? (
+                            <RefreshCcw size={13} />
+                          ) : (
+                            <PlugZap size={13} />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.iconButton}
+                          disabled={endpoints.length === 1}
+                          title="删除端点"
+                          onClick={() =>
+                            setEndpoints((current) =>
+                              current.filter((item) => item.id !== endpoint.id),
+                            )
+                          }
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className={styles.endpointGrid}>
+                      <label className={styles.field}>
+                        <span>协议</span>
+                        <SettingsSelect
+                          ariaLabel={`端点 ${endpointIndex + 1} 协议`}
+                          value={endpoint.protocol}
+                          options={PROTOCOL_OPTIONS}
+                          onChange={(value) =>
+                            setEndpoints((current) =>
+                              current.map((item) =>
+                                item.id === endpoint.id
+                                  ? {
+                                      ...item,
+                                      protocol: value as ModelEndpointProtocol,
+                                    }
+                                  : item,
+                              ),
+                            )
+                          }
+                        />
+                      </label>
+                      <label className={styles.field}>
+                        <span>优先级</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={endpoint.priority}
+                          onChange={(event) =>
+                            setEndpoints((current) =>
+                              current.map((item) =>
+                                item.id === endpoint.id
+                                  ? {
+                                      ...item,
+                                      priority: Number(event.target.value) || 0,
+                                    }
+                                  : item,
+                              ),
+                            )
+                          }
+                        />
+                      </label>
+                      <label
+                        className={`${styles.field} ${styles.endpointUrl}`}
+                      >
+                        <span>Base URL</span>
+                        <input
+                          value={endpoint.baseUrl}
+                          onChange={(event) =>
+                            setEndpoints((current) =>
+                              current.map((item) =>
+                                item.id === endpoint.id
+                                  ? { ...item, baseUrl: event.target.value }
+                                  : item,
+                              ),
+                            )
+                          }
+                          placeholder="https://api.example.com/v1"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <div className={styles.modelSection}>
             <div className={styles.modelSectionHead}>
@@ -626,5 +853,34 @@ export function AddEndpointDialog({
       </div>
     </div>,
     document.body,
+  );
+}
+
+function createEndpoint(index: number): ModelProviderEndpoint {
+  return {
+    id: crypto.randomUUID(),
+    name: `端点 ${index}`,
+    protocol: "openai-chat",
+    baseUrl: "",
+    enabled: true,
+    priority: index * 10,
+  };
+}
+
+function modelsForPreset(presetId: BuiltinProviderPresetId): ModelOption[] {
+  return (builtinProviderMetadata(presetId)?.models ?? []).map((id) =>
+    withModelMetadataDefaults({ id, label: id, enabled: true }),
+  );
+}
+
+function providerIsComplete(
+  kind: "builtin" | "custom",
+  apiKey: string,
+  endpoints: ModelProviderEndpoint[],
+): boolean {
+  if (!apiKey.trim()) return false;
+  if (kind === "builtin") return true;
+  return endpoints.some(
+    (endpoint) => endpoint.enabled && endpoint.baseUrl.trim(),
   );
 }

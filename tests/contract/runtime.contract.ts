@@ -2,10 +2,17 @@ import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { RuntimeEvent } from "../../client/shared/agent-runtime";
+import type {
+  ModelEndpointProtocol,
+  ModelOption,
+  ModelProviderConfig,
+} from "../../client/shared/types";
 
 process.env.MARLOUES_HOME = mkdtempSync(
   join(tmpdir(), "marloues-runtime-contract-"),
 );
+const CONTRACT_API_KEY_ENV = "MARLOUES_RUNTIME_CONTRACT_API_KEY";
+process.env[CONTRACT_API_KEY_ENV] = "contract-key";
 let cleanupEventLog: (() => void) | undefined;
 let cleanupModelServer: (() => Promise<void>) | undefined;
 let cleanupRemoteMcpServer: (() => Promise<void>) | undefined;
@@ -55,17 +62,17 @@ async function main(): Promise<void> {
     ...settings,
     activeRuntimeId: "self-built",
     providers: [
-      {
-        id: "contract-provider",
-        name: "Contract Provider",
-        type: "openai-compatible",
-        enabled: true,
-        baseUrl: modelServer.baseUrl,
-        models: [
+      endpointProvider(
+        "contract-provider",
+        "Contract Provider",
+        "openai-chat",
+        modelServer.baseUrl,
+        [
           { id: "contract-model", label: "Contract Model", enabled: true },
           { id: "disabled-model", label: "Disabled Model", enabled: false },
         ],
-      },
+        "contract-key",
+      ),
     ],
     defaultModel: {
       providerId: "contract-provider",
@@ -102,15 +109,16 @@ async function main(): Promise<void> {
     "self-built runtime should expose its local model",
   );
 
-  const listedModels = await listEndpointModels({
-    id: "probe-provider",
-    name: "Probe Provider",
-    type: "openai-compatible",
-    enabled: true,
-    baseUrl: modelServer.baseUrl,
-    apiKey: "contract-key",
-    models: [],
-  });
+  const listedModels = await listEndpointModels(
+    endpointProvider(
+      "probe-provider",
+      "Probe Provider",
+      "openai-chat",
+      modelServer.baseUrl,
+      [],
+      "contract-key",
+    ),
+  );
   assert(
     listedModels.ok,
     "endpoint model discovery should call /v1/models successfully",
@@ -119,42 +127,41 @@ async function main(): Promise<void> {
     listedModels.models.some((model) => model.id === "contract-model-a"),
     "endpoint model discovery should parse OpenAI-compatible model IDs",
   );
-  const profileTest = await testEndpointProfile({
-    id: "probe-provider",
-    name: "Probe Provider",
-    type: "openai-compatible",
-    enabled: true,
-    baseUrl: modelServer.baseUrl,
-    apiKey: "contract-key",
-    models: [],
-  });
+  const profileTest = await testEndpointProfile(
+    endpointProvider(
+      "probe-provider",
+      "Probe Provider",
+      "openai-chat",
+      modelServer.baseUrl,
+      [],
+      "contract-key",
+    ),
+  );
   assert(
     profileTest.ok,
     "endpoint profile test should succeed when /v1/models is reachable",
   );
   const modelTest = await testEndpointModel(
-    {
-      id: "probe-provider",
-      name: "Probe Provider",
-      type: "openai-chat",
-      enabled: true,
-      baseUrl: modelServer.baseUrl,
-      apiKey: "contract-key",
-      models: [],
-    },
+    endpointProvider(
+      "probe-provider",
+      "Probe Provider",
+      "openai-chat",
+      modelServer.baseUrl,
+      [],
+      "contract-key",
+    ),
     "contract-model-b",
   );
   assert(modelTest.ok, "endpoint model test should verify an advertised model");
   const responsesModelTest = await testEndpointModel(
-    {
-      id: "probe-provider-responses",
-      name: "Probe Provider Responses",
-      type: "openai-responses",
-      enabled: true,
-      baseUrl: modelServer.baseUrl,
-      apiKey: "contract-key",
-      models: [],
-    },
+    endpointProvider(
+      "probe-provider-responses",
+      "Probe Provider Responses",
+      "openai-responses",
+      modelServer.baseUrl,
+      [],
+      "contract-key",
+    ),
     "contract-model-r",
   );
   assert(
@@ -162,15 +169,14 @@ async function main(): Promise<void> {
     "endpoint model test should use the Responses protocol",
   );
   const anthropicModelTest = await testEndpointModel(
-    {
-      id: "probe-provider-anthropic",
-      name: "Probe Provider Anthropic",
-      type: "anthropic",
-      enabled: true,
-      baseUrl: modelServer.baseUrl,
-      apiKey: "contract-key",
-      models: [],
-    },
+    endpointProvider(
+      "probe-provider-anthropic",
+      "Probe Provider Anthropic",
+      "anthropic",
+      modelServer.baseUrl,
+      [],
+      "contract-key",
+    ),
     "contract-model-b",
   );
   assert(
@@ -935,6 +941,33 @@ function textFromEvents(events: RuntimeEvent[]): string {
     )
     .map((event) => event.payload.content)
     .join("");
+}
+
+function endpointProvider(
+  id: string,
+  name: string,
+  protocol: ModelEndpointProtocol,
+  baseUrl: string,
+  models: ModelOption[],
+  apiKey?: string,
+): ModelProviderConfig {
+  return {
+    id,
+    name,
+    kind: "custom",
+    enabled: true,
+    apiKeyEnv: apiKey ? CONTRACT_API_KEY_ENV : undefined,
+    endpoints: [
+      {
+        id: `${id}-${protocol}`,
+        protocol,
+        baseUrl,
+        enabled: true,
+        priority: 10,
+      },
+    ],
+    models,
+  };
 }
 
 main()

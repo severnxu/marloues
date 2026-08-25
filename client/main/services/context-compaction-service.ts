@@ -1,9 +1,18 @@
 import type { ChatMessageRecord, ChatSessionRecord } from "@shared/types";
-import { estimateTextTokens, trimTextToTokenBudget } from "../core/context/context-policy";
+import {
+  estimateTextTokens,
+  trimTextToTokenBudget,
+} from "../core/context/context-policy";
 import type { ResolvedModelProvider } from "../core/config/model-provider";
-import { buildMessagesUrl } from "../core/sdk/endpoint-diagnostics";
+import { configuredProviderEndpoints } from "../core/config/provider-routing";
+import { buildProviderEndpointUrl } from "../core/config/provider-endpoint-url";
+import { encodeRequest, parseResponse } from "../gateway/protocol";
+import type { IrRequest, IrResponse } from "../gateway/types";
 import { logWarn } from "../core/logging/app-logger";
-import { recordSessionArtifact, recordSessionCheckpoint } from "./session-store";
+import {
+  recordSessionArtifact,
+  recordSessionCheckpoint,
+} from "./session-store";
 
 export interface SessionCompactionInput {
   session: ChatSessionRecord;
@@ -34,7 +43,10 @@ export interface RecordedSessionCompactionResult extends SessionCompactionResult
   artifactId: string;
 }
 
-export function prependStatePackToPrompt(statePack: string, userText: string): string {
+export function prependStatePackToPrompt(
+  statePack: string,
+  userText: string,
+): string {
   const trimmedPack = statePack.trim();
   const trimmedUserText = userText.trim();
   if (!trimmedPack) return userText;
@@ -51,10 +63,17 @@ export function prependStatePackToPrompt(statePack: string, userText: string): s
 }
 const RECENT_MESSAGE_COUNT = 8;
 
-export async function compactSessionState(input: SessionCompactionInput): Promise<SessionCompactionResult> {
-  const messages = input.session.messages.filter((message) => message.id !== input.currentUserMessageId);
+export async function compactSessionState(
+  input: SessionCompactionInput,
+): Promise<SessionCompactionResult> {
+  const messages = input.session.messages.filter(
+    (message) => message.id !== input.currentUserMessageId,
+  );
   const recentMessages = messages.slice(-RECENT_MESSAGE_COUNT);
-  const olderMessages = messages.slice(0, Math.max(0, messages.length - RECENT_MESSAGE_COUNT));
+  const olderMessages = messages.slice(
+    0,
+    Math.max(0, messages.length - RECENT_MESSAGE_COUNT),
+  );
   const targetTokens = Math.max(1, input.targetTokens);
   const summaryBudget = Math.max(1_200, Math.floor(targetTokens * 0.45));
 
@@ -66,7 +85,12 @@ export async function compactSessionState(input: SessionCompactionInput): Promis
           tokenBudget: summaryBudget,
         })
       : "No older conversation needed compaction.";
-    const statePack = buildStatePackFromSummary(input.session, summaryText, recentMessages, targetTokens);
+    const statePack = buildStatePackFromSummary(
+      input.session,
+      summaryText,
+      recentMessages,
+      targetTokens,
+    );
     return {
       statePack,
       summaryText,
@@ -81,7 +105,12 @@ export async function compactSessionState(input: SessionCompactionInput): Promis
       error: message,
     });
     const summaryText = deterministicOlderSummary(olderMessages, summaryBudget);
-    const statePack = buildStatePackFromSummary(input.session, summaryText, recentMessages, targetTokens);
+    const statePack = buildStatePackFromSummary(
+      input.session,
+      summaryText,
+      recentMessages,
+      targetTokens,
+    );
     return {
       statePack,
       summaryText,
@@ -146,7 +175,10 @@ function buildStatePackFromSummary(
   recentMessages: ChatMessageRecord[],
   tokenBudget: number,
 ): string {
-  const recentBudget = Math.max(800, Math.floor(tokenBudget / Math.max(RECENT_MESSAGE_COUNT, 1)));
+  const recentBudget = Math.max(
+    800,
+    Math.floor(tokenBudget / Math.max(RECENT_MESSAGE_COUNT, 1)),
+  );
   const sections = [
     "# Marloues Session State Pack",
     "",
@@ -156,11 +188,20 @@ function buildStatePackFromSummary(
     session.workspacePath ? `- Workspace: ${session.workspacePath}` : undefined,
     "",
     "## Compressed Long-Term State",
-    trimTextToTokenBudget(summaryText, Math.max(800, Math.floor(tokenBudget * 0.5))),
+    trimTextToTokenBudget(
+      summaryText,
+      Math.max(800, Math.floor(tokenBudget * 0.5)),
+    ),
     "",
     "## Recent Conversation",
     ...recentMessages.map((message) =>
-      [`### ${message.role}`, trimTextToTokenBudget(renderMessageForCompaction(message), recentBudget)].join("\n"),
+      [
+        `### ${message.role}`,
+        trimTextToTokenBudget(
+          renderMessageForCompaction(message),
+          recentBudget,
+        ),
+      ].join("\n"),
     ),
     "",
     "## Operating Notes",
@@ -176,69 +217,102 @@ async function summarizeOlderMessages(input: {
   messages: ChatMessageRecord[];
   tokenBudget: number;
 }): Promise<string> {
-  const baseUrl = input.modelProvider.baseUrl?.trim();
   const apiKey = input.modelProvider.apiKey?.trim();
-  if (!baseUrl) throw new Error("Model provider is missing Base URL.");
   if (!apiKey) throw new Error("Model provider is missing API Key.");
+  const endpoints = configuredProviderEndpoints(
+    input.modelProvider.provider,
+  ).sort((left, right) => left.priority - right.priority);
+  if (!endpoints.length)
+    throw new Error("Model provider has no enabled endpoint.");
 
   const transcript = trimTextToTokenBudget(
     input.messages.map(renderMessageForCompaction).join("\n\n---\n\n"),
     Math.max(4_000, input.tokenBudget * 2),
   );
-  const response = await fetch(buildMessagesUrl(baseUrl), {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": apiKey,
-      authorization: `Bearer ${apiKey}`,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
+  const system = [
+    "You compress long agent conversations into a durable state pack.",
+    "Preserve user goals, decisions, constraints, open tasks, files touched, model/provider choices, bugs, and exact implementation commitments.",
+    "Do not invent facts. Prefer concise structured Chinese when the transcript is Chinese.",
+  ].join("\n");
+  const prompt = [
+    `Target summary budget: about ${input.tokenBudget} tokens.`,
+    "Summarize the older conversation below for a coding agent that will continue from this state.",
+    "",
+    transcript,
+  ].join("\n");
+  let lastError = "unknown endpoint error";
+  for (const endpoint of endpoints) {
+    const requestId = `compaction-${Date.now()}-${endpoint.id}`;
+    const request: IrRequest = {
       model: input.modelProvider.model,
-      max_tokens: Math.min(8192, Math.max(1024, Math.floor(input.tokenBudget * 0.8))),
+      system,
+      messages: [{ role: "user", content: prompt }],
+      generation: {
+        maxTokens: Math.min(
+          8192,
+          Math.max(1024, Math.floor(input.tokenBudget * 0.8)),
+        ),
+      },
       stream: false,
-      system: [
-        "You compress long agent conversations into a durable state pack.",
-        "Preserve user goals, decisions, constraints, open tasks, files touched, model/provider choices, bugs, and exact implementation commitments.",
-        "Do not invent facts. Prefer concise structured Chinese when the transcript is Chinese.",
-      ].join("\n"),
-      messages: [
+      meta: {
+        sourceProtocol: endpoint.protocol,
+        requestId,
+        originalModel: input.modelProvider.model,
+      },
+    };
+    const encoded = encodeRequest(endpoint.protocol, request);
+    try {
+      const response = await fetch(
+        buildProviderEndpointUrl(endpoint.baseUrl, encoded.path),
         {
-          role: "user",
-          content: [
-            `Target summary budget: about ${input.tokenBudget} tokens.`,
-            "Summarize the older conversation below for a coding agent that will continue from this state.",
-            "",
-            transcript,
-          ].join("\n"),
+          method: "POST",
+          headers: {
+            ...encoded.headers,
+            ...(endpoint.protocol === "anthropic"
+              ? { "x-api-key": apiKey }
+              : { authorization: `Bearer ${apiKey}` }),
+          },
+          body: JSON.stringify(encoded.body),
+          signal: AbortSignal.timeout(45_000),
         },
-      ],
-    }),
-    signal: AbortSignal.timeout(45_000),
-  });
-  const body = await response.text();
-  if (!response.ok) {
-    throw new Error(`Compaction model request failed: HTTP ${response.status} ${body.slice(0, 500)}`);
+      );
+      const body = await response.text();
+      if (!response.ok) {
+        lastError = `HTTP ${response.status} ${body.slice(0, 500)}`;
+        continue;
+      }
+      const parsed = JSON.parse(body) as unknown;
+      const irResponse = parseResponse(
+        endpoint.protocol,
+        parsed,
+        requestId,
+        input.modelProvider.model,
+      );
+      return (
+        responseText(irResponse) ||
+        deterministicOlderSummary(input.messages, input.tokenBudget)
+      );
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+    }
   }
-  return parseAnthropicText(body) || deterministicOlderSummary(input.messages, input.tokenBudget);
+  throw new Error(`Compaction model request failed: ${lastError}`);
 }
 
-function parseAnthropicText(body: string): string {
-  try {
-    const parsed = JSON.parse(body) as { content?: Array<{ type?: string; text?: string }> };
-    return (
-      parsed.content
-        ?.map((item) => item.text)
-        .filter(Boolean)
-        .join("\n\n")
-        .trim() ?? ""
-    );
-  } catch {
-    return "";
-  }
+function responseText(response: IrResponse): string {
+  const content = response.choices[0]?.message.content;
+  if (typeof content === "string") return content.trim();
+  return (content ?? [])
+    .filter((block) => block.type === "text" && block.text)
+    .map((block) => block.text)
+    .join("\n\n")
+    .trim();
 }
 
-function deterministicOlderSummary(messages: ChatMessageRecord[], tokenBudget: number): string {
+function deterministicOlderSummary(
+  messages: ChatMessageRecord[],
+  tokenBudget: number,
+): string {
   if (!messages.length) return "No older conversation needed compaction.";
   const lines = messages.map((message) => {
     const text = message.content.replace(/\s+/g, " ").trim();
@@ -250,7 +324,10 @@ function deterministicOlderSummary(messages: ChatMessageRecord[], tokenBudget: n
 function renderMessageForCompaction(message: ChatMessageRecord): string {
   const timeline = message.timeline?.length
     ? `\nTimeline:\n${message.timeline
-        .map((item) => `- ${item.type}: ${item.label}${item.detail ? `\n  ${item.detail}` : ""}`)
+        .map(
+          (item) =>
+            `- ${item.type}: ${item.label}${item.detail ? `\n  ${item.detail}` : ""}`,
+        )
         .join("\n")}`
     : "";
   return `[${message.role} | ${new Date(message.createdAt).toISOString()}]\n${message.content}${timeline}`;

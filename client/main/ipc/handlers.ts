@@ -2970,18 +2970,24 @@ export function registerHandlers(): void {
 
   ipcMain.handle(
     IPC.CONFIG_TEST_ENDPOINT_PROFILE,
-    async (_e, profile: ModelProviderConfig) => testEndpointProfile(profile),
+    async (_e, profile: ModelProviderConfig, endpointId?: string) =>
+      testEndpointProfile(profile, endpointId),
   );
 
   ipcMain.handle(
     IPC.CONFIG_TEST_ENDPOINT_MODEL,
-    async (_e, profile: ModelProviderConfig, modelId: string) =>
-      testEndpointModel(profile, modelId),
+    async (
+      _e,
+      profile: ModelProviderConfig,
+      modelId: string,
+      endpointId?: string,
+    ) => testEndpointModel(profile, modelId, endpointId),
   );
 
   ipcMain.handle(
     IPC.CONFIG_LIST_ENDPOINT_MODELS,
-    async (_e, profile: ModelProviderConfig) => listEndpointModels(profile),
+    async (_e, profile: ModelProviderConfig, endpointId?: string) =>
+      listEndpointModels(profile, endpointId),
   );
 
   ipcMain.handle(IPC.RUNTIME_GET_STATE, async () => getRuntimeState());

@@ -19,7 +19,7 @@ import {
   getAgentSettings,
   saveAgentSettings,
 } from "../../../../client/main/services/config-service";
-import type { ModelProviderType } from "../../../../client/shared/types";
+import type { ModelEndpointProtocol } from "../../../../client/shared/types";
 
 interface CapturedRequest {
   path?: string;
@@ -58,19 +58,19 @@ describe("gateway provider routing", () => {
   it("routes selected endpoint types to their upstream protocol", async () => {
     const cases = [
       {
-        providerType: "openai-chat" as ModelProviderType,
+        protocol: "openai-chat" as ModelEndpointProtocol,
         upstreamPath: "/v1/chat/completions",
         response: openAIChatResponse(),
         inboundPath: "/v1/messages",
       },
       {
-        providerType: "openai-responses" as ModelProviderType,
+        protocol: "openai-responses" as ModelEndpointProtocol,
         upstreamPath: "/v1/responses",
         response: openAIResponsesResponse(),
         inboundPath: "/v1/messages",
       },
       {
-        providerType: "anthropic" as ModelProviderType,
+        protocol: "anthropic" as ModelEndpointProtocol,
         upstreamPath: "/v1/messages",
         response: anthropicResponse(),
         inboundPath: "/v1/responses",
@@ -82,15 +82,18 @@ describe("gateway provider routing", () => {
         testCase.upstreamPath,
         testCase.response,
       );
-      configureSelectedProvider(testCase.providerType, upstream.url);
+      configureSelectedProvider(testCase.protocol, upstream.url);
       const gateway = await startGateway();
-      expect(gateway).not.toBeNull();
+      expect(gateway.port).toBeGreaterThan(0);
 
       const response = await fetch(
-        `http://127.0.0.1:${gateway?.port}${testCase.inboundPath}`,
+        `${gateway.baseUrl}${testCase.inboundPath}`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": gateway.token,
+          },
           body: JSON.stringify(
             testCase.inboundPath === "/v1/responses"
               ? {
@@ -116,7 +119,7 @@ describe("gateway provider routing", () => {
 });
 
 function configureSelectedProvider(
-  type: ModelProviderType,
+  protocol: ModelEndpointProtocol,
   baseUrl: string,
 ): void {
   const settings = getAgentSettings();
@@ -128,9 +131,17 @@ function configureSelectedProvider(
         ...provider,
         id: "routing-provider",
         name: "Routing Provider",
-        type,
+        kind: "custom",
         enabled: true,
-        baseUrl,
+        endpoints: [
+          {
+            id: `routing-${protocol}`,
+            protocol,
+            baseUrl,
+            enabled: true,
+            priority: 10,
+          },
+        ],
         apiKey: "",
         apiKeyEnv,
         models: [

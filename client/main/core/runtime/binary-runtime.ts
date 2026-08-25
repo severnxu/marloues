@@ -8,6 +8,7 @@ import type {
   ToolDefinition,
 } from "@shared/agent-runtime";
 import type { AgentSettings, ModelOption } from "@shared/types";
+import { applySecurityMode } from "@shared/security-policy";
 import { eventLog } from "../../codex/event-log";
 import { codexService, type ThreadEvent } from "../../codex/service";
 import {
@@ -435,10 +436,12 @@ export class BinaryRuntime implements AgentRuntime {
   async setPermissionMode(mode: PermissionMode): Promise<void> {
     this.permissionMode = mode;
     const settings = getAgentSettings();
-    saveAgentSettings({
-      ...settings,
-      permissionMode: mode === "bypass" ? "bypassPermissions" : mode,
-    });
+    saveAgentSettings(
+      applySecurityMode(
+        settings,
+        mode === "bypass" ? "full-access" : "request",
+      ),
+    );
   }
 
   async getAvailableModels(): Promise<ModelOption[]> {

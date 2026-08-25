@@ -24,9 +24,166 @@ interface CapturedRequest {
   body: Record<string, unknown>;
 }
 
+const GATEWAY_TEST_TOKEN = "gateway-test-token";
+
 describe("gateway protocol runtime paths", () => {
   afterEach(async () => {
     await stopServer();
+  });
+
+  it("requires its process-local token and rejects browser-origin requests", async () => {
+    const resolveRoute = (): RouteDecision[] => [];
+    configurePipeline({ resolveRoute });
+    const port = await startServer({
+      port: 0,
+      internalToken: GATEWAY_TEST_TOKEN,
+      resolveRoute,
+      getModels: () => [],
+    });
+
+    const unauthenticated = await fetch(`http://127.0.0.1:${port}/health`);
+    expect(unauthenticated.status).toBe(403);
+
+    const browserRequest = await fetch(`http://127.0.0.1:${port}/health`, {
+      headers: {
+        Authorization: `Bearer ${GATEWAY_TEST_TOKEN}`,
+        Origin: "https://malicious.example",
+      },
+    });
+    expect(browserRequest.status).toBe(403);
+
+    const authenticated = await fetch(`http://127.0.0.1:${port}/health`, {
+      headers: { Authorization: `Bearer ${GATEWAY_TEST_TOKEN}` },
+    });
+    expect(authenticated.status).toBe(200);
+    expect(authenticated.headers.get("access-control-allow-origin")).toBeNull();
+  });
+
+  it("fails over to the next same-protocol Base URL after a retryable error", async () => {
+    const primary = await startUpstream({
+      path: "/v1/chat/completions",
+      status: 503,
+      response: { error: { message: "temporarily unavailable" } },
+    });
+    const secondary = await startUpstream({
+      path: "/v1/chat/completions",
+      response: openAIChatResponse(),
+    });
+    const routes: RouteDecision[] = [primary, secondary].map(
+      (upstream, index) => ({
+        targetProvider: "test-provider",
+        targetModel: "openai-model",
+        targetProtocol: "openai-chat",
+        targetBaseUrl: upstream.url,
+        apiKey: "openai-key",
+        adapterId: index === 0 ? "primary" : "secondary",
+      }),
+    );
+    const resolveRoute = (): RouteDecision[] => routes;
+    configurePipeline({ resolveRoute });
+    const port = await startServer({
+      port: 0,
+      internalToken: GATEWAY_TEST_TOKEN,
+      resolveRoute,
+      getModels: () => [],
+    });
+
+    const response = await fetch(`http://127.0.0.1:${port}/v1/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": GATEWAY_TEST_TOKEN,
+      },
+      body: JSON.stringify({
+        model: "anthropic-model",
+        max_tokens: 128,
+        messages: [{ role: "user", content: "Hello" }],
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(primary.request?.path).toBe("/v1/chat/completions");
+    expect(secondary.request?.path).toBe("/v1/chat/completions");
+    await closeUpstream(primary);
+    await closeUpstream(secondary);
+  });
+
+  it("fails over when the primary Base URL cannot be reached", async () => {
+    const primary = await startUpstream({
+      path: "/v1/chat/completions",
+      response: openAIChatResponse(),
+    });
+    const secondary = await startUpstream({
+      path: "/v1/chat/completions",
+      response: openAIChatResponse(),
+    });
+    await closeUpstream(primary);
+    const resolveRoute = (): RouteDecision[] =>
+      [primary, secondary].map((upstream, index) => ({
+        targetProvider: "test-provider",
+        targetModel: "openai-model",
+        targetProtocol: "openai-chat",
+        targetBaseUrl: upstream.url,
+        apiKey: "openai-key",
+        adapterId: index === 0 ? "unreachable" : "secondary",
+      }));
+    configurePipeline({ resolveRoute });
+    const port = await startServer({
+      port: 0,
+      internalToken: GATEWAY_TEST_TOKEN,
+      resolveRoute,
+      getModels: () => [],
+    });
+
+    const response = await fetch(`http://127.0.0.1:${port}/v1/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": GATEWAY_TEST_TOKEN,
+      },
+      body: JSON.stringify({
+        model: "anthropic-model",
+        max_tokens: 128,
+        messages: [{ role: "user", content: "Hello" }],
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(secondary.request?.path).toBe("/v1/chat/completions");
+    await closeUpstream(secondary);
+  });
+
+  it("appends resources to a provider-version Base URL", async () => {
+    const upstream = await startUpstream({
+      path: "/api/coding/paas/v4/chat/completions",
+      response: openAIChatResponse(),
+    });
+    const gatewayPort = await startGatewayWithRoute({
+      protocol: "openai-chat",
+      baseUrl: `${upstream.url}/api/coding/paas/v4`,
+      apiKey: "openai-key",
+      model: "openai-model",
+    });
+
+    const response = await fetch(
+      `http://127.0.0.1:${gatewayPort}/v1/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": GATEWAY_TEST_TOKEN,
+        },
+        body: JSON.stringify({
+          model: "anthropic-model",
+          max_tokens: 128,
+          messages: [{ role: "user", content: "Hello" }],
+        }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(upstream.request?.path).toBe("/api/coding/paas/v4/chat/completions");
+    await closeUpstream(upstream);
   });
 
   it("converts an Anthropic client request to an OpenAI Chat upstream", async () => {
@@ -45,7 +202,10 @@ describe("gateway protocol runtime paths", () => {
       `http://127.0.0.1:${gatewayPort}/v1/messages`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": GATEWAY_TEST_TOKEN,
+        },
         body: JSON.stringify({
           model: "anthropic-model",
           system: "You are concise.",
@@ -100,7 +260,10 @@ describe("gateway protocol runtime paths", () => {
       `http://127.0.0.1:${gatewayPort}/v1/responses`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": GATEWAY_TEST_TOKEN,
+        },
         body: JSON.stringify({
           model: "responses-model",
           instructions: "You are concise.",
@@ -156,7 +319,10 @@ describe("gateway protocol runtime paths", () => {
       `http://127.0.0.1:${gatewayPort}/v1/messages`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": GATEWAY_TEST_TOKEN,
+        },
         body: JSON.stringify({
           model: "anthropic-model",
           max_tokens: 128,
@@ -201,7 +367,10 @@ describe("gateway protocol runtime paths", () => {
       `http://127.0.0.1:${gatewayPort}/v1/responses`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": GATEWAY_TEST_TOKEN,
+        },
         body: JSON.stringify({
           model: "responses-model",
           stream: true,
@@ -243,7 +412,10 @@ describe("gateway protocol runtime paths", () => {
       `http://127.0.0.1:${gatewayPort}/v1/messages`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": GATEWAY_TEST_TOKEN,
+        },
         body: JSON.stringify({
           model: "anthropic-model",
           max_tokens: 128,
@@ -297,7 +469,10 @@ describe("gateway protocol runtime paths", () => {
       `http://127.0.0.1:${gatewayPort}/v1/responses`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": GATEWAY_TEST_TOKEN,
+        },
         body: JSON.stringify({
           model: "responses-model",
           stream: true,
@@ -345,11 +520,17 @@ async function startGatewayWithRoute(route: {
     },
   ];
   configurePipeline({ resolveRoute });
-  return startServer({ port: 0, resolveRoute, getModels: () => [] });
+  return startServer({
+    port: 0,
+    internalToken: GATEWAY_TEST_TOKEN,
+    resolveRoute,
+    getModels: () => [],
+  });
 }
 
 async function startUpstream(options: {
   path: string;
+  status?: number;
   response?: Record<string, unknown>;
   sse?: string;
 }): Promise<{ server: http.Server; url: string; request?: CapturedRequest }> {
@@ -376,7 +557,9 @@ async function startUpstream(options: {
         return;
       }
 
-      res.writeHead(200, { "Content-Type": "application/json" });
+      res.writeHead(options.status ?? 200, {
+        "Content-Type": "application/json",
+      });
       res.end(JSON.stringify(options.response));
     });
   });
