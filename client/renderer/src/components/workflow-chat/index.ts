@@ -11,7 +11,7 @@
 export { WorkflowComposerShell as ComposerShell } from "./composer/ComposerShell";
 export { WorkflowComposerShell } from "./composer/ComposerShell";
 export { ContextUsageRing } from "./composer/ContextUsageRing";
-export { SandboxGatePrompt } from "./composer/SandboxInstallBanner";
+export { FullAccessConfirmDialog } from "./composer/SandboxInstallBanner";
 export { SlashCommandPopover } from "./composer/SlashCommandPopover";
 export { useConversationScroll } from "./composer/use-conversation-scroll";
 

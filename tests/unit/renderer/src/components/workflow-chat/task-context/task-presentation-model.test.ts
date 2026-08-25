@@ -71,7 +71,7 @@ describe("buildTaskPresentationModel", () => {
         path: "C:/workspace/marloues",
         lastOpenedAt: 1,
       },
-      permissionMode: "default",
+      securityMode: "request",
     });
     expect(model.hasData).toBe(true);
     expect(model.outputContent[0]).toMatchObject({
@@ -97,7 +97,7 @@ describe("buildTaskPresentationModel", () => {
         lastOpenedAt: 1,
       },
       fallbackModelName: "fallback-model",
-      permissionMode: "default",
+      securityMode: "request",
     });
 
     expect(model.hasData).toBe(true);

@@ -7,6 +7,8 @@
  */
 
 import { notify } from "@/lib/notifications";
+import { useSettingsStore } from "@/stores/settings-store";
+import { applySecurityMode } from "@shared/security-policy";
 import { STRINGS } from "@shared/strings.zh";
 import type { UnifiedChatStore } from "./types";
 import {
@@ -114,6 +116,12 @@ export function createSessionSlice(
     },
 
     createSession: async () => {
+      const settingsStore = useSettingsStore.getState();
+      if (settingsStore.settings?.securityMode === "full-access") {
+        await settingsStore.save(
+          applySecurityMode(settingsStore.settings, "request"),
+        );
+      }
       // 新建会话仅导航到空会话页面，不落库、不调 IPC；
       // 真正创建发生在用户首次发送消息时（见 sendMessage 兜底）。
       set((state) => ({

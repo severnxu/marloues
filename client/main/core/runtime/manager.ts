@@ -3,8 +3,16 @@
  */
 
 import type { AgentRuntime } from "@shared/agent-runtime";
-import type { ModelOption, RuntimeDescriptor, RuntimeKind, RuntimeState } from "@shared/types";
-import { getAgentSettings, saveAgentSettings } from "../../services/config-service";
+import type {
+  ModelOption,
+  RuntimeDescriptor,
+  RuntimeKind,
+  RuntimeState,
+} from "@shared/types";
+import {
+  getAgentSettings,
+  saveAgentSettings,
+} from "../../services/config-service";
 import { resolveBundledCodexBinary } from "../../codex/transport/connection";
 import { BinaryRuntime } from "./binary-runtime";
 import { ClaudeRuntime } from "./claude-runtime";
@@ -12,14 +20,18 @@ import { SelfBuiltRuntime } from "./self-built-runtime";
 
 type RuntimeFactory = () => AgentRuntime;
 
-function binaryRuntimeDescriptor(): RuntimeDescriptor & { create?: RuntimeFactory } {
+function binaryRuntimeDescriptor(): RuntimeDescriptor & {
+  create?: RuntimeFactory;
+} {
   const bundled = resolveBundledCodexBinary();
   return {
     id: "binary",
     name: "Binary Runtime",
     description: "通过外部 Agent 二进制运行，目标是复用最强的现成 Agent 能力。",
     status: "available",
-    statusReason: bundled ? undefined : "未发现 bundled binary，将尝试使用 PATH 中的 codex 命令。",
+    statusReason: bundled
+      ? undefined
+      : "未发现 bundled binary，将尝试使用 PATH 中的 codex 命令。",
     capabilities: {
       forkThread: true,
       interruptTurn: true,
@@ -40,7 +52,10 @@ export async function listRuntimeModels(): Promise<ModelOption[]> {
   return [];
 }
 
-export async function setRuntimeModel(providerId: string, modelId: string): Promise<RuntimeState> {
+export async function setRuntimeModel(
+  providerId: string,
+  modelId: string,
+): Promise<RuntimeState> {
   const runtime = getRuntime();
   if (runtime.setModel) await runtime.setModel(modelId);
   const settings = getAgentSettings();
@@ -48,7 +63,10 @@ export async function setRuntimeModel(providerId: string, modelId: string): Prom
   return getRuntimeState();
 }
 
-const runtimeRegistry: Record<RuntimeKind, RuntimeDescriptor & { create?: RuntimeFactory }> = {
+const runtimeRegistry: Record<
+  RuntimeKind,
+  RuntimeDescriptor & { create?: RuntimeFactory }
+> = {
   sdk: {
     id: "sdk",
     name: "SDK Runtime",
@@ -62,7 +80,7 @@ const runtimeRegistry: Record<RuntimeKind, RuntimeDescriptor & { create?: Runtim
       registerTool: false,
       cancelTool: false,
       editMessage: true,
-      sandbox: false,
+      sandbox: true,
     },
     create: () => new ClaudeRuntime(),
   },
@@ -90,13 +108,17 @@ let runtime: AgentRuntime | null = null;
 let activeRuntimeId: RuntimeKind = "sdk";
 
 function runtimeDescriptors(): RuntimeDescriptor[] {
-  return Object.values(runtimeRegistry).map(({ create: _create, ...descriptor }) => descriptor);
+  return Object.values(runtimeRegistry).map(
+    ({ create: _create, ...descriptor }) => descriptor,
+  );
 }
 
 function selectedRuntimeId(): RuntimeKind {
   const settings = getAgentSettings();
   const configured = settings.activeRuntimeId;
-  return configured && runtimeRegistry[configured]?.status === "available" ? configured : "sdk";
+  return configured && runtimeRegistry[configured]?.status === "available"
+    ? configured
+    : "sdk";
 }
 
 async function createRuntime(runtimeId: RuntimeKind): Promise<AgentRuntime> {
@@ -119,7 +141,8 @@ export async function initRuntime(): Promise<void> {
 
 /** 获取当前 runtime 实例 */
 export function getRuntime(): AgentRuntime {
-  if (!runtime) throw new Error("Runtime not initialized. Call initRuntime() first.");
+  if (!runtime)
+    throw new Error("Runtime not initialized. Call initRuntime() first.");
   return runtime;
 }
 
@@ -139,7 +162,9 @@ export function getRuntimeState(): RuntimeState {
   };
 }
 
-export async function switchRuntime(runtimeId: RuntimeKind): Promise<RuntimeState> {
+export async function switchRuntime(
+  runtimeId: RuntimeKind,
+): Promise<RuntimeState> {
   if (runtimeId === activeRuntimeId && runtime) return getRuntimeState();
 
   const nextRuntime = await createRuntime(runtimeId);

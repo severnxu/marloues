@@ -2195,6 +2195,11 @@ async function sendChatTurn(
             inputSummary: uiEvent.reason,
             cwd: workspacePath,
             timeout: uiEvent.timeout,
+            options: {
+              allowOnce: true,
+              allowSession: uiEvent.allowSession,
+              denyWithReason: true,
+            },
           });
           continue;
         }

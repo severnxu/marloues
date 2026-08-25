@@ -5,6 +5,7 @@ export type SettingsSection =
   | "appearance"
   | "providers"
   | "audit"
+  | "security"
   | "runtimes"
   | "version"
   | "im-channels"

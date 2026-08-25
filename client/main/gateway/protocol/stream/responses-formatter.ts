@@ -9,6 +9,7 @@ interface ToolCallState {
   name: string;
   arguments: string;
   outputIndex: number;
+  kind: "function" | "custom";
 }
 
 export class OpenAIResponsesSseFormatter {
@@ -18,13 +19,20 @@ export class OpenAIResponsesSseFormatter {
   private msgId: string;
 
   private preambleSent = false;
+  private textItemSent = false;
   private accumulatedText = "";
   private toolCalls: ToolCallState[] = [];
   private usage?: { inputTokens: number; outputTokens: number };
+  private customToolNames: ReadonlySet<string>;
 
-  constructor(requestId: string, model: string) {
+  constructor(
+    requestId: string,
+    model: string,
+    customToolNames: ReadonlySet<string> = new Set(),
+  ) {
     this.requestId = requestId;
     this.model = model;
+    this.customToolNames = customToolNames;
     this.responseId = `resp_${requestId.replace(/-/g, "").slice(0, 24)}`;
     this.msgId = `msg_${requestId.replace(/-/g, "").slice(0, 24)}`;
   }
@@ -35,9 +43,7 @@ export class OpenAIResponsesSseFormatter {
 
   formatDeltas(deltas: IrStreamDelta[]): string {
     let out = "";
-    for (const delta of deltas) {
-      out += this.formatDelta(delta);
-    }
+    for (const delta of deltas) out += this.formatDelta(delta);
     return out;
   }
 
@@ -45,9 +51,8 @@ export class OpenAIResponsesSseFormatter {
     switch (delta.type) {
       case "text": {
         let out = "";
-        if (!this.preambleSent) {
-          out += this.emitPreamble();
-        }
+        if (!this.preambleSent) out += this.emitResponsePreamble();
+        if (!this.textItemSent) out += this.emitTextItemPreamble();
         this.accumulatedText += delta.text;
         out += this.sse("response.output_text.delta", {
           type: "response.output_text.delta",
@@ -61,40 +66,50 @@ export class OpenAIResponsesSseFormatter {
 
       case "tool_call_start": {
         let out = "";
-        if (!this.preambleSent) {
-          out += this.emitPreamble();
-        }
-        const outputIndex = 1 + delta.index;
+        if (!this.preambleSent) out += this.emitResponsePreamble();
+        const outputIndex =
+          (this.textItemSent ? 1 : 0) + this.toolCalls.filter(Boolean).length;
+        const kind = this.customToolNames.has(delta.name)
+          ? "custom"
+          : "function";
         this.toolCalls[delta.index] = {
           id: delta.id,
           name: delta.name,
           arguments: "",
           outputIndex,
+          kind,
         };
-        return (
-          out +
-          this.sse("response.output_item.added", {
-            type: "response.output_item.added",
-            output_index: outputIndex,
-            item: {
-              type: "function_call",
-              id: delta.id,
-              call_id: delta.id,
-              name: delta.name,
-              arguments: "",
-              status: "in_progress",
-            },
-          })
-        );
+        out += this.sse("response.output_item.added", {
+          type: "response.output_item.added",
+          output_index: outputIndex,
+          item:
+            kind === "custom"
+              ? {
+                  type: "custom_tool_call",
+                  call_id: delta.id,
+                  name: delta.name,
+                  input: "",
+                }
+              : {
+                  type: "function_call",
+                  id: delta.id,
+                  call_id: delta.id,
+                  name: delta.name,
+                  arguments: "",
+                  status: "in_progress",
+                },
+        });
+        return out;
       }
 
       case "tool_call_delta": {
         const tc = this.toolCalls[delta.index];
         if (tc) tc.arguments += delta.arguments;
+        if (tc?.kind === "custom") return "";
         return this.sse("response.function_call_arguments.delta", {
           type: "response.function_call_arguments.delta",
           item_id: tc?.id ?? "",
-          output_index: tc?.outputIndex ?? 1 + delta.index,
+          output_index: tc?.outputIndex ?? (this.textItemSent ? 1 : 0),
           delta: delta.arguments,
         });
       }
@@ -115,8 +130,9 @@ export class OpenAIResponsesSseFormatter {
     if (usage) this.usage = usage;
     let out = "";
 
-    if (!this.preambleSent) {
-      out += this.emitPreamble();
+    if (!this.preambleSent) out += this.emitResponsePreamble();
+    if (!this.textItemSent && this.toolCalls.filter(Boolean).length === 0) {
+      out += this.emitTextItemPreamble();
     }
 
     for (const tc of this.toolCalls) {
@@ -124,81 +140,40 @@ export class OpenAIResponsesSseFormatter {
       out += this.sse("response.output_item.done", {
         type: "response.output_item.done",
         output_index: tc.outputIndex,
-        item: {
-          type: "function_call",
-          id: tc.id,
-          call_id: tc.id,
-          name: tc.name,
-          arguments: tc.arguments,
-          status: "completed",
-        },
+        item: this.completedToolItem(tc),
       });
     }
 
-    out += this.sse("response.output_text.done", {
-      type: "response.output_text.done",
-      item_id: this.msgId,
-      output_index: 0,
-      content_index: 0,
-      text: this.accumulatedText,
-    });
-
-    out += this.sse("response.content_part.done", {
-      type: "response.content_part.done",
-      item_id: this.msgId,
-      output_index: 0,
-      content_index: 0,
-      part: {
-        type: "output_text",
+    if (this.textItemSent) {
+      out += this.sse("response.output_text.done", {
+        type: "response.output_text.done",
+        item_id: this.msgId,
+        output_index: 0,
+        content_index: 0,
         text: this.accumulatedText,
-        annotations: [],
-      },
-    });
-
-    out += this.sse("response.output_item.done", {
-      type: "response.output_item.done",
-      output_index: 0,
-      item: {
-        type: "message",
-        id: this.msgId,
-        status: "completed",
-        role: "assistant",
-        content: [
-          {
-            type: "output_text",
-            text: this.accumulatedText,
-            annotations: [],
-          },
-        ],
-      },
-    });
-
-    const output: unknown[] = [
-      {
-        type: "message",
-        id: this.msgId,
-        status: "completed",
-        role: "assistant",
-        content: [
-          {
-            type: "output_text",
-            text: this.accumulatedText,
-            annotations: [],
-          },
-        ],
-      },
-    ];
-
-    for (const tc of this.toolCalls) {
-      if (!tc) continue;
-      output.push({
-        type: "function_call",
-        id: tc.id,
-        call_id: tc.id,
-        name: tc.name,
-        arguments: tc.arguments,
-        status: "completed",
       });
+      out += this.sse("response.content_part.done", {
+        type: "response.content_part.done",
+        item_id: this.msgId,
+        output_index: 0,
+        content_index: 0,
+        part: {
+          type: "output_text",
+          text: this.accumulatedText,
+          annotations: [],
+        },
+      });
+      out += this.sse("response.output_item.done", {
+        type: "response.output_item.done",
+        output_index: 0,
+        item: this.completedMessageItem(),
+      });
+    }
+
+    const output: unknown[] = [];
+    if (this.textItemSent) output.push(this.completedMessageItem());
+    for (const tc of this.toolCalls) {
+      if (tc) output.push(this.completedToolItem(tc));
     }
 
     out += this.sse("response.completed", {
@@ -224,7 +199,7 @@ export class OpenAIResponsesSseFormatter {
     return out;
   }
 
-  private emitPreamble(): string {
+  private emitResponsePreamble(): string {
     this.preambleSent = true;
     const base = {
       id: this.responseId,
@@ -233,7 +208,6 @@ export class OpenAIResponsesSseFormatter {
       model: this.model,
       output: [],
     };
-
     return (
       this.sse("response.created", {
         type: "response.created",
@@ -242,7 +216,13 @@ export class OpenAIResponsesSseFormatter {
       this.sse("response.in_progress", {
         type: "response.in_progress",
         response: { ...base },
-      }) +
+      })
+    );
+  }
+
+  private emitTextItemPreamble(): string {
+    this.textItemSent = true;
+    return (
       this.sse("response.output_item.added", {
         type: "response.output_item.added",
         output_index: 0,
@@ -264,9 +244,58 @@ export class OpenAIResponsesSseFormatter {
     );
   }
 
+  private completedMessageItem(): Record<string, unknown> {
+    return {
+      type: "message",
+      id: this.msgId,
+      status: "completed",
+      role: "assistant",
+      content: [
+        {
+          type: "output_text",
+          text: this.accumulatedText,
+          annotations: [],
+        },
+      ],
+    };
+  }
+
+  private completedToolItem(tc: ToolCallState): Record<string, unknown> {
+    if (tc.kind === "custom") {
+      return {
+        type: "custom_tool_call",
+        call_id: tc.id,
+        name: tc.name,
+        input: extractCustomInput(tc.arguments),
+      };
+    }
+    return {
+      type: "function_call",
+      id: tc.id,
+      call_id: tc.id,
+      name: tc.name,
+      arguments: tc.arguments,
+      status: "completed",
+    };
+  }
+
   private sse(event: string, data: unknown): string {
     return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   }
+}
+
+function extractCustomInput(argumentsText: string): string {
+  try {
+    const parsed = JSON.parse(argumentsText) as unknown;
+    if (typeof parsed === "string") return parsed;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const input = (parsed as Record<string, unknown>).input;
+      if (typeof input === "string") return input;
+    }
+  } catch {
+    // A provider may return raw text for a custom tool despite the proxy schema.
+  }
+  return argumentsText;
 }
 
 export function formatOpenAIResponsesSse(

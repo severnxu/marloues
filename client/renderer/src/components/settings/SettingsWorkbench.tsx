@@ -13,6 +13,7 @@ const {
   ImChannelsSettings,
   ImBotInstancesSettings,
   RuntimeSettings,
+  SecuritySettings,
   UpdateSettings,
 } = Sections;
 import { statusToastTitle } from "@/components/settings";
@@ -169,7 +170,6 @@ export function SettingsWorkbench({ section }: { section: SettingsSection }) {
               />
               <RuntimeSettings
                 draft={draft}
-                isPermissionTimeoutManaged={isPermissionTimeoutManaged}
                 onCommitDraft={(nextDraft) => void commitDraft(nextDraft)}
               />
             </>
@@ -181,6 +181,14 @@ export function SettingsWorkbench({ section }: { section: SettingsSection }) {
               onCustomInstructionsChange={(value) =>
                 void commitDraft({ ...draft, customInstructions: value })
               }
+            />
+          ) : null}
+
+          {section === "security" ? (
+            <SecuritySettings
+              draft={draft}
+              isPermissionTimeoutManaged={isPermissionTimeoutManaged}
+              onCommitDraft={(nextDraft) => void commitDraft(nextDraft)}
             />
           ) : null}
 

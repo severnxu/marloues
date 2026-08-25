@@ -47,7 +47,11 @@ describe("jsonrpc-client", () => {
     const client = new JsonRpcClient(transport);
     const promise = client.request("initialize");
     const id = JSON.parse(written[0]).id as number;
-    emit({ jsonrpc: "2.0", id, error: { code: -32601, message: "method not found" } });
+    emit({
+      jsonrpc: "2.0",
+      id,
+      error: { code: -32601, message: "method not found" },
+    });
     await expect(promise).rejects.toThrow("method not found");
   });
 
@@ -84,6 +88,17 @@ describe("jsonrpc-client", () => {
     client.notify("notifications/initialized", {});
     expect(written[0]).toContain("notifications/initialized");
     expect(written[0]).not.toContain('"id"');
+  });
+
+  it("responds to a server-initiated request using the original id", () => {
+    const { transport, written } = makeTransport();
+    const client = new JsonRpcClient(transport);
+    client.respond("server-7", { decision: "acceptForSession" });
+    expect(JSON.parse(written[0])).toEqual({
+      jsonrpc: "2.0",
+      id: "server-7",
+      result: { decision: "acceptForSession" },
+    });
   });
 
   it("isOpen reflects transport liveness", () => {

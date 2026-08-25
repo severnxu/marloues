@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { RuntimeEvent } from "../../client/shared/agent-runtime";
@@ -213,13 +213,37 @@ async function main(): Promise<void> {
     ),
     "sendMessage should complete successfully",
   );
-  const readEvents = await collect(
+  const preReadSettings = getAgentSettings();
+  saveAgentSettings({
+    ...preReadSettings,
+    toolPermissionPolicy: {
+      ...preReadSettings.toolPermissionPolicy,
+      rules: [
+        ...(preReadSettings.toolPermissionPolicy.rules ?? []),
+        { pattern: "self-built.fs.read", action: "ask" },
+      ],
+    },
+  });
+  const readEvents = await collectWithApprovalResponse(
     await runtime.sendMessage({
       threadId: thread.id,
       turnId: "turn-self-built-read",
       content: "/read notes.md",
       cwd: loopWorkspace,
     }),
+    (event) => {
+      if (event.kind === "approval-request")
+        runtime.respondApproval(event.payload.requestId, true, "once");
+    },
+  );
+  saveAgentSettings(preReadSettings);
+  assert(
+    readEvents.some(
+      (event) =>
+        event.kind === "approval-request" &&
+        event.payload.toolName === "self-built.fs.read",
+    ),
+    "self-built read should honor custom ask rules",
   );
   assert(
     readEvents.some(
@@ -267,13 +291,54 @@ async function main(): Promise<void> {
     generatedContent.includes("created by self-built loop"),
     "self-built patch should write inside workspace",
   );
-  const undoEvents = await collect(
+  const writableSettings = getAgentSettings();
+  saveAgentSettings({
+    ...writableSettings,
+    sandboxEnabled: true,
+    sandboxMode: "read-only",
+  });
+  const blockedUndoEvents = await collect(
+    await runtime.sendMessage({
+      threadId: thread.id,
+      turnId: "turn-self-built-undo-read-only",
+      content: "/undo",
+      cwd: loopWorkspace,
+    }),
+  );
+  assert(
+    blockedUndoEvents.some(
+      (event) =>
+        event.kind === "error" && /read-only/i.test(event.payload.message),
+    ),
+    "self-built undo should be denied by the read-only sandbox",
+  );
+  const contentAfterBlockedUndo = await import("node:fs").then((fs) =>
+    fs.readFileSync(join(loopWorkspace, "generated.md"), "utf-8"),
+  );
+  assert(
+    contentAfterBlockedUndo.includes("created by self-built loop"),
+    "denied self-built undo must leave the target file unchanged",
+  );
+  saveAgentSettings(writableSettings);
+  const undoEvents = await collectWithApprovalResponse(
     await runtime.sendMessage({
       threadId: thread.id,
       turnId: "turn-self-built-undo",
       content: "/undo",
       cwd: loopWorkspace,
     }),
+    (event) => {
+      if (event.kind === "approval-request")
+        runtime.respondApproval(event.payload.requestId, true, "once");
+    },
+  );
+  assert(
+    undoEvents.some(
+      (event) =>
+        event.kind === "approval-request" &&
+        event.payload.toolName === "self-built.fs.undo",
+    ),
+    "self-built undo should request approval",
   );
   assert(
     undoEvents.some(
@@ -283,13 +348,21 @@ async function main(): Promise<void> {
     ),
     "self-built undo should remove newly created patch files",
   );
-  const traversalEvents = await collect(
+  const traversalEvents = await collectWithApprovalResponse(
     await runtime.sendMessage({
       threadId: thread.id,
       turnId: "turn-self-built-sandbox",
       content: "/read ../outside.md",
       cwd: loopWorkspace,
     }),
+    (event) => {
+      if (event.kind === "approval-request")
+        runtime.respondApproval(event.payload.requestId, false, "once");
+    },
+  );
+  assert(
+    traversalEvents.some((event) => event.kind === "approval-request"),
+    "self-built filesystem tools should request temporary outside-workspace access",
   );
   assert(
     traversalEvents.some(
@@ -297,6 +370,63 @@ async function main(): Promise<void> {
         event.kind === "turn-complete" && event.payload.result === "error",
     ),
     "self-built filesystem tools should enforce workspace sandbox",
+  );
+
+  const protectedStatePath = join(loopWorkspace, ".git", "blocked.txt");
+  const protectedStateEvents = await collect(
+    await runtime.sendMessage({
+      threadId: thread.id,
+      turnId: "turn-self-built-protected-state",
+      content: "/patch .git/blocked.txt\nmust not exist\n",
+      cwd: loopWorkspace,
+    }),
+  );
+  assert(
+    protectedStateEvents.some(
+      (event) =>
+        event.kind === "error" &&
+        /protected workspace state/i.test(event.payload.message),
+    ),
+    "self-built filesystem tools should hard-deny protected workspace state",
+  );
+  assert(
+    !existsSync(protectedStatePath),
+    "protected workspace state denial must happen before file creation",
+  );
+
+  const dangerSettings = getAgentSettings();
+  const outsideSelfBuiltPath = join(
+    process.env.MARLOUES_HOME!,
+    "self-built-danger-write.txt",
+  );
+  saveAgentSettings({
+    ...dangerSettings,
+    sandboxEnabled: false,
+    sandboxMode: "danger-full-access",
+  });
+  const dangerEvents = await collectWithApprovalResponse(
+    await runtime.sendMessage({
+      threadId: thread.id,
+      turnId: "turn-self-built-danger-write",
+      content: `/patch ${outsideSelfBuiltPath}\ndanger write allowed\n`,
+      cwd: loopWorkspace,
+    }),
+    (event) => {
+      if (event.kind === "approval-request")
+        runtime.respondApproval(event.payload.requestId, true, "once");
+    },
+  );
+  saveAgentSettings(dangerSettings);
+  assert(
+    dangerEvents.some(
+      (event) =>
+        event.kind === "tool-complete" && event.payload.isError === false,
+    ),
+    "self-built danger mode should execute an approved outside write",
+  );
+  assert(
+    existsSync(outsideSelfBuiltPath),
+    "self-built danger mode should honor its brokered outside-write permit",
   );
 
   const tools = await runtime.listTools();
@@ -816,9 +946,11 @@ main()
     process.exitCode = 1;
   })
   .finally(async () => {
-    if (process.env.MARLOUES_HOME) {
-      rmSync(process.env.MARLOUES_HOME, { recursive: true, force: true });
-    }
+    const { closeStateDbForTests } =
+      await import("../../client/main/core/storage/state-db");
+    const { stopGateway } = await import("../../client/main/gateway");
+    closeStateDbForTests();
+    await stopGateway();
     await cleanupModelServer?.();
     await cleanupRemoteMcpServer?.();
     cleanupEventLog?.();

@@ -1,5 +1,6 @@
 import { EventEmitter } from "events";
 import { randomUUID } from "crypto";
+import { mkdirSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { store } from "../store";
 import { CodexAppServerSession } from "./session";
@@ -25,7 +26,12 @@ import {
 } from "../services/config-service";
 import { getRuntimeConfigDir } from "../app-paths";
 import { resolveModelProvider } from "../core/config/model-provider";
-import type { ModelProviderConfig } from "@shared/types";
+import {
+  codexWorkspaceFilesystemConfig,
+  codexSandboxProfileFromSettings,
+  type SandboxProfile,
+} from "../core/security/sandbox-broker";
+import type { AgentSettings, ModelProviderConfig } from "@shared/types";
 
 function svcLog(...args: unknown[]): void {
   log("[svc]", ...args);
@@ -35,7 +41,11 @@ function tomlString(value: string): string {
   return JSON.stringify(value);
 }
 
-function buildCodexConfigArgs(model: string, gatewayPort: number): string[] {
+function buildCodexConfigArgs(
+  model: string,
+  gatewayPort: number,
+  sandboxProfile: SandboxProfile,
+): string[] {
   const gatewayBase = `http://127.0.0.1:${gatewayPort}`;
   const config = [
     `model=${tomlString(model)}`,
@@ -44,9 +54,49 @@ function buildCodexConfigArgs(model: string, gatewayPort: number): string[] {
     `model_providers.codex-web-gateway.base_url=${tomlString(`${gatewayBase}/v1`)}`,
     `model_providers.codex-web-gateway.env_key=${tomlString("OPENAI_API_KEY")}`,
     `model_providers.codex-web-gateway.wire_api=${tomlString("responses")}`,
+    "features.request_permissions_tool=true",
   ];
 
+  if (process.platform === "win32" && sandboxProfile !== "danger-full-access") {
+    config.push('windows.sandbox="unelevated"');
+  }
+
+  if (
+    sandboxProfile === "workspace-write" ||
+    sandboxProfile === "workspace-write-network"
+  ) {
+    const workspaceProfile = codexWorkspaceProfileName(sandboxProfile);
+    config.push(
+      `default_permissions=${tomlString(workspaceProfile)}`,
+      `permissions.${workspaceProfile}.filesystem=${codexWorkspaceFilesystemConfig()}`,
+    );
+  }
+
+  if (sandboxProfile === "workspace-write-network") {
+    config.push("permissions.marloues-workspace-network.network.enabled=true");
+  }
+
   return config.flatMap((entry) => ["-c", entry]);
+}
+
+function codexAppServerPermissions(
+  profile: SandboxProfile,
+):
+  | ":read-only"
+  | ":danger-full-access"
+  | "marloues-workspace"
+  | "marloues-workspace-network" {
+  if (profile === "read-only") return ":read-only";
+  if (profile === "danger-full-access") return ":danger-full-access";
+  return codexWorkspaceProfileName(profile);
+}
+
+function codexWorkspaceProfileName(
+  profile: "workspace-write" | "workspace-write-network",
+): "marloues-workspace" | "marloues-workspace-network" {
+  return profile === "workspace-write-network"
+    ? "marloues-workspace-network"
+    : "marloues-workspace";
 }
 
 export interface ThreadEvent {
@@ -78,6 +128,7 @@ export interface ThreadEvent {
     toolInput: Record<string, unknown>;
     threadId: string;
     cwd?: string;
+    allowSession: boolean;
   };
   contextCompacted?: { originalTokens: number; compactedTokens: number };
   stepIndex?: number;
@@ -107,6 +158,8 @@ export interface Session {
   rpcClient?: JsonRpcClient;
   retryCount?: number;
   lastFailedTurn?: { stepIndex: number; stepType: string; error: string };
+  workingDir?: string;
+  securityFingerprint?: string;
 }
 
 const RECOVERABLE_PATTERNS = [
@@ -224,11 +277,19 @@ export class CodexService {
 
     // 配置统一：cwd/权限/沙箱从 AgentSettings 派生（替代旧 SimpleStore）。
     const agentSettings = getAgentSettings();
-    const workingDir = options?.cwd || process.cwd();
+    const workingDir = canonicalWorkingDirectory(options?.cwd || process.cwd());
     const model = this.currentModel || provider?.models?.[0]?.id || "default";
     const baseUrl = provider?.baseUrl;
     const permissionMode = agentSettings.permissionMode;
-    const sandboxEnabled = agentSettings.sandboxEnabled ?? false;
+    const sandboxEnabled = agentSettings.sandboxEnabled;
+    const sandboxProfile = codexSandboxProfileFromSettings({
+      sandboxEnabled,
+      sandboxMode: agentSettings.sandboxMode,
+    });
+    const securityFingerprint = sessionSecurityFingerprint(
+      permissionMode,
+      sandboxProfile,
+    );
     let gatewayPort = getGatewayPort();
     if (!gatewayPort) {
       const started = await startGateway();
@@ -249,13 +310,14 @@ export class CodexService {
       "[svc] Model:",
       model,
       "Sandbox:",
-      sandboxEnabled,
+      sandboxProfile,
       "Approval:",
       permissionMode,
     );
 
     // Create transport for Codex CLI
     const codexHome = join(getRuntimeConfigDir(), "codex");
+    mkdirSync(codexHome, { recursive: true });
     const transport = createCodexTransport({
       binaryPath: this.binaryPath,
       cwd: workingDir,
@@ -273,7 +335,10 @@ export class CodexService {
         CODEX_DISABLE_TELEMETRY: "1",
       },
       pathDirs: this.binaryPathDirs,
-      args: ["app-server", ...buildCodexConfigArgs(model, gatewayPort)],
+      args: [
+        "app-server",
+        ...buildCodexConfigArgs(model, gatewayPort, sandboxProfile),
+      ],
       onStderr: (chunk) => {
         svcLog("[codex-stderr]", chunk.trim());
       },
@@ -284,11 +349,11 @@ export class CodexService {
       cwd: workingDir,
       approvalPolicy:
         permissionMode === "bypassPermissions"
-          ? "bypass"
+          ? "never"
           : permissionMode === "acceptEdits"
-            ? "acceptEdits"
+            ? "untrusted"
             : "on-request",
-      sandbox: sandboxEnabled ? "workspace-write" : "read-only",
+      permissions: codexAppServerPermissions(sandboxProfile),
     });
 
     // Set up event forwarding from Codex session
@@ -386,6 +451,7 @@ export class CodexService {
               toolInput: event.toolInput,
               threadId: event.threadId,
               cwd: event.cwd,
+              allowSession: event.allowSession,
             },
           });
           break;
@@ -425,7 +491,7 @@ export class CodexService {
             async () => {
               try {
                 await this.closeSession(sessionId);
-                await this.createSession(sessionId);
+                await this.createSession(sessionId, { cwd: workingDir });
                 this.reconnectAttempts.set(sessionId, 0);
                 svcLog("[svc] Reconnect successful");
               } catch (reconnectErr) {
@@ -479,6 +545,8 @@ export class CodexService {
       messages: [],
       codexSession,
       rpcClient: rpc,
+      workingDir,
+      securityFingerprint,
     };
     // Store interval for cleanup
     (newSession as any).exitCheckInterval = exitCheckInterval;
@@ -506,10 +574,32 @@ export class CodexService {
     this.sessions.delete(sessionId);
   }
 
-  async sendMessage(sessionId: string, content: string): Promise<void> {
+  async sendMessage(
+    sessionId: string,
+    content: string,
+    options?: { cwd?: string },
+  ): Promise<void> {
     let session = this.sessions.get(sessionId);
+    const workingDir = canonicalWorkingDirectory(options?.cwd || process.cwd());
+    const currentSettings = getAgentSettings();
+    const currentSandboxProfile = codexSandboxProfileFromSettings({
+      sandboxEnabled: currentSettings.sandboxEnabled,
+      sandboxMode: currentSettings.sandboxMode,
+    });
+    const currentSecurityFingerprint = sessionSecurityFingerprint(
+      currentSettings.permissionMode,
+      currentSandboxProfile,
+    );
+    if (
+      session &&
+      (session.workingDir !== workingDir ||
+        session.securityFingerprint !== currentSecurityFingerprint)
+    ) {
+      await this.closeSession(sessionId);
+      session = undefined;
+    }
     if (!session) {
-      await this.createSession(sessionId);
+      await this.createSession(sessionId, { cwd: workingDir });
       session = this.sessions.get(sessionId)!;
     }
 
@@ -620,13 +710,19 @@ export class CodexService {
     sessionId: string,
     approvalId: string,
     decision: "approve" | "deny",
+    scope: "once" | "session" = "once",
     reason?: string,
   ): Promise<void> {
     const session = this.sessions.get(sessionId);
     if (!session?.codexSession) {
       throw new Error("Session not found or not initialized");
     }
-    await session.codexSession.respondToApproval(approvalId, decision, reason);
+    await session.codexSession.respondToApproval(
+      approvalId,
+      decision,
+      scope,
+      reason,
+    );
   }
 
   async resumeThread(
@@ -671,12 +767,16 @@ export class CodexService {
     await this.sendMessage(sessionId, lastUserMessage.content);
   }
 
-  onEvent(callback: (sessionId: string, event: ThreadEvent) => void): void {
+  onEvent(
+    callback: (sessionId: string, event: ThreadEvent) => void,
+  ): () => void {
     this.eventEmitter.on("event", callback);
+    return () => this.eventEmitter.off("event", callback);
   }
 
-  onError(callback: (sessionId: string, error: string) => void): void {
+  onError(callback: (sessionId: string, error: string) => void): () => void {
     this.eventEmitter.on("error", callback);
+    return () => this.eventEmitter.off("error", callback);
   }
 
   onStatus(callback: (sessionId: string, status: string) => void): void {
@@ -748,6 +848,21 @@ export class CodexService {
     );
     return irResponse;
   }
+}
+
+function canonicalWorkingDirectory(cwd: string): string {
+  try {
+    return realpathSync.native(cwd);
+  } catch {
+    return cwd;
+  }
+}
+
+function sessionSecurityFingerprint(
+  permissionMode: AgentSettings["permissionMode"],
+  sandboxProfile: SandboxProfile,
+): string {
+  return `${permissionMode}:${sandboxProfile}`;
 }
 
 export const codexService = new CodexService();

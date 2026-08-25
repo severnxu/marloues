@@ -112,7 +112,7 @@ function modelFixture({
     },
     changes,
     modelName: "Marloues 5",
-    permissionMode: "default",
+    securityMode: "request",
     outputContent: [],
     tasks: [],
     processes: [],

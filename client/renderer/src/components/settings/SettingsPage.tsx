@@ -7,6 +7,7 @@ import {
   MonitorCog,
   Rocket,
   ServerCog,
+  ShieldCheck,
   Terminal,
   Wrench,
 } from "lucide-react";
@@ -47,6 +48,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "运行时",
     description: "Python/Node 下载",
     Icon: Terminal,
+  },
+  {
+    id: "security",
+    label: "安全中心",
+    description: "权限、沙箱与访问规则",
+    Icon: ShieldCheck,
   },
   { id: "audit", label: "审计", description: "工具调用", Icon: FileText },
   {

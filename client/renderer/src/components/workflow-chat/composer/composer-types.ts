@@ -1,4 +1,4 @@
-import { Bot, CircleAlert, Shield } from "lucide-react";
+import { Hand, ShieldCheck, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 import type {
   ExecutionTaskRecord,
@@ -9,24 +9,37 @@ import type {
   SlashCommandItem,
   UserMessageContent,
 } from "../../../types";
-import type { SkillInfo } from "@shared/types";
-import type { SandboxGatePhase } from "./SandboxInstallBanner";
+import type { AgentSecurityMode, SkillInfo } from "@shared/types";
 import type { ContextUsageRecord, TokenUsage } from "@shared/types";
-
-export type ComposerAccessLevel = "default" | "review" | "full";
 
 export const COMPOSER_TEXTAREA_MIN_HEIGHT = 56;
 export const COMPOSER_TEXTAREA_WITH_ATTACHMENTS_MIN_HEIGHT = 59;
 export const COMPOSER_TEXTAREA_MAX_HEIGHT = 150;
 
-export const accessOptions: Array<{
-  level: ComposerAccessLevel;
+export const securityModeOptions: Array<{
+  mode: AgentSecurityMode;
   label: string;
-  icon: typeof Shield;
+  description: string;
+  icon: typeof Hand;
 }> = [
-  { level: "default", label: "默认权限", icon: Shield },
-  { level: "review", label: "自动审查", icon: Bot },
-  { level: "full", label: "完全访问", icon: CircleAlert },
+  {
+    mode: "request",
+    label: "请求批准",
+    description: "编辑外部文件和使用互联网时始终询问",
+    icon: Hand,
+  },
+  {
+    mode: "auto-review",
+    label: "帮我批准",
+    description: "仅对检测到的风险操作请求批准",
+    icon: ShieldCheck,
+  },
+  {
+    mode: "full-access",
+    label: "完全访问",
+    description: "可不受限制地访问互联网和本机文件",
+    icon: TriangleAlert,
+  },
 ];
 
 export interface WorkflowComposerShellProps {
@@ -34,12 +47,14 @@ export interface WorkflowComposerShellProps {
   conversationKey?: string;
   input: string;
   isGenerating: boolean;
+  securityMode?: AgentSecurityMode;
   selectedProvider: Provider | null;
   onInputChange: (value: string) => void;
   onKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   onSend: (attachments?: UserMessageContent[]) => void;
   onStop: () => void;
-  onAccessLevelChange?: (level: ComposerAccessLevel) => void;
+  onSecurityModeChange?: (mode: AgentSecurityMode) => void;
+  onOpenSecuritySettings?: () => void;
   permissionPanel?: ReactNode;
   emptyHeader?: ReactNode;
   modelControl?: ReactNode;
@@ -64,8 +79,3 @@ export interface WorkflowComposerShellProps {
   onEditPendingSteer?: (messageId: string, text: string) => void;
   onReorderPendingSteer?: (orderedIds: string[]) => void;
 }
-
-export type SandboxGateState = {
-  phase: SandboxGatePhase;
-  message?: string;
-} | null;

@@ -1,23 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Settings2 } from "lucide-react";
 import { MAX_ATTACHMENTS, skillAttachment } from "./composer-attachments";
 import type { SlashCommandItem } from "../../../types";
 import { WorkflowImageLightbox, type WorkflowImagePreview } from "../";
 import { SlashCommandPopover } from "./SlashCommandPopover";
 import { QueuedSteersPanel } from "../";
 import { ContextUsageRing } from "../";
-import { SandboxGatePrompt } from "./SandboxInstallBanner";
+import { FullAccessConfirmDialog } from "./SandboxInstallBanner";
 import {
   type WorkflowComposerShellProps,
   COMPOSER_TEXTAREA_MIN_HEIGHT,
   COMPOSER_TEXTAREA_WITH_ATTACHMENTS_MIN_HEIGHT,
   COMPOSER_TEXTAREA_MAX_HEIGHT,
-  accessOptions,
+  securityModeOptions,
 } from "./composer-types";
 import { ComposerTaskProgress } from "./ComposerTaskProgress";
 import { ComposerAttachmentChips } from "./ComposerAttachmentChips";
 import { useComposerAttachments } from "./useComposerAttachments";
-import { useSandboxGate } from "./useSandboxGate";
+import { useSecurityModeGate } from "./useSandboxGate";
 import { useComposerDockSafeArea } from "./useComposerDockSafeArea";
 import { CONVERSATION_PAGE_CONTRACT } from "@shared/conversation-page-contract";
 import { CONVERSATION_ICONS } from "../conversation-icon-contract";
@@ -34,12 +34,14 @@ export function WorkflowComposerShell({
   conversationKey,
   input,
   isGenerating,
+  securityMode: controlledSecurityMode,
   selectedProvider,
   onInputChange,
   onKeyDown,
   onSend,
   onStop,
-  onAccessLevelChange,
+  onSecurityModeChange,
+  onOpenSecuritySettings,
   permissionPanel,
   emptyHeader,
   modelControl,
@@ -62,7 +64,7 @@ export function WorkflowComposerShell({
   const dockRef = useComposerDockSafeArea();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const accessMenuRef = useRef<HTMLDivElement>(null);
+  const securityMenuRef = useRef<HTMLDivElement>(null);
   const fallbackModelMenuRef = useRef<HTMLDivElement>(null);
   const slashPopoverRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -73,7 +75,7 @@ export function WorkflowComposerShell({
   const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
   const [suggestionSelectedIndex, setSuggestionSelectedIndex] = useState(0);
   const [caret, setCaret] = useState(0);
-  const [accessOpen, setAccessOpen] = useState(false);
+  const [securityOpen, setSecurityOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<WorkflowImagePreview | null>(
     null,
@@ -107,17 +109,17 @@ export function WorkflowComposerShell({
   );
 
   const {
-    accessLevel,
-    sandboxGate,
-    handleAccessSelect,
-    handleSandboxConfirm,
-    handleSandboxCancel,
-  } = useSandboxGate(onAccessLevelChange);
+    securityMode,
+    fullAccessConfirmationOpen,
+    handleSecurityModeSelect,
+    handleFullAccessConfirm,
+    handleFullAccessCancel,
+  } = useSecurityModeGate(onSecurityModeChange, controlledSecurityMode);
 
-  const activeAccess =
-    accessOptions.find((option) => option.level === accessLevel) ??
-    accessOptions[0];
-  const ActiveAccessIcon = activeAccess.icon;
+  const activeSecurityMode =
+    securityModeOptions.find((option) => option.mode === securityMode) ??
+    securityModeOptions[0];
+  const ActiveSecurityIcon = activeSecurityMode.icon;
   const hasPermissionPanel = Boolean(permissionPanel);
   const textareaMinHeight =
     attachments.length > 0
@@ -161,16 +163,16 @@ export function WorkflowComposerShell({
   }, [hasPermissionPanel]);
 
   useEffect(() => {
-    if (!accessOpen && !contextOpen && !modelOpen && !slashOpen) return;
+    if (!securityOpen && !contextOpen && !modelOpen && !slashOpen) return;
 
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
-      if (accessMenuRef.current?.contains(target)) return;
+      if (securityMenuRef.current?.contains(target)) return;
       if (contextMenuRef.current?.contains(target)) return;
       if (fallbackModelMenuRef.current?.contains(target)) return;
       if (slashPopoverRef.current?.contains(target)) return;
 
-      setAccessOpen(false);
+      setSecurityOpen(false);
       setContextOpen(false);
       setModelOpen(false);
       setSlashOpen(false);
@@ -180,7 +182,7 @@ export function WorkflowComposerShell({
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
     };
-  }, [accessOpen, contextOpen, modelOpen, slashOpen]);
+  }, [contextOpen, modelOpen, securityOpen, slashOpen]);
 
   const filteredSlashCommands = useMemo<SlashCommandItem[]>(() => {
     const items = slashCommands ?? [];
@@ -417,14 +419,6 @@ export function WorkflowComposerShell({
                 tabIndex={-1}
                 aria-hidden="true"
               />
-              {sandboxGate && (
-                <SandboxGatePrompt
-                  phase={sandboxGate.phase}
-                  message={sandboxGate.message}
-                  onConfirm={() => void handleSandboxConfirm()}
-                  onCancel={handleSandboxCancel}
-                />
-              )}
               <div
                 className={`composer-input${attachments.length > 0 ? " has-chips" : ""}`}
               >
@@ -538,38 +532,66 @@ export function WorkflowComposerShell({
                   ) : null}
                 </div>
 
-                <div className="composer-menu" ref={accessMenuRef}>
+                <div className="composer-menu" ref={securityMenuRef}>
                   <button
                     type="button"
-                    onClick={() => setAccessOpen((value) => !value)}
-                    className={`mode-button access-${accessLevel}`}
+                    aria-label={`权限：${activeSecurityMode.label}`}
+                    aria-haspopup="menu"
+                    aria-expanded={securityOpen}
+                    onClick={() => setSecurityOpen((value) => !value)}
+                    className={`mode-button security-${securityMode}`}
                   >
-                    <ActiveAccessIcon size={16} />
-                    <span>{activeAccess.label}</span>
+                    <ActiveSecurityIcon size={16} />
+                    <span>{activeSecurityMode.label}</span>
                     <ChevronDown size={14} />
                   </button>
-                  {accessOpen && (
+                  {securityOpen && (
                     <div
-                      className="composer-popover access-popover"
+                      className="composer-popover security-mode-popover"
                       role="menu"
+                      aria-label="权限模式"
                     >
-                      {accessOptions.map(({ level, label, icon: Icon }) => (
-                        <button
-                          key={level}
-                          type="button"
-                          role="menuitemradio"
-                          aria-checked={accessLevel === level}
-                          aria-current={
-                            accessLevel === level ? "true" : undefined
-                          }
-                          onClick={() => void handleAccessSelect(level)}
-                          className={`${accessLevel === level ? "active" : ""} access-${level}`}
-                        >
-                          <Icon size={16} />
-                          <span>{label}</span>
-                          <Check className="access-check" size={15} />
-                        </button>
-                      ))}
+                      <div className="security-popover-title">
+                        应如何批准 Marloues 操作？
+                      </div>
+                      {securityModeOptions.map(
+                        ({ mode, label, description, icon: Icon }) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            role="menuitemradio"
+                            aria-checked={securityMode === mode}
+                            aria-current={
+                              securityMode === mode ? "true" : undefined
+                            }
+                            onClick={() => {
+                              setSecurityOpen(false);
+                              handleSecurityModeSelect(mode);
+                            }}
+                            className={`${securityMode === mode ? "active" : ""} security-${mode}`}
+                          >
+                            <Icon size={16} />
+                            <span className="security-option-copy">
+                              <strong>{label}</strong>
+                              <small>{description}</small>
+                            </span>
+                            <Check className="access-check" size={15} />
+                          </button>
+                        ),
+                      )}
+                      <div className="security-popover-separator" />
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="security-settings-link"
+                        onClick={() => {
+                          setSecurityOpen(false);
+                          onOpenSecuritySettings?.();
+                        }}
+                      >
+                        <Settings2 size={16} />
+                        <span>权限与沙箱设置</span>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -672,6 +694,12 @@ export function WorkflowComposerShell({
           </div>
         </>
       )}
+      {fullAccessConfirmationOpen ? (
+        <FullAccessConfirmDialog
+          onConfirm={handleFullAccessConfirm}
+          onCancel={handleFullAccessCancel}
+        />
+      ) : null}
     </div>
   );
 }

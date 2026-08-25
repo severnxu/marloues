@@ -101,7 +101,7 @@ function fixtureModel(hasData: boolean): TaskPresentationModel {
         }
       : null,
     modelName: hasData ? "Marloues 5.6" : undefined,
-    permissionMode: hasData ? "bypassPermissions" : undefined,
+    securityMode: hasData ? "full-access" : undefined,
     outputContent: hasData
       ? [
           {

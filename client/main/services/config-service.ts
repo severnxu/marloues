@@ -82,6 +82,16 @@ function defaultAgentSettings(): AgentSettings {
     activeRuntimeId: "sdk",
     maxTurns: 50,
     workMode: "execute",
+    securityMode: "request",
+    securityRules: {
+      autoAllowPaths: [],
+      protectedPaths: [],
+      commandAllowlist: [],
+      commandAsklist: [],
+      networkAccess: "ask",
+      allowedDomains: [],
+      deniedDomains: [],
+    },
     permissionMode: "default",
     permissionApprovalTimeoutMs: 120_000,
     desktopNotificationsEnabled: true,
@@ -130,6 +140,8 @@ function defaultAgentSettings(): AgentSettings {
     imBotBindings: defaultImBotBindingsConfig(),
     skillDirectories: [],
     disabledSkills: [],
+    sandboxEnabled: true,
+    sandboxMode: "workspace-write",
   };
 }
 
@@ -296,6 +308,11 @@ export function applyEnterpriseConfigToAgentSettings(
         (enterprise.permissionMode as unknown) === "plan"
           ? normalizeWorkMode(enterprise.workMode, enterprise.permissionMode)
           : undefined,
+      securityMode:
+        enterprise.securityMode !== undefined
+          ? normalizeSecurityMode(enterprise.securityMode)
+          : undefined,
+      securityRules: enterprise.securityRules,
       permissionMode:
         enterprise.permissionMode !== undefined
           ? normalizePermissionMode(enterprise.permissionMode)
@@ -504,6 +521,13 @@ function normalizeAgentSettings(
   const activeToolProfile = toolProfiles.find(
     (profile) => profile.id === activeToolProfileId,
   );
+  const securityMode = normalizeSecurityMode(settings.securityMode);
+  const normalizedSandboxMode = normalizeSandboxMode(
+    settings.sandboxMode,
+    settings.sandboxEnabled,
+    defaults.sandboxMode,
+  );
+  const fullAccess = securityMode === "full-access";
 
   return {
     ...defaults,
@@ -516,7 +540,9 @@ function normalizeAgentSettings(
     providers,
     defaultModel,
     workMode: normalizeWorkMode(settings.workMode, settings.permissionMode),
-    permissionMode: normalizePermissionMode(settings.permissionMode),
+    securityMode,
+    securityRules: normalizeSecurityRules(settings.securityRules),
+    permissionMode: fullAccess ? "bypassPermissions" : "default",
     permissionApprovalTimeoutMs: normalizePermissionApprovalTimeoutMs(
       settings.permissionApprovalTimeoutMs,
     ),
@@ -534,6 +560,12 @@ function normalizeAgentSettings(
     imBotBindings: normalizeImBotBindingsConfig(settings.imBotBindings),
     skillDirectories: settings.skillDirectories ?? [],
     disabledSkills: settings.disabledSkills ?? [],
+    sandboxEnabled: fullAccess ? false : true,
+    sandboxMode: fullAccess
+      ? "danger-full-access"
+      : normalizedSandboxMode === "danger-full-access"
+        ? "workspace-write"
+        : normalizedSandboxMode,
   };
 }
 
@@ -842,6 +874,59 @@ function normalizePermissionMode(
     : "default";
 }
 
+function normalizeSecurityMode(mode: unknown): AgentSettings["securityMode"] {
+  if (mode === "request" || mode === "auto-review" || mode === "full-access") {
+    return mode;
+  }
+  return "request";
+}
+
+function normalizeSecurityRules(
+  rules: Partial<AgentSettings["securityRules"]> | undefined,
+): AgentSettings["securityRules"] {
+  const strings = (value: unknown): string[] =>
+    Array.isArray(value)
+      ? Array.from(
+          new Set(
+            value
+              .filter((item): item is string => typeof item === "string")
+              .map((item) => item.trim())
+              .filter(Boolean),
+          ),
+        )
+      : [];
+  return {
+    autoAllowPaths: strings(rules?.autoAllowPaths),
+    protectedPaths: strings(rules?.protectedPaths),
+    commandAllowlist: strings(rules?.commandAllowlist),
+    commandAsklist: strings(rules?.commandAsklist),
+    networkAccess:
+      rules?.networkAccess === "allow" || rules?.networkAccess === "deny"
+        ? rules.networkAccess
+        : "ask",
+    allowedDomains: strings(rules?.allowedDomains),
+    deniedDomains: strings(rules?.deniedDomains),
+  };
+}
+
+function normalizeSandboxMode(
+  mode: unknown,
+  legacySandboxEnabled: unknown,
+  fallback: AgentSettings["sandboxMode"],
+): AgentSettings["sandboxMode"] {
+  if (
+    mode === "read-only" ||
+    mode === "workspace-write" ||
+    mode === "workspace-write-network" ||
+    mode === "danger-full-access"
+  ) {
+    return mode;
+  }
+  if (legacySandboxEnabled === false) return "danger-full-access";
+  if (legacySandboxEnabled === true) return "workspace-write";
+  return fallback ?? "workspace-write";
+}
+
 function normalizeWorkMode(
   mode: unknown,
   legacyPermissionMode: unknown,
@@ -1059,6 +1144,8 @@ function preserveEnterpriseControlledScalars(
     "defaultModel",
     "maxTurns",
     "workMode",
+    "securityMode",
+    "securityRules",
     "permissionMode",
     "permissionApprovalTimeoutMs",
     "desktopNotificationsEnabled",

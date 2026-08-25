@@ -60,4 +60,24 @@ describe("formatPermissionRequest", () => {
     expect(details.description).toBe("此工具需要你的确认才能继续运行。");
     expect(details.description).not.toContain("decision");
   });
+
+  it("shows the security boundary reason before the model tool description", () => {
+    const reason = JSON.stringify({
+      decision: "Path is outside the current workspace.",
+      description: "Write elevated marker file",
+      input: { command: "Set-Content C:\\outside.txt ok" },
+    });
+    const details = formatPermissionRequest({
+      id: "request-elevation",
+      toolName: "Bash",
+      reason,
+      inputSummary: JSON.stringify({
+        command: "Set-Content C:\\outside.txt ok",
+        description: "Write elevated marker file",
+      }),
+    });
+
+    expect(details.description).toContain("工作区之外");
+    expect(details.description).not.toContain("elevated marker");
+  });
 });

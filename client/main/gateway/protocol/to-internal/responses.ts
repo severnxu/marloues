@@ -5,8 +5,8 @@
 
 import type {
   IrContentBlock,
-  IrRequest,
   IrMessage,
+  IrRequest,
   IrTool,
   IrToolChoice,
 } from "../../types";
@@ -16,6 +16,7 @@ export interface ResponsesAPIRequest {
   input: string | ResponsesInputItem[];
   instructions?: string;
   stream?: boolean;
+  stream_options?: { include_usage?: boolean };
   tools?: ResponsesTool[];
   tool_choice?: ResponsesToolChoice;
   temperature?: number;
@@ -43,8 +44,11 @@ export type ResponsesInputItem =
   | {
       type: "function_call_output";
       call_id: string;
-      output: string | ResponsesContent[] | Record<string, unknown>;
-    };
+      output: unknown;
+    }
+  | { type: "custom_tool_call"; call_id: string; name: string; input: string }
+  | { type: "custom_tool_call_output"; call_id: string; output: unknown }
+  | { type: "reasoning"; [key: string]: unknown };
 
 export interface ResponsesContent {
   type: "input_text" | "input_image" | "output_text";
@@ -53,10 +57,11 @@ export interface ResponsesContent {
 }
 
 export interface ResponsesTool {
-  type: "function";
-  name: string;
+  type: string;
+  name?: unknown;
   description?: string;
   parameters?: Record<string, unknown>;
+  format?: unknown;
 }
 
 export type ResponsesToolChoice =
@@ -68,8 +73,7 @@ export function decodeOpenAIResponsesRequest(
 ): IrRequest {
   const messages: IrMessage[] = [];
   let system = raw.instructions;
-
-  // Normalize input — may be a string or an array of items
+  let pendingToolTurn: PendingToolTurn | undefined;
   const inputItems: ResponsesInputItem[] =
     typeof raw.input === "string"
       ? [{ type: "text", text: raw.input }]
@@ -79,26 +83,56 @@ export function decodeOpenAIResponsesRequest(
 
   for (const item of inputItems) {
     if (item.type === "function_call") {
-      messages.push({
-        role: "assistant",
-        content: "",
-        toolCalls: [
-          {
-            id: item.call_id,
-            name: item.name,
-            arguments: item.arguments ?? "{}",
-          },
-        ],
+      pendingToolTurn ??= { content: [], calls: [], outputs: [] };
+      pendingToolTurn.calls.push({
+        id: item.call_id,
+        name: item.name,
+        arguments: item.arguments ?? "{}",
       });
-    } else if (item.type === "function_call_output") {
-      messages.push({
+      continue;
+    }
+    if (item.type === "custom_tool_call") {
+      pendingToolTurn ??= { content: [], calls: [], outputs: [] };
+      pendingToolTurn.calls.push({
+        id: item.call_id,
+        name: item.name,
+        arguments: JSON.stringify({ input: item.input }),
+      });
+      continue;
+    }
+    if (
+      item.type === "function_call_output" ||
+      item.type === "custom_tool_call_output"
+    ) {
+      const output: IrMessage = {
         role: "tool",
-        content: extractOutput(item.output),
+        content: extractToolOutput(item.output),
         toolCallId: item.call_id,
-      });
-    } else if (item.type === "text") {
+      };
+      if (pendingToolTurn?.calls.some((call) => call.id === item.call_id)) {
+        pendingToolTurn.outputs.push(output);
+        if (pendingToolTurn.outputs.length === pendingToolTurn.calls.length) {
+          flushPendingToolTurn(messages, pendingToolTurn);
+          pendingToolTurn = undefined;
+        }
+      } else {
+        flushPendingToolTurn(messages, pendingToolTurn);
+        pendingToolTurn = undefined;
+        messages.push(output);
+      }
+      continue;
+    }
+    if (item.type === "reasoning") continue;
+
+    if (item.type === "text") {
+      flushPendingToolTurn(messages, pendingToolTurn);
+      pendingToolTurn = undefined;
       messages.push({ role: "user", content: item.text });
-    } else if (item.type === "image") {
+      continue;
+    }
+    if (item.type === "image") {
+      flushPendingToolTurn(messages, pendingToolTurn);
+      pendingToolTurn = undefined;
       messages.push({
         role: "user",
         content: [
@@ -109,28 +143,37 @@ export function decodeOpenAIResponsesRequest(
           },
         ],
       });
-    } else if ("role" in item && item.role) {
-      const content = convertMessageContent(item.content);
-      if (item.role === "developer" || item.role === "system") {
-        const text = extractTextContent(item.content);
-        system = system ? `${system}\n${text}` : text;
-      } else {
-        messages.push({ role: item.role, content });
-      }
+      continue;
     }
+    if (!("role" in item) || !item.role) continue;
+
+    const text = extractTextContent(item.content);
+    if (item.role === "developer" || item.role === "system") {
+      flushPendingToolTurn(messages, pendingToolTurn);
+      pendingToolTurn = undefined;
+      system = system ? `${system}\n${text}` : text;
+      continue;
+    }
+    if (item.role === "assistant" && pendingToolTurn) {
+      if (text) pendingToolTurn.content.push(text);
+      continue;
+    }
+    flushPendingToolTurn(messages, pendingToolTurn);
+    pendingToolTurn = undefined;
+    if (item.role === "assistant" && !text) continue;
+    messages.push({
+      role: item.role,
+      content: convertMessageContent(item.content),
+    });
   }
 
-  const tools: IrTool[] | undefined = raw.tools?.map((t) => ({
-    name: t.name,
-    description: t.description,
-    parameters: t.parameters ?? {},
-  }));
+  flushPendingToolTurn(messages, pendingToolTurn);
 
   return {
     model: raw.model,
     messages,
     system,
-    tools,
+    tools: decodeTools(raw.tools),
     toolChoice: convertToolChoice(raw.tool_choice),
     generation: {
       temperature: raw.temperature,
@@ -146,12 +189,83 @@ export function decodeOpenAIResponsesRequest(
   };
 }
 
+interface PendingToolTurn {
+  content: string[];
+  calls: NonNullable<IrMessage["toolCalls"]>;
+  outputs: IrMessage[];
+}
+
+function flushPendingToolTurn(
+  messages: IrMessage[],
+  pending: PendingToolTurn | undefined,
+): void {
+  if (!pending) return;
+  if (pending.calls.length > 0) {
+    messages.push({
+      role: "assistant",
+      content: pending.content.join(""),
+      toolCalls: pending.calls,
+    });
+  } else {
+    for (const content of pending.content) {
+      messages.push({ role: "assistant", content });
+    }
+  }
+  messages.push(...pending.outputs);
+}
+
+function decodeTools(
+  rawTools: ResponsesTool[] | undefined,
+): IrTool[] | undefined {
+  if (!rawTools) return undefined;
+  const tools: IrTool[] = [];
+  for (const tool of rawTools) {
+    if (
+      (tool.type !== "function" && tool.type !== "custom") ||
+      typeof tool.name !== "string" ||
+      !tool.name.trim()
+    ) {
+      continue;
+    }
+    tools.push({
+      name: tool.name,
+      description: tool.description,
+      kind: tool.type,
+      parameters:
+        tool.type === "custom"
+          ? customToolInputSchema()
+          : normalizeParameters(tool.parameters),
+    });
+  }
+  return tools.length > 0 ? tools : undefined;
+}
+
+function normalizeParameters(
+  parameters: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+  return parameters &&
+    typeof parameters === "object" &&
+    !Array.isArray(parameters)
+    ? parameters
+    : { type: "object", properties: {} };
+}
+
+function customToolInputSchema(): Record<string, unknown> {
+  return {
+    type: "object",
+    properties: {
+      input: { type: "string", description: "Raw input for this tool." },
+    },
+    required: ["input"],
+    additionalProperties: false,
+  };
+}
+
 function convertMessageContent(
   content: string | ResponsesContent[] | undefined,
 ): string | IrContentBlock[] {
   if (!content) return "";
   if (typeof content === "string") return content;
-
   const blocks: IrContentBlock[] = [];
   for (const part of content) {
     if (part.type === "input_text" || part.type === "output_text") {
@@ -175,22 +289,30 @@ function extractTextContent(
   if (!content) return "";
   if (typeof content === "string") return content;
   return content
-    .filter((p) => p.type === "input_text" || p.type === "output_text")
-    .map((p) => p.text)
+    .filter(
+      (part): part is ResponsesContent & { text: string } =>
+        (part.type === "input_text" || part.type === "output_text") &&
+        typeof part.text === "string",
+    )
+    .map((part) => part.text)
     .join("");
 }
 
-function extractOutput(
-  output: string | ResponsesContent[] | Record<string, unknown>,
-): string {
+function extractToolOutput(output: unknown): string {
   if (typeof output === "string") return output;
   if (Array.isArray(output)) {
     return output
-      .filter((p) => p.type === "output_text" || p.type === "input_text")
-      .map((p) => p.text ?? "")
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object") {
+          const text = (item as Record<string, unknown>).text;
+          if (typeof text === "string") return text;
+        }
+        return "";
+      })
       .join("");
   }
-  return JSON.stringify(output);
+  return output === undefined ? "" : JSON.stringify(output);
 }
 
 function imageMediaType(url: string): string {
@@ -202,8 +324,9 @@ function convertToolChoice(
   choice: ResponsesToolChoice | undefined,
 ): IrToolChoice | undefined {
   if (!choice) return undefined;
-  if (choice === "auto" || choice === "none" || choice === "required")
+  if (choice === "auto" || choice === "none" || choice === "required") {
     return choice;
+  }
   if (typeof choice === "object" && choice.type === "function") {
     return { type: "function", name: choice.name };
   }

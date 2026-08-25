@@ -411,9 +411,15 @@ export interface ContextActionRequest {
 }
 
 export type AgentWorkMode = "execute" | "plan";
+export type AgentSecurityMode = "request" | "auto-review" | "full-access";
 export type AgentPermissionMode =
   "default" | "acceptEdits" | "bypassPermissions";
 export type AgentSdkPermissionMode = AgentPermissionMode | "plan";
+export type AgentSandboxMode =
+  | "read-only"
+  | "workspace-write"
+  | "workspace-write-network"
+  | "danger-full-access";
 export type RuntimeKind = "sdk" | "binary" | "self-built";
 
 export interface RuntimeDescriptor {
@@ -452,6 +458,16 @@ export interface ToolPermissionPolicy {
   requireConfirmationForSensitiveTools: boolean;
 }
 
+export interface AgentSecurityRules {
+  autoAllowPaths: string[];
+  protectedPaths: string[];
+  commandAllowlist: string[];
+  commandAsklist: string[];
+  networkAccess: "ask" | "allow" | "deny";
+  allowedDomains: string[];
+  deniedDomains: string[];
+}
+
 export interface EnterprisePolicy {
   allowLocalEndpointProfiles?: boolean;
   allowLocalMcpServers?: boolean;
@@ -487,6 +503,8 @@ export interface AgentSettings {
   runtimeConfigDir?: string;
   maxTurns: number;
   workMode: AgentWorkMode;
+  securityMode: AgentSecurityMode;
+  securityRules: AgentSecurityRules;
   permissionMode: AgentPermissionMode;
   permissionApprovalTimeoutMs: number;
   desktopNotificationsEnabled: boolean;
@@ -511,6 +529,7 @@ export interface AgentSettings {
   enterprisePolicy?: EnterprisePolicy;
   enterpriseControlledSettings?: string[];
   sandboxEnabled?: boolean;
+  sandboxMode?: AgentSandboxMode;
 }
 
 export type AgentMemoryMode = "workspace" | "session" | "off";

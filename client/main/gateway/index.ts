@@ -33,7 +33,7 @@ export async function startGateway(): Promise<{ port: number } | null> {
     `[Gateway] Starting with provider: ${provider?.name ?? "none"} (${provider?.baseUrl ?? "n/a"})`,
   );
 
-  // Configure route resolver using store's provider — re-reads store on each request
+  // Resolve the same AgentSettings provider used by every runtime on each request.
   // so provider changes take effect without restarting the gateway
   const resolveRoute: RouteResolver = (
     _sourceProtocol: ProtocolId,
@@ -62,7 +62,7 @@ export async function startGateway(): Promise<{ port: number } | null> {
   // Configure pipeline
   configurePipeline({ resolveRoute });
 
-  // Model list — re-reads store on each request
+  // Model list — re-reads AgentSettings on each request.
   const getModels = (): string[] => {
     const settings = getAgentSettings();
     const providers = settings.providers;
@@ -111,7 +111,9 @@ export function getGatewayPort(): number {
   return gatewayPort;
 }
 
-function providerTargetProtocol(provider: ModelProviderConfig): ProtocolId {
+export function providerTargetProtocol(
+  provider: ModelProviderConfig,
+): ProtocolId {
   switch (provider.type) {
     case "anthropic":
       return "anthropic";

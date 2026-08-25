@@ -39,6 +39,11 @@
     "test:contract:runtime": "tsx --tsconfig tsconfig.node.json ../tests/contract/runtime.contract.ts",
     "test:contract:redaction": "tsx --tsconfig tsconfig.node.json ../tests/contract/redaction-rules.contract.ts",
     "test:smoke:runtime": "tsx --tsconfig tsconfig.node.json ../tests/smoke/runtime.smoke.ts",
+    "test:smoke:process-sandbox": "tsx --tsconfig tsconfig.node.json ../tests/smoke/process-sandbox.smoke.ts",
+    "test:smoke:live-runtime": "tsx --tsconfig tsconfig.node.json ../tests/smoke/live-runtime.smoke.ts",
+    "test:smoke:binary-live": "tsx --tsconfig tsconfig.node.json ../tests/smoke/binary-live.smoke.ts",
+    "test:smoke:electron-live-ui": "tsx --tsconfig tsconfig.node.json ../tests/smoke/electron-live-ui.smoke.ts",
+    "test:smoke:electron-binary-live-ui": "tsx --tsconfig tsconfig.node.json ../tests/smoke/electron-live-ui.smoke.ts --binary",
     "test:smoke:packaged": "node ../tests/smoke/packaged.smoke.mjs",
     "test:visual": "node ../tests/visual/workflow-suite.visual.mjs",
     "changeset": "changeset",
@@ -60,6 +65,7 @@
     "@electron-toolkit/utils": "^2.0.0",
     "@larksuiteoapi/node-sdk": "^1.73.0",
     "@lezer/highlight": "^1.2.3",
+    "@openai/codex": "0.149.1",
     "@pierre/diffs": "^1.2.10",
     "@types/qrcode": "^1.5.6",
     "@wecom/aibot-node-sdk": "^1.0.7",
@@ -87,6 +93,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.6.0",
     "unist-util-visit": "^5.1.0",
+    "zod": "^4.4.3",
     "zustand": "^5.0.3"
   },
   "devDependencies": {
@@ -137,7 +144,8 @@
     ],
     "asar": true,
     "asarUnpack": [
-      "node_modules/@anthropic-ai/claude-agent-sdk-*/**"
+      "node_modules/@anthropic-ai/claude-agent-sdk-*/**",
+      "node_modules/@openai/codex-*/**"
     ],
     "publish": [
       {

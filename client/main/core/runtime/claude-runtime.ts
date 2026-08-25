@@ -43,12 +43,27 @@ import { buildClaudeRuntimeOptions } from "../config/options-builder";
 import { configuredMcpTools } from "./mcp-tools";
 import { configuredRuntimeModels } from "./runtime-models";
 import { workflowThreadStore } from "./workflow-thread-store";
-import { evaluateToolPermission } from "../permissions/tool-permission-engine";
 import { ToolStormBreaker } from "./tool-storm-breaker";
 import { logInfo, logWarn } from "../logging/app-logger";
 import { SteerQueue } from "./steer-queue";
 import { createMessageChannel } from "./message-channel";
 import { buildSdkUserContent } from "./sdk-content";
+import {
+  createRuntimeSecurityHost,
+  type SecurityHost,
+} from "../security/security-host";
+import type { SecurityOperation } from "../security/operation-factory";
+import {
+  guardianReviewDetail,
+  runGuardianReview,
+} from "../security/guardian-reviewer";
+import type { SandboxProfile } from "../security/sandbox-broker";
+import {
+  canonicalSdkSecurityToolName,
+  SDK_SANDBOX_SERVER_NAME,
+  SDK_SANDBOX_TOOL_NAME,
+  SdkCommandSandbox,
+} from "./sdk-command-sandbox";
 import {
   RuntimeEventQueue,
   createTurnLifetime,
@@ -129,6 +144,13 @@ function stringifyToolInput(value: unknown): string {
   if (value === undefined) return "";
   if (isEmptyObject(value)) return "";
   return typeof value === "string" ? value : JSON.stringify(value);
+}
+
+function commandFromToolInput(
+  input: Record<string, unknown>,
+): string | undefined {
+  const command = input.command ?? input.cmd;
+  return typeof command === "string" && command.trim() ? command : undefined;
 }
 
 function isEmptyObject(value: unknown): boolean {
@@ -964,7 +986,7 @@ export class ClaudeRuntime implements AgentRuntime {
     registerTool: false,
     cancelTool: false,
     editMessage: true,
-    sandbox: false,
+    sandbox: true,
   };
 
   private activeTurns = new Map<string, ActiveTurn>();
@@ -975,10 +997,15 @@ export class ClaudeRuntime implements AgentRuntime {
   });
   private pendingApprovals = new Map<
     string,
-    { resolve: (approved: boolean) => void; toolName: string }
+    {
+      resolve: (approved: boolean) => void;
+      toolName: string;
+      operation?: SecurityOperation;
+      elevationProfile?: SandboxProfile;
+    }
   >();
   private toolStormBreaker = new ToolStormBreaker();
-  private sessionApprovedTools = new Set<string>();
+  private securityHost: SecurityHost = createRuntimeSecurityHost("sdk");
   /** 运行时模型覆盖（setModel 设置，sendMessage 时优先生效）。 */
   private modelOverride: string | null = null;
   /** 运行时权限模式覆盖（setPermissionMode 设置，canUseTool 时生效）。 */
@@ -1011,8 +1038,8 @@ export class ClaudeRuntime implements AgentRuntime {
       entry.finish();
     }
     this.resolvePendingApprovals(false);
-    this.sessionApprovedTools.clear();
     this.forwardDeferredEvent = undefined;
+    this.securityHost.clearGrants();
   }
 
   // ---------- Thread API ----------
@@ -1222,21 +1249,31 @@ export class ClaudeRuntime implements AgentRuntime {
     };
     this.activeTurns.set(opts.threadId, entry);
     const queue = entry.eventQueue!;
+    const sdkCommandSandbox = new SdkCommandSandbox();
 
     // Prepare tool permission callbacks for SDK canUseTool.
     const options = buildClaudeRuntimeOptions({
       settings: effectiveSettings,
       cwd: opts.cwd || process.cwd(),
       env: sdkEnv,
+      sdkMcpServers: {
+        [SDK_SANDBOX_SERVER_NAME]: sdkCommandSandbox.server,
+      },
+      toolAliases: { Bash: SDK_SANDBOX_TOOL_NAME },
       canUseTool: async (
         toolName: string,
         input: Record<string, unknown>,
         context: Record<string, unknown>,
       ) => {
+        const securityToolName = canonicalSdkSecurityToolName(toolName);
         const toolUseId =
           typeof context.toolUseID === "string" ? context.toolUseID : genId();
         const requestId = `sdk-approval-${toolUseId}`;
-        const storm = this.toolStormBreaker.check(turnId, toolName, input);
+        const storm = this.toolStormBreaker.check(
+          turnId,
+          securityToolName,
+          input,
+        );
         if (storm.action === "deny") {
           return {
             behavior: "deny",
@@ -1245,21 +1282,36 @@ export class ClaudeRuntime implements AgentRuntime {
             toolUseID: toolUseId,
           };
         }
-        const decision = evaluateToolPermission({
-          toolName,
+        const decision = this.securityHost.evaluate({
+          threadId: opts.threadId,
+          turnId,
+          toolName: securityToolName,
           input,
+          workspaceRoot: opts.cwd || process.cwd(),
           permissionMode:
-            settings.workMode === "plan"
+            effectiveSettings.workMode === "plan"
               ? "plan"
               : this.permissionModeOverride
                 ? this.permissionModeOverride === "bypass"
                   ? "bypassPermissions"
                   : this.permissionModeOverride
-                : settings.permissionMode,
-          policy: settings.toolPermissionPolicy,
-          sessionAllowedTools: this.sessionApprovedTools,
+                : effectiveSettings.permissionMode,
+          settings: effectiveSettings,
         });
         if (decision.action === "allow") {
+          if (securityToolName === "Bash") {
+            const command = commandFromToolInput(input);
+            if (!command || !decision.permit) {
+              return {
+                behavior: "deny",
+                message:
+                  "Bash execution requires a command and a SecurityHost permit.",
+                interrupt: false,
+                toolUseID: toolUseId,
+              };
+            }
+            sdkCommandSandbox.authorize(command, decision.permit);
+          }
           return { behavior: "allow", toolUseID: toolUseId };
         }
         if (decision.action === "deny") {
@@ -1270,9 +1322,65 @@ export class ClaudeRuntime implements AgentRuntime {
             toolUseID: toolUseId,
           };
         }
+        let reviewerReason: string | undefined;
+        if (effectiveSettings.securityMode === "auto-review") {
+          queue.push({
+            kind: "runtime-status",
+            payload: {
+              turnId,
+              label: "安全审查",
+              detail: "正在隔离审查会话中评估该操作",
+              status: "running",
+            },
+          });
+          const review = await runGuardianReview(decision, effectiveSettings, {
+            trustedUserRequest: opts.content,
+          });
+          reviewerReason = guardianReviewDetail(review);
+          queue.push({
+            kind: "runtime-status",
+            payload: {
+              turnId,
+              label: "安全审查",
+              detail: reviewerReason,
+              status: review.action === "deny" ? "error" : "completed",
+            },
+          });
+          if (review.action === "deny") {
+            return {
+              behavior: "deny",
+              message: `自动审查拒绝：${review.reason}`,
+              interrupt: false,
+              toolUseID: toolUseId,
+            };
+          }
+          if (review.action === "allow") {
+            if (securityToolName === "Bash") {
+              const command = commandFromToolInput(input);
+              if (!command) {
+                return {
+                  behavior: "deny",
+                  message: "Bash execution requires a command.",
+                  interrupt: false,
+                  toolUseID: toolUseId,
+                };
+              }
+              sdkCommandSandbox.authorize(
+                command,
+                this.securityHost.issueApprovedPermit(
+                  decision.operation,
+                  effectiveSettings,
+                  decision.elevationProfile,
+                ),
+              );
+            }
+            return { behavior: "allow", toolUseID: toolUseId };
+          }
+        }
         const reason = JSON.stringify(
           {
             decision: decision.reason,
+            automaticReview: reviewerReason,
             matchedRule: decision.matchedRule,
             toolStorm: storm.action === "warn" ? storm.message : undefined,
             title:
@@ -1302,17 +1410,41 @@ export class ClaudeRuntime implements AgentRuntime {
           kind: "approval-request",
           payload: {
             requestId,
-            toolName,
+            toolName: securityToolName,
             reason,
             timeout: settings.permissionApprovalTimeoutMs,
+            allowSession: decision.allowSession,
           },
         });
         const approved = await this.waitForApproval(
           requestId,
-          toolName,
+          securityToolName,
           settings.permissionApprovalTimeoutMs,
+          decision.operation,
+          decision.elevationProfile,
         );
-        if (approved) return { behavior: "allow", toolUseID: toolUseId };
+        if (approved) {
+          if (securityToolName === "Bash") {
+            const command = commandFromToolInput(input);
+            if (!command) {
+              return {
+                behavior: "deny",
+                message: "Bash execution requires a command.",
+                interrupt: false,
+                toolUseID: toolUseId,
+              };
+            }
+            sdkCommandSandbox.authorize(
+              command,
+              this.securityHost.issueApprovedPermit(
+                decision.operation,
+                effectiveSettings,
+                decision.elevationProfile,
+              ),
+            );
+          }
+          return { behavior: "allow", toolUseID: toolUseId };
+        }
         return {
           behavior: "deny",
           message: "Tool execution denied by user.",
@@ -1345,6 +1477,7 @@ export class ClaudeRuntime implements AgentRuntime {
     try {
       query = await queryClaude(channel.generator, options);
     } catch (err) {
+      sdkCommandSandbox.clear();
       this.activeTurns.delete(opts.threadId);
       entry.finish();
       throw err;
@@ -1355,6 +1488,7 @@ export class ClaudeRuntime implements AgentRuntime {
       } catch {
         /* best-effort */
       }
+      sdkCommandSandbox.clear();
       this.activeTurns.delete(opts.threadId);
       entry.finish();
       return canceledTurnStream(opts.threadId, turnId);
@@ -1608,7 +1742,13 @@ export class ClaudeRuntime implements AgentRuntime {
         );
         yield completeEvent;
       } finally {
+        sdkCommandSandbox.clear();
         if (!channel.isClosed()) channel.close();
+        try {
+          query.close?.();
+        } catch {
+          /* best-effort */
+        }
         if (activeTurns.get(opts.threadId) === entry) {
           activeTurns.delete(opts.threadId);
         }
@@ -1778,8 +1918,14 @@ export class ClaudeRuntime implements AgentRuntime {
     const pending = this.pendingApprovals.get(requestId);
     if (!pending) return;
     this.pendingApprovals.delete(requestId);
-    if (approved && scope === "session")
-      this.sessionApprovedTools.add(pending.toolName);
+    if (approved && scope === "session" && pending.operation) {
+      this.securityHost.createGrant({
+        operation: pending.operation,
+        scope: "session",
+        sourceRequestId: requestId,
+        elevationProfile: pending.elevationProfile,
+      });
+    }
     pending.resolve(approved);
   }
 
@@ -1787,6 +1933,8 @@ export class ClaudeRuntime implements AgentRuntime {
     requestId: string,
     toolName: string,
     timeoutMs: number,
+    operation?: SecurityOperation,
+    elevationProfile?: SandboxProfile,
   ): Promise<boolean> {
     return new Promise((resolve) => {
       const timeout = setTimeout(() => {
@@ -1795,6 +1943,8 @@ export class ClaudeRuntime implements AgentRuntime {
       }, timeoutMs);
       this.pendingApprovals.set(requestId, {
         toolName,
+        operation,
+        elevationProfile,
         resolve: (approved) => {
           clearTimeout(timeout);
           resolve(approved);

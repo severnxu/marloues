@@ -32,29 +32,58 @@ type ExtendedToolPermissionPolicy = ToolPermissionPolicy & {
 };
 
 const SAFE_BUILTIN_TOOLS = ["Read", "Glob", "Grep", "LS", "TodoWrite"];
-const SENSITIVE_BUILTIN_TOOLS = ["Bash", "Edit", "MultiEdit", "Write", "NotebookEdit"];
-const SENSITIVE_TOOL_NAME_PATTERN = /(bash|shell|exec|write|edit|patch|delete|remove|move|copy|upload|download|browser|playwright)/i;
+const SENSITIVE_BUILTIN_TOOLS = [
+  "Bash",
+  "Edit",
+  "MultiEdit",
+  "Write",
+  "NotebookEdit",
+];
+const SENSITIVE_TOOL_NAME_PATTERN =
+  /(bash|shell|exec|write|edit|patch|undo|delete|remove|move|copy|upload|download|browser|playwright)/i;
 
-export function evaluateToolPermission(input: ToolPermissionInput): ToolPermissionDecision {
+export function evaluateToolPermission(
+  input: ToolPermissionInput,
+): ToolPermissionDecision {
   const toolName = input.toolName.trim();
   const policy = input.policy;
   const rules = normalizeRules(policy);
-  const matched = rules.filter((rule) => matchesRule(rule.pattern, toolName, input.input));
+  const matched = rules.filter((rule) =>
+    matchesRule(rule.pattern, toolName, input.input),
+  );
 
   const deny = matched.find((rule) => rule.action === "deny");
-  if (deny) return { action: "deny", reason: "Matched deny rule.", matchedRule: deny.pattern };
+  if (deny)
+    return {
+      action: "deny",
+      reason: "Matched deny rule.",
+      matchedRule: deny.pattern,
+    };
 
   if (input.sessionAllowedTools?.has(toolName)) {
     return { action: "allow", reason: "Allowed for this session." };
   }
 
   const ask = matched.find((rule) => rule.action === "ask");
-  if (ask) return { action: "ask", reason: "Matched ask rule.", matchedRule: ask.pattern };
+  if (ask)
+    return {
+      action: "ask",
+      reason: "Matched ask rule.",
+      matchedRule: ask.pattern,
+    };
 
   const allow = matched.find((rule) => rule.action === "allow");
-  if (allow) return { action: "allow", reason: "Matched allow rule.", matchedRule: allow.pattern };
+  if (allow)
+    return {
+      action: "allow",
+      reason: "Matched allow rule.",
+      matchedRule: allow.pattern,
+    };
 
-  if (input.permissionMode === "bypassPermissions" || input.permissionMode === "bypass") {
+  if (
+    input.permissionMode === "bypassPermissions" ||
+    input.permissionMode === "bypass"
+  ) {
     return { action: "allow", reason: "Permission mode bypasses prompts." };
   }
 
@@ -67,7 +96,8 @@ export function evaluateToolPermission(input: ToolPermissionInput): ToolPermissi
   }
 
   if (isSensitiveTool(toolName)) {
-    const requiresConfirmation = policy?.requireConfirmationForSensitiveTools ?? true;
+    const requiresConfirmation =
+      policy?.requireConfirmationForSensitiveTools ?? true;
     return requiresConfirmation
       ? { action: "ask", reason: "Sensitive tool requires confirmation." }
       : { action: "allow", reason: "Sensitive confirmation is disabled." };
@@ -76,20 +106,42 @@ export function evaluateToolPermission(input: ToolPermissionInput): ToolPermissi
   return { action: "allow", reason: "Tool is not sensitive." };
 }
 
-export function matchesRule(pattern: string, toolName: string, input?: unknown): boolean {
+export function matchesRule(
+  pattern: string,
+  toolName: string,
+  input?: unknown,
+): boolean {
   const parsed = parsePattern(pattern);
   if (!globMatch(parsed.toolPattern, toolName)) return false;
   if (parsed.argumentPattern === undefined) return true;
-  return getComparableToolArguments(toolName, input).some((value) => globMatch(parsed.argumentPattern ?? "", value));
+  return getComparableToolArguments(toolName, input).some((value) =>
+    globMatch(parsed.argumentPattern ?? "", value),
+  );
 }
 
 function normalizeRules(policy?: ToolPermissionPolicy): ToolPermissionRule[] {
   const extendedPolicy = policy as ExtendedToolPermissionPolicy | undefined;
   const rules: ToolPermissionRule[] = [];
-  rules.push(...(extendedPolicy?.rules ?? []).filter((rule) => rule.pattern.trim()));
-  rules.push(...(policy?.disallowedTools ?? []).map((pattern) => ({ pattern, action: "deny" as const })));
-  rules.push(...(policy?.allowedTools ?? []).map((pattern) => ({ pattern, action: "allow" as const })));
-  rules.push(...(policy?.sensitiveToolAllowlist ?? SAFE_BUILTIN_TOOLS).map((pattern) => ({ pattern, action: "allow" as const })));
+  rules.push(
+    ...(extendedPolicy?.rules ?? []).filter((rule) => rule.pattern.trim()),
+  );
+  rules.push(
+    ...(policy?.disallowedTools ?? []).map((pattern) => ({
+      pattern,
+      action: "deny" as const,
+    })),
+  );
+  rules.push(
+    ...(policy?.allowedTools ?? []).map((pattern) => ({
+      pattern,
+      action: "allow" as const,
+    })),
+  );
+  rules.push(
+    ...(policy?.sensitiveToolAllowlist ?? SAFE_BUILTIN_TOOLS).map(
+      (pattern) => ({ pattern, action: "allow" as const }),
+    ),
+  );
   return rules;
 }
 
@@ -103,7 +155,10 @@ function parsePattern(pattern: string): ParsedPattern {
   };
 }
 
-function getComparableToolArguments(toolName: string, input: unknown): string[] {
+function getComparableToolArguments(
+  toolName: string,
+  input: unknown,
+): string[] {
   if (!input || typeof input !== "object") return [];
   const record = input as Record<string, unknown>;
   const preferredKeys = isEditTool(toolName)
@@ -113,7 +168,9 @@ function getComparableToolArguments(toolName: string, input: unknown): string[] 
       : ["command", "cmd", "file_path", "path", "name", "url", "query"];
   const values = preferredKeys
     .map((key) => record[key])
-    .filter((value): value is string => typeof value === "string" && value.length > 0);
+    .filter(
+      (value): value is string => typeof value === "string" && value.length > 0,
+    );
   if (values.length) return values;
   return [JSON.stringify(record)];
 }
@@ -125,7 +182,10 @@ function isSensitiveTool(toolName: string): boolean {
 }
 
 function isEditTool(toolName: string): boolean {
-  return ["Edit", "MultiEdit", "Write", "NotebookEdit"].includes(toolName) || /(^|[._-])(edit|write|patch)([._-]|$)/i.test(toolName);
+  return (
+    ["Edit", "MultiEdit", "Write", "NotebookEdit"].includes(toolName) ||
+    /(^|[._-])(edit|write|patch|undo)([._-]|$)/i.test(toolName)
+  );
 }
 
 function globMatch(pattern: string, value: string): boolean {

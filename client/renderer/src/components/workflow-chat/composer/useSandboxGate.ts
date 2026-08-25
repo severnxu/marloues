@@ -1,37 +1,48 @@
-import { useCallback, useState } from "react";
-import type { ComposerAccessLevel, SandboxGateState } from "./composer-types";
+import { useCallback, useEffect, useState } from "react";
+import type { AgentSecurityMode } from "@shared/types";
 
-export function useSandboxGate(
-  onAccessLevelChange?: (level: ComposerAccessLevel) => void,
+export function useSecurityModeGate(
+  onSecurityModeChange?: (mode: AgentSecurityMode) => void,
+  controlledSecurityMode?: AgentSecurityMode,
 ) {
-  const [accessLevel, setAccessLevel] =
-    useState<ComposerAccessLevel>("default");
-  const [sandboxGate, setSandboxGate] = useState<SandboxGateState>(null);
+  const [securityMode, setSecurityMode] = useState<AgentSecurityMode>(
+    controlledSecurityMode ?? "request",
+  );
+  const [fullAccessConfirmationOpen, setFullAccessConfirmationOpen] =
+    useState(false);
 
-  // Marloues has no bundled sandbox backend yet: "full" access is granted
-  // directly without an install gate.
-  const handleAccessSelect = useCallback(
-    (level: ComposerAccessLevel) => {
-      setSandboxGate(null);
-      setAccessLevel(level);
-      onAccessLevelChange?.(level);
+  useEffect(() => {
+    if (!controlledSecurityMode) return;
+    setSecurityMode(controlledSecurityMode);
+  }, [controlledSecurityMode]);
+
+  const handleSecurityModeSelect = useCallback(
+    (mode: AgentSecurityMode) => {
+      if (mode === "full-access" && securityMode !== "full-access") {
+        setFullAccessConfirmationOpen(true);
+        return;
+      }
+      setSecurityMode(mode);
+      onSecurityModeChange?.(mode);
     },
-    [onAccessLevelChange],
+    [onSecurityModeChange, securityMode],
   );
 
-  const handleSandboxConfirm = useCallback(async () => {
-    setSandboxGate(null);
-  }, []);
+  const handleFullAccessConfirm = useCallback(() => {
+    setSecurityMode("full-access");
+    onSecurityModeChange?.("full-access");
+    setFullAccessConfirmationOpen(false);
+  }, [onSecurityModeChange]);
 
-  const handleSandboxCancel = useCallback(() => {
-    setSandboxGate(null);
+  const handleFullAccessCancel = useCallback(() => {
+    setFullAccessConfirmationOpen(false);
   }, []);
 
   return {
-    accessLevel,
-    sandboxGate,
-    handleAccessSelect,
-    handleSandboxConfirm,
-    handleSandboxCancel,
+    securityMode,
+    fullAccessConfirmationOpen,
+    handleSecurityModeSelect,
+    handleFullAccessConfirm,
+    handleFullAccessCancel,
   };
 }
