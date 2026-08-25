@@ -520,7 +520,8 @@ export interface ContextManagementSettings {
   restartThresholdPercent: number;
   autoCompactEnabled: boolean;
 }
-export type ModelProviderType = "openai-compatible";
+export type ModelProviderType =
+  "openai-compatible" | "openai-chat" | "openai-responses" | "anthropic";
 export type ModelEndpointPurpose = "prod" | "test" | "dev";
 
 export interface ModelSelection {

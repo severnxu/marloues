@@ -216,7 +216,7 @@ export function useProviderManagement(
 
   const updateProviderField = (
     providerId: string,
-    field: "name" | "baseUrl" | "apiKey",
+    field: "name" | "baseUrl" | "apiKey" | "type",
     value: string,
   ) => {
     if (!draft) return;

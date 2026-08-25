@@ -9,7 +9,9 @@ vi.mock("electron", () => ({ app: undefined }));
 let home: string;
 let originalHome: string | undefined;
 
-async function loadConfigService(): Promise<typeof import("../../client/main/services/config-service")> {
+async function loadConfigService(): Promise<
+  typeof import("../../client/main/services/config-service")
+> {
   return await import("../../client/main/services/config-service");
 }
 
@@ -49,6 +51,30 @@ describe("config-service", () => {
     const path = getSettingsPath();
     expect(path.startsWith(home)).toBe(true);
     expect(path.endsWith("settings.json")).toBe(true);
+  });
+
+  it("routes the SDK environment through the gateway base URL when provided", async () => {
+    const { buildSdkEnv, getAgentSettings } = await loadConfigService();
+    const settings = getAgentSettings();
+    const provider = settings.providers[0];
+    const routedSettings = {
+      ...settings,
+      providers: [
+        {
+          ...provider,
+          baseUrl: "https://provider.example",
+          apiKey: "provider-key",
+        },
+      ],
+    };
+
+    expect(buildSdkEnv(routedSettings).ANTHROPIC_BASE_URL).toBe(
+      "https://provider.example",
+    );
+    expect(
+      buildSdkEnv(routedSettings, null, "http://127.0.0.1:45678")
+        .ANTHROPIC_BASE_URL,
+    ).toBe("http://127.0.0.1:45678");
   });
 
   it("propagates encryption failures without overwriting the existing config", async () => {

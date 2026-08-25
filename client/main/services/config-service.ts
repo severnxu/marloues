@@ -828,9 +828,10 @@ function normalizeToolList(tools: unknown): string[] | undefined {
 }
 
 function normalizeProviderType(type: unknown): ModelProviderConfig["type"] {
-  const legacyProviderType = ["anthropic", "compatible"].join("-");
-  return type === "openai-compatible" || type === legacyProviderType
-    ? "openai-compatible"
+  return type === "openai-chat" ||
+    type === "openai-responses" ||
+    type === "anthropic"
+    ? type
     : "openai-compatible";
 }
 function normalizePermissionMode(
@@ -1101,6 +1102,7 @@ function filterEnterpriseItems<T>(
 export function buildSdkEnv(
   settings: AgentSettings,
   selection?: Partial<ModelSelection> | null,
+  gatewayBaseUrl?: string,
 ): Record<string, string | undefined> {
   const resolved = resolveModelProvider(settings, selection);
 
@@ -1119,7 +1121,7 @@ export function buildSdkEnv(
     ...env,
     ANTHROPIC_API_KEY: resolved.apiKey,
     ANTHROPIC_AUTH_TOKEN: resolved.apiKey,
-    ANTHROPIC_BASE_URL: resolved.baseUrl,
+    ANTHROPIC_BASE_URL: gatewayBaseUrl ?? resolved.baseUrl,
     ANTHROPIC_MODEL: resolved.model,
     // 运行时状态统一：sdk 内核的配置/会话落到 runtime-config/claude 子目录，
     // 与 binary（runtime-config/codex）、self-built（runtime-config/self-built）对称。

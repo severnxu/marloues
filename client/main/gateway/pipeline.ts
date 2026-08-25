@@ -20,6 +20,7 @@ import {
 import {
   AnthropicSseParser,
   OpenAIChatSseParser,
+  OpenAIResponsesSseParser,
   AnthropicSseFormatter,
   OpenAIChatSseFormatter,
   OpenAIResponsesSseFormatter,
@@ -379,7 +380,9 @@ async function convertStream(
   const parser =
     providerProtocol === "anthropic"
       ? new AnthropicSseParser()
-      : new OpenAIChatSseParser();
+      : providerProtocol === "openai-responses"
+        ? new OpenAIResponsesSseParser()
+        : new OpenAIChatSseParser();
 
   const isResponsesFormatter = clientProtocol === "openai-responses";
   const formatter =
@@ -399,7 +402,6 @@ async function convertStream(
           );
 
   let buffer = "";
-  let currentEvent = "";
   let lastUsage: { inputTokens: number; outputTokens: number } | undefined;
   let lastStopReason = "stop";
 
@@ -412,8 +414,7 @@ async function convertStream(
 
   const flushLine = (line: string): void => {
     try {
-      const fullLine = currentEvent ? `event: ${currentEvent}\n${line}` : line;
-      const deltas = parser.parseLine(fullLine);
+      const deltas = parser.parseLine(line);
       if (!deltas || deltas.length === 0) return;
 
       for (const delta of deltas) {
@@ -446,9 +447,7 @@ async function convertStream(
       buffer = lines.pop() ?? "";
 
       for (const line of lines) {
-        if (line.indexOf("event: ") === 0) {
-          currentEvent = line.slice(7).trim();
-        } else if (line.indexOf("data: ") === 0) {
+        if (line.indexOf("data: ") === 0) {
           const dataStr = line.slice(6).trim();
           // Only log SSE data when DevMode is ON — hot-path optimization
           if (isDeveloperMode()) {
@@ -470,7 +469,12 @@ async function convertStream(
       }
 
       if (formatter instanceof AnthropicSseFormatter) {
-        res.write('event: message_stop\ndata: {"type":"message_stop"}\n\n');
+        for (const event of formatter.finish(lastStopReason)) {
+          let sse = "";
+          if (event.event) sse += `event: ${event.event}\n`;
+          sse += `data: ${event.data}\n\n`;
+          res.write(sse);
+        }
       } else if (formatter instanceof OpenAIChatSseFormatter) {
         res.write("data: [DONE]\n\n");
       } else if (formatter instanceof OpenAIResponsesSseFormatter) {

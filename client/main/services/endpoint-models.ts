@@ -1,12 +1,25 @@
-import type { EndpointModelsResult, EndpointTestResult, ModelOption, ModelProviderConfig } from "@shared/types";
+import type {
+  EndpointModelsResult,
+  EndpointTestResult,
+  ModelOption,
+  ModelProviderConfig,
+} from "@shared/types";
 import { diagnoseAnthropicCompatibleEndpoint } from "../core/sdk/endpoint-diagnostics";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
-export async function listEndpointModels(profile: ModelProviderConfig): Promise<EndpointModelsResult> {
+export async function listEndpointModels(
+  profile: ModelProviderConfig,
+): Promise<EndpointModelsResult> {
   const startedAt = Date.now();
   const validation = validateProfile(profile);
-  if (validation) return { ok: false, message: validation, models: [], latencyMs: Date.now() - startedAt };
+  if (validation)
+    return {
+      ok: false,
+      message: validation,
+      models: [],
+      latencyMs: Date.now() - startedAt,
+    };
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
@@ -22,7 +35,11 @@ export async function listEndpointModels(profile: ModelProviderConfig): Promise<
 
     if (!response.ok) {
       if (shouldTryRootModelsFallback(profile, response.status)) {
-        const fallback = await listRootEndpointModels(profile, startedAt, controller.signal);
+        const fallback = await listRootEndpointModels(
+          profile,
+          startedAt,
+          controller.signal,
+        );
         if (fallback.ok) return fallback;
       }
       return {
@@ -37,14 +54,19 @@ export async function listEndpointModels(profile: ModelProviderConfig): Promise<
     return {
       ok: true,
       status: response.status,
-      message: models.length ? `Discovered ${models.length} model(s).` : "Endpoint is reachable, but returned no models.",
+      message: models.length
+        ? `Discovered ${models.length} model(s).`
+        : "Endpoint is reachable, but returned no models.",
       latencyMs: Date.now() - startedAt,
       models,
     };
   } catch (error) {
     return {
       ok: false,
-      message: error instanceof Error && error.name === "AbortError" ? "Model list request timed out." : errorMessage(error),
+      message:
+        error instanceof Error && error.name === "AbortError"
+          ? "Model list request timed out."
+          : errorMessage(error),
       latencyMs: Date.now() - startedAt,
       models: [],
     };
@@ -53,12 +75,25 @@ export async function listEndpointModels(profile: ModelProviderConfig): Promise<
   }
 }
 
-export async function testEndpointModel(profile: ModelProviderConfig, modelId: string): Promise<EndpointTestResult> {
+export async function testEndpointModel(
+  profile: ModelProviderConfig,
+  modelId: string,
+): Promise<EndpointTestResult> {
   const startedAt = Date.now();
   const validation = validateProfile(profile);
-  if (validation) return { ok: false, message: validation, latencyMs: Date.now() - startedAt };
+  if (validation)
+    return {
+      ok: false,
+      message: validation,
+      latencyMs: Date.now() - startedAt,
+    };
   const model = modelId.trim();
-  if (!model) return { ok: false, message: "Model ID cannot be empty.", latencyMs: Date.now() - startedAt };
+  if (!model)
+    return {
+      ok: false,
+      message: "Model ID cannot be empty.",
+      latencyMs: Date.now() - startedAt,
+    };
 
   const result = await diagnoseAnthropicCompatibleEndpoint({
     baseUrl: profile.baseUrl,
@@ -71,11 +106,15 @@ export async function testEndpointModel(profile: ModelProviderConfig, modelId: s
     ok: result.ok,
     status: result.status,
     latencyMs: Date.now() - startedAt,
-    message: result.ok ? `Model is available: ${model}` : `${model}: ${result.message}`,
+    message: result.ok
+      ? `Model is available: ${model}`
+      : `${model}: ${result.message}`,
   };
 }
 
-export async function testEndpointProfile(profile: ModelProviderConfig): Promise<EndpointTestResult> {
+export async function testEndpointProfile(
+  profile: ModelProviderConfig,
+): Promise<EndpointTestResult> {
   const result = await listEndpointModels(profile);
   return {
     ok: result.ok,
@@ -86,7 +125,14 @@ export async function testEndpointProfile(profile: ModelProviderConfig): Promise
 }
 
 function validateProfile(profile: ModelProviderConfig): string | null {
-  if (profile.type !== "openai-compatible") return `Unsupported endpoint type: ${profile.type}`;
+  if (
+    profile.type !== "openai-compatible" &&
+    profile.type !== "openai-chat" &&
+    profile.type !== "openai-responses" &&
+    profile.type !== "anthropic"
+  ) {
+    return `Unsupported endpoint type: ${profile.type}`;
+  }
   if (!profile.baseUrl?.trim()) return "Base URL cannot be empty.";
   try {
     new URL(profile.baseUrl.trim());
@@ -141,7 +187,10 @@ async function listRootEndpointModels(
   };
 }
 
-function shouldTryRootModelsFallback(profile: ModelProviderConfig, status: number): boolean {
+function shouldTryRootModelsFallback(
+  profile: ModelProviderConfig,
+  status: number,
+): boolean {
   if (status !== 404 && status !== 405) return false;
   try {
     const url = new URL(profile.baseUrl ?? "");
@@ -162,12 +211,16 @@ function rootEndpointUrl(profile: ModelProviderConfig, path: string): string {
 
 function endpointHeaders(profile: ModelProviderConfig): Record<string, string> {
   const apiKey = resolveApiKey(profile);
-  return {
+  const headers: Record<string, string> = {
     Accept: "application/json",
-    Authorization: `Bearer ${apiKey}`,
-    "x-api-key": apiKey,
-    "anthropic-version": "2023-06-01",
   };
+  if (profile.type === "anthropic") {
+    headers["x-api-key"] = apiKey;
+    headers["anthropic-version"] = "2023-06-01";
+  } else {
+    headers.Authorization = `Bearer ${apiKey}`;
+  }
+  return headers;
 }
 
 function resolveApiKey(profile: ModelProviderConfig): string {
@@ -211,13 +264,23 @@ function modelOptionFromItem(item: unknown, id: string): ModelOption {
     label: modelLabelFromItem(item) ?? id,
     enabled: true,
     contextWindowTokens: readPositiveInteger(
-      record.context_window_tokens ?? record.contextWindowTokens ?? record.context_length ?? record.contextLength,
+      record.context_window_tokens ??
+        record.contextWindowTokens ??
+        record.context_length ??
+        record.contextLength,
     ),
     maxOutputTokens: readPositiveInteger(
-      record.max_output_tokens ?? record.maxOutputTokens ?? record.output_tokens ?? record.outputTokens,
+      record.max_output_tokens ??
+        record.maxOutputTokens ??
+        record.output_tokens ??
+        record.outputTokens,
     ),
-    supportsVision: readBoolean(record.supports_vision ?? record.supportsVision ?? record.vision),
-    supportsThinking: readBoolean(record.supports_thinking ?? record.supportsThinking ?? record.thinking),
+    supportsVision: readBoolean(
+      record.supports_vision ?? record.supportsVision ?? record.vision,
+    ),
+    supportsThinking: readBoolean(
+      record.supports_thinking ?? record.supportsThinking ?? record.thinking,
+    ),
   });
 }
 
@@ -230,12 +293,18 @@ function modelIdFromItem(item: unknown): string | null {
 
 function modelLabelFromItem(item: unknown): string | null {
   if (!isRecord(item)) return null;
-  const label = item.display_name ?? item.displayName ?? item.label ?? item.name;
+  const label =
+    item.display_name ?? item.displayName ?? item.label ?? item.name;
   return typeof label === "string" && label.trim() ? label.trim() : null;
 }
 
 function readPositiveInteger(value: unknown): number | undefined {
-  const number = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  const number =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number(value)
+        : NaN;
   if (!Number.isFinite(number)) return undefined;
   const normalized = Math.trunc(number);
   return normalized > 0 ? normalized : undefined;
@@ -246,7 +315,9 @@ function readBoolean(value: unknown): boolean | undefined {
 }
 
 function stripUndefined<T extends Record<string, unknown>>(value: T): T {
-  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined)) as T;
+  return Object.fromEntries(
+    Object.entries(value).filter(([, item]) => item !== undefined),
+  ) as T;
 }
 
 function endpointErrorMessage(status: number, body: unknown): string {
@@ -257,7 +328,11 @@ function endpointErrorMessage(status: number, body: unknown): string {
   if (/1008|insufficient balance/i.test(detail)) {
     return "Endpoint returned insufficient balance (1008). Check account balance or token plan resources.";
   }
-  if (status === 401 || status === 403 || /invalid api key|not authorized|unauthorized|forbidden/i.test(detail)) {
+  if (
+    status === 401 ||
+    status === 403 ||
+    /invalid api key|not authorized|unauthorized|forbidden/i.test(detail)
+  ) {
     return `Endpoint authorization failed (HTTP ${status}). Check API key and model permissions.`;
   }
   if (status === 404) {
@@ -277,8 +352,10 @@ function endpointErrorDetail(body: unknown): string {
   if (!isRecord(body)) return "";
   const error = body.error;
   if (typeof error === "string") return error.trim().slice(0, 500);
-  if (isRecord(error) && typeof error.message === "string") return error.message.trim().slice(0, 500);
-  if (typeof body.message === "string") return body.message.trim().slice(0, 500);
+  if (isRecord(error) && typeof error.message === "string")
+    return error.message.trim().slice(0, 500);
+  if (typeof body.message === "string")
+    return body.message.trim().slice(0, 500);
   return "";
 }
 

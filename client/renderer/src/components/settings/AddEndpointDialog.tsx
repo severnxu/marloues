@@ -11,7 +11,11 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import type { ModelOption, ModelProviderConfig } from "@shared/types";
+import type {
+  ModelOption,
+  ModelProviderConfig,
+  ModelProviderType,
+} from "@shared/types";
 import { STRINGS } from "@shared/strings.zh";
 import { withModelMetadataDefaults } from "./SettingsWorkbench.utils";
 import styles from "./AddEndpointDialog.module.css";
@@ -38,6 +42,8 @@ export function AddEndpointDialog({
 }) {
   const [providerId] = useState(() => crypto.randomUUID());
   const [name, setName] = useState(`Endpoint ${index}`);
+  const [providerType, setProviderType] =
+    useState<ModelProviderType>("openai-compatible");
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
@@ -62,13 +68,13 @@ export function AddEndpointDialog({
     (): ModelProviderConfig => ({
       id: providerId,
       name: name.trim() || `Endpoint ${index}`,
-      type: "openai-compatible",
+      type: providerType,
       enabled: true,
       baseUrl: baseUrl.trim(),
       apiKey: apiKey.trim(),
       models,
     }),
-    [providerId, name, index, baseUrl, apiKey, models],
+    [providerId, name, index, providerType, baseUrl, apiKey, models],
   );
 
   // Esc to cancel (Enter handled per-field)
@@ -343,6 +349,20 @@ export function AddEndpointDialog({
                 onChange={(event) => setName(event.target.value)}
                 placeholder="Profile 名称"
               />
+            </label>
+            <label className={styles.field}>
+              <span>API 协议</span>
+              <select
+                value={providerType}
+                onChange={(event) =>
+                  setProviderType(event.target.value as ModelProviderType)
+                }
+              >
+                <option value="openai-compatible">OpenAI Compatible</option>
+                <option value="openai-chat">OpenAI Chat</option>
+                <option value="openai-responses">OpenAI Responses</option>
+                <option value="anthropic">Anthropic</option>
+              </select>
             </label>
             <label className={styles.field}>
               <span>Base URL</span>

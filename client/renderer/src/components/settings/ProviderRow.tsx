@@ -136,6 +136,25 @@ export function ProviderRow({
               />
             </label>
             <label>
+              API 协议
+              <select
+                value={provider.type}
+                disabled={provider.locked || !canEdit}
+                onChange={(event) =>
+                  pm.updateProviderField(
+                    provider.id,
+                    "type",
+                    event.target.value,
+                  )
+                }
+              >
+                <option value="openai-compatible">OpenAI Compatible</option>
+                <option value="openai-chat">OpenAI Chat</option>
+                <option value="openai-responses">OpenAI Responses</option>
+                <option value="anthropic">Anthropic</option>
+              </select>
+            </label>
+            <label>
               Base URL
               <input
                 value={provider.baseUrl ?? ""}

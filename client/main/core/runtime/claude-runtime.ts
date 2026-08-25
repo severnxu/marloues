@@ -56,6 +56,7 @@ import {
   type SteerDeliveryRecord,
 } from "./turn-state";
 import { recoverApplyingOutbox } from "../../services/outbox-service";
+import { startGateway } from "../../gateway";
 
 /** 可续终态：query.interrupt() / apply steer 触发的软中断，不走 error 收尾。 */
 const CONTINUABLE_TERMINAL_REASONS = new Set([
@@ -1196,7 +1197,13 @@ export class ClaudeRuntime implements AgentRuntime {
     });
 
     // Apply context policy before sending.
-    const sdkEnv = buildSdkEnv(effectiveSettings);
+    const gateway = await startGateway();
+    if (!gateway) throw new Error("Gateway not initialized");
+    const sdkEnv = buildSdkEnv(
+      effectiveSettings,
+      undefined,
+      `http://127.0.0.1:${gateway.port}`,
+    );
     const channel = createMessageChannel();
     const entry: ActiveTurn = {
       turnId,
