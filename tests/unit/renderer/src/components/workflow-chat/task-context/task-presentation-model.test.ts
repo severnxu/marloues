@@ -65,7 +65,7 @@ describe("buildTaskPresentationModel", () => {
         path: "C:/workspace/marloues",
         lastOpenedAt: 1,
       },
-      permissionMode: "default",
+      securityMode: "request",
     });
     expect(model.hasData).toBe(true);
     expect(model.changes).toMatchObject({

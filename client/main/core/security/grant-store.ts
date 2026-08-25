@@ -1,4 +1,5 @@
 import type { SecurityOperation } from "./operation-factory";
+import type { SandboxProfile } from "./sandbox-broker";
 
 export type SecurityGrantScope = "thread" | "session";
 
@@ -11,8 +12,10 @@ export interface SecurityGrant {
   commandFingerprint?: string;
   allowedPaths?: string[];
   destinationPaths?: string[];
+  allowedDomains?: string[];
   expiresAt?: number;
   sourceRequestId: string;
+  elevationProfile?: SandboxProfile;
 }
 
 const DEFAULT_GRANT_TTL_MS = 60 * 60 * 1000;
@@ -25,6 +28,7 @@ export class SecurityGrantStore {
     scope: SecurityGrantScope;
     sourceRequestId: string;
     ttlMs?: number;
+    elevationProfile?: SandboxProfile;
   }): SecurityGrant | null {
     const { operation, scope, sourceRequestId } = input;
     const grant: SecurityGrant = {
@@ -42,10 +46,22 @@ export class SecurityGrantStore {
       destinationPaths: operation.resolvedDestinationPath
         ? [operation.resolvedDestinationPath]
         : undefined,
+      allowedDomains: operation.networkHosts?.length
+        ? operation.networkHosts
+        : operation.networkHost
+          ? [operation.networkHost]
+          : undefined,
       expiresAt: Date.now() + (input.ttlMs ?? DEFAULT_GRANT_TTL_MS),
       sourceRequestId,
+      elevationProfile: input.elevationProfile,
     };
-    if (!grant.commandFingerprint && !grant.allowedPaths?.length) return null;
+    if (
+      !grant.commandFingerprint &&
+      !grant.allowedPaths?.length &&
+      !grant.allowedDomains?.length
+    ) {
+      return null;
+    }
     this.grants.set(grant.id, grant);
     return grant;
   }
@@ -65,6 +81,14 @@ export class SecurityGrantStore {
         return grant;
       }
       if (operation.resolvedPath && this.matchesPaths(operation, grant)) {
+        return grant;
+      }
+      if (
+        operation.networkHosts?.length &&
+        operation.networkHosts.every((host) =>
+          grant.allowedDomains?.includes(host),
+        )
+      ) {
         return grant;
       }
     }

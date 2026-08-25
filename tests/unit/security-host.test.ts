@@ -11,6 +11,16 @@ function settings(): AgentSettings {
     defaultModel: { providerId: "test", modelId: "test-model" },
     maxTurns: 10,
     workMode: "execute",
+    securityMode: "request",
+    securityRules: {
+      autoAllowPaths: [],
+      protectedPaths: [],
+      commandAllowlist: [],
+      commandAsklist: [],
+      networkAccess: "ask",
+      allowedDomains: [],
+      deniedDomains: [],
+    },
     permissionMode: "default",
     permissionApprovalTimeoutMs: 120_000,
     desktopNotificationsEnabled: false,
@@ -54,7 +64,7 @@ describe("SecurityHost", () => {
     expect(decision.reason).toMatch(/root|filesystem|delete/i);
   });
 
-  it("denies file paths outside the workspace before runtime execution", () => {
+  it("asks for a scoped elevation outside the workspace", () => {
     const workspace = mkdtempSync(join(tmpdir(), "marloues-security-"));
     const decision = host().evaluate({
       toolName: "self-built.fs.read",
@@ -63,8 +73,8 @@ describe("SecurityHost", () => {
       settings: settings(),
     });
 
-    expect(decision.action).toBe("deny");
-    expect(decision.reason).toMatch(/workspace|escape/i);
+    expect(decision.action).toBe("ask");
+    expect(decision.elevationProfile).toBe("danger-full-access");
   });
 
   it("hard-denies protected credential writes", () => {
@@ -186,7 +196,7 @@ describe("SecurityHost", () => {
     expect(different.action).toBe("ask");
   });
 
-  it("denies move destinations outside the workspace", () => {
+  it("asks before moving to a destination outside the workspace", () => {
     const workspace = mkdtempSync(join(tmpdir(), "marloues-security-"));
     const decision = host().evaluate({
       toolName: "self-built.fs.move",
@@ -195,11 +205,11 @@ describe("SecurityHost", () => {
       settings: settings(),
     });
 
-    expect(decision.action).toBe("deny");
-    expect(decision.reason).toMatch(/workspace|escape/i);
+    expect(decision.action).toBe("ask");
+    expect(decision.elevationProfile).toBe("danger-full-access");
   });
 
-  it("denies sandboxed command writes outside the workspace even in bypass mode", () => {
+  it("asks before elevating a command that may write outside the workspace", () => {
     const workspace = mkdtempSync(join(tmpdir(), "marloues-security-"));
     const decision = host().evaluate({
       toolName: "Bash",
@@ -212,8 +222,8 @@ describe("SecurityHost", () => {
       settings: settings(),
     });
 
-    expect(decision.action).toBe("deny");
-    expect(decision.reason).toMatch(/workspace|escape|sandbox/i);
+    expect(decision.action).toBe("ask");
+    expect(decision.elevationProfile).toBe("danger-full-access");
   });
 
   it("allows sandboxed command writes inside the workspace after permission grants", () => {
@@ -223,14 +233,20 @@ describe("SecurityHost", () => {
       input: { command: "touch generated.txt" },
       workspaceRoot: workspace,
       permissionMode: "bypassPermissions",
-      settings: settings(),
+      settings: {
+        ...settings(),
+        securityRules: {
+          ...settings().securityRules,
+          commandAllowlist: ["touch generated.txt"],
+        },
+      },
     });
 
     expect(decision.action).toBe("allow");
     expect(decision.permit?.sandboxProfile).toBe("workspace-write");
   });
 
-  it("denies network commands under workspace-write sandbox", () => {
+  it("asks for temporary network elevation under workspace-write", () => {
     const workspace = mkdtempSync(join(tmpdir(), "marloues-security-"));
     const decision = host().evaluate({
       toolName: "Bash",
@@ -240,8 +256,77 @@ describe("SecurityHost", () => {
       settings: settings(),
     });
 
-    expect(decision.action).toBe("deny");
+    expect(decision.action).toBe("ask");
     expect(decision.reason).toMatch(/network/i);
+    expect(decision.elevationProfile).toBe("workspace-write-network");
+  });
+
+  it("applies denied domains before allowed-domain exceptions", () => {
+    const workspace = mkdtempSync(join(tmpdir(), "marloues-security-"));
+    const decision = host().evaluate({
+      toolName: "WebFetch",
+      input: { url: "https://api.example.com/data" },
+      workspaceRoot: workspace,
+      settings: {
+        ...settings(),
+        securityRules: {
+          ...settings().securityRules,
+          allowedDomains: ["example.com"],
+          deniedDomains: ["api.example.com"],
+        },
+      },
+    });
+
+    expect(decision.action).toBe("deny");
+    expect(decision.reason).toMatch(/denied-domain/i);
+  });
+
+  it("auto-elevates an explicitly allowed domain only for that operation", () => {
+    const workspace = mkdtempSync(join(tmpdir(), "marloues-security-"));
+    const decision = host().evaluate({
+      toolName: "WebFetch",
+      input: { url: "https://api.example.com/data" },
+      workspaceRoot: workspace,
+      settings: {
+        ...settings(),
+        securityRules: {
+          ...settings().securityRules,
+          allowedDomains: ["example.com"],
+        },
+      },
+    });
+
+    expect(decision.action).toBe("allow");
+    expect(decision.permit?.sandboxProfile).toBe("workspace-write-network");
+  });
+
+  it("keeps the elevation profile on a task-scoped grant", () => {
+    const workspace = mkdtempSync(join(tmpdir(), "marloues-security-"));
+    const securityHost = host();
+    const first = securityHost.evaluate({
+      threadId: "thread-elevated",
+      toolName: "WebFetch",
+      input: { url: "https://example.com" },
+      workspaceRoot: workspace,
+      settings: settings(),
+    });
+    expect(first.action).toBe("ask");
+    securityHost.createGrant({
+      operation: first.operation,
+      scope: "session",
+      sourceRequestId: "approval-network",
+      elevationProfile: first.elevationProfile,
+    });
+
+    const repeated = securityHost.evaluate({
+      threadId: "thread-elevated",
+      toolName: "WebFetch",
+      input: { url: "https://example.com" },
+      workspaceRoot: workspace,
+      settings: settings(),
+    });
+    expect(repeated.action).toBe("allow");
+    expect(repeated.permit?.sandboxProfile).toBe("workspace-write-network");
   });
 
   it("denies file changes in read-only mode before asking for approval", () => {
@@ -312,16 +397,18 @@ describe("SecurityHost", () => {
       },
     });
 
-    expect(blocked.action).toBe("deny");
+    expect(blocked.action).toBe("ask");
     expect(blocked.reason).toMatch(/network/i);
     expect(allowed.action).toBe("allow");
     expect(allowed.permit?.network.mode).toBe("allow");
   });
 
-  it("keeps permission bypass separate from danger-full-access sandbox", () => {
+  it("full access disables prompts and uses the danger-full-access sandbox profile", () => {
     const workspace = mkdtempSync(join(tmpdir(), "marloues-security-"));
     const unsafeSettings = {
       ...settings(),
+      securityMode: "full-access" as const,
+      permissionMode: "bypassPermissions" as const,
       sandboxEnabled: false,
       sandboxMode: "danger-full-access" as const,
     };
@@ -353,6 +440,8 @@ describe("SecurityHost", () => {
       permissionMode: "bypassPermissions",
       settings: {
         ...settings(),
+        securityMode: "full-access",
+        permissionMode: "bypassPermissions",
         sandboxEnabled: false,
         sandboxMode: "danger-full-access",
       },

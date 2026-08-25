@@ -3,6 +3,19 @@ import type {
   AgentSettings,
   RuntimeKind,
 } from "@shared/types";
+import { resolveEffectiveSecurityPolicy } from "@shared/security-policy";
+import { isAbsolute, relative, resolve, sep } from "node:path";
+import { homedir } from "node:os";
+
+const EMPTY_SECURITY_RULES: AgentSettings["securityRules"] = {
+  autoAllowPaths: [],
+  protectedPaths: [],
+  commandAllowlist: [],
+  commandAsklist: [],
+  networkAccess: "ask",
+  allowedDomains: [],
+  deniedDomains: [],
+};
 import { checkHardSafety } from "../permissions/hard-safety-guard";
 import {
   evaluateToolPermission,
@@ -33,6 +46,7 @@ export interface SecurityDecision {
   permit?: SecurityPermit;
   matchedRule?: string;
   allowSession?: boolean;
+  elevationProfile?: SandboxProfile;
 }
 
 export interface SecurityHostOptions {
@@ -66,10 +80,8 @@ export class SecurityHost {
   }
 
   evaluate(input: EvaluateSecurityInput): SecurityDecision {
-    const sandboxProfile = sandboxProfileFromAgentSettings(
-      input.settings,
-      this.sandboxProfile,
-    );
+    const effectivePolicy = resolveEffectiveSecurityPolicy(input.settings);
+    const sandboxProfile = effectivePolicy.sandboxMode;
     const operation = createSecurityOperation({
       runtimeId: this.runtimeId,
       threadId: input.threadId,
@@ -79,14 +91,7 @@ export class SecurityHost {
       workspaceRoot: input.workspaceRoot,
     });
 
-    const boundaryDeny = this.checkPathBoundary(operation, sandboxProfile);
-    if (boundaryDeny) {
-      return {
-        action: "deny",
-        reason: boundaryDeny,
-        operation,
-      };
-    }
+    const boundary = this.checkPathBoundary(operation, sandboxProfile);
 
     const hardDeny = this.checkHardSafety(operation);
     if (hardDeny) {
@@ -97,13 +102,16 @@ export class SecurityHost {
       };
     }
 
-    const sandboxDeny = this.checkSandbox(operation, sandboxProfile);
-    if (sandboxDeny) {
-      return {
-        action: "deny",
-        reason: sandboxDeny,
-        operation,
-      };
+    const configuredDeny =
+      effectivePolicy.mode === "full-access"
+        ? null
+        : this.checkConfiguredDeny(operation, input.settings);
+    if (configuredDeny) {
+      return { action: "deny", reason: configuredDeny, operation };
+    }
+
+    if (boundary?.action === "deny") {
+      return { action: "deny", reason: boundary.reason, operation };
     }
 
     const grant = this.grantStore.match(operation);
@@ -112,6 +120,75 @@ export class SecurityHost {
         action: "allow",
         reason: `Allowed by scoped ${grant.scope} grant.`,
         operation,
+        permit: this.issuePermit(
+          operation,
+          grant.elevationProfile ?? sandboxProfile,
+        ),
+      };
+    }
+
+    const configuredAction =
+      effectivePolicy.mode === "full-access"
+        ? null
+        : this.configuredAction(operation, input.settings);
+    if (boundary?.action === "ask") {
+      if (configuredAction === "allow") {
+        return {
+          action: "allow",
+          reason: "Allowed by configured security rule.",
+          operation,
+          permit: this.issuePermit(operation, boundary.elevationProfile),
+        };
+      }
+      return this.askForElevation(
+        operation,
+        boundary.reason,
+        boundary.elevationProfile,
+      );
+    }
+
+    const sandboxViolation = this.checkSandbox(operation, sandboxProfile);
+    if (sandboxViolation) {
+      if (sandboxViolation.action === "deny") {
+        return {
+          action: "deny",
+          reason: sandboxViolation.reason,
+          operation,
+        };
+      }
+      if (configuredAction === "allow") {
+        return {
+          action: "allow",
+          reason: "Allowed by configured security rule.",
+          operation,
+          permit: this.issuePermit(
+            operation,
+            sandboxViolation.elevationProfile,
+          ),
+        };
+      }
+      return this.askForElevation(
+        operation,
+        sandboxViolation.reason,
+        sandboxViolation.elevationProfile,
+      );
+    }
+
+    if (configuredAction === "ask") {
+      return {
+        action: "ask",
+        reason: "Matched configured approval rule.",
+        operation,
+        allowSession:
+          Boolean(operation.commandFingerprint) ||
+          Boolean(operation.resolvedPath),
+      };
+    }
+    if (configuredAction === "allow") {
+      return {
+        action: "allow",
+        reason: "Allowed by configured security rule.",
+        operation,
         permit: this.issuePermit(operation, sandboxProfile),
       };
     }
@@ -119,7 +196,7 @@ export class SecurityHost {
     const permission = evaluateToolPermission({
       toolName: operation.toolName,
       input: operation.input,
-      permissionMode: input.permissionMode,
+      permissionMode: effectivePolicy.permissionMode,
       policy: input.settings.toolPermissionPolicy,
     });
     return this.fromPermissionDecision(operation, permission, sandboxProfile);
@@ -129,6 +206,7 @@ export class SecurityHost {
     operation: SecurityOperation;
     scope: SecurityGrantScope;
     sourceRequestId: string;
+    elevationProfile?: SandboxProfile;
   }): void {
     this.grantStore.addGrant(input);
   }
@@ -140,11 +218,29 @@ export class SecurityHost {
   issueApprovedPermit(
     operation: SecurityOperation,
     settings: Pick<AgentSettings, "sandboxEnabled" | "sandboxMode">,
+    elevationProfile?: SandboxProfile,
   ): SecurityPermit {
     return this.issuePermit(
       operation,
-      sandboxProfileFromAgentSettings(settings, this.sandboxProfile),
+      elevationProfile ??
+        sandboxProfileFromAgentSettings(settings, this.sandboxProfile),
     );
+  }
+
+  private askForElevation(
+    operation: SecurityOperation,
+    reason: string,
+    elevationProfile: SandboxProfile,
+  ): SecurityDecision {
+    return {
+      action: "ask",
+      reason,
+      operation,
+      elevationProfile,
+      allowSession:
+        Boolean(operation.commandFingerprint) ||
+        Boolean(operation.resolvedPath),
+    };
   }
 
   private fromPermissionDecision(
@@ -189,6 +285,83 @@ export class SecurityHost {
       sandboxProfile,
       sandboxOwnership: this.sandboxOwnership,
     });
+  }
+
+  private checkConfiguredDeny(
+    operation: SecurityOperation,
+    settings: AgentSettings,
+  ): string | null {
+    const rules = settings.securityRules ?? EMPTY_SECURITY_RULES;
+    const hosts =
+      operation.networkHosts ??
+      (operation.networkHost ? [operation.networkHost] : []);
+    const deniedHost = hosts.find((host) =>
+      matchesDomainList(host, rules.deniedDomains),
+    );
+    if (deniedHost) {
+      return `Network access to ${deniedHost} is blocked by the denied-domain rule.`;
+    }
+    if (
+      (operation.category === "network_access" || hosts.length > 0) &&
+      rules.networkAccess === "deny" &&
+      (!hosts.length ||
+        hosts.some((host) => !matchesDomainList(host, rules.allowedDomains)))
+    ) {
+      return "Network access is blocked by the default network policy.";
+    }
+    return null;
+  }
+
+  private configuredAction(
+    operation: SecurityOperation,
+    settings: AgentSettings,
+  ): "allow" | "ask" | null {
+    const rules = settings.securityRules ?? EMPTY_SECURITY_RULES;
+    const command = operation.command?.trim().toLowerCase();
+    if (
+      command &&
+      rules.commandAsklist.some((prefix) => commandStartsWith(command, prefix))
+    ) {
+      return "ask";
+    }
+    if (
+      operation.resolvedPath &&
+      rules.protectedPaths.some((root) =>
+        pathMatches(operation.resolvedPath!, root),
+      )
+    ) {
+      return "ask";
+    }
+    if (
+      command &&
+      rules.commandAllowlist.some((prefix) =>
+        commandStartsWith(command, prefix),
+      )
+    ) {
+      return "allow";
+    }
+    if (
+      operation.resolvedPath &&
+      rules.autoAllowPaths.some((root) =>
+        pathMatches(operation.resolvedPath!, root),
+      )
+    ) {
+      return "allow";
+    }
+    if (
+      (operation.category === "network_access" || operation.networkHost) &&
+      rules.networkAccess === "allow"
+    ) {
+      return "allow";
+    }
+    if (
+      operation.category === "network_access" &&
+      operation.networkHost &&
+      matchesDomainList(operation.networkHost, rules.allowedDomains)
+    ) {
+      return "allow";
+    }
+    return null;
   }
 
   private checkHardSafety(operation: SecurityOperation): string | null {
@@ -237,7 +410,11 @@ export class SecurityHost {
   private checkPathBoundary(
     operation: SecurityOperation,
     sandboxProfile: SandboxProfile,
-  ): string | null {
+  ): {
+    action: "ask" | "deny";
+    reason: string;
+    elevationProfile: SandboxProfile;
+  } | null {
     if (!operation.workspaceRoot || !operation.path) return null;
     if (
       operation.category !== "file_read" &&
@@ -249,30 +426,57 @@ export class SecurityHost {
       operation.path,
       operation.workspaceRoot,
     );
-    if (!result.allowed && sandboxProfile !== "danger-full-access") {
-      return result.reason ?? String(result.failure);
+    if (!result.resolvedPath) {
+      return {
+        action: "deny",
+        reason: result.reason ?? "Path cannot be resolved safely.",
+        elevationProfile: "danger-full-access",
+      };
     }
-    if (!result.resolvedPath)
-      return result.reason ?? "Path cannot be resolved safely.";
     operation.resolvedPath = result.resolvedPath;
+    if (!result.allowed && sandboxProfile !== "danger-full-access") {
+      if (result.failure !== "outside_workspace") {
+        return {
+          action: "deny",
+          reason: result.reason ?? String(result.failure),
+          elevationProfile: "danger-full-access",
+        };
+      }
+      return {
+        action: "ask",
+        reason: "Operation requires access outside the workspace.",
+        elevationProfile: "danger-full-access",
+      };
+    }
     if (operation.destinationPath) {
       const destinationResult = validatePathBoundary(
         operation.destinationPath,
         operation.workspaceRoot,
       );
+      if (!destinationResult.resolvedPath) {
+        return {
+          action: "deny",
+          reason:
+            destinationResult.reason ??
+            "Destination path cannot be resolved safely.",
+          elevationProfile: "danger-full-access",
+        };
+      }
+      operation.resolvedDestinationPath = destinationResult.resolvedPath;
       if (
         !destinationResult.allowed &&
         sandboxProfile !== "danger-full-access"
       ) {
-        return destinationResult.reason ?? String(destinationResult.failure);
+        return {
+          action:
+            destinationResult.failure === "outside_workspace" ? "ask" : "deny",
+          reason:
+            destinationResult.failure === "outside_workspace"
+              ? "Operation requires destination access outside the workspace."
+              : (destinationResult.reason ?? String(destinationResult.failure)),
+          elevationProfile: "danger-full-access",
+        };
       }
-      if (!destinationResult.resolvedPath) {
-        return (
-          destinationResult.reason ??
-          "Destination path cannot be resolved safely."
-        );
-      }
-      operation.resolvedDestinationPath = destinationResult.resolvedPath;
     }
     return null;
   }
@@ -280,19 +484,31 @@ export class SecurityHost {
   private checkSandbox(
     operation: SecurityOperation,
     sandboxProfile: SandboxProfile,
-  ): string | null {
+  ): {
+    action: "ask" | "deny";
+    reason: string;
+    elevationProfile: SandboxProfile;
+  } | null {
     if (
       operation.category === "file_change" &&
       sandboxProfile === "read-only"
     ) {
-      return "Read-only sandbox blocks file changes.";
+      return {
+        action: "deny",
+        reason: "Read-only sandbox blocks file changes.",
+        elevationProfile: "workspace-write",
+      };
     }
     if (
       operation.category === "network_access" &&
       sandboxProfile !== "workspace-write-network" &&
       sandboxProfile !== "danger-full-access"
     ) {
-      return "Sandbox profile blocks network access.";
+      return {
+        action: "ask",
+        reason: "Operation requires temporary network access.",
+        elevationProfile: "workspace-write-network",
+      };
     }
     if (operation.category !== "command_execution" || !operation.command)
       return null;
@@ -301,10 +517,60 @@ export class SecurityHost {
       workspaceRoot: operation.workspaceRoot,
       sandboxProfile,
     });
-    return result.allowed
-      ? null
-      : (result.reason ?? "Command violates sandbox policy.");
+    if (result.allowed) return null;
+    const reason = result.reason ?? "Command violates sandbox policy.";
+    if (sandboxProfile === "read-only") {
+      return {
+        action: "deny",
+        reason,
+        elevationProfile: "workspace-write",
+      };
+    }
+    const network = reason.toLowerCase().includes("network");
+    return {
+      action: "ask",
+      reason: network ? "Command requires temporary network access." : reason,
+      elevationProfile: network
+        ? "workspace-write-network"
+        : "danger-full-access",
+    };
   }
+}
+
+function commandStartsWith(command: string, configuredPrefix: string): boolean {
+  const prefix = configuredPrefix.trim().toLowerCase();
+  return (
+    Boolean(prefix) && (command === prefix || command.startsWith(`${prefix} `))
+  );
+}
+
+function pathMatches(candidate: string, configuredRoot: string): boolean {
+  const expanded =
+    configuredRoot.startsWith("~/") || configuredRoot.startsWith("~\\")
+      ? resolve(homedir(), configuredRoot.slice(2))
+      : resolve(configuredRoot);
+  const relativePath = relative(expanded, resolve(candidate));
+  return (
+    relativePath === "" ||
+    (relativePath !== ".." &&
+      !relativePath.startsWith(`..${sep}`) &&
+      !isAbsolute(relativePath))
+  );
+}
+
+function matchesDomainList(host: string, configured: string[]): boolean {
+  const normalizedHost = host.toLowerCase().replace(/\.$/u, "");
+  return configured.some((entry) => {
+    const domain = entry
+      .trim()
+      .toLowerCase()
+      .replace(/^\*\./u, "")
+      .replace(/\.$/u, "");
+    return (
+      Boolean(domain) &&
+      (normalizedHost === domain || normalizedHost.endsWith(`.${domain}`))
+    );
+  });
 }
 
 export function createRuntimeSecurityHost(

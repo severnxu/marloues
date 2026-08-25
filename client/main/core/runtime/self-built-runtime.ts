@@ -28,6 +28,11 @@ import {
 } from "../security/security-host";
 import type { SecurityOperation } from "../security/operation-factory";
 import type { SecurityPermit } from "../security/sandbox-broker";
+import type { SandboxProfile } from "../security/sandbox-broker";
+import {
+  guardianReviewDetail,
+  runGuardianReview,
+} from "../security/guardian-reviewer";
 import { validatePathBoundary } from "../permissions/path-boundary-validator";
 
 function genId(): string {
@@ -87,6 +92,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
     {
       toolName: string;
       operation?: SecurityOperation;
+      elevationProfile?: SandboxProfile;
       resolve: (approved: boolean) => void;
     }
   >();
@@ -251,7 +257,6 @@ export class SelfBuiltRuntime implements AgentRuntime {
       }
 
       if (this.shouldRequestApproval(opts.content)) {
-        const requestId = `approval-${turnId}`;
         const toolName = "self-built.sensitive-write";
         const input = {
           action: "simulate-sensitive-write",
@@ -277,54 +282,16 @@ export class SelfBuiltRuntime implements AgentRuntime {
           threadId: opts.threadId,
           turnId,
         });
-        if (decision.action === "deny") {
-          const message = decision.reason;
-          yield {
-            kind: "error",
-            payload: {
-              code: "TOOL_PERMISSION_DENIED",
-              message,
-              recoverable: true,
-            },
-          };
-          yield {
-            kind: "turn-complete",
-            payload: { turnId, result: "error", error: message },
-          };
-          return;
-        }
-        const approval =
-          decision.action === "ask"
-            ? this.createApprovalRequest(
-                requestId,
-                toolName,
-                decision.operation,
-              )
-            : undefined;
-        if (approval) {
-          yield {
-            kind: "approval-request",
-            payload: {
-              requestId,
-              toolName,
-              reason: JSON.stringify(
-                {
-                  decision: decision.reason,
-                  matchedRule: decision.matchedRule,
-                  toolStorm:
-                    storm.action === "warn" ? storm.message : undefined,
-                  action: "simulate-sensitive-write",
-                  prompt: opts.content,
-                },
-                null,
-                2,
-              ),
-              timeout: this.approvalTimeoutMs(),
-              allowSession: decision.allowSession,
-            },
-          };
-        }
-        const approved = approval ? await approval.decision : true;
+        const authorization = yield* this.authorizeDecision(
+          turnId,
+          toolName,
+          decision,
+          {
+            toolStorm: storm.action === "warn" ? storm.message : undefined,
+            action: "simulate-sensitive-write",
+          },
+          opts.content,
+        );
         if (this.abortedTurns.has(turnId)) {
           yield {
             kind: "turn-complete",
@@ -332,8 +299,8 @@ export class SelfBuiltRuntime implements AgentRuntime {
           };
           return;
         }
-        if (!approved) {
-          const message = "Tool execution denied by user.";
+        if (!authorization.allowed) {
+          const message = authorization.reason;
           yield {
             kind: "error",
             payload: {
@@ -484,6 +451,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
         operation: pending.operation,
         scope: "session",
         sourceRequestId: requestId,
+        elevationProfile: pending.elevationProfile,
       });
     }
     pending.resolve(approved);
@@ -566,6 +534,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
           toolName,
           decision,
           { action: "list", path: plan.targetPath },
+          opts.content,
         );
         if (!authorization.allowed) {
           const message = authorization.reason;
@@ -614,6 +583,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
           toolName,
           decision,
           { action: "read", path: plan.targetPath },
+          opts.content,
         );
         if (!authorization.allowed) {
           const message = authorization.reason;
@@ -685,6 +655,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
             path: plan.targetPath,
             bytes: Buffer.byteLength(plan.content, "utf-8"),
           },
+          opts.content,
         );
         if (!authorization.allowed) {
           const message = authorization.reason;
@@ -739,6 +710,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
           toolName,
           decision,
           { action: "undo", path: targetPath },
+          opts.content,
         );
         if (!authorization.allowed) {
           const message = authorization.reason;
@@ -984,6 +956,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
     requestId: string,
     toolName: string,
     operation?: SecurityOperation,
+    elevationProfile?: SandboxProfile,
   ): { decision: Promise<boolean> } {
     const decision = new Promise<boolean>((resolve) => {
       const timeout = setTimeout(() => {
@@ -994,6 +967,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
       this.pendingApprovals.set(requestId, {
         toolName,
         operation,
+        elevationProfile,
         resolve: (approved) => {
           clearTimeout(timeout);
           resolve(approved);
@@ -1008,6 +982,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
     toolName: string,
     decision: SecurityDecision,
     details: Record<string, unknown>,
+    trustedUserRequest?: string,
   ): AsyncGenerator<
     RuntimeEvent,
     { allowed: boolean; reason: string; permit?: SecurityPermit }
@@ -1022,11 +997,52 @@ export class SelfBuiltRuntime implements AgentRuntime {
         permit: decision.permit,
       };
     }
+    const settings = getAgentSettings();
+    let reviewerReason: string | undefined;
+    if (settings.securityMode === "auto-review") {
+      yield {
+        kind: "runtime-status",
+        payload: {
+          turnId,
+          label: "安全审查",
+          detail: "正在隔离审查会话中评估该操作",
+          status: "running",
+        },
+      };
+      const review = await runGuardianReview(decision, settings, {
+        trustedUserRequest,
+      });
+      reviewerReason = guardianReviewDetail(review);
+      yield {
+        kind: "runtime-status",
+        payload: {
+          turnId,
+          label: "安全审查",
+          detail: reviewerReason,
+          status: review.action === "deny" ? "error" : "completed",
+        },
+      };
+      if (review.action === "deny") {
+        return { allowed: false, reason: `自动审查拒绝：${review.reason}` };
+      }
+      if (review.action === "allow") {
+        return {
+          allowed: true,
+          reason: `自动审查批准：${review.reason}`,
+          permit: this.securityHost.issueApprovedPermit(
+            decision.operation,
+            settings,
+            decision.elevationProfile,
+          ),
+        };
+      }
+    }
     const requestId = `approval-${turnId}`;
     const approval = this.createApprovalRequest(
       requestId,
       toolName,
       decision.operation,
+      decision.elevationProfile,
     );
     yield {
       kind: "approval-request",
@@ -1036,6 +1052,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
         reason: JSON.stringify(
           {
             decision: decision.reason,
+            automaticReview: reviewerReason,
             matchedRule: decision.matchedRule,
             ...details,
           },
@@ -1054,7 +1071,8 @@ export class SelfBuiltRuntime implements AgentRuntime {
       reason: "Approved by user.",
       permit: this.securityHost.issueApprovedPermit(
         decision.operation,
-        getAgentSettings(),
+        settings,
+        decision.elevationProfile,
       ),
     };
   }

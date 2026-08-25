@@ -27,6 +27,8 @@ export interface SecurityOperation {
   destinationPath?: string;
   resolvedPath?: string;
   resolvedDestinationPath?: string;
+  networkHost?: string;
+  networkHosts?: string[];
 }
 
 export interface CreateSecurityOperationInput {
@@ -47,7 +49,9 @@ export function createSecurityOperation(
     stringValue(record.path) ??
     stringValue(record.file_path) ??
     stringValue(record.filename) ??
-    stringValue(record.target);
+    stringValue(record.target) ??
+    stringValue(record.grantRoot) ??
+    stringValue(record.grant_root);
   const destinationPath =
     stringValue(record.destinationPath) ??
     stringValue(record.destination_path) ??
@@ -55,6 +59,8 @@ export function createSecurityOperation(
     stringValue(record.to);
   const fileAction = inferFileAction(input.toolName);
   const category = inferCategory(input.toolName, command, path, fileAction);
+  const networkHosts = inferNetworkHosts(record, command);
+  const networkHost = networkHosts[0];
   return {
     id: crypto.randomUUID(),
     runtimeId: input.runtimeId,
@@ -69,7 +75,28 @@ export function createSecurityOperation(
     fileAction,
     path,
     destinationPath,
+    networkHost,
+    networkHosts,
   };
+}
+
+function inferNetworkHosts(
+  record: Record<string, unknown>,
+  command: string | undefined,
+): string[] {
+  const candidates = [
+    stringValue(record.url),
+    stringValue(record.uri),
+    ...(command?.match(/https?:\/\/[^\s'"`]+/giu) ?? []),
+  ].filter((value): value is string => Boolean(value));
+  const hosts = candidates.flatMap((candidate) => {
+    try {
+      return [new URL(candidate).hostname.toLowerCase()];
+    } catch {
+      return [];
+    }
+  });
+  return Array.from(new Set(hosts));
 }
 
 export function commandFingerprintOf(command: string): string | undefined {

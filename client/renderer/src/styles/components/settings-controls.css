@@ -1149,6 +1149,21 @@
   font-size: 11px;
 }
 
+.security-builtins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.security-builtins code {
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--raised-1);
+  color: var(--text-2);
+  padding: 4px 7px;
+  font-size: 11px;
+}
+
 .spin {
   animation: settings-spin 0.9s linear infinite;
 }

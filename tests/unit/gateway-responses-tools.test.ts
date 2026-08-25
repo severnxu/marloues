@@ -243,5 +243,9 @@ describe("Responses gateway tool conversion", () => {
       baseUrl: "https://proxy.example/v1/anthropic",
       protocol: "anthropic",
     });
+    expect(resolveGatewayTarget("https://api.anthropic.com")).toEqual({
+      baseUrl: "https://api.anthropic.com",
+      protocol: "anthropic",
+    });
   });
 });

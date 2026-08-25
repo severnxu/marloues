@@ -82,19 +82,27 @@ async function main(): Promise<void> {
       path: join(artifactsDir, "01-shell-ready.png"),
       fullPage: true,
     });
-    await verifyIndependentControls(window);
-    console.info("UI controls: permission/sandbox independence ok");
+    await verifyUnifiedSecurityControls(window);
+    console.info("UI controls: unified modes/full-access confirmation ok");
+    await verifySecurityCenter(window);
+    console.info("Security Center: sandbox/network/file/command settings ok");
     if (binaryMode) {
-      await verifyBinarySecurityLifecycle(window, workspace);
-      console.info("Binary approvals: deny/once/session/reuse ok");
-      console.info("Binary sandbox UI: workspace/danger boundaries ok");
+      await verifyBinaryUnifiedSecurityLifecycle(window, model);
+      console.info(
+        "Binary security: request approval/common Guardian/full access ok",
+      );
     } else {
       await verifyPermissionApprovalLifecycle(window, workspace);
       console.info("Approvals: deny/once/task/reuse ok");
       await startNewSession(window);
-      await setAccessMode(window, "免审批", "bypassPermissions");
-      await verifySandboxLifecycle(window, workspace);
-      console.info("Sandbox UI: workspace/read-only/danger boundaries ok");
+      await verifyAutomaticReview(window, workspace, model);
+      console.info(
+        "Automatic review: configured real model approved a safe read",
+      );
+      await verifyElevationAndFullAccess(window);
+      console.info(
+        "Sandbox elevation: outside/network/full-access boundaries ok",
+      );
     }
     console.info("electron live UI smoke ok");
     console.info(`Evidence: ${artifactsDir}`);
@@ -114,133 +122,218 @@ async function main(): Promise<void> {
   }
 }
 
-async function verifyBinarySecurityLifecycle(
+async function verifyUnifiedSecurityControls(
   window: ElectronPage,
-  _workspace: string,
 ): Promise<void> {
-  const stamp = `${Date.now()}`;
-  const deniedPath = join(homedir(), `marloues-ui-binary-denied-${stamp}.txt`);
-  const oncePath = join(homedir(), `marloues-ui-binary-once-${stamp}.txt`);
-  const sessionPath = join(
-    homedir(),
-    `marloues-ui-binary-session-${stamp}.txt`,
-  );
-  const workspaceDeniedPath = join(
-    homedir(),
-    `marloues-ui-binary-sandbox-denied-${stamp}.txt`,
-  );
-  const dangerPath = join(homedir(), `marloues-ui-binary-danger-${stamp}.txt`);
+  await openSecurityModeMenu(window);
+  const menu = window.getByRole("menu", { name: "权限模式" });
+  await expect(menu.getByRole("menuitemradio")).toHaveCount(3);
+  await expect(menu).toContainText("请求批准");
+  await expect(menu).toContainText("帮我批准");
+  await expect(menu).toContainText("完全访问");
+  await window.screenshot({
+    path: join(artifactsDir, "02-unified-permission-menu.png"),
+    fullPage: true,
+  });
 
+  await menu.getByRole("menuitemradio", { name: /^完全访问/ }).click();
+  const confirmation = window.locator(".full-access-dialog");
+  await expect(confirmation).toBeVisible();
+  await expect(confirmation).toContainText("文件和文件夹");
+  await expect(confirmation).toContainText("终端命令");
+  await expect(confirmation).toContainText("互联网和已连接的应用");
+  await window.screenshot({
+    path: join(artifactsDir, "03-full-access-confirmation.png"),
+    fullPage: true,
+  });
+  await confirmation.getByRole("button", { name: "取消" }).click();
+  await expectSetting(window, "securityMode", "request");
+
+  await setSecurityMode(window, "帮我批准", "auto-review");
+  await expectSetting(window, "sandboxMode", "workspace-write");
+  await setSecurityMode(window, "请求批准", "request");
+}
+
+async function verifySecurityCenter(window: ElectronPage): Promise<void> {
+  await openSecurityModeMenu(window);
+  await window.getByRole("menuitem", { name: "权限与沙箱设置" }).click();
+  await expect(window.getByRole("heading", { name: "安全中心" })).toBeVisible();
+  await expect(window.getByRole("heading", { name: "沙箱边界" })).toBeVisible();
+  await expect(window.getByRole("heading", { name: "文件安全" })).toBeVisible();
+  await expect(window.getByRole("heading", { name: "命令安全" })).toBeVisible();
+  await expect(window.getByRole("heading", { name: "网络安全" })).toBeVisible();
+
+  const networkPolicy = window.getByLabel("默认网络策略");
+  await networkPolicy.selectOption("deny");
+  await expectSecurityRule(window, "networkAccess", "deny");
+  await networkPolicy.selectOption("ask");
+  await expectSecurityRule(window, "networkAccess", "ask");
+  const allowedDomains = window.getByLabel("允许域名（每行一项）");
+  await allowedDomains.fill("api.example.com");
+  await expectSecurityRule(window, "allowedDomains", ["api.example.com"]);
+  await window.screenshot({
+    path: join(artifactsDir, "04-security-center.png"),
+    fullPage: true,
+  });
+  await allowedDomains.fill("");
+  await window.getByRole("button", { name: "返回工作区" }).click();
+  await expect(window.locator(".app-shell")).toBeVisible();
+}
+
+async function verifyAutomaticReview(
+  window: ElectronPage,
+  workspace: string,
+  model: string,
+): Promise<void> {
+  const marker = `AUTO_REVIEW_SAFE_READ_${Date.now()}`;
+  const path = join(workspace, "auto-review-marker.txt");
+  writeFileSync(path, marker, "utf-8");
+  await setSecurityMode(window, "帮我批准", "auto-review");
+  await sendReadPrompt(window, path);
+  await expect(window.getByLabel("会话内容")).toContainText(marker, {
+    timeout: 120_000,
+  });
+  await waitForIdle(window);
+  await expect(permissionPanel(window)).toBeHidden();
+  await expectGuardianReviewEvidence(window, model);
+  await window.screenshot({
+    path: join(artifactsDir, "08-auto-review-real-model.png"),
+    fullPage: true,
+  });
+}
+
+async function verifyElevationAndFullAccess(
+  window: ElectronPage,
+): Promise<void> {
+  const stamp = Date.now();
+  const elevatedPath = join(homedir(), `marloues-elevated-${stamp}.txt`);
+  const fullPath = join(homedir(), `marloues-full-access-${stamp}.txt`);
   try {
-    await setAccessMode(window, "默认权限", "default");
-    await setSandboxMode(window, "工作区沙箱", "workspace-write");
+    await setSecurityMode(window, "请求批准", "request");
+    await requestSandboxCommand(
+      window,
+      setContentCommand(elevatedPath, "ELEVATED_ONCE_OK"),
+    );
+    let approval = permissionPanel(window);
+    await expect(approval).toBeVisible({ timeout: 120_000 });
+    await expect(approval).toContainText("工作区之外");
+    await window.screenshot({
+      path: join(artifactsDir, "09-outside-elevation-request.png"),
+      fullPage: true,
+    });
+    await approval.getByRole("button", { name: "允许一次" }).click();
+    await expect
+      .poll(() => existsSync(elevatedPath), { timeout: 120_000 })
+      .toBe(true);
+    expect(readFileSync(elevatedPath, "utf-8")).toBe("ELEVATED_ONCE_OK");
+    await waitForIdle(window);
 
+    await requestSandboxCommand(window, "curl.exe -I https://example.com");
+    approval = permissionPanel(window);
+    await expect(approval).toBeVisible({ timeout: 120_000 });
+    await expect(approval).toContainText("临时联网");
+    await window.screenshot({
+      path: join(artifactsDir, "10-network-elevation-request.png"),
+      fullPage: true,
+    });
+    await approval.getByRole("button", { name: "拒绝" }).click();
+    await waitForIdle(window);
+
+    await setSecurityMode(window, "完全访问", "full-access", true);
+    await expectSetting(window, "permissionMode", "bypassPermissions");
+    await expectSetting(window, "sandboxMode", "danger-full-access");
+    await sendSandboxCommand(
+      window,
+      setContentCommand(fullPath, "FULL_ACCESS_OK"),
+    );
+    await expect
+      .poll(() => existsSync(fullPath), { timeout: 120_000 })
+      .toBe(true);
+    expect(readFileSync(fullPath, "utf-8")).toBe("FULL_ACCESS_OK");
+    await expect(permissionPanel(window)).toBeHidden();
+    await window.screenshot({
+      path: join(artifactsDir, "11-full-access-real-command.png"),
+      fullPage: true,
+    });
+
+    await startNewSession(window);
+    await expectSetting(window, "securityMode", "request");
+  } finally {
+    removeFileIfPresent(elevatedPath);
+    removeFileIfPresent(fullPath);
+  }
+}
+
+async function verifyBinaryUnifiedSecurityLifecycle(
+  window: ElectronPage,
+  model: string,
+): Promise<void> {
+  const stamp = Date.now();
+  const deniedPath = join(homedir(), `marloues-binary-denied-${stamp}.txt`);
+  const allowedPath = join(homedir(), `marloues-binary-allowed-${stamp}.txt`);
+  const reviewedPath = join(homedir(), `marloues-binary-guardian-${stamp}.txt`);
+  const fullPath = join(homedir(), `marloues-binary-full-${stamp}.txt`);
+  try {
+    await setSecurityMode(window, "请求批准", "request");
     await sendBinaryApprovalCommand(
       window,
       setContentCommand(deniedPath, "MUST_NOT_EXIST"),
     );
     let approval = permissionPanel(window);
     await expect(approval).toBeVisible({ timeout: 120_000 });
-    await expect(approval).toContainText("Set-Content");
-    await window.screenshot({
-      path: join(artifactsDir, "04-binary-approval-deny-request.png"),
-      fullPage: true,
-    });
     await approval.getByRole("button", { name: "拒绝" }).click();
     await waitForIdle(window);
     expect(existsSync(deniedPath)).toBe(false);
 
     await sendBinaryApprovalCommand(
       window,
-      setContentCommand(oncePath, "BINARY_UI_APPROVAL_ONCE_OK"),
+      setContentCommand(allowedPath, "BINARY_APPROVED_ONCE"),
     );
     approval = permissionPanel(window);
     await expect(approval).toBeVisible({ timeout: 120_000 });
     await approval.getByRole("button", { name: "允许一次" }).click();
     await expect
-      .poll(() => existsSync(oncePath), { timeout: 120_000 })
+      .poll(() => existsSync(allowedPath), { timeout: 120_000 })
       .toBe(true);
     await waitForIdle(window);
-    expect(readFileSync(oncePath, "utf-8")).toBe("BINARY_UI_APPROVAL_ONCE_OK");
-    await window.screenshot({
-      path: join(artifactsDir, "05-binary-approval-once-result.png"),
-      fullPage: true,
-    });
 
-    writeFileSync(sessionPath, "BINARY_UI_SESSION_SEED", "utf-8");
-    await sendBinarySessionGrant(
+    await startNewSession(window);
+    await setSecurityMode(window, "帮我批准", "auto-review");
+    await sendBinaryApprovalCommand(
       window,
-      sessionPath,
-      setContentCommand(sessionPath, "BINARY_UI_SESSION_OK"),
-    );
-    approval = permissionPanel(window);
-    await expect(approval).toBeVisible({ timeout: 120_000 });
-    await expect(approval).toContainText("Permissions");
-    await approval.getByRole("button", { name: "允许此任务" }).click();
-    await expect
-      .poll(() => readFileSync(sessionPath, "utf-8"), { timeout: 120_000 })
-      .toBe("BINARY_UI_SESSION_OK");
-    await waitForIdle(window);
-
-    await sendBinaryExactCommand(
-      window,
-      setContentCommand(sessionPath, "BINARY_UI_SESSION_REUSED"),
+      setContentCommand(reviewedPath, "BINARY_GUARDIAN_APPROVED"),
     );
     await expect
-      .poll(() => readFileSync(sessionPath, "utf-8"), { timeout: 120_000 })
-      .toBe("BINARY_UI_SESSION_REUSED");
+      .poll(() => existsSync(reviewedPath), { timeout: 120_000 })
+      .toBe(true);
     await waitForIdle(window);
     await expect(permissionPanel(window)).toBeHidden();
+    await expectGuardianReviewEvidence(window, model);
     await window.screenshot({
-      path: join(artifactsDir, "06-binary-session-grant-reused.png"),
+      path: join(artifactsDir, "08-binary-common-guardian.png"),
       fullPage: true,
     });
 
     await startNewSession(window);
-    await setAccessMode(window, "免审批", "bypassPermissions");
-    await expectSetting(window, "sandboxMode", "workspace-write");
+    await setSecurityMode(window, "完全访问", "full-access", true);
     await sendBinaryExactCommand(
       window,
-      setContentCommand(workspaceDeniedPath, "MUST_NOT_EXIST"),
-    );
-    await waitForIdle(window);
-    expect(existsSync(workspaceDeniedPath)).toBe(false);
-    await window.screenshot({
-      path: join(artifactsDir, "07-binary-workspace-outside-denied.png"),
-      fullPage: true,
-    });
-
-    await openSandboxMenu(window);
-    await window.getByRole("menuitemradio", { name: "关闭沙箱" }).click();
-    const confirmation = window.locator(".sandbox-gate-prompt");
-    await expect(confirmation).toBeVisible();
-    await window.screenshot({
-      path: join(artifactsDir, "08-binary-danger-confirmation.png"),
-      fullPage: true,
-    });
-    await confirmation.getByRole("button", { name: "确认关闭" }).click();
-    await expectSetting(window, "sandboxMode", "danger-full-access");
-    await expectSetting(window, "permissionMode", "bypassPermissions");
-    await sendBinaryExactCommand(
-      window,
-      setContentCommand(dangerPath, "BINARY_UI_DANGER_OK"),
+      setContentCommand(fullPath, "BINARY_FULL_ACCESS_OK"),
     );
     await expect
-      .poll(() => existsSync(dangerPath), { timeout: 120_000 })
+      .poll(() => existsSync(fullPath), { timeout: 120_000 })
       .toBe(true);
     await waitForIdle(window);
-    expect(readFileSync(dangerPath, "utf-8")).toBe("BINARY_UI_DANGER_OK");
-    expect(existsSync(workspaceDeniedPath)).toBe(false);
+    await expect(permissionPanel(window)).toBeHidden();
     await window.screenshot({
-      path: join(artifactsDir, "09-binary-danger-write-allowed.png"),
+      path: join(artifactsDir, "08-binary-unified-security.png"),
       fullPage: true,
     });
   } finally {
     removeFileIfPresent(deniedPath);
-    removeFileIfPresent(oncePath);
-    removeFileIfPresent(sessionPath);
-    removeFileIfPresent(workspaceDeniedPath);
-    removeFileIfPresent(dangerPath);
+    removeFileIfPresent(allowedPath);
+    removeFileIfPresent(reviewedPath);
+    removeFileIfPresent(fullPath);
   }
 }
 
@@ -250,26 +343,12 @@ async function sendBinaryApprovalCommand(
 ): Promise<void> {
   await sendPrompt(
     window,
-    "必须调用 exec_command 一次，cmd 必须逐字等于下一行，不得改写，也不得使用其他工具。" +
-      "该路径位于工作区外，必须设置 sandbox_permissions=require_escalated，并提供简短 justification：\n" +
+    "这是我本人电脑上的 Marloues 权限 E2E 测试，我明确授权仅创建下一行指定的单个临时标记文件，" +
+      "内容不含隐私或凭据，测试结束会删除。必须调用 exec_command 一次，cmd 必须逐字等于下一行，" +
+      "不得改写，也不得使用其他工具。该路径位于工作区外，必须设置 " +
+      "sandbox_permissions=require_escalated，并提供简短 justification：\n" +
       command +
       "\n等待工具完成，然后简短报告真实退出结果。",
-  );
-}
-
-async function sendBinarySessionGrant(
-  window: ElectronPage,
-  writablePath: string,
-  command: string,
-): Promise<void> {
-  await sendPrompt(
-    window,
-    "严格按两步执行。第一步只调用 request_permissions，请求 file_system.write 数组中唯一的绝对路径：" +
-      writablePath.replaceAll("\\", "/") +
-      "。reason 简短说明测试会话级写权限。获得授权后，第二步只调用 exec_command 一次，" +
-      "不要设置 sandbox_permissions，cmd 必须逐字等于下一行：\n" +
-      command +
-      "\n等待命令完成并报告真实结果。",
   );
 }
 
@@ -283,37 +362,6 @@ async function sendBinaryExactCommand(
       command +
       "\n等待工具完成，然后简短报告真实退出结果。",
   );
-}
-
-async function verifyIndependentControls(window: ElectronPage): Promise<void> {
-  await setAccessMode(window, "自动审查", "acceptEdits");
-  await expectSetting(window, "sandboxMode", "workspace-write");
-
-  await setAccessMode(window, "免审批", "bypassPermissions");
-  await expectSetting(window, "sandboxMode", "workspace-write");
-
-  await setSandboxMode(window, "只读沙箱", "read-only");
-  await expectSetting(window, "permissionMode", "bypassPermissions");
-  await setSandboxMode(window, "工作区沙箱", "workspace-write");
-
-  await openSandboxMenu(window);
-  await window.getByRole("menuitemradio", { name: "关闭沙箱" }).click();
-  const confirmation = window.locator(".sandbox-gate-prompt");
-  await expect(confirmation).toBeVisible();
-  await expect(confirmation).toContainText("工作区外");
-  await window.screenshot({
-    path: join(artifactsDir, "02-sandbox-disable-confirmation.png"),
-    fullPage: true,
-  });
-  await confirmation.getByRole("button", { name: "取消" }).click();
-  await expectSetting(window, "sandboxMode", "workspace-write");
-  await expectSetting(window, "permissionMode", "bypassPermissions");
-
-  await setAccessMode(window, "默认权限", "default");
-  await window.screenshot({
-    path: join(artifactsDir, "03-independent-controls.png"),
-    fullPage: true,
-  });
 }
 
 async function verifyPermissionApprovalLifecycle(
@@ -341,6 +389,8 @@ async function verifyPermissionApprovalLifecycle(
     deniedMarker,
   );
 
+  // Keep the deny scenario out of the model context used to verify fresh grants.
+  await startNewSession(window);
   const onceMarker = `READ_ALLOW_ONCE_${Date.now()}`;
   writeFileSync(filePath, onceMarker, "utf-8");
   await sendReadPrompt(window, filePath);
@@ -381,108 +431,49 @@ async function verifyPermissionApprovalLifecycle(
   });
 }
 
-async function verifySandboxLifecycle(
+async function setSecurityMode(
   window: ElectronPage,
-  workspace: string,
-): Promise<void> {
-  const stamp = `${Date.now()}`;
-  const insidePath = join(workspace, `sandbox-inside-${stamp}.txt`);
-  const outsideDeniedPath = join(
-    homedir(),
-    `marloues-ui-sandbox-denied-${stamp}.txt`,
-  );
-  const readOnlyPath = join(workspace, `sandbox-read-only-${stamp}.txt`);
-  const dangerPath = join(homedir(), `marloues-ui-danger-${stamp}.txt`);
-
-  await setSandboxMode(window, "工作区沙箱", "workspace-write");
-  await sendSandboxCommand(
-    window,
-    setContentCommand(insidePath, "WORKSPACE_WRITE_OK"),
-  );
-  await expect.poll(() => existsSync(insidePath)).toBe(true);
-  expect(readFileSync(insidePath, "utf-8")).toBe("WORKSPACE_WRITE_OK");
-  await window.screenshot({
-    path: join(artifactsDir, "07-workspace-write-allowed.png"),
-    fullPage: true,
-  });
-
-  await sendSandboxCommand(
-    window,
-    opaqueWriteCommand(outsideDeniedPath, "MUST_NOT_EXIST"),
-  );
-  expect(existsSync(outsideDeniedPath)).toBe(false);
-  await window.screenshot({
-    path: join(artifactsDir, "08-workspace-outside-denied.png"),
-    fullPage: true,
-  });
-
-  await setSandboxMode(window, "只读沙箱", "read-only");
-  await sendSandboxCommand(
-    window,
-    opaqueWriteCommand(readOnlyPath, "MUST_NOT_EXIST"),
-  );
-  expect(existsSync(readOnlyPath)).toBe(false);
-  await window.screenshot({
-    path: join(artifactsDir, "09-read-only-write-denied.png"),
-    fullPage: true,
-  });
-
-  await openSandboxMenu(window);
-  await window.getByRole("menuitemradio", { name: "关闭沙箱" }).click();
-  const confirmation = window.locator(".sandbox-gate-prompt");
-  await expect(confirmation).toBeVisible();
-  await confirmation.getByRole("button", { name: "确认关闭" }).click();
-  await expectSetting(window, "sandboxMode", "danger-full-access");
-  await expectSetting(window, "permissionMode", "bypassPermissions");
-  await sendSandboxCommand(
-    window,
-    opaqueWriteCommand(dangerPath, "DANGER_WRITE_OK"),
-  );
-  await expect.poll(() => existsSync(dangerPath)).toBe(true);
-  expect(readFileSync(dangerPath, "utf-8")).toBe("DANGER_WRITE_OK");
-  await window.screenshot({
-    path: join(artifactsDir, "10-danger-write-allowed.png"),
-    fullPage: true,
-  });
-  unlinkSync(dangerPath);
-}
-
-async function setAccessMode(
-  window: ElectronPage,
-  label: "默认权限" | "自动审查" | "免审批",
-  expected: "default" | "acceptEdits" | "bypassPermissions",
+  label: "请求批准" | "帮我批准" | "完全访问",
+  expected: "request" | "auto-review" | "full-access",
+  confirm = false,
 ): Promise<void> {
   const active = window.getByRole("button", { name: `权限：${label}` });
   if (!(await active.isVisible().catch(() => false))) {
-    await window.getByRole("button", { name: /^权限：/ }).click();
-    await window.getByRole("menuitemradio", { name: label }).click();
+    await openSecurityModeMenu(window);
+    await window
+      .getByRole("menuitemradio", { name: new RegExp(`^${label}`) })
+      .click();
+    if (confirm) {
+      await window
+        .locator(".full-access-dialog")
+        .getByRole("button", { name: "确认" })
+        .click();
+    }
   }
   await expect(active).toBeVisible();
-  await expectSetting(window, "permissionMode", expected);
+  await expectSetting(window, "securityMode", expected);
 }
 
-async function setSandboxMode(
+async function openSecurityModeMenu(window: ElectronPage): Promise<void> {
+  await window.getByRole("button", { name: /^权限：/ }).click();
+  await expect(window.getByRole("menu", { name: "权限模式" })).toBeVisible();
+}
+
+async function requestSandboxCommand(
   window: ElectronPage,
-  label: "只读沙箱" | "工作区沙箱" | "工作区 + 网络",
-  expected: "read-only" | "workspace-write" | "workspace-write-network",
+  command: string,
 ): Promise<void> {
-  const active = window.getByRole("button", { name: `沙箱：${label}` });
-  if (!(await active.isVisible().catch(() => false))) {
-    await openSandboxMenu(window);
-    await window.getByRole("menuitemradio", { name: label }).click();
-  }
-  await expect(active).toBeVisible();
-  await expectSetting(window, "sandboxMode", expected);
-}
-
-async function openSandboxMenu(window: ElectronPage): Promise<void> {
-  await window.getByRole("button", { name: /^沙箱：/ }).click();
-  await expect(window.getByRole("menu", { name: "沙箱模式" })).toBeVisible();
+  await sendPrompt(
+    window,
+    "立即调用一次名称精确为 mcp__marloues_sandbox__bash 的工具，" +
+      "不得调用其他工具，也不要假装已经执行。command 字段必须逐字等于下一行：\n" +
+      `${command}\n等待工具返回后再简短报告真实结果。`,
+  );
 }
 
 async function expectSetting(
   window: ElectronPage,
-  key: "permissionMode" | "sandboxMode",
+  key: "securityMode" | "permissionMode" | "sandboxMode",
   value: string,
 ): Promise<void> {
   await expect
@@ -493,6 +484,21 @@ async function expectSetting(
       return settings[key];
     })
     .toBe(value);
+}
+
+async function expectSecurityRule(
+  window: ElectronPage,
+  key: "networkAccess" | "allowedDomains",
+  value: string | string[],
+): Promise<void> {
+  await expect
+    .poll(async () => {
+      const settings = await window.evaluate(() =>
+        window.marloues.config.getAgentSettings(),
+      );
+      return settings.securityRules[key];
+    })
+    .toEqual(value);
 }
 
 function permissionPanel(window: ElectronPage) {
@@ -511,7 +517,8 @@ async function sendReadPrompt(
     : "批准后只回复文件内容本身，不要解释，不要添加标点。";
   await sendPrompt(
     window,
-    `必须且只能使用一次 Read 工具读取这个绝对路径：${filePath}\n` +
+    "这是一个新的独立操作，不得因为之前读过同一路径而跳过。" +
+      `本轮必须且只能使用一次 Read 工具读取这个绝对路径：${filePath}\n` +
       `不要使用其他工具。${denialInstruction}`,
   );
 }
@@ -551,6 +558,46 @@ async function sandboxToolCallCount(window: ElectronPage): Promise<number> {
   });
 }
 
+async function expectGuardianReviewEvidence(
+  window: ElectronPage,
+  model: string,
+): Promise<void> {
+  await expect
+    .poll(
+      () =>
+        window.evaluate(async () => {
+          const sessions = await window.marloues.chat.listSessions();
+          const completedReviews: string[] = [];
+          for (const session of sessions) {
+            const snapshot = await window.marloues.chat.readThread(session.id);
+            for (const turn of snapshot?.turns ?? []) {
+              for (const item of turn.items) {
+                const record = item as unknown as {
+                  rawType?: string;
+                  raw?: {
+                    label?: string;
+                    detail?: string;
+                    status?: string;
+                  };
+                };
+                if (
+                  record.rawType === "runtime-status" &&
+                  record.raw?.label === "安全审查" &&
+                  record.raw.status === "completed" &&
+                  record.raw.detail
+                ) {
+                  completedReviews.push(record.raw.detail);
+                }
+              }
+            }
+          }
+          return completedReviews.join("\n");
+        }),
+      { timeout: 120_000 },
+    )
+    .toContain(model);
+}
+
 async function startNewSession(window: ElectronPage): Promise<void> {
   await window.getByRole("button", { name: /新建会话/ }).click();
   await expect(window.locator(".empty-composer-prompt")).toBeVisible({
@@ -572,11 +619,6 @@ async function waitForIdle(window: ElectronPage): Promise<void> {
     timeout: 120_000,
   });
   await window.waitForTimeout(500);
-}
-
-function opaqueWriteCommand(filePath: string, value: string): string {
-  const normalized = filePath.replaceAll("\\", "/");
-  return `[System.IO.File]::WriteAllText('${normalized}','${value}')`;
 }
 
 function setContentCommand(filePath: string, value: string): string {
@@ -663,6 +705,16 @@ function writeLiveSettings(
           activeRuntimeId: input.activeRuntimeId,
           maxTurns: 6,
           workMode: "execute",
+          securityMode: "request",
+          securityRules: {
+            autoAllowPaths: [],
+            protectedPaths: [],
+            commandAllowlist: [],
+            commandAsklist: [],
+            networkAccess: "ask",
+            allowedDomains: [],
+            deniedDomains: [],
+          },
           permissionMode: "default",
           sandboxEnabled: true,
           sandboxMode: "workspace-write",

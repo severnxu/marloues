@@ -767,12 +767,16 @@ export class CodexService {
     await this.sendMessage(sessionId, lastUserMessage.content);
   }
 
-  onEvent(callback: (sessionId: string, event: ThreadEvent) => void): void {
+  onEvent(
+    callback: (sessionId: string, event: ThreadEvent) => void,
+  ): () => void {
     this.eventEmitter.on("event", callback);
+    return () => this.eventEmitter.off("event", callback);
   }
 
-  onError(callback: (sessionId: string, error: string) => void): void {
+  onError(callback: (sessionId: string, error: string) => void): () => void {
     this.eventEmitter.on("error", callback);
+    return () => this.eventEmitter.off("error", callback);
   }
 
   onStatus(callback: (sessionId: string, status: string) => void): void {

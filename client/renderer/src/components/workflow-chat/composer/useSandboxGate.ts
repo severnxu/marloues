@@ -1,81 +1,48 @@
 import { useCallback, useEffect, useState } from "react";
-import type { AgentSandboxMode } from "@shared/types";
-import type { ComposerAccessLevel, SandboxGateState } from "./composer-types";
+import type { AgentSecurityMode } from "@shared/types";
 
-export function useSandboxGate(
-  onAccessLevelChange?: (level: ComposerAccessLevel) => void,
-  controlledAccessLevel?: ComposerAccessLevel,
-  onSandboxModeChange?: (mode: AgentSandboxMode) => void,
-  controlledSandboxMode?: AgentSandboxMode,
+export function useSecurityModeGate(
+  onSecurityModeChange?: (mode: AgentSecurityMode) => void,
+  controlledSecurityMode?: AgentSecurityMode,
 ) {
-  const [accessLevel, setAccessLevel] = useState<ComposerAccessLevel>(
-    controlledAccessLevel ?? "default",
+  const [securityMode, setSecurityMode] = useState<AgentSecurityMode>(
+    controlledSecurityMode ?? "request",
   );
-  const [sandboxMode, setSandboxMode] = useState<AgentSandboxMode>(
-    controlledSandboxMode ?? "workspace-write",
-  );
-  const [pendingSandboxMode, setPendingSandboxMode] =
-    useState<AgentSandboxMode | null>(null);
-  const [sandboxGate, setSandboxGate] = useState<SandboxGateState>(null);
+  const [fullAccessConfirmationOpen, setFullAccessConfirmationOpen] =
+    useState(false);
 
   useEffect(() => {
-    if (!controlledAccessLevel) return;
-    setAccessLevel(controlledAccessLevel);
-  }, [controlledAccessLevel]);
+    if (!controlledSecurityMode) return;
+    setSecurityMode(controlledSecurityMode);
+  }, [controlledSecurityMode]);
 
-  useEffect(() => {
-    if (!controlledSandboxMode) return;
-    setSandboxMode(controlledSandboxMode);
-  }, [controlledSandboxMode]);
-
-  const handleAccessSelect = useCallback(
-    (level: ComposerAccessLevel) => {
-      setSandboxGate(null);
-      setAccessLevel(level);
-      onAccessLevelChange?.(level);
-    },
-    [onAccessLevelChange],
-  );
-
-  const handleSandboxSelect = useCallback(
-    (mode: AgentSandboxMode) => {
-      if (mode === "danger-full-access") {
-        setPendingSandboxMode(mode);
-        setSandboxGate({
-          phase: "prompt",
-          message: "关闭沙箱后，命令可访问工作区外的文件和系统资源。",
-        });
+  const handleSecurityModeSelect = useCallback(
+    (mode: AgentSecurityMode) => {
+      if (mode === "full-access" && securityMode !== "full-access") {
+        setFullAccessConfirmationOpen(true);
         return;
       }
-      setPendingSandboxMode(null);
-      setSandboxGate(null);
-      setSandboxMode(mode);
-      onSandboxModeChange?.(mode);
+      setSecurityMode(mode);
+      onSecurityModeChange?.(mode);
     },
-    [onSandboxModeChange],
+    [onSecurityModeChange, securityMode],
   );
 
-  const handleSandboxConfirm = useCallback(async () => {
-    if (pendingSandboxMode) {
-      setSandboxMode(pendingSandboxMode);
-      onSandboxModeChange?.(pendingSandboxMode);
-    }
-    setPendingSandboxMode(null);
-    setSandboxGate(null);
-  }, [onSandboxModeChange, pendingSandboxMode]);
+  const handleFullAccessConfirm = useCallback(() => {
+    setSecurityMode("full-access");
+    onSecurityModeChange?.("full-access");
+    setFullAccessConfirmationOpen(false);
+  }, [onSecurityModeChange]);
 
-  const handleSandboxCancel = useCallback(() => {
-    setPendingSandboxMode(null);
-    setSandboxGate(null);
+  const handleFullAccessCancel = useCallback(() => {
+    setFullAccessConfirmationOpen(false);
   }, []);
 
   return {
-    accessLevel,
-    sandboxMode,
-    sandboxGate,
-    handleAccessSelect,
-    handleSandboxSelect,
-    handleSandboxConfirm,
-    handleSandboxCancel,
+    securityMode,
+    fullAccessConfirmationOpen,
+    handleSecurityModeSelect,
+    handleFullAccessConfirm,
+    handleFullAccessCancel,
   };
 }

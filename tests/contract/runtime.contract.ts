@@ -316,13 +316,21 @@ async function main(): Promise<void> {
     ),
     "self-built undo should remove newly created patch files",
   );
-  const traversalEvents = await collect(
+  const traversalEvents = await collectWithApprovalResponse(
     await runtime.sendMessage({
       threadId: thread.id,
       turnId: "turn-self-built-sandbox",
       content: "/read ../outside.md",
       cwd: loopWorkspace,
     }),
+    (event) => {
+      if (event.kind === "approval-request")
+        runtime.respondApproval(event.payload.requestId, false, "once");
+    },
+  );
+  assert(
+    traversalEvents.some((event) => event.kind === "approval-request"),
+    "self-built filesystem tools should request temporary outside-workspace access",
   );
   assert(
     traversalEvents.some(

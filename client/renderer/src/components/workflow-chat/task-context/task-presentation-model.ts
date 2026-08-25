@@ -1,6 +1,6 @@
 import type { ExecutionTaskRecord } from "@/stores/unified-chat-store";
 import type {
-  AgentPermissionMode,
+  AgentSecurityMode,
   WorkspaceGitContext,
   WorkspaceInfo,
 } from "@shared/types";
@@ -26,7 +26,7 @@ export interface TaskPresentationModel {
     reviewTarget?: ComposerFileChangeTarget;
   } | null;
   modelName?: string;
-  permissionMode?: AgentPermissionMode;
+  securityMode?: AgentSecurityMode;
   tasks: ExecutionTaskRecord[];
   processes: Array<{
     id: string;
@@ -49,7 +49,7 @@ export function buildTaskPresentationModel({
   workspace,
   gitContext,
   tasks = [],
-  permissionMode,
+  securityMode,
   fallbackModelName,
 }: {
   sessionId: string | null;
@@ -57,7 +57,7 @@ export function buildTaskPresentationModel({
   workspace?: WorkspaceInfo | null;
   gitContext?: WorkspaceGitContext | null;
   tasks?: ExecutionTaskRecord[];
-  permissionMode?: AgentPermissionMode;
+  securityMode?: AgentSecurityMode;
   fallbackModelName?: string;
 }): TaskPresentationModel {
   const focusTurn = taskFocusTurn(readThread);
@@ -76,7 +76,7 @@ export function buildTaskPresentationModel({
     changes:
       hasData && focusTurn ? taskChangeSummary(focusTurn, gitContext) : null,
     modelName: focusTurn?.modelName ?? focusTurn?.modelId ?? fallbackModelName,
-    permissionMode,
+    securityMode,
     tasks: hasData ? scopedTasks : [],
     processes: hasData && focusTurn ? runningProcesses(focusTurn.items) : [],
     sources: hasData && focusTurn ? taskSources(focusTurn.items) : [],

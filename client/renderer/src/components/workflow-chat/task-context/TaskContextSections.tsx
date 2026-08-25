@@ -94,7 +94,7 @@ export function WorkspaceContextSection({
           <small className="task-context-row-detail">{model.modelName}</small>
         </div>
       ) : null}
-      {model.permissionMode ? (
+      {model.securityMode ? (
         <div className="task-context-row">
           <SUMMARY_ICONS.permission
             size={15}
@@ -102,7 +102,7 @@ export function WorkspaceContextSection({
           />
           <span>权限</span>
           <small className="task-context-row-detail">
-            {permissionModeLabel(model.permissionMode)}
+            {permissionModeLabel(model.securityMode)}
           </small>
         </div>
       ) : null}
@@ -257,7 +257,7 @@ function ChangeStats({
 }
 
 function permissionModeLabel(mode: string): string {
-  if (mode === "bypassPermissions") return "完全访问";
-  if (mode === "acceptEdits") return "自动编辑";
-  return "按需批准";
+  if (mode === "full-access") return "完全访问";
+  if (mode === "auto-review") return "帮我批准";
+  return "请求批准";
 }

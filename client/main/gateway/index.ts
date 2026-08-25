@@ -25,6 +25,12 @@ export interface GatewayTarget {
 export function resolveGatewayTarget(baseUrl: string): GatewayTarget {
   try {
     const url = new URL(baseUrl);
+    if (url.hostname.toLowerCase() === "api.anthropic.com") {
+      return {
+        baseUrl: url.toString().replace(/\/$/, ""),
+        protocol: "anthropic",
+      };
+    }
     if (
       url.hostname.toLowerCase() === "api.deepseek.com" &&
       /\/anthropic\/?$/i.test(url.pathname)

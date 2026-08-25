@@ -12,6 +12,7 @@ const {
   PersonalizationSettings,
   AuditSettings,
   RuntimeSettings,
+  SecuritySettings,
   SkillsSettings,
   UpdateSettings,
 } = Sections;
@@ -215,7 +216,6 @@ export function SettingsWorkbench({
               />
               <RuntimeSettings
                 draft={draft}
-                isPermissionTimeoutManaged={isPermissionTimeoutManaged}
                 onCommitDraft={(nextDraft) => void commitDraft(nextDraft)}
               />
             </>
@@ -227,6 +227,14 @@ export function SettingsWorkbench({
               onCustomInstructionsChange={(value) =>
                 void commitDraft({ ...draft, customInstructions: value })
               }
+            />
+          ) : null}
+
+          {section === "security" ? (
+            <SecuritySettings
+              draft={draft}
+              isPermissionTimeoutManaged={isPermissionTimeoutManaged}
+              onCommitDraft={(nextDraft) => void commitDraft(nextDraft)}
             />
           ) : null}
 

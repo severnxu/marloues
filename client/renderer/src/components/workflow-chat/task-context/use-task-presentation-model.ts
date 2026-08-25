@@ -61,7 +61,7 @@ export function useTaskPresentationModel() {
         gitContext:
           gitState.workspaceId === workspace?.id ? gitState.context : null,
         tasks: Object.values(execution?.tasks ?? {}),
-        permissionMode: settings?.permissionMode,
+        securityMode: settings?.securityMode,
         fallbackModelName: settings?.defaultModel.modelId,
       }),
     [
@@ -70,7 +70,7 @@ export function useTaskPresentationModel() {
       gitState,
       readThread,
       settings?.defaultModel.modelId,
-      settings?.permissionMode,
+      settings?.securityMode,
       workspace,
     ],
   );

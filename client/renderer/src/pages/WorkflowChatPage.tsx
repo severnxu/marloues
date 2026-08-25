@@ -15,6 +15,7 @@ import {
 import { flushSync } from "react-dom";
 import { useUnifiedChatStore } from "@/stores/unified-chat-store";
 import { useSettingsStore } from "@/stores/settings-store";
+import { useSettingsDialogStore } from "@/stores/settings-dialog-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useInspectorStore } from "@/stores/inspector-store";
 import { notify } from "@/lib/notifications";
@@ -32,10 +33,11 @@ import { OPEN_GLOBAL_SEARCH_EVENT } from "@/components/workbench/events";
 import { WorkflowChatHeader } from "./WorkflowChatHeader";
 import type { UserMessageContent } from "../types";
 import type {
-  AgentSandboxMode,
+  AgentSecurityMode,
   PermissionDialogRequest,
   ContextActionRequest,
 } from "@shared/types";
+import { applySecurityMode } from "@shared/security-policy";
 import {
   EMPTY_PENDING_STEERS,
   SESSION_CONTENT_SETTLE_MS,
@@ -167,6 +169,7 @@ export function WorkflowChatPage({
   const setModel = useSettingsStore((s) => s.setModel);
   const loadSettings = useSettingsStore((s) => s.load);
   const saveSettings = useSettingsStore((s) => s.save);
+  const openSettings = useSettingsDialogStore((s) => s.openSection);
   const workspace = useWorkspaceStore((s) => s.current);
   const composerEpoch = useUnifiedChatStore((s) => s.composerEpoch);
   // Keep this outside React state: a second click/Enter can arrive before a
@@ -177,44 +180,17 @@ export function WorkflowChatPage({
     "execute" | "plan" | null
   >(null);
 
-  // Permission policy and sandbox isolation are intentionally independent.
-  const handleAccessLevelChange = useCallback(
-    (level: "default" | "review" | "full") => {
+  const handleSecurityModeChange = useCallback(
+    (securityMode: AgentSecurityMode) => {
       if (!settings) return;
-      const permissionMode =
-        level === "full"
-          ? "bypassPermissions"
-          : level === "review"
-            ? "acceptEdits"
-            : "default";
-      void saveSettings({
-        ...settings,
-        permissionMode,
-      });
+      void saveSettings(applySecurityMode(settings, securityMode));
     },
     [settings, saveSettings],
   );
 
-  const handleSandboxModeChange = useCallback(
-    (sandboxMode: AgentSandboxMode) => {
-      if (!settings) return;
-      void saveSettings({
-        ...settings,
-        sandboxEnabled: sandboxMode !== "danger-full-access",
-        sandboxMode,
-      });
-    },
-    [settings, saveSettings],
-  );
-
-  // Reset permission mode to "default" when starting a new session so the
-  // elevated mode doesn't bleed into the next session.
   const handleNewSession = useCallback(async () => {
-    if (settings && settings.permissionMode !== "default") {
-      await saveSettings({ ...settings, permissionMode: "default" });
-    }
     await createSession();
-  }, [settings, saveSettings, createSession]);
+  }, [createSession]);
 
   const [contentSessionId, setContentSessionId] = useState(activeSessionId);
   const contentSessionReady = contentSessionId === activeSessionId;
@@ -763,14 +739,7 @@ export function WorkflowChatPage({
         conversationKey={`${activeSessionId ?? "new-session"}:${composerEpoch}`}
         input={inputText}
         isGenerating={activeSessionIsStreaming}
-        accessLevel={
-          settings?.permissionMode === "bypassPermissions"
-            ? "full"
-            : settings?.permissionMode === "acceptEdits"
-              ? "review"
-              : "default"
-        }
-        sandboxMode={settings?.sandboxMode ?? "workspace-write"}
+        securityMode={settings?.securityMode ?? "request"}
         permissionPanel={
           permissionRequest ? (
             <PermissionRequestPanel
@@ -803,8 +772,8 @@ export function WorkflowChatPage({
         onKeyDown={handleComposerKeyDown}
         onSend={handleSend}
         onStop={() => void abort(activeSessionId ?? undefined)}
-        onAccessLevelChange={handleAccessLevelChange}
-        onSandboxModeChange={handleSandboxModeChange}
+        onSecurityModeChange={handleSecurityModeChange}
+        onOpenSecuritySettings={() => openSettings("security")}
         modelControl={
           <ModelSelector switchWarningVisible={modelSwitchWarningVisible} />
         }

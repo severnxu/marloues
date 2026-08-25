@@ -15,6 +15,16 @@ function settings(
     defaultModel: { providerId: "smoke", modelId: "smoke" },
     maxTurns: 2,
     workMode: "execute",
+    securityMode: "request",
+    securityRules: {
+      autoAllowPaths: [],
+      protectedPaths: [],
+      commandAllowlist: [],
+      commandAsklist: [],
+      networkAccess: "ask",
+      allowedDomains: [],
+      deniedDomains: [],
+    },
     permissionMode: "bypassPermissions",
     permissionApprovalTimeoutMs: 30_000,
     desktopNotificationsEnabled: false,
@@ -84,10 +94,15 @@ function evaluatePermit(input: {
     permissionMode: "bypassPermissions",
     settings: settings(input.profile),
   });
-  if (decision.action !== "allow" || !decision.permit) {
+  if (decision.action === "deny") {
     throw new Error(`SecurityHost did not issue a permit: ${decision.reason}`);
   }
-  return decision.permit;
+  if (decision.action === "allow" && decision.permit) return decision.permit;
+  return securityHost.issueApprovedPermit(
+    decision.operation,
+    settings(input.profile),
+    decision.elevationProfile ?? input.profile,
+  );
 }
 
 async function main(): Promise<void> {

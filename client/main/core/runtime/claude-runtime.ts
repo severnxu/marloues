@@ -54,6 +54,11 @@ import {
 } from "../security/security-host";
 import type { SecurityOperation } from "../security/operation-factory";
 import {
+  guardianReviewDetail,
+  runGuardianReview,
+} from "../security/guardian-reviewer";
+import type { SandboxProfile } from "../security/sandbox-broker";
+import {
   canonicalSdkSecurityToolName,
   SDK_SANDBOX_SERVER_NAME,
   SDK_SANDBOX_TOOL_NAME,
@@ -994,6 +999,7 @@ export class ClaudeRuntime implements AgentRuntime {
       resolve: (approved: boolean) => void;
       toolName: string;
       operation?: SecurityOperation;
+      elevationProfile?: SandboxProfile;
     }
   >();
   private toolStormBreaker = new ToolStormBreaker();
@@ -1275,9 +1281,65 @@ export class ClaudeRuntime implements AgentRuntime {
             toolUseID: toolUseId,
           };
         }
+        let reviewerReason: string | undefined;
+        if (effectiveSettings.securityMode === "auto-review") {
+          queue.push({
+            kind: "runtime-status",
+            payload: {
+              turnId,
+              label: "安全审查",
+              detail: "正在隔离审查会话中评估该操作",
+              status: "running",
+            },
+          });
+          const review = await runGuardianReview(decision, effectiveSettings, {
+            trustedUserRequest: opts.content,
+          });
+          reviewerReason = guardianReviewDetail(review);
+          queue.push({
+            kind: "runtime-status",
+            payload: {
+              turnId,
+              label: "安全审查",
+              detail: reviewerReason,
+              status: review.action === "deny" ? "error" : "completed",
+            },
+          });
+          if (review.action === "deny") {
+            return {
+              behavior: "deny",
+              message: `自动审查拒绝：${review.reason}`,
+              interrupt: false,
+              toolUseID: toolUseId,
+            };
+          }
+          if (review.action === "allow") {
+            if (securityToolName === "Bash") {
+              const command = commandFromToolInput(input);
+              if (!command) {
+                return {
+                  behavior: "deny",
+                  message: "Bash execution requires a command.",
+                  interrupt: false,
+                  toolUseID: toolUseId,
+                };
+              }
+              sdkCommandSandbox.authorize(
+                command,
+                this.securityHost.issueApprovedPermit(
+                  decision.operation,
+                  effectiveSettings,
+                  decision.elevationProfile,
+                ),
+              );
+            }
+            return { behavior: "allow", toolUseID: toolUseId };
+          }
+        }
         const reason = JSON.stringify(
           {
             decision: decision.reason,
+            automaticReview: reviewerReason,
             matchedRule: decision.matchedRule,
             toolStorm: storm.action === "warn" ? storm.message : undefined,
             title:
@@ -1318,6 +1380,7 @@ export class ClaudeRuntime implements AgentRuntime {
           securityToolName,
           settings.permissionApprovalTimeoutMs,
           decision.operation,
+          decision.elevationProfile,
         );
         if (approved) {
           if (securityToolName === "Bash") {
@@ -1335,6 +1398,7 @@ export class ClaudeRuntime implements AgentRuntime {
               this.securityHost.issueApprovedPermit(
                 decision.operation,
                 effectiveSettings,
+                decision.elevationProfile,
               ),
             );
           }
@@ -1815,6 +1879,7 @@ export class ClaudeRuntime implements AgentRuntime {
         operation: pending.operation,
         scope: "session",
         sourceRequestId: requestId,
+        elevationProfile: pending.elevationProfile,
       });
     }
     pending.resolve(approved);
@@ -1825,6 +1890,7 @@ export class ClaudeRuntime implements AgentRuntime {
     toolName: string,
     timeoutMs: number,
     operation?: SecurityOperation,
+    elevationProfile?: SandboxProfile,
   ): Promise<boolean> {
     return new Promise((resolve) => {
       const timeout = setTimeout(() => {
@@ -1834,6 +1900,7 @@ export class ClaudeRuntime implements AgentRuntime {
       this.pendingApprovals.set(requestId, {
         toolName,
         operation,
+        elevationProfile,
         resolve: (approved) => {
           clearTimeout(timeout);
           resolve(approved);

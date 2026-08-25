@@ -12,6 +12,7 @@ export type SettingsSection =
   | "mcp"
   | "skills"
   | "audit"
+  | "security"
   | "runtimes"
   | "version"
   | "im-channels";
