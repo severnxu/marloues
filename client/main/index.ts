@@ -1,9 +1,19 @@
-import { app, BrowserWindow, Menu, Tray, nativeImage, shell } from "electron";
+import {
+  app,
+  BrowserWindow,
+  Menu,
+  Tray,
+  nativeImage,
+  nativeTheme,
+  shell,
+} from "electron";
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { registerHandlers, stopImBridge } from "./ipc/handlers";
 import { initRuntime, destroyRuntime } from "./core/runtime/manager";
 import {
+  disableConsoleEcho,
+  isBrokenStreamError,
   installMainConsoleCapture,
   isSuppressedError,
   logConsole,
@@ -11,14 +21,17 @@ import {
   logInfo,
   logQuiet,
   logWarn,
-  disableConsoleEcho,
-  isBrokenStreamError,
 } from "./core/logging/app-logger";
 import {
   isAllowedApplicationNavigation,
   isAllowedExternalUrl,
 } from "./core/security/navigation-policy";
 import { initAutoUpdateService } from "./services/auto-update-service";
+import {
+  getThemeAwareBackgroundColor,
+  readInitialNativeThemeSource,
+  registerThemeIpc,
+} from "./services/theme-service";
 import { getAgentSettings } from "./services/config-service";
 import { getWorkspaceSettings } from "./services/workspace-service";
 import { startRuntimePrewarm } from "./services/runtime-prewarm-service";
@@ -100,7 +113,7 @@ function createWindow(): void {
     thickFrame: isMacOS ? undefined : false,
     titleBarStyle: isMacOS ? "hiddenInset" : undefined,
     trafficLightPosition: isMacOS ? { x: 20, y: 17 } : undefined,
-    backgroundColor: "#212121",
+    backgroundColor: getThemeAwareBackgroundColor(),
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
       sandbox: false,
@@ -264,6 +277,17 @@ app.whenReady().then(async () => {
   });
   logInitialConfig();
   registerHandlers();
+  // Sync macOS native appearance with the persisted app theme so unfocused
+  // traffic-light buttons stay visible (light theme → dark lights, dark theme
+  // → light lights). Renderer pushes theme changes via WINDOW_SET_THEME.
+  nativeTheme.themeSource = readInitialNativeThemeSource();
+  registerThemeIpc();
+  nativeTheme.on("updated", () => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed())
+        win.setBackgroundColor(getThemeAwareBackgroundColor());
+    }
+  });
   createWindow();
   initAutoUpdateService();
   startRuntimePrewarm();

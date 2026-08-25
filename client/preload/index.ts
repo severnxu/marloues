@@ -68,6 +68,8 @@ const api: MarlouesAPI = {
       ipcRenderer.invoke(IPC.WINDOW_SET_MAXIMIZED, maximized),
     close: () => ipcRenderer.send(IPC.WINDOW_CLOSE),
     isMaximized: () => ipcRenderer.invoke(IPC.WINDOW_IS_MAXIMIZED),
+    setTheme: (mode, background, nativeTheme) =>
+      ipcRenderer.send(IPC.WINDOW_SET_THEME, mode, background, nativeTheme),
     onMaximizedChanged: (callback) => {
       const listener = (
         _event: Electron.IpcRendererEvent,

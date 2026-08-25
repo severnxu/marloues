@@ -964,6 +964,11 @@ export interface MarlouesAPI {
     setMaximized(maximized: boolean): Promise<boolean>;
     close(): void;
     isMaximized(): Promise<boolean>;
+    setTheme(
+      mode: string,
+      background: string,
+      nativeTheme: "system" | "dark" | "light",
+    ): void;
     onMaximizedChanged(callback: (maximized: boolean) => void): () => void;
     onMaximizedChange(callback: (maximized: boolean) => void): () => void;
   };
@@ -1159,6 +1164,7 @@ export const IPC = {
   WINDOW_CLOSE: "window:close",
   WINDOW_IS_MAXIMIZED: "window:is-maximized",
   WINDOW_MAXIMIZED_CHANGED: "window:maximized-changed",
+  WINDOW_SET_THEME: "window:set-theme",
   WORKSPACE_SELECT: "workspace:select",
   WORKSPACE_SWITCH: "workspace:switch",
   WORKSPACE_RENAME: "workspace:rename",
