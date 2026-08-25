@@ -904,6 +904,14 @@
   font-weight: 650;
 }
 
+.workbench :global(.provider-model-section-head .settings-row-actions button),
+.workbench :global(.provider-model-import-actions button),
+.workbench :global(.provider-draft-actions button) {
+  font-size: var(--text-sm);
+  font-weight: 560;
+  line-height: 18px;
+}
+
 .workbench :global(.provider-model-manual) {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
