@@ -143,6 +143,7 @@ export function UpdateSettings() {
         title="更新通道"
         description="稳定版适合日常使用；测试版和每夜版由用户主动选择。"
         icon={<RefreshCw size={16} />}
+        surface="plain"
       >
         <SegmentedOptions
           value={preferences?.channel ?? "stable"}

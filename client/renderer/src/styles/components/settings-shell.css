@@ -122,8 +122,8 @@
     min-height: 128px !important;
     resize: none !important;
     font-family: inherit !important;
-    font-size: 13px !important;
-    line-height: 1.75 !important;
+    font-size: var(--text-sm) !important;
+    line-height: 18px !important;
   }
 }
 

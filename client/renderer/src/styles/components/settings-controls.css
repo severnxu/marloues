@@ -1243,7 +1243,6 @@
 }
 
 .im-bind-tile strong,
-.im-bot-head strong,
 .im-bot-section h2 {
   display: block;
   min-width: 0;
@@ -1257,7 +1256,6 @@
 }
 
 .im-bind-tile small,
-.im-bot-head small,
 .im-bot-section p {
   display: block;
   min-width: 0;
@@ -1284,44 +1282,11 @@
   padding: 20px;
 }
 
-.im-bot-list {
-  display: grid;
-  gap: 12px;
-}
-
-.im-bot-panel {
-  display: grid;
-  gap: 0;
-  min-width: 0;
-  border-top: var(
-    --component-settings-controls-settings-row-inline-border-top-5e8e906
-  );
-  padding-top: 14px;
-}
-
-.im-bot-panel:first-child {
-  border-top: 0;
-  padding-top: 0;
-}
-
-.im-bot-head {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 12px;
-}
-
-.im-bot-head > div:first-child {
-  min-width: 0;
-}
-
-.im-bot-panel .settings-row-trailing {
+.im-bot-row .settings-row-trailing {
   min-width: min(220px, 38vw);
 }
 
-.im-bot-panel .settings-select {
+.im-bot-row .settings-select {
   width: 100%;
 }
 
@@ -1354,7 +1319,7 @@
     );
   }
 
-  .im-bot-panel .settings-row-trailing {
+  .im-bot-row .settings-row-trailing {
     min-width: 160px;
   }
 }

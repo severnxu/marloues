@@ -40,22 +40,33 @@
   top: 14px;
   right: 14px;
   display: grid;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   place-items: center;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--raised-1);
   color: var(--text-2);
   padding: 0;
+  font-size: 12px;
+  font-weight: 560;
+  line-height: 18px;
   transition:
+    border-color var(--motion-fast) var(--ease),
     background var(--motion-fast) var(--ease),
     color var(--motion-fast) var(--ease);
 }
 
 .closeButton:hover {
+  border-color: var(--border-strong);
   background: var(--raised-2);
   color: var(--text-1);
+}
+
+.closeButton:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  outline: none;
 }
 
 .header {
@@ -68,16 +79,17 @@
 .header h2 {
   margin: 0;
   color: var(--text-1);
-  font-size: 20px;
-  font-weight: 720;
-  line-height: 28px;
+  font-size: var(--text-base);
+  font-weight: 620;
+  line-height: 20px;
 }
 
 .header p {
   margin: 0;
   color: var(--text-3);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
 }
 
 .modeRow {
@@ -93,15 +105,16 @@
   align-items: center;
   gap: 8px;
   color: var(--text-2);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
 }
 
 .modeOption input {
   width: 15px;
   height: 15px;
   margin: 0;
-  accent-color: var(--text-1);
+  accent-color: var(--accent);
 }
 
 .quickPanel {
@@ -144,13 +157,15 @@
 
 .qrUnavailable strong {
   color: var(--text-1);
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 12px;
+  font-weight: 620;
+  line-height: 18px;
 }
 
 .qrUnavailable span {
   color: var(--text-3);
   font-size: 12px;
+  font-weight: 400;
   line-height: 18px;
 }
 
@@ -170,14 +185,15 @@
 
 .successPanel strong {
   color: var(--text-1);
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 22px;
+  font-size: 12px;
+  font-weight: 620;
+  line-height: 18px;
 }
 
 .successPanel span {
   color: var(--text-2);
   font-size: 12px;
+  font-weight: 400;
   line-height: 18px;
 }
 
@@ -190,9 +206,9 @@
 
 .qrCodeExpired strong {
   color: var(--text-2);
-  font-size: 13px;
-  font-weight: 520;
-  line-height: 20px;
+  font-size: 12px;
+  font-weight: 560;
+  line-height: 18px;
 }
 
 .qrCode span {
@@ -210,8 +226,9 @@
 .scanHint {
   margin: 18px 0 16px;
   color: var(--text-3);
-  font-size: 13px;
-  line-height: 20px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
   text-align: center;
 }
 
@@ -227,15 +244,15 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 32px;
+  min-height: 30px;
   margin: -4px 0 16px;
   border-radius: 8px;
   background: color-mix(in srgb, var(--danger) 12%, transparent);
   color: var(--danger);
   padding: 0 18px;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 20px;
+  font-size: 12px;
+  font-weight: 560;
+  line-height: 18px;
 }
 
 .manualForm {
@@ -249,34 +266,48 @@
   display: grid;
   gap: 8px;
   color: var(--text-2);
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 12px;
+  font-weight: 560;
+  line-height: 18px;
 }
 
 .field span {
   color: var(--text-1);
-  font-weight: 520;
+  font-weight: 560;
+  line-height: 18px;
 }
 
-.field input {
+.overlay
+  .dialog
+  .field
+  input:not([type="checkbox"]):not([type="color"]):not([type="radio"]) {
   width: 100%;
-  min-height: 34px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: var(--surface-popover);
+  min-height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--select-control-radius);
+  background: var(--surface-workspace);
   color: var(--text-1);
-  padding: 0 12px;
-  font: inherit;
-  line-height: 20px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
   outline: none;
 }
 
-.field input:focus {
-  border-color: var(--focus-ring);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 14%, transparent);
+.overlay
+  .dialog
+  .field
+  input:not([type="checkbox"]):not([type="color"]):not([type="radio"]):focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-.field input:disabled {
+.overlay
+  .dialog
+  .field
+  input:not([type="checkbox"]):not([type="color"]):not(
+    [type="radio"]
+  ):disabled {
   cursor: default;
   opacity: 0.62;
 }
@@ -292,7 +323,7 @@
   margin-top: -4px;
   color: var(--success);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 560;
   line-height: 18px;
 }
 
@@ -304,13 +335,15 @@
 }
 
 .manualActions button {
-  min-height: 36px;
-  border: 0;
-  border-radius: 999px;
+  min-height: 30px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--raised-1);
+  color: var(--text-1);
   padding: 0 16px;
-  font-size: 13px;
-  font-weight: 650;
-  line-height: 20px;
+  font-size: 12px;
+  font-weight: 560;
+  line-height: 18px;
 }
 
 .manualActions button:disabled {
@@ -319,12 +352,24 @@
 }
 
 .manualActions button:first-child {
-  background: var(--raised-2);
+  background: var(--raised-1);
   color: var(--text-1);
 }
 
+.manualActions button:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--raised-2);
+}
+
 .manualActions button:last-child {
-  background: var(--primary-fill);
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--primary-ink);
+}
+
+.manualActions button:last-child:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 88%, black);
   color: var(--primary-ink);
 }
 
@@ -337,18 +382,18 @@
 .refreshButton {
   display: inline-flex;
   width: 100%;
-  min-height: 36px;
+  min-height: 30px;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--primary-fill);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent);
   color: var(--primary-ink);
   padding: 0 16px;
-  font-size: 13px;
-  font-weight: 650;
-  line-height: 20px;
+  font-size: 12px;
+  font-weight: 560;
+  line-height: 18px;
   transition:
     opacity var(--motion-fast) var(--ease),
     transform var(--motion-fast) var(--ease);
@@ -359,8 +404,10 @@
   opacity: 0.48;
 }
 
-.refreshButton:hover {
-  opacity: 0.9;
+.refreshButton:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 88%, black);
+  color: var(--primary-ink);
 }
 
 .refreshButton:active {
