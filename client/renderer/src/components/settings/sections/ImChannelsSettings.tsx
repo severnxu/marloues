@@ -1,13 +1,7 @@
 import { useState } from "react";
-import { Bell, Bot, Inbox, Link2, QrCode, ShieldCheck } from "lucide-react";
-import {
-  EmptySettingsState,
-  SettingRow,
-  SettingsCard,
-  SettingsStat,
-} from "@/components/settings";
+import { Bell, Inbox, Link2, QrCode, ShieldCheck } from "lucide-react";
+import { SettingsCard, SettingRow } from "@/components/settings";
 import { notify } from "@/lib/notifications";
-import { useWorkspaceStore } from "@/stores/workspace-store";
 import type {
   AgentSettings,
   ImBotInstance,
@@ -18,7 +12,7 @@ import {
   ImChannelsBindingDialog,
   type ImManualBindingInput,
 } from "./ImChannelsBindingDialog";
-import { ImChannelsBotPanel } from "./ImChannelsBotPanel";
+import { channelLabel, normalizeDraftImBotBindings } from "./im-bot-bindings";
 
 const CHANNELS: Array<{ id: ImChannelKind; label: string; body: string }> = [
   {
@@ -40,33 +34,17 @@ export function ImChannelsSettings({
   draft: AgentSettings;
   onCommitDraft: (nextDraft: AgentSettings) => void | Promise<void>;
 }) {
-  const workspaces = useWorkspaceStore((state) => state.settings.workspaces);
   const imBotBindings = normalizeDraftImBotBindings(draft);
   const [bindingChannel, setBindingChannel] = useState<ImChannelKind | null>(
     null,
   );
   const bots = imBotBindings.bots;
-  const enabledBots = bots.filter((bot) => bot.enabled);
-  const inboundBots = enabledBots.filter((bot) =>
-    botCapabilities(bot).includes("inboundTasks"),
-  );
-  const notificationBots = enabledBots.filter((bot) =>
-    botCapabilities(bot).includes("scheduledNotifications"),
-  );
 
   const commitBots = (nextBots: ImBotInstance[]) => {
     return onCommitDraft({
       ...draft,
       imBotBindings: { ...imBotBindings, bots: nextBots },
     });
-  };
-  const updateBot = (botId: string, patch: Partial<ImBotInstance>) => {
-    void commitBots(
-      bots.map((bot) => (bot.id === botId ? { ...bot, ...patch } : bot)),
-    );
-  };
-  const removeBot = (botId: string) => {
-    void commitBots(bots.filter((bot) => bot.id !== botId));
   };
   const addBoundBot = async (
     channel: ImChannelKind,
@@ -140,15 +118,6 @@ export function ImChannelsSettings({
 
   return (
     <div className="appearance-settings im-channels-page">
-      <div className="settings-stat-grid">
-        <SettingsStat label="已绑定机器人" value={String(bots.length)} />
-        <SettingsStat label="可作为输入" value={String(inboundBots.length)} />
-        <SettingsStat
-          label="可接定时通知"
-          value={String(notificationBots.length)}
-        />
-      </div>
-
       <div className="im-channel-bind-grid">
         {CHANNELS.map((channel) => (
           <button
@@ -169,39 +138,6 @@ export function ImChannelsSettings({
           </button>
         ))}
       </div>
-
-      <section className="im-bot-section">
-        <div className="settings-card-head">
-          <div className="settings-card-title">
-            <span className="settings-card-icon">
-              <Bot size={16} />
-            </span>
-            <div>
-              <h2>机器人实例</h2>
-              <p>同一 IM 渠道可绑定多个机器人，并分别设置空间、用途和权限。</p>
-            </div>
-          </div>
-        </div>
-        {bots.length ? (
-          <div className="im-bot-list">
-            {bots.map((bot) => (
-              <ImChannelsBotPanel
-                key={bot.id}
-                bot={bot}
-                draft={draft}
-                workspaces={workspaces}
-                onPatch={(patch) => updateBot(bot.id, patch)}
-                onRemove={() => removeBot(bot.id)}
-              />
-            ))}
-          </div>
-        ) : (
-          <EmptySettingsState
-            title="还没有绑定机器人"
-            body="从上方选择企微或飞书扫码绑定。绑定完成后，每个机器人都可以独立选择工作空间、通知用途和权限策略。"
-          />
-        )}
-      </section>
 
       <SettingsCard
         title="数据与权限映射"
@@ -237,22 +173,4 @@ export function ImChannelsSettings({
       ) : null}
     </div>
   );
-}
-
-function channelLabel(channel: ImChannelKind) {
-  return channel === "wecom" ? "企业微信" : "飞书";
-}
-
-function normalizeDraftImBotBindings(
-  draft: AgentSettings,
-): AgentSettings["imBotBindings"] {
-  const bindings = draft.imBotBindings;
-  if (!bindings || !Array.isArray(bindings.bots)) {
-    return { bots: [] };
-  }
-  return bindings;
-}
-
-function botCapabilities(bot: ImBotInstance): ImBotInstance["capabilities"] {
-  return Array.isArray(bot.capabilities) ? bot.capabilities : [];
 }

@@ -11,6 +11,7 @@ const {
   PersonalizationSettings,
   AuditSettings,
   ImChannelsSettings,
+  ImBotInstancesSettings,
   RuntimeSettings,
   UpdateSettings,
 } = Sections;
@@ -211,6 +212,15 @@ export function SettingsWorkbench({ section }: { section: SettingsSection }) {
 
           {section === "im-channels" ? (
             <ImChannelsSettings
+              draft={draft}
+              onCommitDraft={(nextDraft: AgentSettings) =>
+                commitDraft(nextDraft)
+              }
+            />
+          ) : null}
+
+          {section === "im-bots" ? (
+            <ImBotInstancesSettings
               draft={draft}
               onCommitDraft={(nextDraft: AgentSettings) =>
                 commitDraft(nextDraft)

@@ -7,4 +7,5 @@ export type SettingsSection =
   | "audit"
   | "runtimes"
   | "version"
-  | "im-channels";
+  | "im-channels"
+  | "im-bots";

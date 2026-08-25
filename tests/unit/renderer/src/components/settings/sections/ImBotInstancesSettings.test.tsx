@@ -1,22 +1,54 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ImChannelsSettings } from "../../../../../../../client/renderer/src/components/settings/sections/ImChannelsSettings";
+import { ImBotInstancesSettings } from "../../../../../../../client/renderer/src/components/settings/sections/ImBotInstancesSettings";
 import type { AgentSettings } from "../../../../../../../client/shared/types";
 
-describe("ImChannelsSettings", () => {
-  it("renders scan binding entry points and routing overview", () => {
+describe("ImBotInstancesSettings", () => {
+  it("renders bot instance statistics in collapsed rows", () => {
     const html = renderToStaticMarkup(
-      <ImChannelsSettings draft={settingsFixture()} onCommitDraft={() => {}} />,
+      <ImBotInstancesSettings
+        draft={settingsFixture()}
+        onCommitDraft={() => {}}
+      />,
     );
 
-    expect(html).toContain("扫码绑定企业微信");
-    expect(html).toContain("扫码绑定飞书");
-    expect(html).toContain("数据与权限映射");
-    expect(html).not.toContain("发布群助手");
+    expect(html).toContain("已绑定机器人");
+    expect(html).toContain("发布群助手");
+    expect(html).toContain("可作为输入");
+    expect(html).toContain("可接定时通知");
+    expect(html).toContain("4 项能力");
     expect(html).not.toContain("绑定工作空间");
-    expect(html).not.toContain("机器人 Webhook");
-    expect(html).not.toContain("App Secret");
-    expect(html).not.toContain("settings-row-card");
+    expect(html).not.toContain("权限策略");
+  });
+
+  it("renders an empty state when an older settings file has no IM bindings", () => {
+    const { imBotBindings: _imBotBindings, ...legacySettings } =
+      settingsFixture();
+
+    const html = renderToStaticMarkup(
+      <ImBotInstancesSettings
+        draft={legacySettings as AgentSettings}
+        onCommitDraft={() => {}}
+      />,
+    );
+
+    expect(html).toContain("还没有绑定机器人");
+    expect(html).toContain("在 IM 渠道页选择企微或飞书完成绑定");
+  });
+
+  it("renders older bot records with missing capability arrays", () => {
+    const settings = settingsFixture();
+    const [bot] = settings.imBotBindings.bots;
+    settings.imBotBindings.bots = [
+      { ...bot, capabilities: undefined as never },
+    ];
+
+    const html = renderToStaticMarkup(
+      <ImBotInstancesSettings draft={settings} onCommitDraft={() => {}} />,
+    );
+
+    expect(html).toContain("发布群助手");
+    expect(html).toContain("0 项能力");
   });
 });
 

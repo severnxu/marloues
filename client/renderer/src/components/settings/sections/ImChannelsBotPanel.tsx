@@ -1,12 +1,14 @@
 import {
   Bell,
-  Bot,
   BriefcaseBusiness,
   CalendarClock,
+  ChevronDown,
+  ChevronRight,
   Inbox,
   ShieldCheck,
   Trash2,
 } from "lucide-react";
+import { useState } from "react";
 import {
   SettingRow,
   SettingsSelect,
@@ -16,8 +18,8 @@ import type {
   AgentSettings,
   ImBotCapability,
   ImBotInstance,
-  ImChannelKind,
 } from "@shared/types";
+import { botCapabilities, channelLabel } from "./im-bot-bindings";
 
 const NO_WORKSPACE = "__none__";
 const NO_PROFILE = "__default__";
@@ -58,7 +60,8 @@ export function ImChannelsBotPanel({
   onRemove: () => void;
   workspaces: Array<{ name: string; path: string }>;
 }) {
-  const capabilities = Array.isArray(bot.capabilities) ? bot.capabilities : [];
+  const [expanded, setExpanded] = useState(false);
+  const capabilities = botCapabilities(bot);
   const workspaceOptions = [
     { value: NO_WORKSPACE, label: "不绑定工作空间" },
     ...workspaces.map((workspace) => ({
@@ -75,16 +78,37 @@ export function ImChannelsBotPanel({
   ];
 
   return (
-    <article className="im-bot-panel">
-      <header className="im-bot-head">
-        <div>
-          <strong>{bot.name}</strong>
+    <article className={`im-bot-row ${expanded ? "expanded" : ""}`}>
+      <header className="im-bot-row-head">
+        <button
+          type="button"
+          className="im-bot-expand-button"
+          onClick={() => setExpanded((value) => !value)}
+          title={expanded ? "收起机器人配置" : "展开机器人配置"}
+          aria-expanded={expanded}
+        >
+          {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        </button>
+        <div className="im-bot-row-title">
+          <strong title={bot.name}>{bot.name}</strong>
           <small>
-            {channelLabel(bot.channel)} · {bot.chatName ?? "未绑定群聊"}
+            {channelLabel(bot.channel)} · {bot.chatName ?? "未绑定群聊"} ·{" "}
+            {capabilities.length} 项能力
           </small>
         </div>
-        <div className="settings-row-actions">
+        <div className="settings-row-actions im-bot-actions">
           <span className={statusClass(bot)}>{statusLabel(bot)}</span>
+          <label
+            className="settings-inline-check im-bot-enable-check"
+            title={bot.enabled ? "停用机器人" : "启用机器人"}
+          >
+            <input
+              type="checkbox"
+              checked={bot.enabled}
+              onChange={() => onPatch({ enabled: !bot.enabled })}
+            />
+            启用
+          </label>
           <button
             type="button"
             className="icon-button"
@@ -95,71 +119,67 @@ export function ImChannelsBotPanel({
           </button>
         </div>
       </header>
-      <SettingRow
-        icon={<Bot size={16} />}
-        title="启用机器人"
-        description="停用后不再接收输入或发送通知。"
-        trailing={
-          <ToggleSwitch
-            checked={bot.enabled}
-            onChange={() => onPatch({ enabled: !bot.enabled })}
-          />
-        }
-      />
-      <SettingRow
-        icon={<BriefcaseBusiness size={16} />}
-        title="绑定工作空间"
-        description="非必填；未绑定时由消息上下文或用户选择空间。"
-        trailing={
-          <SettingsSelect
-            ariaLabel="绑定工作空间"
-            value={bot.workspacePath ?? NO_WORKSPACE}
-            options={workspaceOptions}
-            onChange={(value) =>
-              onPatch({
-                workspacePath: value === NO_WORKSPACE ? undefined : value,
-              })
-            }
-          />
-        }
-      />
-      <SettingRow
-        icon={<ShieldCheck size={16} />}
-        title="权限策略"
-        description="控制该机器人能触发的工具与审批方式。"
-        trailing={
-          <SettingsSelect
-            ariaLabel="权限策略"
-            value={bot.toolProfileId ?? NO_PROFILE}
-            options={profileOptions}
-            onChange={(value) =>
-              onPatch({
-                toolProfileId: value === NO_PROFILE ? undefined : value,
-              })
-            }
-          />
-        }
-      />
-      <div className="im-capability-grid">
-        {CAPABILITIES.map((capability) => (
+      {expanded ? (
+        <div className="im-bot-row-body">
           <SettingRow
-            key={capability.id}
-            icon={capabilityIcon(capability.id)}
-            title={capability.title}
-            description={capability.body}
+            icon={<BriefcaseBusiness size={16} />}
+            title="绑定工作空间"
+            description="非必填；未绑定时由消息上下文或用户选择空间。"
             trailing={
-              <ToggleSwitch
-                checked={capabilities.includes(capability.id)}
-                onChange={() =>
+              <SettingsSelect
+                ariaLabel="绑定工作空间"
+                value={bot.workspacePath ?? NO_WORKSPACE}
+                options={workspaceOptions}
+                onChange={(value) =>
                   onPatch({
-                    capabilities: toggleCapability(capabilities, capability.id),
+                    workspacePath: value === NO_WORKSPACE ? undefined : value,
                   })
                 }
               />
             }
           />
-        ))}
-      </div>
+          <SettingRow
+            icon={<ShieldCheck size={16} />}
+            title="权限策略"
+            description="控制该机器人能触发的工具与审批方式。"
+            trailing={
+              <SettingsSelect
+                ariaLabel="权限策略"
+                value={bot.toolProfileId ?? NO_PROFILE}
+                options={profileOptions}
+                onChange={(value) =>
+                  onPatch({
+                    toolProfileId: value === NO_PROFILE ? undefined : value,
+                  })
+                }
+              />
+            }
+          />
+          <div className="im-capability-grid">
+            {CAPABILITIES.map((capability) => (
+              <SettingRow
+                key={capability.id}
+                icon={capabilityIcon(capability.id)}
+                title={capability.title}
+                description={capability.body}
+                trailing={
+                  <ToggleSwitch
+                    checked={capabilities.includes(capability.id)}
+                    onChange={() =>
+                      onPatch({
+                        capabilities: toggleCapability(
+                          capabilities,
+                          capability.id,
+                        ),
+                      })
+                    }
+                  />
+                }
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -168,10 +188,6 @@ function toggleCapability(items: ImBotCapability[], item: ImBotCapability) {
   return items.includes(item)
     ? items.filter((value) => value !== item)
     : [...items, item];
-}
-
-function channelLabel(channel: ImChannelKind) {
-  return channel === "wecom" ? "企业微信" : "飞书";
 }
 
 function statusLabel(bot: ImBotInstance) {
