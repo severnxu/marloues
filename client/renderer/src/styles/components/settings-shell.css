@@ -1,171 +1,10 @@
 /* settings-shell component styles. Theme values come from ../tokens.css. */
 
-@layer marloues-components.cascade-0021 {
-  .workspace.settings-paper-workspace {
-    background: var(--component-settings-shell-workspace-background-8b30791);
-  }
-}
-
 @layer marloues-components.cascade-0028 {
-  .main-panel.settings-paper-main {
-    background: var(--component-settings-shell-main-panel-background-fcaa426);
-  }
-
   @media (max-width: 760px), (max-height: 620px) {
     .settings-content {
       padding: 16px;
     }
-  }
-}
-
-@layer marloues-components.cascade-0033 {
-  .settings-region {
-    position: relative;
-    min-width: 0;
-    flex: 1;
-    overflow: hidden;
-  }
-}
-
-@layer marloues-components.cascade-0049 {
-  .settings-sidebar {
-    display: flex;
-    width: 100%;
-    flex-direction: column;
-    border-right: var(
-      --component-settings-shell-settings-sidebar-border-right-c565029
-    );
-    background: var(
-      --component-settings-shell-settings-sidebar-background-eab4710
-    );
-    padding: 8px 0 0;
-  }
-
-  .settings-side-top {
-    padding: 0 12px 10px;
-  }
-
-  :root.platform-darwin .settings-side-top {
-    padding-top: calc(var(--titlebar-height) + 4px);
-  }
-
-  .settings-side-top button {
-    display: flex;
-    width: 100%;
-    align-items: center;
-    gap: 9px;
-    border: var(--component-settings-shell-settings-side-top-border-786ae84);
-    background: var(
-      --component-settings-shell-settings-side-top-background-8164d3e
-    );
-    color: var(--component-settings-shell-settings-side-top-color-29d47d5);
-    text-align: left;
-    transition: 150ms ease;
-  }
-
-  .settings-side-nav button {
-    display: flex;
-    width: 100%;
-    align-items: center;
-    gap: 9px;
-    border: var(--component-settings-shell-settings-side-nav-border-5ced8b2);
-    background: var(
-      --component-settings-shell-settings-side-nav-background-cf165a5
-    );
-    color: var(--component-settings-shell-settings-side-nav-color-12d1199);
-    text-align: left;
-    transition: 150ms ease;
-  }
-
-  .settings-side-top button {
-    min-height: 40px;
-    border-radius: 12px;
-    padding: 10px 12px;
-    font-size: 13px;
-    font-weight: 600;
-  }
-
-  .settings-side-top button:hover {
-    background: var(
-      --component-settings-shell-settings-side-top-background-77f1a24
-    );
-    color: var(--component-settings-shell-settings-side-top-color-b091719);
-  }
-
-  .settings-side-nav button:hover {
-    background: var(
-      --component-settings-shell-settings-side-nav-background-a5df8be
-    );
-    color: var(--component-settings-shell-settings-side-nav-color-7c8dae8);
-  }
-
-  .settings-side-nav button.active {
-    background: var(
-      --component-settings-shell-settings-side-nav-background-0abe58e
-    );
-    color: var(--component-settings-shell-settings-side-nav-color-713b2c3);
-  }
-
-  .settings-side-body {
-    min-height: 0;
-    flex: 1;
-    padding: 6px 12px 14px;
-  }
-
-  .settings-side-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px 10px;
-    color: var(--component-settings-shell-settings-side-label-color-0f6226d);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0;
-    text-transform: none;
-  }
-
-  .settings-side-nav {
-    display: grid;
-    gap: 8px;
-  }
-
-  .settings-side-nav button {
-    min-height: 54px;
-    border-radius: 12px;
-    padding: 9px 12px;
-  }
-
-  .settings-side-nav svg {
-    flex-shrink: 0;
-  }
-
-  .settings-side-nav span {
-    min-width: 0;
-  }
-
-  .settings-side-nav strong {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .settings-side-nav small {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .settings-side-nav strong {
-    color: var(--component-settings-shell-settings-side-nav-color-a0336c3);
-    font-size: 13px;
-  }
-
-  .settings-side-nav small {
-    margin-top: 2px;
-    color: var(--component-settings-shell-settings-side-nav-color-72a4099);
-    font-size: 11px;
   }
 }
 
@@ -308,7 +147,7 @@
   .settings-page input {
     min-width: 0;
     border: var(--component-settings-shell-settings-page-border-54a2ddd);
-    border-radius: 6px;
+    border-radius: var(--settings-control-radius);
     outline: var(--component-settings-shell-settings-page-outline-23d2d67);
     background: var(
       --component-settings-shell-settings-page-background-6835961
@@ -326,7 +165,7 @@
   .settings-page select {
     min-width: 0;
     border: var(--component-settings-shell-settings-page-border-0942e64);
-    border-radius: 6px;
+    border-radius: var(--settings-control-radius);
     outline: var(--component-settings-shell-settings-page-outline-1254abd);
     background: var(
       --component-settings-shell-settings-page-background-88316fa
@@ -344,7 +183,7 @@
   .settings-page textarea {
     min-width: 0;
     border: var(--component-settings-shell-settings-page-border-0cd3b6c);
-    border-radius: 6px;
+    border-radius: var(--settings-control-radius);
     outline: var(--component-settings-shell-settings-page-outline-b895739);
     background: var(
       --component-settings-shell-settings-page-background-161a1fe
@@ -426,6 +265,133 @@
     resize: vertical;
     font-family: var(--mono);
     line-height: 1.6;
+  }
+
+  .settings-select {
+    position: relative;
+    min-width: 0;
+  }
+
+  .settings-select-trigger {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--select-control-gap);
+    border: var(--component-settings-shell-settings-page-border-0942e64);
+    border-radius: var(--select-control-radius);
+    outline: var(--component-settings-shell-settings-page-outline-1254abd);
+    background: var(
+      --component-settings-shell-settings-page-background-88316fa
+    );
+    color: var(--component-settings-shell-settings-page-color-ba45781);
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.45;
+    transition:
+      border-color var(--settings-transition),
+      background var(--settings-transition),
+      box-shadow var(--settings-transition);
+  }
+
+  .settings-select-trigger:hover {
+    border-color: var(--settings-control-border-hover);
+  }
+
+  .settings-select-trigger:focus-visible,
+  .settings-select[data-open] .settings-select-trigger {
+    border-color: var(
+      --component-settings-shell-settings-page-border-color-7b95ea2
+    );
+    background: var(
+      --component-settings-shell-settings-page-background-5ca6023
+    );
+    box-shadow: var(
+      --component-settings-shell-settings-page-box-shadow-607a041
+    );
+  }
+
+  .settings-select-trigger svg {
+    width: var(--select-control-icon-size);
+    height: var(--select-control-icon-size);
+    flex-shrink: 0;
+    color: var(--component-settings-shell-settings-page-color-a921d10);
+    transition: transform var(--settings-transition);
+  }
+
+  .settings-select[data-open] .settings-select-trigger svg {
+    transform: rotate(180deg);
+  }
+
+  .settings-select-value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .settings-select-menu {
+    position: absolute;
+    z-index: 40;
+    top: calc(100% + 4px);
+    right: 0;
+    left: 0;
+    display: grid;
+    max-height: 240px;
+    overflow-y: auto;
+    border: 1px solid var(--settings-border);
+    border-radius: 8px;
+    background: var(--settings-surface-raised);
+    box-shadow: var(--settings-shadow);
+    padding: 4px;
+  }
+
+  .settings-select[data-open-up="true"] .settings-select-menu {
+    top: auto;
+    bottom: calc(100% + 4px);
+  }
+
+  .settings-select-menu button {
+    display: flex;
+    min-height: 30px;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--component-settings-shell-settings-page-color-ba45781);
+    padding: 6px 8px;
+    font-size: 12px;
+    line-height: 1.35;
+    text-align: left;
+  }
+
+  .settings-select-menu button:hover,
+  .settings-select-menu button:focus-visible {
+    outline: none;
+    background: var(--settings-control-surface-hover);
+  }
+
+  .settings-select-menu button[aria-selected="true"] {
+    background: var(--settings-field-focus);
+    color: var(--component-settings-shell-settings-page-color-df98b06);
+  }
+
+  .settings-select-menu span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .settings-select-menu svg {
+    flex-shrink: 0;
+    color: var(--component-settings-shell-settings-toggle-accent-color-6808469);
   }
 
   .settings-toggle {
@@ -708,50 +674,6 @@
 }
 /* Theme token bindings. The dark theme falls back to the component layer. */
 
-.settings-sidebar {
-  background: var(
-    --theme-settings-shell-settings-sidebar-background-2ed5d64,
-    revert-layer
-  );
-  color: var(
-    --theme-settings-shell-settings-sidebar-color-a6aa766,
-    revert-layer
-  );
-  box-shadow: var(
-    --theme-settings-shell-settings-sidebar-box-shadow-e8f4835,
-    revert-layer
-  );
-}
-
-.settings-side-top button {
-  background: var(
-    --theme-settings-shell-settings-side-top-background-a100eab,
-    revert-layer
-  );
-  box-shadow: var(
-    --theme-settings-shell-settings-side-top-box-shadow-d222158,
-    revert-layer
-  );
-}
-
-.settings-side-nav button.active {
-  background: var(
-    --theme-settings-shell-settings-side-nav-background-6fb8a90,
-    revert-layer
-  );
-  color: var(
-    --theme-settings-shell-settings-side-nav-color-564ce63,
-    revert-layer
-  );
-}
-
-.settings-side-nav button:hover {
-  background: var(
-    --theme-settings-shell-settings-side-nav-background-9f8c376,
-    revert-layer
-  );
-}
-
 .settings-runtime-panel {
   border-color: var(
     --theme-settings-shell-settings-runtime-panel-border-color-c657707,
@@ -833,6 +755,18 @@
   color: var(--theme-settings-shell-settings-page-color-674c797, revert-layer);
 }
 
+.settings-select-trigger {
+  background: var(
+    --theme-settings-shell-settings-page-background-b39b62b,
+    revert-layer
+  );
+  border-color: var(
+    --theme-settings-shell-settings-page-border-color-b346a89,
+    revert-layer
+  );
+  color: var(--theme-settings-shell-settings-page-color-674c797, revert-layer);
+}
+
 .settings-page textarea {
   background: var(
     --theme-settings-shell-settings-page-background-83ea52c,
@@ -861,6 +795,22 @@
 }
 
 .settings-page select:focus {
+  background: var(
+    --theme-settings-shell-settings-page-background-34fc46a,
+    revert-layer
+  );
+  border-color: var(
+    --theme-settings-shell-settings-page-border-color-db0c63b,
+    revert-layer
+  );
+  box-shadow: var(
+    --theme-settings-shell-settings-page-box-shadow-b6e0f5a,
+    revert-layer
+  );
+}
+
+.settings-select-trigger:focus-visible,
+.settings-select[data-open] .settings-select-trigger {
   background: var(
     --theme-settings-shell-settings-page-background-34fc46a,
     revert-layer

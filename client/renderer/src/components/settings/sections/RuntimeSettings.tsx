@@ -1,7 +1,24 @@
 import { ShieldCheck } from "lucide-react";
-import { SettingsCard } from "@/components/settings";
+import {
+  SettingsCard,
+  SettingsSelect,
+  SettingsTextarea,
+  SettingsTextField,
+} from "@/components/settings";
 import type { AgentSettings } from "@shared/types";
-import { splitLines } from "./skill-audit-helpers";
+
+const PERMISSION_MODE_OPTIONS = [
+  { value: "default", label: "请求批准" },
+  { value: "auto", label: "替我审批" },
+  { value: "bypassPermissions", label: "完全访问" },
+];
+
+function splitLines(value: string): string[] {
+  return value
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
 
 export function RuntimeSettings({
   draft,
@@ -27,75 +44,64 @@ export function RuntimeSettings({
       description="让长任务保持可控，并方便检查执行过程。"
       icon={<ShieldCheck size={16} />}
     >
-      <label>
-        权限模式
-        <select
+      <label className="settings-field">
+        <span>权限模式</span>
+        <SettingsSelect
+          ariaLabel="权限模式"
           value={draft.permissionMode}
-          onChange={(event) =>
+          options={PERMISSION_MODE_OPTIONS}
+          onChange={(value) =>
             onCommitDraft({
               ...draft,
-              permissionMode: event.target.value as typeof draft.permissionMode,
-            })
-          }
-        >
-          <option value="default">请求批准</option>
-          <option value="auto">替我审批</option>
-          <option value="bypassPermissions">完全访问</option>
-        </select>
-      </label>
-      <label>
-        最大轮次
-        <input
-          type="number"
-          value={draft.maxTurns}
-          onChange={(event) =>
-            onCommitDraft({
-              ...draft,
-              maxTurns: Number(event.target.value) || 50,
+              permissionMode: value as typeof draft.permissionMode,
             })
           }
         />
       </label>
-      <label>
-        审批超时（秒）
-        <input
-          type="number"
-          min={10}
-          max={3600}
-          disabled={isPermissionTimeoutManaged}
-          title={
-            isPermissionTimeoutManaged
-              ? "由企业配置管理"
-              : "设置敏感工具审批自动拒绝时间"
-          }
-          value={Math.round(
-            (draft.permissionApprovalTimeoutMs ?? 120_000) / 1000,
-          )}
-          onChange={(event) =>
-            onCommitDraft({
-              ...draft,
-              permissionApprovalTimeoutMs:
-                Math.min(
-                  Math.max(Number(event.target.value) || 120, 10),
-                  3600,
-                ) * 1000,
-            })
-          }
-        />
-      </label>
-      <label>
-        最大思考 Token
-        <input
-          type="number"
-          value={draft.maxThinkingTokens}
-          onChange={(event) =>
-            onCommitDraft({
-              ...draft,
-              maxThinkingTokens: Number(event.target.value) || 0,
-            })
-          }
-        />
-      </label>
+      <SettingsTextField
+        label="最大轮次"
+        type="number"
+        value={draft.maxTurns}
+        onValueChange={(value) =>
+          onCommitDraft({
+            ...draft,
+            maxTurns: Number(value) || 50,
+          })
+        }
+      />
+      <SettingsTextField
+        label="审批超时（秒）"
+        type="number"
+        min={10}
+        max={3600}
+        disabled={isPermissionTimeoutManaged}
+        title={
+          isPermissionTimeoutManaged
+            ? "由企业配置管理"
+            : "设置敏感工具审批自动拒绝时间"
+        }
+        value={Math.round(
+          (draft.permissionApprovalTimeoutMs ?? 120_000) / 1000,
+        )}
+        onValueChange={(value) =>
+          onCommitDraft({
+            ...draft,
+            permissionApprovalTimeoutMs:
+              Math.min(Math.max(Number(value) || 120, 10), 3600) * 1000,
+          })
+        }
+      />
+      <SettingsTextField
+        label="最大思考 Token"
+        type="number"
+        value={draft.maxThinkingTokens}
+        onValueChange={(value) =>
+          onCommitDraft({
+            ...draft,
+            maxThinkingTokens: Number(value) || 0,
+          })
+        }
+      />
       <label className="settings-toggle">
         <input
           type="checkbox"
@@ -123,31 +129,31 @@ export function RuntimeSettings({
         />
         敏感工具需要确认
       </label>
-      <label>
-        敏感工具白名单
-        <textarea
-          value={sensitiveToolAllowlist.join("\n")}
-          onChange={(event) =>
-            onCommitDraft({
-              ...draft,
-              toolPermissionPolicy: {
-                ...policy,
-                requireConfirmationForSensitiveTools:
-                  policy?.requireConfirmationForSensitiveTools ?? true,
-                sensitiveToolAllowlist: splitLines(event.target.value),
-              },
-            })
-          }
-        />
-      </label>
-      <label>
-        allowedTools
-        <textarea readOnly value={(policy?.allowedTools ?? []).join("\n")} />
-      </label>
-      <label>
-        disallowedTools
-        <textarea readOnly value={(policy?.disallowedTools ?? []).join("\n")} />
-      </label>
+      <SettingsTextarea
+        label="敏感工具白名单"
+        value={sensitiveToolAllowlist.join("\n")}
+        onValueChange={(value) =>
+          onCommitDraft({
+            ...draft,
+            toolPermissionPolicy: {
+              ...policy,
+              requireConfirmationForSensitiveTools:
+                policy?.requireConfirmationForSensitiveTools ?? true,
+              sensitiveToolAllowlist: splitLines(value),
+            },
+          })
+        }
+      />
+      <SettingsTextarea
+        label="allowedTools"
+        readOnly
+        value={(policy?.allowedTools ?? []).join("\n")}
+      />
+      <SettingsTextarea
+        label="disallowedTools"
+        readOnly
+        value={(policy?.disallowedTools ?? []).join("\n")}
+      />
     </SettingsCard>
   );
 }

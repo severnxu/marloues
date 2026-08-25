@@ -132,12 +132,14 @@
 }
 
 .content {
+  box-sizing: border-box;
   display: flex;
   min-width: 0;
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
   background: var(--surface-workspace);
+  padding-top: var(--titlebar-height);
 }
 
 .contentScroll {
@@ -165,7 +167,7 @@
 }
 
 .contentHeader {
-  padding: calc(var(--titlebar-height) + var(--space-4)) 0 var(--space-6);
+  padding: var(--space-4) 0 var(--space-6);
 }
 
 .contentHeader h1 {
@@ -1309,7 +1311,7 @@
   }
 
   .contentHeader {
-    padding-top: calc(var(--titlebar-height) + var(--space-3));
+    padding-top: var(--space-3);
     padding-bottom: var(--space-5);
   }
 

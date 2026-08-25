@@ -1,0 +1,37 @@
+.icon {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: var(--surface-popover);
+  box-shadow: var(--shadow-sm);
+}
+
+.icon svg {
+  width: 72%;
+  height: 72%;
+}
+
+.sm {
+  width: 28px;
+  height: 28px;
+}
+
+.md {
+  width: 36px;
+  height: 36px;
+}
+
+.lg {
+  width: 48px;
+  height: 48px;
+}
+
+.wecom {
+  color: hsl(144 73% 42%);
+}
+
+.feishu {
+  color: hsl(207 100% 52%);
+}

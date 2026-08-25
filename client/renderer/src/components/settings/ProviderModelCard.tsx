@@ -1,4 +1,4 @@
-import { Check, PlugZap, Power, RefreshCcw, Trash2 } from "lucide-react";
+import { PlugZap, RefreshCcw, Trash2 } from "lucide-react";
 import type { ModelOption, ModelProviderConfig } from "@shared/types";
 import { STRINGS } from "@shared/strings.zh";
 
@@ -26,6 +26,20 @@ export function ProviderModelCard({
   onUpdate: (patch: Partial<ModelOption>) => void;
 }) {
   const modelTitle = model.label || model.id || "未命名模型";
+  const canSetDefault = canEdit && provider.enabled && model.enabled;
+  const canToggleEnabled = canEdit && !provider.locked;
+  const canDisableModel = canToggleEnabled && !(model.enabled && isDefault);
+  const defaultTitle = isDefault
+    ? STRINGS.model.alreadyDefaultButtonTitle
+    : canSetDefault
+      ? STRINGS.model.setDefaultButtonTitle
+      : "启用端点和模型后才能设为默认";
+  const enableTitle =
+    model.enabled && isDefault
+      ? "默认模型不能直接禁用，请先切换默认模型"
+      : model.enabled
+        ? "禁用模型"
+        : "启用模型";
 
   return (
     <div
@@ -34,7 +48,16 @@ export function ProviderModelCard({
     >
       <div className="provider-model-main">
         <div className="provider-model-title-line">
-          <strong title={model.id || modelTitle}>{modelTitle}</strong>
+          <label className="provider-model-default" title={defaultTitle}>
+            <input
+              type="radio"
+              name="settings-default-model"
+              checked={isDefault}
+              disabled={!canSetDefault}
+              onChange={onSetDefault}
+            />
+            <strong title={model.id || modelTitle}>{modelTitle}</strong>
+          </label>
           <span
             className={
               isDefault ? "default" : model.enabled ? "enabled" : "disabled"
@@ -107,36 +130,23 @@ export function ProviderModelCard({
       <div
         className={`settings-row-actions provider-model-actions ${isChecking ? "visible" : ""}`}
       >
-        <button
-          className="icon-button"
-          disabled={!provider.enabled || !model.enabled || isDefault}
-          onClick={onSetDefault}
-          title={
-            isDefault
-              ? STRINGS.model.alreadyDefaultButtonTitle
-              : STRINGS.model.setDefaultButtonTitle
-          }
+        <label
+          className="settings-inline-check provider-model-enable-check"
+          title={enableTitle}
         >
-          <Check size={13} />
-        </button>
-        <button
-          className="icon-button"
-          disabled={provider.locked || !canEdit}
-          onClick={onToggleEnabled}
-          title={
-            model.enabled && isDefault
-              ? "默认模型不能直接禁用，请先切换默认模型"
-              : model.enabled
-                ? "禁用模型"
-                : "启用模型"
-          }
-        >
-          {model.enabled ? <Power size={13} /> : <Check size={13} />}
-        </button>
+          <input
+            type="checkbox"
+            checked={model.enabled}
+            disabled={!canDisableModel}
+            onChange={onToggleEnabled}
+          />
+          启用
+        </label>
         <button
           className="icon-button"
           disabled={isChecking}
           onClick={onTest}
+          type="button"
           title={isChecking ? "探测中" : "发送探测消息"}
         >
           {isChecking ? <RefreshCcw size={13} /> : <PlugZap size={13} />}
@@ -145,6 +155,7 @@ export function ProviderModelCard({
           className="icon-button"
           disabled={provider.locked || !canEdit}
           onClick={onRemove}
+          type="button"
           title="删除模型"
         >
           <Trash2 size={13} />

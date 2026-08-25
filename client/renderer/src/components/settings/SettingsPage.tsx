@@ -12,8 +12,8 @@ import {
 } from "lucide-react";
 import { SettingsWorkbench } from "./SettingsWorkbench";
 import type { SettingsSection } from "./types";
-import { useSettingsDialogStore } from "@/stores/settings-dialog-store";
-import styles from "./SettingsDialog.module.css";
+import { useSettingsPageStore } from "@/stores/settings-page-store";
+import styles from "./SettingsPage.module.css";
 
 interface NavItem {
   id: SettingsSection;
@@ -58,18 +58,17 @@ const NAV_ITEMS: NavItem[] = [
   { id: "version", label: "更新", description: "版本与热更新", Icon: Rocket },
 ];
 
-export function SettingsDialog() {
-  const open = useSettingsDialogStore((s) => s.open);
-  const requestedSection = useSettingsDialogStore((s) => s.section);
-  const close = useSettingsDialogStore((s) => s.close);
+export function SettingsPage() {
+  const open = useSettingsPageStore((s) => s.open);
+  const requestedSection = useSettingsPageStore((s) => s.section);
+  const close = useSettingsPageStore((s) => s.close);
   const returnButtonRef = useRef<HTMLButtonElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
 
-  // 受控 section：弹框打开时使用请求的 section，弹框关闭不保留
+  // 受控 section：设置页打开时使用请求的 section，关闭后不保留。
   const normalizeSection = (
     requested: SettingsSection | null | undefined,
-  ): SettingsSection =>
-    requested === "skills" ? "general" : (requested ?? "general");
+  ): SettingsSection => requested ?? "general";
   const [section, setSection] = useState<SettingsSection>(
     normalizeSection(requestedSection),
   );
@@ -98,7 +97,7 @@ export function SettingsDialog() {
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
-    appRoot.classList.add("settings-surface-open");
+    appRoot.classList.add("settings-page-open");
     if (workbench) {
       workbench.inert = true;
       workbench.setAttribute("aria-hidden", "true");
@@ -109,7 +108,7 @@ export function SettingsDialog() {
 
     return () => {
       window.cancelAnimationFrame(frame);
-      appRoot.classList.remove("settings-surface-open");
+      appRoot.classList.remove("settings-page-open");
       if (!workbench) return;
       workbench.inert = wasInert;
       if (previousAriaHidden == null) {
@@ -189,28 +188,17 @@ export function SettingsDialog() {
         </nav>
       </aside>
 
-      <main
-        className={`${styles.content} ${section === "skills" ? styles.contentSkills : ""}`}
-      >
+      <main className={styles.content}>
         <div className={`${styles.contentScroll} scrollbar-thin`}>
           <header className={styles.contentHeader}>
             <h1>{currentItem.label}</h1>
             {currentItem.description ? <p>{currentItem.description}</p> : null}
           </header>
           <div className={styles.workbench}>
-            <SettingsWorkbench section={section} onSection={setSection} />
+            <SettingsWorkbench section={section} />
           </div>
         </div>
       </main>
     </section>
   );
 }
-
-// 默认 export 的 helper 用法
-export const settingsDialogStoreHelpers = {
-  open: () => useSettingsDialogStore.getState().openSection(),
-  openSection: (section: SettingsSection) =>
-    useSettingsDialogStore.getState().openSection(section),
-  close: () => useSettingsDialogStore.getState().close(),
-  toggle: () => useSettingsDialogStore.getState().toggle(),
-};

@@ -1,5 +1,12 @@
-import type { ReactNode } from "react";
-import { Check } from "lucide-react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type TextareaHTMLAttributes,
+} from "react";
+import { Check, ChevronDown } from "lucide-react";
 
 export function SettingsCard({
   title,
@@ -107,6 +114,154 @@ export function SegmentedOptions({
         </button>
       ))}
     </div>
+  );
+}
+
+export function SettingsSelect({
+  ariaLabel,
+  value,
+  options,
+  onChange,
+}: {
+  ariaLabel: string;
+  value: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [openUp, setOpenUp] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selected =
+    options.find((option) => option.value === value) ?? options[0];
+
+  useEffect(() => {
+    if (!open) return;
+
+    const rect = rootRef.current?.getBoundingClientRect();
+    if (rect) {
+      const menuHeight = Math.min(options.length * 34 + 10, 240);
+      setOpenUp(window.innerHeight - rect.bottom < menuHeight + 8);
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open, options.length]);
+
+  return (
+    <div
+      ref={rootRef}
+      className="settings-select"
+      data-open={open || undefined}
+      data-open-up={open && openUp ? "true" : undefined}
+    >
+      <button
+        type="button"
+        className="settings-select-trigger"
+        aria-label={ariaLabel}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        onKeyDown={(event) => {
+          if (
+            event.key === "ArrowDown" ||
+            event.key === "Enter" ||
+            event.key === " "
+          ) {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
+      >
+        <span className="settings-select-value">{selected?.label}</span>
+        <ChevronDown size={14} aria-hidden="true" />
+      </button>
+      {open ? (
+        <div
+          className="settings-select-menu"
+          role="listbox"
+          aria-label={ariaLabel}
+        >
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="option"
+              aria-selected={option.value === value}
+              onClick={() => {
+                onChange(option.value);
+                setOpen(false);
+              }}
+            >
+              <span>{option.label}</span>
+              {option.value === value ? (
+                <Check size={13} aria-hidden="true" />
+              ) : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function SettingsTextField({
+  label,
+  onValueChange,
+  ...props
+}: Omit<InputHTMLAttributes<HTMLInputElement>, "onChange"> & {
+  label: string;
+  onValueChange: (value: string) => void;
+}) {
+  return (
+    <label className="settings-field">
+      <span>{label}</span>
+      <input
+        {...props}
+        onChange={(event) => onValueChange(event.target.value)}
+      />
+    </label>
+  );
+}
+
+export function SettingsTextarea({
+  fieldClassName,
+  hideLabel = false,
+  label,
+  onValueChange,
+  ...props
+}: Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange"> & {
+  fieldClassName?: string;
+  hideLabel?: boolean;
+  label: string;
+  onValueChange?: (value: string) => void;
+}) {
+  return (
+    <label
+      className={`settings-field settings-field--textarea ${fieldClassName ?? ""}`}
+    >
+      <span className={hideLabel ? "settings-field-label--hidden" : undefined}>
+        {label}
+      </span>
+      <textarea
+        {...props}
+        onChange={
+          onValueChange
+            ? (event) => onValueChange(event.target.value)
+            : undefined
+        }
+      />
+    </label>
   );
 }
 

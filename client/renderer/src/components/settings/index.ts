@@ -1,7 +1,6 @@
 // Settings entry points
-export { SettingsDialog } from "./SettingsDialog";
+export { SettingsPage } from "./SettingsPage";
 export { SettingsWorkbench } from "./SettingsWorkbench";
-export { settingsDialogStoreHelpers } from "./SettingsDialog";
 
 // Settings domain types
 export type { SettingsSection } from "./types";
@@ -10,6 +9,9 @@ export type { SettingsSection } from "./types";
 export {
   SettingsCard,
   SettingRow,
+  SettingsSelect,
+  SettingsTextarea,
+  SettingsTextField,
   ToggleSwitch,
   SegmentedOptions,
   EmptySettingsState,

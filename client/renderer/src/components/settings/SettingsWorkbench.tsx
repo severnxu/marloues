@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { notify } from "@/lib/notifications";
-import { useUnifiedChatStore } from "@/stores/unified-chat-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useThemeStore } from "@/stores/theme-store";
 // Note: import from the sections barrel directly to avoid a circular dep
@@ -11,33 +10,20 @@ const {
   GeneralSettings,
   PersonalizationSettings,
   AuditSettings,
+  ImChannelsSettings,
   RuntimeSettings,
-  SkillsSettings,
   UpdateSettings,
 } = Sections;
-import { buildRuntimeSnapshot, statusToastTitle } from "@/components/settings";
+import { statusToastTitle } from "@/components/settings";
 import { ProviderSection } from "./ProviderSection";
-import { McpServersPanel } from "@/components/mcp";
 import { useProviderManagement } from "./use-provider-management";
 import type { CommitDraft, SetStatus } from "./use-provider-management";
 import type { SettingsSection } from "./types";
 import { isSecretEncryptionUnavailableError } from "@shared/types";
 import { STRINGS } from "@shared/strings.zh";
-import type {
-  AuditEventRecord,
-  SkillDetail,
-  SkillInfo,
-  SkillMarketplaceDetail,
-  SkillMarketplaceItem,
-} from "@shared/types";
+import type { AgentSettings, AuditEventRecord } from "@shared/types";
 
-export function SettingsWorkbench({
-  section,
-  onSection: _onSection,
-}: {
-  section: SettingsSection;
-  onSection: (section: SettingsSection) => void;
-}) {
+export function SettingsWorkbench({ section }: { section: SettingsSection }) {
   const settings = useSettingsStore((state) => state.settings);
   const save = useSettingsStore((state) => state.save);
   const themeMode = useThemeStore((state) => state.mode);
@@ -45,32 +31,7 @@ export function SettingsWorkbench({
   const accentColor = useThemeStore((state) => state.accentColor);
   const setAccentColor = useThemeStore((state) => state.setAccentColor);
   const resetAccentColor = useThemeStore((state) => state.resetAccentColor);
-  const activeSessionId = useUnifiedChatStore((state) => state.activeSessionId);
-  const sessionInitInfo = useUnifiedChatStore((state) => state.sessionInitInfo);
   const [draft, setDraft] = useState(settings);
-  const [skills, setSkills] = useState<SkillInfo[]>([]);
-  const [skillTab, setSkillTab] = useState<"installed" | "market" | "import">(
-    "installed",
-  );
-  const [skillDetail, setSkillDetail] = useState<SkillDetail | null>(null);
-  const [marketplaceSkills, setMarketplaceSkills] = useState<
-    SkillMarketplaceItem[]
-  >([]);
-  const [marketplaceQuery, setMarketplaceQuery] = useState("");
-  const [marketplaceLoading, setMarketplaceLoading] = useState(false);
-  const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
-  const [marketplaceDetail, setMarketplaceDetail] =
-    useState<SkillMarketplaceDetail | null>(null);
-  const [marketplaceCursor, setMarketplaceCursor] = useState<
-    string | undefined
-  >();
-  const [marketplaceHasMore, setMarketplaceHasMore] = useState(false);
-  const [marketplaceTotal, setMarketplaceTotal] = useState<
-    number | undefined
-  >();
-  const [marketplaceView, setMarketplaceView] = useState<"grid" | "list">(
-    "grid",
-  );
   const [auditEvents, setAuditEvents] = useState<AuditEventRecord[]>([]);
   const [_status, setStatusState] = useState<{
     message: string;
@@ -120,9 +81,6 @@ export function SettingsWorkbench({
 
   useEffect(() => setDraft(settings), [settings]);
   useEffect(() => {
-    void window.marloues.skill.list().then(setSkills);
-  }, []);
-  useEffect(() => {
     if (section === "audit") {
       void window.marloues.audit.list(100).then(setAuditEvents);
     }
@@ -139,15 +97,10 @@ export function SettingsWorkbench({
   const canEditEndpointProfiles =
     enterprisePolicy.allowLocalEndpointProfiles !== false;
   const canToggleSkills = enterprisePolicy.allowLocalSkillDisable !== false;
-  const enabledSkillCount = skills.filter((skill) => skill.enabled).length;
   const hasEnterpriseConfig =
     Boolean(draft.enterprisePolicy) || enterpriseControlledSettings.size > 0;
   const isPermissionTimeoutManaged = enterpriseControlledSettings.has(
     "permissionApprovalTimeoutMs",
-  );
-
-  const runtimeSnapshot = buildRuntimeSnapshot(
-    sessionInitInfo[activeSessionId ?? ""],
   );
 
   return (
@@ -248,45 +201,20 @@ export function SettingsWorkbench({
             />
           ) : null}
 
-          {section === "mcp" ? <McpServersPanel /> : null}
-
-          {section === "skills" ? (
-            <SkillsSettings
-              canToggleSkills={canToggleSkills}
-              enabledSkillCount={enabledSkillCount}
-              marketplaceCursor={marketplaceCursor}
-              marketplaceDetail={marketplaceDetail}
-              marketplaceError={marketplaceError}
-              marketplaceHasMore={marketplaceHasMore}
-              marketplaceLoading={marketplaceLoading}
-              marketplaceQuery={marketplaceQuery}
-              marketplaceSkills={marketplaceSkills}
-              marketplaceTotal={marketplaceTotal}
-              marketplaceView={marketplaceView}
-              onMarketplaceCursorChange={setMarketplaceCursor}
-              onMarketplaceDetailChange={setMarketplaceDetail}
-              onMarketplaceErrorChange={setMarketplaceError}
-              onMarketplaceHasMoreChange={setMarketplaceHasMore}
-              onMarketplaceLoadingChange={setMarketplaceLoading}
-              onMarketplaceQueryChange={setMarketplaceQuery}
-              onMarketplaceSkillsChange={setMarketplaceSkills}
-              onMarketplaceTotalChange={setMarketplaceTotal}
-              onMarketplaceViewChange={setMarketplaceView}
-              onSkillDetailChange={setSkillDetail}
-              onSkillsChange={setSkills}
-              runtimeSkills={runtimeSnapshot.skills}
-              skillDetail={skillDetail}
-              skills={skills}
-              skillTab={skillTab}
-              onSkillTabChange={setSkillTab}
-            />
-          ) : null}
-
           {section === "audit" ? (
             <AuditSettings
               auditEvents={auditEvents}
               onAuditEventsChange={setAuditEvents}
               onStatus={setStatus}
+            />
+          ) : null}
+
+          {section === "im-channels" ? (
+            <ImChannelsSettings
+              draft={draft}
+              onCommitDraft={(nextDraft: AgentSettings) =>
+                commitDraft(nextDraft)
+              }
             />
           ) : null}
 

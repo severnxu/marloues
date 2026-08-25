@@ -8,6 +8,7 @@ import {
   Palette,
   Pencil,
   Pipette,
+  RotateCcw,
   ShieldCheck,
   Sparkles,
   Sun,
@@ -82,9 +83,11 @@ export function AppearanceSettings({
               value: theme.mode,
               title: theme.label,
               description:
-                theme.colorScheme === "light"
-                  ? "适合明亮环境。"
-                  : "适合长时间使用与低光环境。",
+                theme.mode === "warm"
+                  ? "柔和纸感，适合长时间阅读。"
+                  : theme.colorScheme === "light"
+                    ? "适合明亮环境。"
+                    : "适合长时间使用与低光环境。",
               icon:
                 theme.mode === "warm" ? (
                   <Sparkles size={15} />
@@ -117,8 +120,14 @@ export function AppearanceSettings({
                   : shownAccent.toUpperCase()}
               </small>
             </div>
-            <button onClick={onResetAccentColor} type="button">
-              恢复默认
+            <button
+              className="appearance-accent-reset"
+              onClick={onResetAccentColor}
+              type="button"
+              title="恢复默认强调色"
+              aria-label="恢复默认强调色"
+            >
+              <RotateCcw size={14} />
             </button>
           </div>
 
@@ -250,8 +259,10 @@ export function PersonalizationSettings({
         title="自定义指令"
         description="这些偏好会附加到系统提示词，塑造后续任务的默认沟通方式。"
         icon={<Pencil size={16} />}
+        surface="plain"
       >
         <textarea
+          aria-label="自定义指令"
           className="settings-large-textarea"
           value={customInstructions}
           onChange={(event) => onCustomInstructionsChange(event.target.value)}

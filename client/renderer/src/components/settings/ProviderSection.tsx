@@ -19,7 +19,7 @@ export function ProviderSection({
   return (
     <>
       <div className="settings-stat-grid">
-        <SettingsStat label="模型" value={String(draft.providers.length)} />
+        <SettingsStat label="端点配置" value={String(draft.providers.length)} />
         <SettingsStat
           label="启用模型"
           value={`${draft.providers.reduce(

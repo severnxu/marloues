@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { AuthGate } from "@/components/auth";
 import { OnboardingView } from "@/components/onboarding";
-import { SettingsDialog, type SettingsSection } from "@/components/settings";
+import { SettingsPage } from "@/components/settings";
 import { WorkbenchRoot } from "@/components/workbench/WorkbenchRoot";
 import type { Page } from "@/components/workbench/types";
 import {
@@ -92,8 +92,6 @@ function applyCodexFixtureTheme(): void {
 function AuthenticatedApp() {
   useWatermark();
   const [page, setPage] = useState<Page>("chat");
-  const [settingsSection, setSettingsSection] =
-    useState<SettingsSection>("personalization");
   const [permissionRequests, setPermissionRequests] = useState<
     PermissionDialogRequest[]
   >([]);
@@ -264,7 +262,7 @@ function AuthenticatedApp() {
     return (
       <>
         <OnboardingView />
-        <SettingsDialog />
+        <SettingsPage />
       </>
     );
   }
@@ -273,8 +271,6 @@ function AuthenticatedApp() {
     <WorkbenchRoot
       page={page}
       onPage={setPage}
-      settingsSection={settingsSection}
-      onSettingsSection={setSettingsSection}
       isDark={isDark}
       themeMode={themeMode}
       onToggleTheme={toggleTheme}

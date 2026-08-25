@@ -26,6 +26,27 @@
   --settings-border-strong: hsl(217 90% 60% / 0.36);
   --settings-field: hsl(0 0% 6% / 0.72);
   --settings-field-focus: hsl(217 90% 60% / 0.16);
+  --settings-card-radius: 16px;
+  --settings-control-radius: 10px;
+  --settings-control-surface: color-mix(
+    in srgb,
+    var(--surface-workspace) 92%,
+    var(--surface-elevated)
+  );
+  --settings-control-surface-hover: color-mix(
+    in srgb,
+    var(--surface-workspace) 84%,
+    var(--surface-elevated)
+  );
+  --settings-control-border: var(--border);
+  --settings-control-border-hover: var(--border-strong);
+  --settings-control-border-focus: color-mix(
+    in srgb,
+    var(--accent) 46%,
+    var(--border-strong)
+  );
+  --settings-control-focus-ring: 0 0 0 3px
+    color-mix(in srgb, var(--accent) 16%, transparent);
   --settings-success-soft: hsl(160 84% 53% / 0.12);
   --settings-danger-soft: hsl(0 72% 51% / 0.12);
   --settings-shadow:
@@ -124,7 +145,7 @@
   --radius-xl: 12px;
   --control-radius: 8px;
   --card-radius: 10px;
-  --select-control-radius: 6px;
+  --select-control-radius: 10px;
   --select-control-gap: 6px;
   --select-control-icon-size: 14px;
   --schedule-page-gutter: 28px;
@@ -164,7 +185,7 @@
       var(--windows-auxiliary-control-width)
   );
   --macos-auxiliary-primary-leading-safe-area: 164px;
-  --sidebar-row-height: 34px;
+  --sidebar-row-height: 30px;
   --sidebar-row-gap: 2px;
   --auxiliary-tab-height: 30px;
   --auxiliary-picker-width: 132px;

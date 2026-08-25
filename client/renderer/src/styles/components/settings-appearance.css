@@ -94,6 +94,17 @@
     );
   }
 
+  .appearance-accent-current .appearance-accent-reset {
+    width: 32px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .appearance-accent-current .appearance-accent-reset svg {
+    width: 14px;
+    height: 14px;
+  }
+
   .appearance-accent-controls {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
