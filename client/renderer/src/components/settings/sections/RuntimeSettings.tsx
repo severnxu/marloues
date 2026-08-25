@@ -39,8 +39,29 @@ export function RuntimeSettings({
           }
         >
           <option value="default">请求批准</option>
-          <option value="auto">替我审批</option>
-          <option value="bypassPermissions">完全访问</option>
+          <option value="acceptEdits">自动批准编辑</option>
+          <option value="bypassPermissions">免审批（仍受沙箱限制）</option>
+        </select>
+      </label>
+      <label>
+        沙箱模式
+        <select
+          value={draft.sandboxMode ?? "workspace-write"}
+          onChange={(event) => {
+            const sandboxMode = event.target.value as NonNullable<
+              AgentSettings["sandboxMode"]
+            >;
+            onCommitDraft({
+              ...draft,
+              sandboxEnabled: sandboxMode !== "danger-full-access",
+              sandboxMode,
+            });
+          }}
+        >
+          <option value="read-only">只读</option>
+          <option value="workspace-write">工作区可写</option>
+          <option value="workspace-write-network">工作区可写并允许网络</option>
+          <option value="danger-full-access">关闭沙箱</option>
         </select>
       </label>
       <label>

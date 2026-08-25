@@ -32,6 +32,7 @@ import { OPEN_GLOBAL_SEARCH_EVENT } from "@/components/workbench/events";
 import { WorkflowChatHeader } from "./WorkflowChatHeader";
 import type { UserMessageContent } from "../types";
 import type {
+  AgentSandboxMode,
   PermissionDialogRequest,
   ContextActionRequest,
 } from "@shared/types";
@@ -176,10 +177,7 @@ export function WorkflowChatPage({
     "execute" | "plan" | null
   >(null);
 
-  // Map composer access level to AgentSettings permissionMode + sandboxEnabled.
-  // Called when the user switches access level in the composer. On Windows,
-  // switching to "full" is intercepted by the composer's sandbox gate first;
-  // this handler only fires after the gate approves (or on non-Windows).
+  // Permission policy and sandbox isolation are intentionally independent.
   const handleAccessLevelChange = useCallback(
     (level: "default" | "review" | "full") => {
       if (!settings) return;
@@ -192,7 +190,18 @@ export function WorkflowChatPage({
       void saveSettings({
         ...settings,
         permissionMode,
-        sandboxEnabled: true,
+      });
+    },
+    [settings, saveSettings],
+  );
+
+  const handleSandboxModeChange = useCallback(
+    (sandboxMode: AgentSandboxMode) => {
+      if (!settings) return;
+      void saveSettings({
+        ...settings,
+        sandboxEnabled: sandboxMode !== "danger-full-access",
+        sandboxMode,
       });
     },
     [settings, saveSettings],
@@ -754,6 +763,14 @@ export function WorkflowChatPage({
         conversationKey={`${activeSessionId ?? "new-session"}:${composerEpoch}`}
         input={inputText}
         isGenerating={activeSessionIsStreaming}
+        accessLevel={
+          settings?.permissionMode === "bypassPermissions"
+            ? "full"
+            : settings?.permissionMode === "acceptEdits"
+              ? "review"
+              : "default"
+        }
+        sandboxMode={settings?.sandboxMode ?? "workspace-write"}
         permissionPanel={
           permissionRequest ? (
             <PermissionRequestPanel
@@ -787,6 +804,7 @@ export function WorkflowChatPage({
         onSend={handleSend}
         onStop={() => void abort(activeSessionId ?? undefined)}
         onAccessLevelChange={handleAccessLevelChange}
+        onSandboxModeChange={handleSandboxModeChange}
         modelControl={
           <ModelSelector switchWarningVisible={modelSwitchWarningVisible} />
         }

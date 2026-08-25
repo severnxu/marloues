@@ -333,12 +333,16 @@
 }
 
 .composer .mode-button[class*="access-"],
-.composer .mode-button[class*="access-"] svg {
+.composer .mode-button[class*="access-"] svg,
+.composer .mode-button[class*="sandbox-"],
+.composer .mode-button[class*="sandbox-"] svg {
   color: var(--text-2);
 }
 
 .composer .mode-button[class*="access-"]:hover,
-.composer .mode-button[class*="access-"]:hover svg {
+.composer .mode-button[class*="access-"]:hover svg,
+.composer .mode-button[class*="sandbox-"]:hover,
+.composer .mode-button[class*="sandbox-"]:hover svg {
   color: var(--text-1);
 }
 
@@ -428,14 +432,19 @@
 }
 
 .composer-popover button[class*="access-"],
-.composer-popover button[class*="access-"] > svg:first-child {
+.composer-popover button[class*="access-"] > svg:first-child,
+.composer-popover button[class*="sandbox-"] > svg:first-child {
   color: var(--text-2);
 }
 
 .composer-popover button[class*="access-"]:hover,
 .composer-popover button[class*="access-"]:hover > svg:first-child,
 .composer-popover button[class*="access-"].active,
-.composer-popover button[class*="access-"].active > svg:first-child {
+.composer-popover button[class*="access-"].active > svg:first-child,
+.composer-popover button[class*="sandbox-"]:hover,
+.composer-popover button[class*="sandbox-"]:hover > svg:first-child,
+.composer-popover button[class*="sandbox-"].active,
+.composer-popover button[class*="sandbox-"].active > svg:first-child {
   color: var(--text-1);
 }
 
@@ -443,6 +452,12 @@
   right: auto;
   left: 0;
   width: 170px;
+}
+
+.sandbox-popover {
+  right: auto;
+  left: 0;
+  width: 196px;
 }
 
 .add-context-popover {
@@ -456,7 +471,8 @@
   flex: 1;
 }
 
-.access-popover button span {
+.access-popover button span,
+.sandbox-popover button span {
   min-width: 0;
   flex: 1;
 }

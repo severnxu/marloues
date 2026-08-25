@@ -13,6 +13,7 @@ import {
   COMPOSER_TEXTAREA_WITH_ATTACHMENTS_MIN_HEIGHT,
   COMPOSER_TEXTAREA_MAX_HEIGHT,
   accessOptions,
+  sandboxOptions,
 } from "./composer-types";
 import { ComposerTaskProgress } from "./ComposerTaskProgress";
 import { ComposerAttachmentChips } from "./ComposerAttachmentChips";
@@ -34,12 +35,15 @@ export function WorkflowComposerShell({
   conversationKey,
   input,
   isGenerating,
+  accessLevel: controlledAccessLevel,
+  sandboxMode: controlledSandboxMode,
   selectedProvider,
   onInputChange,
   onKeyDown,
   onSend,
   onStop,
   onAccessLevelChange,
+  onSandboxModeChange,
   permissionPanel,
   modelControl,
   placeholder = CONVERSATION_PAGE_CONTRACT.composer.placeholder,
@@ -62,6 +66,7 @@ export function WorkflowComposerShell({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const accessMenuRef = useRef<HTMLDivElement>(null);
+  const sandboxMenuRef = useRef<HTMLDivElement>(null);
   const fallbackModelMenuRef = useRef<HTMLDivElement>(null);
   const slashPopoverRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -73,6 +78,7 @@ export function WorkflowComposerShell({
   const [suggestionSelectedIndex, setSuggestionSelectedIndex] = useState(0);
   const [caret, setCaret] = useState(0);
   const [accessOpen, setAccessOpen] = useState(false);
+  const [sandboxOpen, setSandboxOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<WorkflowImagePreview | null>(
     null,
@@ -107,16 +113,27 @@ export function WorkflowComposerShell({
 
   const {
     accessLevel,
+    sandboxMode,
     sandboxGate,
     handleAccessSelect,
+    handleSandboxSelect,
     handleSandboxConfirm,
     handleSandboxCancel,
-  } = useSandboxGate(onAccessLevelChange);
+  } = useSandboxGate(
+    onAccessLevelChange,
+    controlledAccessLevel,
+    onSandboxModeChange,
+    controlledSandboxMode,
+  );
 
   const activeAccess =
     accessOptions.find((option) => option.level === accessLevel) ??
     accessOptions[0];
   const ActiveAccessIcon = activeAccess.icon;
+  const activeSandbox =
+    sandboxOptions.find((option) => option.mode === sandboxMode) ??
+    sandboxOptions[1];
+  const ActiveSandboxIcon = activeSandbox.icon;
   const hasPermissionPanel = Boolean(permissionPanel);
   const textareaMinHeight =
     attachments.length > 0
@@ -160,16 +177,19 @@ export function WorkflowComposerShell({
   }, [hasPermissionPanel]);
 
   useEffect(() => {
-    if (!accessOpen && !contextOpen && !modelOpen && !slashOpen) return;
+    if (!accessOpen && !sandboxOpen && !contextOpen && !modelOpen && !slashOpen)
+      return;
 
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
       if (accessMenuRef.current?.contains(target)) return;
+      if (sandboxMenuRef.current?.contains(target)) return;
       if (contextMenuRef.current?.contains(target)) return;
       if (fallbackModelMenuRef.current?.contains(target)) return;
       if (slashPopoverRef.current?.contains(target)) return;
 
       setAccessOpen(false);
+      setSandboxOpen(false);
       setContextOpen(false);
       setModelOpen(false);
       setSlashOpen(false);
@@ -179,7 +199,7 @@ export function WorkflowComposerShell({
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
     };
-  }, [accessOpen, contextOpen, modelOpen, slashOpen]);
+  }, [accessOpen, contextOpen, modelOpen, sandboxOpen, slashOpen]);
 
   const filteredSlashCommands = useMemo<SlashCommandItem[]>(() => {
     const items = slashCommands ?? [];
@@ -537,7 +557,13 @@ export function WorkflowComposerShell({
                 <div className="composer-menu" ref={accessMenuRef}>
                   <button
                     type="button"
-                    onClick={() => setAccessOpen((value) => !value)}
+                    aria-label={`权限：${activeAccess.label}`}
+                    aria-haspopup="menu"
+                    aria-expanded={accessOpen}
+                    onClick={() => {
+                      setSandboxOpen(false);
+                      setAccessOpen((value) => !value);
+                    }}
                     className={`mode-button access-${accessLevel}`}
                   >
                     <ActiveAccessIcon size={16} />
@@ -558,8 +584,57 @@ export function WorkflowComposerShell({
                           aria-current={
                             accessLevel === level ? "true" : undefined
                           }
-                          onClick={() => void handleAccessSelect(level)}
+                          onClick={() => {
+                            setAccessOpen(false);
+                            handleAccessSelect(level);
+                          }}
                           className={`${accessLevel === level ? "active" : ""} access-${level}`}
+                        >
+                          <Icon size={16} />
+                          <span>{label}</span>
+                          <Check className="access-check" size={15} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="composer-menu" ref={sandboxMenuRef}>
+                  <button
+                    type="button"
+                    aria-label={`沙箱：${activeSandbox.label}`}
+                    aria-haspopup="menu"
+                    aria-expanded={sandboxOpen}
+                    onClick={() => {
+                      setAccessOpen(false);
+                      setSandboxOpen((value) => !value);
+                    }}
+                    className={`mode-button sandbox-${sandboxMode}`}
+                  >
+                    <ActiveSandboxIcon size={16} />
+                    <span>{activeSandbox.label}</span>
+                    <ChevronDown size={14} />
+                  </button>
+                  {sandboxOpen && (
+                    <div
+                      className="composer-popover sandbox-popover"
+                      role="menu"
+                      aria-label="沙箱模式"
+                    >
+                      {sandboxOptions.map(({ mode, label, icon: Icon }) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          role="menuitemradio"
+                          aria-checked={sandboxMode === mode}
+                          aria-current={
+                            sandboxMode === mode ? "true" : undefined
+                          }
+                          onClick={() => {
+                            setSandboxOpen(false);
+                            handleSandboxSelect(mode);
+                          }}
+                          className={`${sandboxMode === mode ? "active" : ""} sandbox-${mode}`}
                         >
                           <Icon size={16} />
                           <span>{label}</span>

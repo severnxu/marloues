@@ -10,7 +10,10 @@ import type {
 import type { AgentSettings, ModelOption } from "@shared/types";
 import { eventLog } from "../../codex/event-log";
 import { codexService, type ThreadEvent } from "../../codex/service";
-import { getAgentSettings } from "../../services/config-service";
+import {
+  getAgentSettings,
+  saveAgentSettings,
+} from "../../services/config-service";
 import { resolveModelProvider } from "../config/model-provider";
 import { configuredMcpTools } from "./mcp-tools";
 import { configuredRuntimeModels } from "./runtime-models";
@@ -27,7 +30,9 @@ function now(): number {
 function modelSnapshotFromSettings(): { modelId: string; modelName: string } {
   const modelProvider = resolveModelProvider(getAgentSettings());
   const modelId = modelProvider.selection.modelId || modelProvider.model;
-  const model = modelProvider.provider?.models.find((item) => item.id === modelId);
+  const model = modelProvider.provider?.models.find(
+    (item) => item.id === modelId,
+  );
   return {
     modelId,
     modelName: model?.label || modelId,
@@ -71,19 +76,31 @@ export class BinaryRuntime implements AgentRuntime {
   };
 
   private turnToThread = new Map<string, string>();
+  private approvalToThread = new Map<string, string>();
   private permissionMode: PermissionMode = "default";
 
   async initialize(): Promise<void> {
     codexService.refreshProvider();
+    this.permissionMode = runtimePermissionMode(
+      getAgentSettings().permissionMode,
+    );
   }
 
   async destroy(): Promise<void> {
+    this.approvalToThread.clear();
+    await Promise.all(
+      codexService
+        .listSessions()
+        .map((session) => codexService.closeSession(session.id)),
+    );
     codexService.removeAllListeners();
     eventLog.destroy();
   }
 
   async listThreads(): Promise<Thread[]> {
-    return Array.from(threads.values()).sort((a, b) => b.updatedAt - a.updatedAt);
+    return Array.from(threads.values()).sort(
+      (a, b) => b.updatedAt - a.updatedAt,
+    );
   }
 
   async createThread(title?: string): Promise<Thread> {
@@ -110,7 +127,10 @@ export class BinaryRuntime implements AgentRuntime {
     const endIndex = upToMessageId
       ? source.messages.findIndex((message) => message.id === upToMessageId)
       : -1;
-    const messages = endIndex >= 0 ? source.messages.slice(0, endIndex + 1) : [...source.messages];
+    const messages =
+      endIndex >= 0
+        ? source.messages.slice(0, endIndex + 1)
+        : [...source.messages];
     const forked: Thread = {
       id: genId(),
       title: `Forked: ${source.title}`,
@@ -119,7 +139,10 @@ export class BinaryRuntime implements AgentRuntime {
       updatedAt: now(),
     };
     threads.set(forked.id, forked);
-    workflowThreadStore.cloneThread(threadId, forked.id, { title: forked.title, upToMessageId });
+    workflowThreadStore.cloneThread(threadId, forked.id, {
+      title: forked.title,
+      upToMessageId,
+    });
     return forked;
   }
 
@@ -157,15 +180,20 @@ export class BinaryRuntime implements AgentRuntime {
       modelName: modelSnapshot.modelName,
     });
 
-    const stream = async function* (this: BinaryRuntime): AsyncIterable<RuntimeEvent> {
-      const startEvent: RuntimeEvent = { kind: "turn-start", payload: { turnId, timestamp: now() } };
+    const stream = async function* (
+      this: BinaryRuntime,
+    ): AsyncIterable<RuntimeEvent> {
+      const startEvent: RuntimeEvent = {
+        kind: "turn-start",
+        payload: { turnId, timestamp: now() },
+      };
       yield startEvent;
       const statusEvent: RuntimeEvent = {
         kind: "runtime-status",
         payload: {
           turnId,
           label: "Binary runtime",
-          detail: `permission=${this.permissionMode}; cwd=${opts.cwd ?? process.cwd()}`,
+          detail: `permission=${this.permissionMode}; sandboxOwner=codex-binary; cwd=${opts.cwd ?? process.cwd()}`,
           status: "running",
         },
       };
@@ -181,11 +209,19 @@ export class BinaryRuntime implements AgentRuntime {
 
       const onEvent = (sessionId: string, event: ThreadEvent) => {
         if (sessionId !== opts.threadId) return;
+        if (event.type === "approval_requested" && event.approval) {
+          this.approvalToThread.set(event.approval.id, opts.threadId);
+        }
         const converted = convertThreadEvent(turnId, event);
         for (const runtimeEvent of converted) {
-          if (runtimeEvent.kind === "text-chunk") assistantText += runtimeEvent.payload.content;
+          if (runtimeEvent.kind === "text-chunk")
+            assistantText += runtimeEvent.payload.content;
           if (runtimeEvent.kind === "turn-complete") completed = true;
-          workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, runtimeEvent);
+          workflowThreadStore.applyRuntimeEvent(
+            opts.threadId,
+            turnId,
+            runtimeEvent,
+          );
           queue.push(runtimeEvent);
         }
         wake();
@@ -194,19 +230,42 @@ export class BinaryRuntime implements AgentRuntime {
         if (sessionId !== opts.threadId) return;
         error = message;
         completed = true;
-        const errorEvent: RuntimeEvent = { kind: "error", payload: { code: "BINARY_RUNTIME_ERROR", message, recoverable: false } };
-        const completeEvent: RuntimeEvent = { kind: "turn-complete", payload: { turnId, result: "error", error: message } };
-        workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, errorEvent);
-        workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, completeEvent);
+        const errorEvent: RuntimeEvent = {
+          kind: "error",
+          payload: {
+            code: "BINARY_RUNTIME_ERROR",
+            message,
+            recoverable: false,
+          },
+        };
+        const completeEvent: RuntimeEvent = {
+          kind: "turn-complete",
+          payload: { turnId, result: "error", error: message },
+        };
+        workflowThreadStore.applyRuntimeEvent(
+          opts.threadId,
+          turnId,
+          errorEvent,
+        );
+        workflowThreadStore.applyRuntimeEvent(
+          opts.threadId,
+          turnId,
+          completeEvent,
+        );
         queue.push(errorEvent, completeEvent);
         wake();
       };
 
       codexService.onEvent(onEvent);
       codexService.onError(onError);
-      void codexService.sendMessage(opts.threadId, opts.content).catch((err) => {
-        onError(opts.threadId, err instanceof Error ? err.message : String(err));
-      });
+      void codexService
+        .sendMessage(opts.threadId, opts.content, { cwd: opts.cwd })
+        .catch((err) => {
+          onError(
+            opts.threadId,
+            err instanceof Error ? err.message : String(err),
+          );
+        });
 
       while (!completed || queue.length > 0) {
         const next = queue.shift();
@@ -238,6 +297,11 @@ export class BinaryRuntime implements AgentRuntime {
 
   async setPermissionMode(mode: PermissionMode): Promise<void> {
     this.permissionMode = mode;
+    const settings = getAgentSettings();
+    saveAgentSettings({
+      ...settings,
+      permissionMode: mode === "bypass" ? "bypassPermissions" : mode,
+    });
   }
 
   async getAvailableModels(): Promise<ModelOption[]> {
@@ -248,30 +312,59 @@ export class BinaryRuntime implements AgentRuntime {
     return configuredMcpTools();
   }
 
-  async readThread(input: import("@shared/workflow-thread-data-source").WorkflowReadThreadInput) {
+  async readThread(
+    input: import("@shared/workflow-thread-data-source").WorkflowReadThreadInput,
+  ) {
     return workflowThreadStore.readThread(input);
   }
 
-  subscribeThread(input: import("@shared/workflow-thread-data-source").WorkflowSubscribeThreadInput) {
+  subscribeThread(
+    input: import("@shared/workflow-thread-data-source").WorkflowSubscribeThreadInput,
+  ) {
     return workflowThreadStore.subscribeThread(input);
   }
 
-  respondApproval(requestId: string, approved: boolean, _scope: "once" | "session" = "once", reason?: string): void {
-    for (const threadId of this.turnToThread.values()) {
-      void codexService.respondToApproval(threadId, requestId, approved ? "approve" : "deny", reason);
-    }
+  respondApproval(
+    requestId: string,
+    approved: boolean,
+    scope: "once" | "session" = "once",
+    reason?: string,
+  ): void {
+    const threadId = this.approvalToThread.get(requestId);
+    if (!threadId) return;
+    this.approvalToThread.delete(requestId);
+    void codexService.respondToApproval(
+      threadId,
+      requestId,
+      approved ? "approve" : "deny",
+      scope,
+      reason,
+    );
   }
 }
 
-function convertThreadEvent(turnId: string, event: ThreadEvent): RuntimeEvent[] {
+function convertThreadEvent(
+  turnId: string,
+  event: ThreadEvent,
+): RuntimeEvent[] {
   if (event.type === "turn.completed") {
     return [{ kind: "turn-complete", payload: { turnId, result: "success" } }];
   }
   if (event.type === "turn.failed") {
     const message = event.error?.message ?? "Binary runtime failed";
     return [
-      { kind: "error", payload: { code: "BINARY_TURN_FAILED", message, recoverable: Boolean(event.error?.recoverable) } },
-      { kind: "turn-complete", payload: { turnId, result: "error", error: message } },
+      {
+        kind: "error",
+        payload: {
+          code: "BINARY_TURN_FAILED",
+          message,
+          recoverable: Boolean(event.error?.recoverable),
+        },
+      },
+      {
+        kind: "turn-complete",
+        payload: { turnId, result: "error", error: message },
+      },
     ];
   }
   if (event.type === "approval_requested" && event.approval) {
@@ -283,6 +376,7 @@ function convertThreadEvent(turnId: string, event: ThreadEvent): RuntimeEvent[] 
           toolName: event.approval.tool,
           reason: JSON.stringify(event.approval.toolInput ?? {}),
           timeout: 120_000,
+          allowSession: event.approval.allowSession,
         },
       },
     ];
@@ -290,10 +384,14 @@ function convertThreadEvent(turnId: string, event: ThreadEvent): RuntimeEvent[] 
   if (!event.item) return [];
 
   if (event.item.type === "agent_message" && event.item.text) {
-    return [{ kind: "text-chunk", payload: { turnId, content: event.item.text } }];
+    return [
+      { kind: "text-chunk", payload: { turnId, content: event.item.text } },
+    ];
   }
   if (event.item.type === "reasoning" && event.item.text) {
-    return [{ kind: "thinking-chunk", payload: { turnId, content: event.item.text } }];
+    return [
+      { kind: "thinking-chunk", payload: { turnId, content: event.item.text } },
+    ];
   }
   if (event.type === "item.started" && event.item.type === "mcp_tool_call") {
     return [
@@ -304,6 +402,43 @@ function convertThreadEvent(turnId: string, event: ThreadEvent): RuntimeEvent[] 
           toolId: event.item.id,
           toolName: event.item.tool ?? "tool",
           input: event.item.args ?? event.item.arguments ?? {},
+        },
+      },
+    ];
+  }
+  if (
+    event.type === "item.started" &&
+    event.item.type === "command_execution"
+  ) {
+    return [
+      {
+        kind: "tool-start",
+        payload: {
+          turnId,
+          toolId: event.item.id,
+          toolName: "Bash",
+          input: {
+            command: event.item.command ?? "",
+            shell: event.item.shell,
+          },
+        },
+      },
+    ];
+  }
+  if (
+    event.type === "item.completed" &&
+    event.item.type === "command_execution"
+  ) {
+    return [
+      {
+        kind: "tool-complete",
+        payload: {
+          turnId,
+          toolId: event.item.id,
+          output: event.item.aggregated_output ?? "",
+          isError:
+            event.item.status === "error" ||
+            (event.item.exit_code !== undefined && event.item.exit_code !== 0),
         },
       },
     ];
@@ -322,8 +457,22 @@ function convertThreadEvent(turnId: string, event: ThreadEvent): RuntimeEvent[] 
     ];
   }
   if (event.item.type === "error") {
-    const message = event.item.message ?? event.item.error?.message ?? "Binary runtime item error";
-    return [{ kind: "error", payload: { code: "BINARY_ITEM_ERROR", message, recoverable: true } }];
+    const message =
+      event.item.message ??
+      event.item.error?.message ??
+      "Binary runtime item error";
+    return [
+      {
+        kind: "error",
+        payload: { code: "BINARY_ITEM_ERROR", message, recoverable: true },
+      },
+    ];
   }
   return [];
+}
+
+function runtimePermissionMode(
+  mode: AgentSettings["permissionMode"],
+): PermissionMode {
+  return mode === "bypassPermissions" ? "bypass" : mode;
 }

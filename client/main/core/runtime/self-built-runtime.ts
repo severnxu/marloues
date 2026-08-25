@@ -1,5 +1,13 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, relative, resolve } from "node:path";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, relative, resolve } from "node:path";
 import type {
   AgentRuntime,
   Message,
@@ -12,8 +20,15 @@ import type {
 import type { AgentSettings, ModelOption } from "@shared/types";
 import { configuredMcpTools } from "./mcp-tools";
 import { getAgentSettings } from "../../services/config-service";
-import { evaluateToolPermission } from "../permissions/tool-permission-engine";
 import { ToolStormBreaker, type ToolStormDecision } from "./tool-storm-breaker";
+import {
+  createRuntimeSecurityHost,
+  type SecurityDecision,
+  type SecurityHost,
+} from "../security/security-host";
+import type { SecurityOperation } from "../security/operation-factory";
+import type { SecurityPermit } from "../security/sandbox-broker";
+import { validatePathBoundary } from "../permissions/path-boundary-validator";
 
 function genId(): string {
   return crypto.randomUUID();
@@ -67,10 +82,21 @@ export class SelfBuiltRuntime implements AgentRuntime {
   private tools = new Map<string, ToolDefinition>();
   private handlers = new Map<string, (args: unknown) => Promise<unknown>>();
   private cancelledTools = new Set<string>();
-  private pendingApprovals = new Map<string, { toolName: string; resolve: (approved: boolean) => void }>();
-  private sessionApprovedTools = new Set<string>();
-  private undoStack: Array<{ cwd: string; filePath: string; previousContent: string | null }> = [];
+  private pendingApprovals = new Map<
+    string,
+    {
+      toolName: string;
+      operation?: SecurityOperation;
+      resolve: (approved: boolean) => void;
+    }
+  >();
+  private undoStack: Array<{
+    cwd: string;
+    filePath: string;
+    previousContent: string | null;
+  }> = [];
   private toolStormBreaker = new ToolStormBreaker();
+  private securityHost: SecurityHost = createRuntimeSecurityHost("self-built");
 
   async initialize(): Promise<void> {
     this.registerBuiltinTools();
@@ -80,11 +106,13 @@ export class SelfBuiltRuntime implements AgentRuntime {
     this.abortedTurns.clear();
     this.cancelledTools.clear();
     this.resolvePendingApprovals(false);
-    this.sessionApprovedTools.clear();
+    this.securityHost.clearGrants();
   }
 
   async listThreads(): Promise<Thread[]> {
-    return Array.from(threads.values()).sort((a, b) => b.updatedAt - a.updatedAt);
+    return Array.from(threads.values()).sort(
+      (a, b) => b.updatedAt - a.updatedAt,
+    );
   }
 
   async createThread(title?: string): Promise<Thread> {
@@ -108,7 +136,10 @@ export class SelfBuiltRuntime implements AgentRuntime {
     const endIndex = upToMessageId
       ? source.messages.findIndex((message) => message.id === upToMessageId)
       : -1;
-    const messages = endIndex >= 0 ? source.messages.slice(0, endIndex + 1) : [...source.messages];
+    const messages =
+      endIndex >= 0
+        ? source.messages.slice(0, endIndex + 1)
+        : [...source.messages];
     const thread: Thread = {
       id: genId(),
       title: `Forked: ${source.title}`,
@@ -120,9 +151,14 @@ export class SelfBuiltRuntime implements AgentRuntime {
     return thread;
   }
 
-  async truncateThread(threadId: string, opts: { fromMessageId: string; includeMessage?: boolean }): Promise<Thread> {
+  async truncateThread(
+    threadId: string,
+    opts: { fromMessageId: string; includeMessage?: boolean },
+  ): Promise<Thread> {
     const thread = ensureThread(threadId);
-    const index = thread.messages.findIndex((message) => message.id === opts.fromMessageId);
+    const index = thread.messages.findIndex(
+      (message) => message.id === opts.fromMessageId,
+    );
     if (index < 0) throw new Error(`Message not found: ${opts.fromMessageId}`);
     const end = opts.includeMessage ? index + 1 : index;
     thread.messages = thread.messages.slice(0, end);
@@ -152,7 +188,9 @@ export class SelfBuiltRuntime implements AgentRuntime {
       timestamp: now(),
     });
 
-    const stream = async function* (this: SelfBuiltRuntime): AsyncIterable<RuntimeEvent> {
+    const stream = async function* (
+      this: SelfBuiltRuntime,
+    ): AsyncIterable<RuntimeEvent> {
       yield { kind: "turn-start", payload: { turnId, timestamp: now() } };
       yield {
         kind: "runtime-status",
@@ -178,7 +216,10 @@ export class SelfBuiltRuntime implements AgentRuntime {
         if (loopResult.assistantText) {
           for (const chunk of splitChunks(loopResult.assistantText, 24)) {
             if (this.abortedTurns.has(turnId)) {
-              yield { kind: "turn-complete", payload: { turnId, result: "aborted" } };
+              yield {
+                kind: "turn-complete",
+                payload: { turnId, result: "aborted" },
+              };
               return;
             }
             yield { kind: "text-chunk", payload: { turnId, content: chunk } };
@@ -198,58 +239,126 @@ export class SelfBuiltRuntime implements AgentRuntime {
             usage: estimateTokenUsage(opts.content, loopResult.assistantText),
           },
         };
-        yield { kind: "turn-complete", payload: { turnId, result: loopResult.result, error: loopResult.error } };
+        yield {
+          kind: "turn-complete",
+          payload: {
+            turnId,
+            result: loopResult.result,
+            error: loopResult.error,
+          },
+        };
         return;
       }
 
       if (this.shouldRequestApproval(opts.content)) {
         const requestId = `approval-${turnId}`;
         const toolName = "self-built.sensitive-write";
-        const input = { action: "simulate-sensitive-write", prompt: opts.content };
+        const input = {
+          action: "simulate-sensitive-write",
+          prompt: opts.content,
+        };
         const storm = this.checkToolStorm(turnId, toolName, input);
         if (storm.action === "deny") {
           const message = storm.message ?? "Repeated tool call blocked.";
-          yield { kind: "error", payload: { code: "TOOL_STORM_BLOCKED", message, recoverable: true } };
-          yield { kind: "turn-complete", payload: { turnId, result: "error", error: message } };
+          yield {
+            kind: "error",
+            payload: { code: "TOOL_STORM_BLOCKED", message, recoverable: true },
+          };
+          yield {
+            kind: "turn-complete",
+            payload: { turnId, result: "error", error: message },
+          };
           return;
         }
-        const decision = this.evaluateToolPermission(toolName, input);
+        const decision = this.evaluateSecurity({
+          toolName,
+          input,
+          cwd: opts.cwd ?? process.cwd(),
+          threadId: opts.threadId,
+          turnId,
+        });
         if (decision.action === "deny") {
           const message = decision.reason;
-          yield { kind: "error", payload: { code: "TOOL_PERMISSION_DENIED", message, recoverable: true } };
-          yield { kind: "turn-complete", payload: { turnId, result: "error", error: message } };
+          yield {
+            kind: "error",
+            payload: {
+              code: "TOOL_PERMISSION_DENIED",
+              message,
+              recoverable: true,
+            },
+          };
+          yield {
+            kind: "turn-complete",
+            payload: { turnId, result: "error", error: message },
+          };
           return;
         }
-        const approval = decision.action === "ask"
-          ? this.createApprovalRequest(requestId, toolName)
-          : undefined;
+        const approval =
+          decision.action === "ask"
+            ? this.createApprovalRequest(
+                requestId,
+                toolName,
+                decision.operation,
+              )
+            : undefined;
         if (approval) {
           yield {
             kind: "approval-request",
             payload: {
               requestId,
               toolName,
-              reason: JSON.stringify({ decision: decision.reason, matchedRule: decision.matchedRule, toolStorm: storm.action === "warn" ? storm.message : undefined, action: "simulate-sensitive-write", prompt: opts.content }, null, 2),
+              reason: JSON.stringify(
+                {
+                  decision: decision.reason,
+                  matchedRule: decision.matchedRule,
+                  toolStorm:
+                    storm.action === "warn" ? storm.message : undefined,
+                  action: "simulate-sensitive-write",
+                  prompt: opts.content,
+                },
+                null,
+                2,
+              ),
               timeout: this.approvalTimeoutMs(),
+              allowSession: decision.allowSession,
             },
           };
         }
         const approved = approval ? await approval.decision : true;
         if (this.abortedTurns.has(turnId)) {
-          yield { kind: "turn-complete", payload: { turnId, result: "aborted" } };
+          yield {
+            kind: "turn-complete",
+            payload: { turnId, result: "aborted" },
+          };
           return;
         }
         if (!approved) {
           const message = "Tool execution denied by user.";
-          yield { kind: "error", payload: { code: "TOOL_APPROVAL_DENIED", message, recoverable: true } };
-          yield { kind: "turn-complete", payload: { turnId, result: "error", error: message } };
+          yield {
+            kind: "error",
+            payload: {
+              code: "TOOL_APPROVAL_DENIED",
+              message,
+              recoverable: true,
+            },
+          };
+          yield {
+            kind: "turn-complete",
+            payload: { turnId, result: "error", error: message },
+          };
           return;
         }
         const toolId = `tool-${turnId}`;
         this.cancelledTools.delete(toolId);
-        yield { kind: "tool-start", payload: { turnId, toolId, toolName, input } };
+        yield {
+          kind: "tool-start",
+          payload: { turnId, toolId, toolName, input },
+        };
         for (let step = 1; step <= 5; step += 1) {
-          if (this.cancelledTools.has(toolId) || this.abortedTurns.has(turnId)) {
+          if (
+            this.cancelledTools.has(toolId) ||
+            this.abortedTurns.has(turnId)
+          ) {
             this.cancelledTools.delete(toolId);
             yield {
               kind: "tool-complete",
@@ -260,7 +369,10 @@ export class SelfBuiltRuntime implements AgentRuntime {
                 isError: true,
               },
             };
-            yield { kind: "turn-complete", payload: { turnId, result: "aborted" } };
+            yield {
+              kind: "turn-complete",
+              payload: { turnId, result: "aborted" },
+            };
             return;
           }
           yield {
@@ -291,7 +403,10 @@ export class SelfBuiltRuntime implements AgentRuntime {
       let emitted = "";
       for (const chunk of splitChunks(response, 24)) {
         if (this.abortedTurns.has(turnId)) {
-          yield { kind: "turn-complete", payload: { turnId, result: "aborted" } };
+          yield {
+            kind: "turn-complete",
+            payload: { turnId, result: "aborted" },
+          };
           return;
         }
         emitted += chunk;
@@ -338,7 +453,10 @@ export class SelfBuiltRuntime implements AgentRuntime {
     this.permissionMode = mode;
   }
 
-  registerTool(tool: ToolDefinition, handler: (args: unknown) => Promise<unknown>): void {
+  registerTool(
+    tool: ToolDefinition,
+    handler: (args: unknown) => Promise<unknown>,
+  ): void {
     this.tools.set(tool.name, tool);
     this.handlers.set(tool.name, handler);
   }
@@ -347,14 +465,27 @@ export class SelfBuiltRuntime implements AgentRuntime {
     const byName = new Map<string, ToolDefinition>();
     for (const tool of configuredMcpTools()) byName.set(tool.name, tool);
     for (const tool of this.tools.values()) byName.set(tool.name, tool);
-    return Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return Array.from(byName.values()).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
   }
 
-  respondApproval(requestId: string, approved: boolean, scope: "once" | "session", _reason?: string): void {
+  respondApproval(
+    requestId: string,
+    approved: boolean,
+    scope: "once" | "session",
+    _reason?: string,
+  ): void {
     const pending = this.pendingApprovals.get(requestId);
     if (!pending) return;
     this.pendingApprovals.delete(requestId);
-    if (approved && scope === "session") this.sessionApprovedTools.add(pending.toolName);
+    if (approved && scope === "session" && pending.operation) {
+      this.securityHost.createGrant({
+        operation: pending.operation,
+        scope: "session",
+        sourceRequestId: requestId,
+      });
+    }
     pending.resolve(approved);
   }
 
@@ -363,7 +494,8 @@ export class SelfBuiltRuntime implements AgentRuntime {
     this.registerTool(
       {
         name: "memory.echo",
-        description: "Echoes input through the self-built runtime tool registry.",
+        description:
+          "Echoes input through the self-built runtime tool registry.",
         inputSchema: {
           type: "object",
           properties: {
@@ -378,10 +510,16 @@ export class SelfBuiltRuntime implements AgentRuntime {
   private planTurn(content: string): SelfBuiltPlan {
     const trimmed = content.trim();
     if (/^\/list(?:\s+|$)/i.test(trimmed)) {
-      return { intent: "list", targetPath: trimmed.replace(/^\/list\s*/i, "").trim() || "." };
+      return {
+        intent: "list",
+        targetPath: trimmed.replace(/^\/list\s*/i, "").trim() || ".",
+      };
     }
     if (/^\/read(?:\s+|$)/i.test(trimmed)) {
-      return { intent: "read", targetPath: trimmed.replace(/^\/read\s*/i, "").trim() || "." };
+      return {
+        intent: "read",
+        targetPath: trimmed.replace(/^\/read\s*/i, "").trim() || ".",
+      };
     }
     if (/^\/patch(?:\s+|$)/i.test(trimmed)) {
       const body = trimmed.replace(/^\/patch\s*/i, "");
@@ -408,68 +546,229 @@ export class SelfBuiltRuntime implements AgentRuntime {
       messageId?: string;
     },
   ): AsyncGenerator<RuntimeEvent, SelfBuiltLoopResult> {
-    if (plan.intent === "respond") return { done: false, result: "success", assistantText: "" };
+    if (plan.intent === "respond")
+      return { done: false, result: "success", assistantText: "" };
     const cwd = opts.cwd ?? process.cwd();
     try {
       if (plan.intent === "list") {
         const toolId = `tool-${turnId}-list`;
         const toolName = "self-built.fs.list";
         const input = { path: plan.targetPath };
-        const assistantText = yield* this.runToolAsText(turnId, toolId, toolName, input, () => this.listWorkspaceDir(cwd, plan.targetPath));
+        const decision = this.evaluateSecurity({
+          toolName,
+          input,
+          cwd,
+          threadId: opts.threadId,
+          turnId,
+        });
+        const authorization = yield* this.authorizeDecision(
+          turnId,
+          toolName,
+          decision,
+          { action: "list", path: plan.targetPath },
+        );
+        if (!authorization.allowed) {
+          const message = authorization.reason;
+          yield {
+            kind: "error",
+            payload: {
+              code: "TOOL_PERMISSION_DENIED",
+              message,
+              recoverable: true,
+            },
+          };
+          return {
+            done: true,
+            result: "error",
+            error: message,
+            assistantText: message,
+          };
+        }
+        const authorizedPath = requireBrokeredFilePermit(
+          decision.operation,
+          authorization.permit,
+          "read",
+        );
+        const assistantText = yield* this.runToolAsText(
+          turnId,
+          toolId,
+          toolName,
+          input,
+          () => this.listWorkspaceDir(cwd, authorizedPath),
+        );
         return { done: true, result: "success", assistantText };
       }
       if (plan.intent === "read") {
         const toolId = `tool-${turnId}-read`;
         const toolName = "self-built.fs.read";
         const input = { path: plan.targetPath };
-        const assistantText = yield* this.runToolAsText(turnId, toolId, toolName, input, () => this.readWorkspaceFile(cwd, plan.targetPath));
+        const decision = this.evaluateSecurity({
+          toolName,
+          input,
+          cwd,
+          threadId: opts.threadId,
+          turnId,
+        });
+        const authorization = yield* this.authorizeDecision(
+          turnId,
+          toolName,
+          decision,
+          { action: "read", path: plan.targetPath },
+        );
+        if (!authorization.allowed) {
+          const message = authorization.reason;
+          yield {
+            kind: "error",
+            payload: {
+              code: "TOOL_PERMISSION_DENIED",
+              message,
+              recoverable: true,
+            },
+          };
+          return {
+            done: true,
+            result: "error",
+            error: message,
+            assistantText: message,
+          };
+        }
+        const authorizedPath = requireBrokeredFilePermit(
+          decision.operation,
+          authorization.permit,
+          "read",
+        );
+        const assistantText = yield* this.runToolAsText(
+          turnId,
+          toolId,
+          toolName,
+          input,
+          () => this.readWorkspaceFile(cwd, authorizedPath),
+        );
         return { done: true, result: "success", assistantText };
       }
       if (plan.intent === "patch") {
-        if (!plan.targetPath) throw new Error("Usage: /patch <relative-file-path>\\n<content>");
+        if (!plan.targetPath)
+          throw new Error("Usage: /patch <relative-file-path>\\n<content>");
         const toolName = "self-built.fs.patch";
-        const patchInput = { path: plan.targetPath, bytes: Buffer.byteLength(plan.content, "utf-8") };
+        const patchInput = {
+          path: plan.targetPath,
+          bytes: Buffer.byteLength(plan.content, "utf-8"),
+        };
         const storm = this.checkToolStorm(turnId, toolName, patchInput);
         if (storm.action === "deny") {
           const message = storm.message ?? "Repeated tool call blocked.";
-          yield { kind: "error", payload: { code: "TOOL_STORM_BLOCKED", message, recoverable: true } };
-          return { done: true, result: "error", error: message, assistantText: message };
-        }
-        const decision = this.evaluateToolPermission(toolName, patchInput);
-        if (decision.action === "deny") {
-          const message = decision.reason;
-          yield { kind: "error", payload: { code: "PATCH_PERMISSION_DENIED", message, recoverable: true } };
-          return { done: true, result: "error", error: message, assistantText: message };
-        }
-        const approval = decision.action === "ask"
-          ? this.createApprovalRequest(`approval-${turnId}`, toolName)
-          : undefined;
-        if (approval) {
           yield {
-            kind: "approval-request",
+            kind: "error",
+            payload: { code: "TOOL_STORM_BLOCKED", message, recoverable: true },
+          };
+          return {
+            done: true,
+            result: "error",
+            error: message,
+            assistantText: message,
+          };
+        }
+        const decision = this.evaluateSecurity({
+          toolName,
+          input: patchInput,
+          cwd,
+          threadId: opts.threadId,
+          turnId,
+        });
+        const authorization = yield* this.authorizeDecision(
+          turnId,
+          toolName,
+          decision,
+          {
+            toolStorm: storm.action === "warn" ? storm.message : undefined,
+            action: "patch",
+            path: plan.targetPath,
+            bytes: Buffer.byteLength(plan.content, "utf-8"),
+          },
+        );
+        if (!authorization.allowed) {
+          const message = authorization.reason;
+          yield {
+            kind: "error",
             payload: {
-              requestId: `approval-${turnId}`,
-              toolName,
-              reason: JSON.stringify({ decision: decision.reason, matchedRule: decision.matchedRule, toolStorm: storm.action === "warn" ? storm.message : undefined, action: "patch", path: plan.targetPath, bytes: Buffer.byteLength(plan.content, "utf-8") }, null, 2),
-              timeout: this.approvalTimeoutMs(),
+              code: "PATCH_PERMISSION_DENIED",
+              message,
+              recoverable: true,
             },
           };
-          const approved = await approval.decision;
-          if (!approved) {
-            const message = "Patch denied by user.";
-            yield { kind: "error", payload: { code: "PATCH_APPROVAL_DENIED", message, recoverable: true } };
-            return { done: true, result: "error", error: message, assistantText: message };
-          }
+          return {
+            done: true,
+            result: "error",
+            error: message,
+            assistantText: message,
+          };
         }
+        const authorizedPath = requireBrokeredFilePermit(
+          decision.operation,
+          authorization.permit,
+          "write",
+        );
         const toolId = `tool-${turnId}-patch`;
-        const input = { path: plan.targetPath, bytes: Buffer.byteLength(plan.content, "utf-8") };
-        const assistantText = yield* this.runToolAsText(turnId, toolId, toolName, input, () => this.patchWorkspaceFile(cwd, plan.targetPath, plan.content));
+        const input = {
+          path: plan.targetPath,
+          bytes: Buffer.byteLength(plan.content, "utf-8"),
+        };
+        const assistantText = yield* this.runToolAsText(
+          turnId,
+          toolId,
+          toolName,
+          input,
+          () => this.patchWorkspaceFile(cwd, authorizedPath, plan.content),
+        );
         return { done: true, result: "success", assistantText };
       }
       if (plan.intent === "undo") {
         const toolId = `tool-${turnId}-undo`;
         const toolName = "self-built.fs.undo";
-        const assistantText = yield* this.runToolAsText(turnId, toolId, toolName, {}, () => this.undoLastPatch(cwd));
+        const targetPath = this.latestUndoPath(cwd);
+        const input = { path: targetPath };
+        const decision = this.evaluateSecurity({
+          toolName,
+          input,
+          cwd,
+          threadId: opts.threadId,
+          turnId,
+        });
+        const authorization = yield* this.authorizeDecision(
+          turnId,
+          toolName,
+          decision,
+          { action: "undo", path: targetPath },
+        );
+        if (!authorization.allowed) {
+          const message = authorization.reason;
+          yield {
+            kind: "error",
+            payload: {
+              code: "UNDO_PERMISSION_DENIED",
+              message,
+              recoverable: true,
+            },
+          };
+          return {
+            done: true,
+            result: "error",
+            error: message,
+            assistantText: message,
+          };
+        }
+        const authorizedPath = requireBrokeredFilePermit(
+          decision.operation,
+          authorization.permit,
+          "write",
+        );
+        const assistantText = yield* this.runToolAsText(
+          turnId,
+          toolId,
+          toolName,
+          input,
+          () => this.undoLastPatch(cwd, authorizedPath),
+        );
         return { done: true, result: "success", assistantText };
       }
     } catch (error) {
@@ -483,7 +782,11 @@ export class SelfBuiltRuntime implements AgentRuntime {
     return { done: false, result: "success", assistantText: "" };
   }
 
-  private composeResponse(content: string, cwd?: string, plan?: SelfBuiltPlan): string {
+  private composeResponse(
+    content: string,
+    cwd?: string,
+    plan?: SelfBuiltPlan,
+  ): string {
     const toolNames = Array.from(this.tools.keys()).join(", ") || "none";
     return [
       "Self-built runtime is active.",
@@ -510,21 +813,58 @@ export class SelfBuiltRuntime implements AgentRuntime {
     const storm = this.checkToolStorm(turnId, toolName, input);
     if (storm.action === "deny") {
       const message = storm.message ?? "Repeated tool call blocked.";
-      yield { kind: "error", payload: { code: "TOOL_STORM_BLOCKED", message, recoverable: true } };
-      yield { kind: "tool-complete", payload: { turnId, toolId, output: message, isError: true } };
+      yield {
+        kind: "error",
+        payload: { code: "TOOL_STORM_BLOCKED", message, recoverable: true },
+      };
+      yield {
+        kind: "tool-complete",
+        payload: { turnId, toolId, output: message, isError: true },
+      };
       return message;
     }
     this.cancelledTools.delete(toolId);
     yield { kind: "tool-start", payload: { turnId, toolId, toolName, input } };
-    yield { kind: "tool-progress", payload: { turnId, toolId, toolName, input, partialInput: "plan", isReady: false } };
+    yield {
+      kind: "tool-progress",
+      payload: {
+        turnId,
+        toolId,
+        toolName,
+        input,
+        partialInput: "plan",
+        isReady: false,
+      },
+    };
     if (this.cancelledTools.has(toolId) || this.abortedTurns.has(turnId)) {
       this.cancelledTools.delete(toolId);
-      yield { kind: "tool-complete", payload: { turnId, toolId, output: "Tool execution cancelled.", isError: true } };
+      yield {
+        kind: "tool-complete",
+        payload: {
+          turnId,
+          toolId,
+          output: "Tool execution cancelled.",
+          isError: true,
+        },
+      };
       return "Tool execution cancelled.";
     }
     const output = execute();
-    yield { kind: "tool-progress", payload: { turnId, toolId, toolName, input, partialInput: "verify", isReady: true } };
-    yield { kind: "tool-complete", payload: { turnId, toolId, output, isError: false } };
+    yield {
+      kind: "tool-progress",
+      payload: {
+        turnId,
+        toolId,
+        toolName,
+        input,
+        partialInput: "verify",
+        isReady: true,
+      },
+    };
+    yield {
+      kind: "tool-complete",
+      payload: { turnId, toolId, output, isError: false },
+    };
     return [
       "Self-built runtime is active.",
       "",
@@ -534,8 +874,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
     ].join("\n");
   }
 
-  private listWorkspaceDir(cwd: string, inputPath: string): string {
-    const absPath = resolveSandboxPath(cwd, inputPath || ".");
+  private listWorkspaceDir(cwd: string, absPath: string): string {
     const entries = readdirSync(absPath, { withFileTypes: true })
       .filter((entry) => !entry.name.startsWith(".git"))
       .slice(0, 100)
@@ -544,33 +883,47 @@ export class SelfBuiltRuntime implements AgentRuntime {
     return `Listed ${relative(cwd, absPath) || "."}:\n${entries || "(empty)"}`;
   }
 
-  private readWorkspaceFile(cwd: string, inputPath: string): string {
-    const absPath = resolveSandboxPath(cwd, inputPath);
+  private readWorkspaceFile(cwd: string, absPath: string): string {
     const stat = statSync(absPath);
     if (!stat.isFile()) throw new Error("Path is not a file");
-    if (stat.size > MAX_READ_BYTES) throw new Error("File is too large to read");
+    if (stat.size > MAX_READ_BYTES)
+      throw new Error("File is too large to read");
     return `Read ${relative(cwd, absPath)}:\n\n${readFileSync(absPath, "utf-8")}`;
   }
 
-  private patchWorkspaceFile(cwd: string, inputPath: string, content: string): string {
-    const absPath = resolveSandboxPath(cwd, inputPath);
-    const previousContent = existsSync(absPath) ? readFileSync(absPath, "utf-8") : null;
+  private patchWorkspaceFile(
+    cwd: string,
+    absPath: string,
+    content: string,
+  ): string {
+    const workspace = resolveSandboxPath(cwd, ".");
+    const previousContent = existsSync(absPath)
+      ? readFileSync(absPath, "utf-8")
+      : null;
     mkdirSync(dirname(absPath), { recursive: true });
     writeFileSync(absPath, content, "utf-8");
-    this.undoStack.push({ cwd: resolve(cwd), filePath: absPath, previousContent });
+    this.undoStack.push({
+      cwd: workspace,
+      filePath: absPath,
+      previousContent,
+    });
     return `Patched ${relative(cwd, absPath)} (${Buffer.byteLength(content, "utf-8")} bytes).`;
   }
 
-  private undoLastPatch(cwd: string): string {
-    const root = resolve(cwd);
+  private undoLastPatch(cwd: string, authorizedPath: string): string {
+    const root = resolveSandboxPath(cwd, ".");
     let entryIndex = -1;
     for (let index = this.undoStack.length - 1; index >= 0; index -= 1) {
-      if (this.undoStack[index].cwd === root) {
+      if (
+        this.undoStack[index].cwd === root &&
+        sameNativePath(this.undoStack[index].filePath, authorizedPath)
+      ) {
         entryIndex = index;
         break;
       }
     }
-    if (entryIndex < 0) throw new Error("No self-built patch to undo for this workspace");
+    if (entryIndex < 0)
+      throw new Error("No self-built patch to undo for this workspace");
     const [entry] = this.undoStack.splice(entryIndex, 1);
     if (entry.previousContent === null) {
       if (existsSync(entry.filePath)) unlinkSync(entry.filePath);
@@ -580,23 +933,47 @@ export class SelfBuiltRuntime implements AgentRuntime {
     return `Restored ${relative(root, entry.filePath)} from undo snapshot.`;
   }
 
-  private checkToolStorm(turnId: string, toolName: string, input: unknown): ToolStormDecision {
+  private latestUndoPath(cwd: string): string {
+    const root = resolveSandboxPath(cwd, ".");
+    for (let index = this.undoStack.length - 1; index >= 0; index -= 1) {
+      if (this.undoStack[index].cwd === root) {
+        return relative(root, this.undoStack[index].filePath);
+      }
+    }
+    throw new Error("No self-built patch to undo for this workspace");
+  }
+
+  private checkToolStorm(
+    turnId: string,
+    toolName: string,
+    input: unknown,
+  ): ToolStormDecision {
     return this.toolStormBreaker.check(turnId, toolName, input);
   }
 
-  private evaluateToolPermission(toolName: string, input: unknown) {
+  private evaluateSecurity(input: {
+    toolName: string;
+    input: unknown;
+    cwd: string;
+    threadId?: string;
+    turnId?: string;
+  }): SecurityDecision {
     const settings = getAgentSettings();
-    return evaluateToolPermission({
-      toolName,
-      input,
+    return this.securityHost.evaluate({
+      threadId: input.threadId,
+      turnId: input.turnId,
+      toolName: input.toolName,
+      input: input.input,
+      workspaceRoot: input.cwd,
       permissionMode: this.permissionMode,
-      policy: settings.toolPermissionPolicy,
-      sessionAllowedTools: this.sessionApprovedTools,
+      settings,
     });
   }
 
   private approvalTimeoutMs(): number {
-    return getAgentSettings().permissionApprovalTimeoutMs ?? APPROVAL_TIMEOUT_MS;
+    return (
+      getAgentSettings().permissionApprovalTimeoutMs ?? APPROVAL_TIMEOUT_MS
+    );
   }
 
   private shouldRequestApproval(content: string): boolean {
@@ -606,6 +983,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
   private createApprovalRequest(
     requestId: string,
     toolName: string,
+    operation?: SecurityOperation,
   ): { decision: Promise<boolean> } {
     const decision = new Promise<boolean>((resolve) => {
       const timeout = setTimeout(() => {
@@ -615,6 +993,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
 
       this.pendingApprovals.set(requestId, {
         toolName,
+        operation,
         resolve: (approved) => {
           clearTimeout(timeout);
           resolve(approved);
@@ -622,6 +1001,62 @@ export class SelfBuiltRuntime implements AgentRuntime {
       });
     });
     return { decision };
+  }
+
+  private async *authorizeDecision(
+    turnId: string,
+    toolName: string,
+    decision: SecurityDecision,
+    details: Record<string, unknown>,
+  ): AsyncGenerator<
+    RuntimeEvent,
+    { allowed: boolean; reason: string; permit?: SecurityPermit }
+  > {
+    if (decision.action === "deny") {
+      return { allowed: false, reason: decision.reason };
+    }
+    if (decision.action === "allow") {
+      return {
+        allowed: true,
+        reason: decision.reason,
+        permit: decision.permit,
+      };
+    }
+    const requestId = `approval-${turnId}`;
+    const approval = this.createApprovalRequest(
+      requestId,
+      toolName,
+      decision.operation,
+    );
+    yield {
+      kind: "approval-request",
+      payload: {
+        requestId,
+        toolName,
+        reason: JSON.stringify(
+          {
+            decision: decision.reason,
+            matchedRule: decision.matchedRule,
+            ...details,
+          },
+          null,
+          2,
+        ),
+        timeout: this.approvalTimeoutMs(),
+        allowSession: decision.allowSession,
+      },
+    };
+    if (!(await approval.decision)) {
+      return { allowed: false, reason: "Tool execution denied by user." };
+    }
+    return {
+      allowed: true,
+      reason: "Approved by user.",
+      permit: this.securityHost.issueApprovedPermit(
+        decision.operation,
+        getAgentSettings(),
+      ),
+    };
   }
 
   private resolvePendingApprovals(approved: boolean): void {
@@ -681,11 +1116,48 @@ function formatPlan(plan: SelfBuiltPlan): string {
 }
 
 function resolveSandboxPath(cwd: string, inputPath: string): string {
-  const root = resolve(cwd);
-  const candidate = resolve(root, inputPath || ".");
-  const rel = relative(root, candidate);
-  if (rel.startsWith("..") || isAbsolute(rel)) {
-    throw new Error("Path is outside the current workspace");
+  const result = validatePathBoundary(inputPath || ".", resolve(cwd));
+  if (!result.allowed || !result.resolvedPath) {
+    throw new Error(result.reason ?? "Path is outside the current workspace");
   }
-  return candidate;
+  return result.resolvedPath;
+}
+
+function requireBrokeredFilePermit(
+  operation: SecurityOperation,
+  permit: SecurityPermit | undefined,
+  access: "read" | "write",
+): string {
+  const authorizedPath = operation.resolvedPath;
+  if (!permit || !authorizedPath || permit.operationId !== operation.id) {
+    throw new Error(
+      "Brokered filesystem operation is missing its one-time permit.",
+    );
+  }
+  if (
+    permit.sandboxOwnership.kind !== "managed" ||
+    permit.sandboxOwnership.backend !== "brokered-fs"
+  ) {
+    throw new Error(
+      "Brokered filesystem operation has an invalid sandbox owner.",
+    );
+  }
+  if (
+    !permit.fs[access].some((candidate) =>
+      sameNativePath(candidate, authorizedPath),
+    )
+  ) {
+    throw new Error(
+      `Brokered filesystem permit does not allow ${access} access.`,
+    );
+  }
+  return authorizedPath;
+}
+
+function sameNativePath(first: string, second: string): boolean {
+  const left = resolve(first);
+  const right = resolve(second);
+  return process.platform === "win32"
+    ? left.toLowerCase() === right.toLowerCase()
+    : left === right;
 }

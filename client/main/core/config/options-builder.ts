@@ -120,11 +120,15 @@ export function buildClaudeRuntimeOptions(input: {
   cwd: string;
   env: Record<string, string | undefined>;
   canUseTool: ClaudeCanUseTool;
+  sdkMcpServers?: Record<string, unknown>;
+  toolAliases?: Record<string, string>;
 }): Record<string, unknown> {
-  const { settings, cwd, env, canUseTool } = input;
+  const { settings, cwd, env, canUseTool, sdkMcpServers, toolAliases } = input;
   const thinkingBudget = Math.max(0, settings.maxThinkingTokens ?? 0);
-  const permissionMode =
-    settings.workMode === "plan" ? "plan" : settings.permissionMode;
+  // Application permission modes are evaluated by SecurityHost. Passing
+  // bypassPermissions to Claude would auto-approve before canUseTool runs and
+  // would skip permit issuance for the sandbox adapter.
+  const permissionMode = settings.workMode === "plan" ? "plan" : "default";
   const claudeExecutablePath = resolveClaudeExecutablePath();
   return {
     cwd,
@@ -142,11 +146,17 @@ export function buildClaudeRuntimeOptions(input: {
       ? { type: "enabled", budgetTokens: thinkingBudget, display: "summarized" }
       : { type: "disabled" },
     maxThinkingTokens: settings.thinkingEnabled ? thinkingBudget : 0,
-    allowedTools: settings.toolPermissionPolicy?.allowedTools ?? [],
+    // Keep built-in tools flowing through canUseTool so SecurityHost can apply
+    // hard safety, path boundaries, and scoped grants for every runtime.
+    allowedTools: [],
     disallowedTools: settings.toolPermissionPolicy?.disallowedTools ?? [],
-    mcpServers: enabledMcpServerConfigs(settings),
+    mcpServers: {
+      ...enabledMcpServerConfigs(settings),
+      ...sdkMcpServers,
+    },
+    ...(toolAliases ? { toolAliases } : {}),
     permissionMode,
-    allowDangerouslySkipPermissions: permissionMode === "bypassPermissions",
+    allowDangerouslySkipPermissions: false,
     canUseTool,
     stderr: (data: string) =>
       logWarn("sdk.claude.stderr", { data: data.trim().slice(0, 2000) }),

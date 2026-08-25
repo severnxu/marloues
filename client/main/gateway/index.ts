@@ -2,84 +2,130 @@
  * Gateway Initializer - starts the HTTP gateway using store configuration
  */
 
-import { startServer, stopServer, RouteDecision, RouteResolver } from './server'
-import { configurePipeline } from './pipeline'
-import { store } from '../store'
-import type { ProtocolId } from './protocol'
-import { log } from './logger'
+import {
+  startServer,
+  stopServer,
+  RouteDecision,
+  RouteResolver,
+} from "./server";
+import { configurePipeline } from "./pipeline";
+import type { ProtocolId } from "./protocol";
+import { log } from "./logger";
+import { getAgentSettings } from "../services/config-service";
+import { resolveModelProvider } from "../core/config/model-provider";
 
-let gatewayStarted = false
-let gatewayPort = 0
+let gatewayStarted = false;
+let gatewayPort = 0;
+
+export interface GatewayTarget {
+  baseUrl: string;
+  protocol: "anthropic" | "openai-chat";
+}
+
+export function resolveGatewayTarget(baseUrl: string): GatewayTarget {
+  try {
+    const url = new URL(baseUrl);
+    if (
+      url.hostname.toLowerCase() === "api.deepseek.com" &&
+      /\/anthropic\/?$/i.test(url.pathname)
+    ) {
+      url.pathname = url.pathname.replace(/\/anthropic\/?$/i, "") || "/";
+      return {
+        baseUrl: url.toString().replace(/\/$/, ""),
+        protocol: "openai-chat",
+      };
+    }
+  } catch {
+    // Preserve existing behavior for non-standard but otherwise usable URLs.
+  }
+
+  return {
+    baseUrl,
+    protocol: /\/anthropic\/?$/i.test(baseUrl) ? "anthropic" : "openai-chat",
+  };
+}
 
 export async function startGateway(): Promise<{ port: number } | null> {
   if (gatewayStarted) {
-    log('[Gateway] Already started')
-    return { port: gatewayPort }
+    log("[Gateway] Already started");
+    return { port: gatewayPort };
   }
 
-  const provider = store.getSelectedProvider()
-  if (!provider) {
-    log('[Gateway] No provider configured, starting with empty config')
+  const provider = resolveModelProvider(getAgentSettings());
+  if (!provider.provider) {
+    log("[Gateway] No provider configured, starting with empty config");
   }
 
-  log(`[Gateway] Starting with provider: ${provider?.name ?? 'none'} (${provider?.baseUrl ?? 'n/a'})`)
+  log(
+    `[Gateway] Starting with provider: ${provider.provider?.name ?? "none"} (${provider.provider?.baseUrl ?? "n/a"})`,
+  );
 
-  // Configure route resolver using store's provider — re-reads store on each request
+  // Resolve the same AgentSettings provider used by every runtime on each request.
   // so provider changes take effect without restarting the gateway
-  const resolveRoute: RouteResolver = (_sourceProtocol: ProtocolId, model: string): RouteDecision[] => {
-    const currentProvider = store.getSelectedProvider()
-    if (!currentProvider) return []
-    return [{
-      targetProvider: currentProvider.id,
-      targetModel: currentProvider.model || model,
-      targetProtocol: 'openai-chat',
-      targetBaseUrl: currentProvider.baseUrl,
-      apiKey: currentProvider.apiKey
-    }]
-  }
+  const resolveRoute: RouteResolver = (
+    _sourceProtocol: ProtocolId,
+    model: string,
+  ): RouteDecision[] => {
+    const current = resolveModelProvider(getAgentSettings());
+    if (!current.provider?.baseUrl || !current.apiKey) return [];
+    const target = resolveGatewayTarget(current.provider.baseUrl);
+    return [
+      {
+        targetProvider: current.provider.id,
+        targetModel: current.model || model,
+        targetProtocol: target.protocol,
+        targetBaseUrl: target.baseUrl,
+        apiKey: current.apiKey,
+      },
+    ];
+  };
 
   // Configure pipeline
-  configurePipeline({ resolveRoute })
+  configurePipeline({ resolveRoute });
 
-  // Model list — re-reads store on each request
+  // Model list — re-reads AgentSettings on each request.
   const getModels = (): string[] => {
-    const providers = store.get('providers')
-    const selected = store.getSelectedProvider()
-    const models = providers
-      .filter(p => p.enabled && p.model)
-      .map(p => p.model!)
-    if (selected?.model && !models.includes(selected.model)) {
-      models.unshift(selected.model)
+    const settings = getAgentSettings();
+    const selected = resolveModelProvider(settings);
+    const models = settings.providers
+      .filter((item) => item.enabled !== false)
+      .flatMap((item) =>
+        item.models
+          .filter((model) => model.enabled !== false)
+          .map((model) => model.id),
+      );
+    if (selected.model && !models.includes(selected.model)) {
+      models.unshift(selected.model);
     }
-    return Array.from(new Set(models))
-  }
+    return Array.from(new Set(models));
+  };
 
   // Start server on port 8080 (or next available if in use)
   gatewayPort = await startServer({
     port: 8080,
     resolveRoute,
     getModels,
-  })
+  });
 
-  gatewayStarted = true
-  log(`[Gateway] Started successfully on port ${gatewayPort}`)
-  return { port: gatewayPort }
+  gatewayStarted = true;
+  log(`[Gateway] Started successfully on port ${gatewayPort}`);
+  return { port: gatewayPort };
 }
 
 export async function stopGateway(): Promise<void> {
   if (!gatewayStarted) {
-    return
+    return;
   }
 
-  await stopServer()
-  gatewayStarted = false
-  log('[Gateway] Stopped')
+  await stopServer();
+  gatewayStarted = false;
+  log("[Gateway] Stopped");
 }
 
 export function isGatewayStarted(): boolean {
-  return gatewayStarted
+  return gatewayStarted;
 }
 
 export function getGatewayPort(): number {
-  return gatewayPort
+  return gatewayPort;
 }

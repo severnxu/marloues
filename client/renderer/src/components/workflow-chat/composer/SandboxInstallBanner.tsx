@@ -1,4 +1,4 @@
-import { LoaderCircle, Shield, ShieldAlert, ShieldCheck } from "lucide-react";
+import { LoaderCircle, ShieldAlert, ShieldCheck } from "lucide-react";
 
 export type SandboxGatePhase =
   "checking" | "prompt" | "installing" | "success" | "cancelled" | "error";
@@ -11,10 +11,7 @@ interface SandboxGatePromptProps {
 }
 
 /**
- * Contextual inline prompt shown inside the composer when the Windows sandbox
- * is not ready. Sandboxing is an always-on environment for command execution
- * (matching the macOS/Linux behavior), not a "full access" extra — the gate
- * here exists because "full access" leans on it the most.
+ * Contextual confirmation shown before switching to an unsafe sandbox mode.
  */
 export function SandboxGatePrompt({
   phase,
@@ -27,22 +24,26 @@ export function SandboxGatePrompt({
   const isError = phase === "error";
   const isSuccess = phase === "success";
   const showActions = !isBusy && !isSuccess;
-  const confirmLabel = phase === "prompt" ? "同意安装" : "重试安装";
+  const confirmLabel = phase === "prompt" ? "确认关闭" : "重试";
 
   const Icon =
-    isError || isCancelled ? ShieldAlert : isSuccess ? ShieldCheck : Shield;
+    isError || isCancelled
+      ? ShieldAlert
+      : isSuccess
+        ? ShieldCheck
+        : ShieldAlert;
 
   const text = isSuccess
-    ? "沙箱已就绪，命令将在隔离环境中执行"
+    ? "沙箱模式已更新"
     : isCancelled
-      ? "已取消 UAC 授权，沙箱未安装，命令将不受隔离保护"
+      ? "已取消切换"
       : isError
-        ? (message ?? "安装失败，请重试")
+        ? (message ?? "切换失败，请重试")
         : phase === "installing"
-          ? "正在安装 Windows 沙箱，请在 UAC 弹窗中允许..."
+          ? "正在切换沙箱模式..."
           : phase === "checking"
             ? "正在检查沙箱状态..."
-            : "沙箱是命令隔离的常驻环境。当前未就绪，建议立即安装以保护命令执行。";
+            : (message ?? "关闭沙箱后，命令将不再受进程隔离保护。");
 
   return (
     <div className="sandbox-gate-prompt">

@@ -79,10 +79,7 @@ export interface SessionSearchResult {
 }
 
 export type OutboxMessageState =
-  | "queued"
-  | "applying"
-  | "dispatched"
-  | "canceled";
+  "queued" | "applying" | "dispatched" | "canceled";
 
 export interface OutboxMessageRecord {
   sessionId: string;
@@ -417,6 +414,11 @@ export type AgentWorkMode = "execute" | "plan";
 export type AgentPermissionMode =
   "default" | "acceptEdits" | "bypassPermissions";
 export type AgentSdkPermissionMode = AgentPermissionMode | "plan";
+export type AgentSandboxMode =
+  | "read-only"
+  | "workspace-write"
+  | "workspace-write-network"
+  | "danger-full-access";
 export type RuntimeKind = "sdk" | "binary" | "self-built";
 
 export interface RuntimeDescriptor {
@@ -513,6 +515,7 @@ export interface AgentSettings {
   enterprisePolicy?: EnterprisePolicy;
   enterpriseControlledSettings?: string[];
   sandboxEnabled?: boolean;
+  sandboxMode?: AgentSandboxMode;
 }
 
 export type AgentMemoryMode = "workspace" | "session" | "off";

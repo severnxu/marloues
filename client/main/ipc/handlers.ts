@@ -262,7 +262,6 @@ function registerPendingStateBroadcast(): void {
   subscribeOutbox(() => void broadcastPendingState());
 }
 
-
 function isDefaultSessionTitle(title: string): boolean {
   return title === "New chat" || title === "Untitled";
 }
@@ -1490,6 +1489,11 @@ async function sendChatTurn(
             inputSummary: uiEvent.reason,
             cwd: currentWorkspace()?.path,
             timeout: uiEvent.timeout,
+            options: {
+              allowOnce: true,
+              allowSession: uiEvent.allowSession,
+              denyWithReason: true,
+            },
           });
           continue;
         }
@@ -1939,7 +1943,11 @@ export function registerHandlers(): void {
 
   ipcMain.handle(
     IPC.CHAT_RESUME_OUTBOX,
-    async (_e, sessionId: string, messageId?: string): Promise<ChatSendReceipt> => {
+    async (
+      _e,
+      sessionId: string,
+      messageId?: string,
+    ): Promise<ChatSendReceipt> => {
       const claimed = claimNextOutboxMessage(sessionId, messageId);
       if (!claimed) {
         return {
@@ -1978,11 +1986,17 @@ export function registerHandlers(): void {
 
   ipcMain.handle(
     IPC.CHAT_CANCEL_STEER,
-    async (_e, sessionId: string, messageId: string): Promise<SteerActionReceipt> => {
+    async (
+      _e,
+      sessionId: string,
+      messageId: string,
+    ): Promise<SteerActionReceipt> => {
       const runtime = getRuntime();
       try {
         if (!runtime.cancelSteerMessage) {
-          throw new Error(`${runtime.name} does not support steer cancellation`);
+          throw new Error(
+            `${runtime.name} does not support steer cancellation`,
+          );
         }
         return await runtime.cancelSteerMessage(sessionId, messageId);
       } catch (error) {
@@ -1999,7 +2013,11 @@ export function registerHandlers(): void {
 
   ipcMain.handle(
     IPC.CHAT_APPLY_STEER_NOW,
-    async (_e, sessionId: string, messageId: string): Promise<SteerActionReceipt> => {
+    async (
+      _e,
+      sessionId: string,
+      messageId: string,
+    ): Promise<SteerActionReceipt> => {
       const runtime = getRuntime();
       try {
         if (!runtime.applyPendingSteerNow) {
@@ -2020,7 +2038,11 @@ export function registerHandlers(): void {
 
   ipcMain.handle(
     IPC.CHAT_REORDER_STEERS,
-    async (_e, sessionId: string, messageIds: string[]): Promise<SteerActionReceipt> => {
+    async (
+      _e,
+      sessionId: string,
+      messageIds: string[],
+    ): Promise<SteerActionReceipt> => {
       const runtime = getRuntime();
       try {
         if (!runtime.reorderSteers) {

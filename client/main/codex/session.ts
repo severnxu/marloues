@@ -46,6 +46,7 @@ export type SessionEvent =
       toolInput: Record<string, unknown>;
       threadId: string;
       cwd?: string;
+      allowSession: boolean;
     }
   | { type: "error"; message: string };
 
@@ -61,10 +62,19 @@ type StatusCallback = (status: string) => void;
 // Raw notification from Codex CLI
 type RawNotification = CodexRawEvent;
 
+type PendingCodexApproval =
+  | { kind: "legacy" }
+  | {
+      kind: "server-request";
+      requestId: string | number;
+      method: string;
+      requestedPermissions?: Record<string, unknown>;
+    };
+
 export interface ThreadStartOptions {
   cwd?: string;
   approvalPolicy?: string;
-  sandbox?: string;
+  permissions?: string;
 }
 
 export class CodexAppServerSession {
@@ -78,10 +88,7 @@ export class CodexAppServerSession {
   private notificationQueue: RawNotification[] = [];
   private notificationWaiters: Array<() => void> = [];
   private started = false;
-  private pendingApprovals: Map<
-    string,
-    { resolve: (value: boolean) => void; reject: (err: Error) => void }
-  > = new Map();
+  private pendingApprovals = new Map<string, PendingCodexApproval>();
 
   constructor(
     sessionId: string,
@@ -98,16 +105,25 @@ export class CodexAppServerSession {
   async start(): Promise<void> {
     if (this.started) return;
 
-    await this.transport.start();
-
     this.transport.onNotification((method, params) => {
       this.handleNotification(method, params);
     });
+    this.transport.onServerRequest((id, method, params) => {
+      this.handleServerRequest(id, method, params);
+    });
+
+    await this.transport.start();
 
     const initParams: InitializeParams = {
-      protocolVersion: "1.0",
-      capabilities: { streaming: true, tools: true },
-      clientInfo: { name: "codex-web", version: "0.1.0" },
+      capabilities: {
+        experimentalApi: true,
+        requestAttestation: false,
+      },
+      clientInfo: {
+        name: "marloues",
+        title: "Marloues",
+        version: "0.2.0",
+      },
     };
 
     const initResult = await this.rpc.request<InitializeResult>(
@@ -143,7 +159,7 @@ export class CodexAppServerSession {
         {
           cwd: opts.cwd || process.cwd(),
           approvalPolicy: opts.approvalPolicy || "on-request",
-          sandbox: opts.sandbox || "read-only",
+          permissions: opts.permissions || ":read-only",
         },
       );
       log("[session] thread/start result threadId=", result.thread?.id);
@@ -179,25 +195,50 @@ export class CodexAppServerSession {
   async respondToApproval(
     approvalId: string,
     decision: "approve" | "deny",
+    scope: "once" | "session" = "once",
     reason?: string,
   ): Promise<void> {
-    await this.rpc.request(ClientMethods.ApprovalRespond, {
-      id: approvalId,
-      decision,
-      reason,
-    });
     const pending = this.pendingApprovals.get(approvalId);
-    if (pending) {
-      this.pendingApprovals.delete(approvalId);
-      pending.resolve(decision === "approve");
+    if (!pending) {
+      throw new Error(`Unknown Codex approval request: ${approvalId}`);
     }
+    this.pendingApprovals.delete(approvalId);
+    if (pending.kind === "legacy") {
+      await this.rpc.request("approval/respond", {
+        id: approvalId,
+        decision,
+        reason,
+      });
+      return;
+    }
+    if (pending.method === "item/permissions/requestApproval") {
+      this.rpc.respond(pending.requestId, {
+        permissions:
+          decision === "approve" ? (pending.requestedPermissions ?? {}) : {},
+        scope:
+          decision === "approve" && scope === "session" ? "session" : "turn",
+      });
+      return;
+    }
+    this.rpc.respond(pending.requestId, {
+      decision:
+        decision === "deny"
+          ? "decline"
+          : scope === "session"
+            ? "acceptForSession"
+            : "accept",
+    });
   }
 
   async resume(threadId: string, cwd?: string): Promise<void> {
     log("[session] resume() called, threadId=", threadId);
     const result = await this.rpc.request<{ thread: { id: string } }>(
       ClientMethods.ThreadResume,
-      { threadId, cwd: cwd || process.cwd() },
+      {
+        threadId,
+        cwd: cwd || process.cwd(),
+        permissions: this.threadStartOptions.permissions || ":read-only",
+      },
     );
     log("[session] thread/resume result threadId=", result.thread?.id);
     this.threadId = result.thread?.id || threadId;
@@ -208,7 +249,11 @@ export class CodexAppServerSession {
     log("[session] fork() called, sourceThreadId=", sourceThreadId);
     const result = await this.rpc.request<{ thread: { id: string } }>(
       ClientMethods.ThreadFork,
-      { sourceThreadId, cwd: cwd || process.cwd() },
+      {
+        sourceThreadId,
+        cwd: cwd || process.cwd(),
+        permissions: this.threadStartOptions.permissions || ":read-only",
+      },
     );
     const newThreadId = result.thread?.id;
     log("[session] thread/fork result newThreadId=", newThreadId);
@@ -241,6 +286,14 @@ export class CodexAppServerSession {
       this.emit({ type: "raw_event", event: notif });
 
       if (method === "turn/completed") {
+        const turn = asRecord(params?.turn);
+        if (turn.status === "failed") {
+          this.emit({
+            type: "error",
+            message: extractErrorMessage(turn, "Turn failed"),
+          });
+          break;
+        }
         await this.probeCompletedTurnItems(params);
         this.emit({ type: "turn_completed" });
         break;
@@ -338,7 +391,7 @@ export class CodexAppServerSession {
       }
 
       if (method === "error") {
-        const msg = (params?.message as string) || "Unknown error";
+        const msg = extractErrorMessage(params, "Unknown error");
         this.emit({ type: "error", message: msg });
         break;
       }
@@ -361,6 +414,7 @@ export class CodexAppServerSession {
           (params?.input as Record<string, unknown>) ||
           {};
         const cwd = params?.cwd as string | undefined;
+        this.pendingApprovals.set(id, { kind: "legacy" });
         this.emit({
           type: "approval_requested",
           id,
@@ -368,6 +422,7 @@ export class CodexAppServerSession {
           toolInput,
           threadId: this.threadId || "",
           cwd,
+          allowSession: false,
         });
       }
     }
@@ -399,54 +454,91 @@ export class CodexAppServerSession {
     }
   }
 
+  private handleServerRequest(
+    requestId: string | number,
+    method: string,
+    value: unknown,
+  ): void {
+    const params = asRecord(value);
+    if (
+      method !== "item/commandExecution/requestApproval" &&
+      method !== "item/fileChange/requestApproval" &&
+      method !== "item/permissions/requestApproval"
+    ) {
+      this.rpc.respondError(
+        requestId,
+        -32601,
+        `Unsupported Codex server request: ${method}`,
+      );
+      return;
+    }
+
+    const approvalId = `codex-${this.sessionId}-${String(requestId)}`;
+    const availableDecisions = Array.isArray(params.availableDecisions)
+      ? params.availableDecisions
+      : undefined;
+    log(
+      "[session] approval capabilities:",
+      JSON.stringify({
+        method,
+        availableDecisions,
+        hasProposedExecpolicyAmendment:
+          Object.keys(asRecord(params.proposedExecpolicyAmendment)).length > 0,
+      }),
+    );
+    const allowSession =
+      method === "item/permissions/requestApproval" ||
+      !availableDecisions ||
+      availableDecisions.includes("acceptForSession");
+    const requestedPermissions = asRecord(params.permissions);
+    this.pendingApprovals.set(approvalId, {
+      kind: "server-request",
+      requestId,
+      method,
+      ...(method === "item/permissions/requestApproval"
+        ? { requestedPermissions }
+        : {}),
+    });
+    this.emit({
+      type: "approval_requested",
+      id: approvalId,
+      tool:
+        method === "item/commandExecution/requestApproval"
+          ? "Bash"
+          : method === "item/fileChange/requestApproval"
+            ? "Write"
+            : "Permissions",
+      toolInput: params,
+      threadId:
+        typeof params.threadId === "string"
+          ? params.threadId
+          : this.threadId || "",
+      cwd: typeof params.cwd === "string" ? params.cwd : undefined,
+      allowSession,
+    });
+  }
+
   private emit(event: SessionEvent): void {
     this.eventListeners.forEach((cb) => cb(event));
   }
 
   private async probeCompletedTurnItems(
-    params: Record<string, unknown>,
+    _params: Record<string, unknown>,
   ): Promise<void> {
     if (!this.threadId) return;
 
-    const turn =
-      params?.turn && typeof params.turn === "object"
-        ? (params.turn as Record<string, unknown>)
-        : undefined;
-    const turnId = typeof turn?.id === "string" ? turn.id : "";
-
     const attempts: Array<{ method: string; params: Record<string, unknown> }> =
-      [
-        {
-          method: "thread/turns/list",
-          params: {
-            threadId: this.threadId,
-            limit: 1,
-            sortDirection: "descending",
-            itemsView: { type: "full" },
-          },
-        },
-        {
-          method: "thread/turns/list",
-          params: {
-            threadId: this.threadId,
-            limit: 1,
-            sortDirection: "descending",
-            itemsView: "full",
-          },
-        },
-      ];
+      [];
 
-    if (turnId) {
-      attempts.push({
-        method: "thread/turns/items/list",
-        params: {
-          threadId: this.threadId,
-          turnId,
-          limit: 200,
-          sortDirection: "ascending",
-        },
-      });
-    }
+    attempts.push({
+      method: "thread/turns/list",
+      params: {
+        threadId: this.threadId,
+        limit: 1,
+        sortDirection: "desc",
+        itemsView: "full",
+      },
+    });
 
     for (const attempt of attempts) {
       try {
@@ -503,4 +595,23 @@ function normalizeItem(
   phase: "started" | "updated" | "completed",
 ): NormalizedThreadItem | null {
   return normalizeCodexItem(item, params, phase);
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function extractErrorMessage(
+  value: Record<string, unknown>,
+  fallback: string,
+): string {
+  if (typeof value.message === "string" && value.message) {
+    return value.message;
+  }
+  const error = asRecord(value.error);
+  return typeof error.message === "string" && error.message
+    ? error.message
+    : fallback;
 }

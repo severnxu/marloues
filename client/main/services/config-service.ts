@@ -128,6 +128,8 @@ function defaultAgentSettings(): AgentSettings {
     mcpServers: [],
     skillDirectories: [],
     disabledSkills: [],
+    sandboxEnabled: true,
+    sandboxMode: "workspace-write",
   };
 }
 
@@ -522,6 +524,12 @@ function normalizeAgentSettings(
     mcpServers: settings.mcpServers ?? [],
     skillDirectories: settings.skillDirectories ?? [],
     disabledSkills: settings.disabledSkills ?? [],
+    sandboxEnabled: settings.sandboxEnabled ?? defaults.sandboxEnabled,
+    sandboxMode: normalizeSandboxMode(
+      settings.sandboxMode,
+      settings.sandboxEnabled,
+      defaults.sandboxMode,
+    ),
   };
 }
 
@@ -671,6 +679,24 @@ function normalizePermissionMode(
   return mode === "acceptEdits" || mode === "bypassPermissions"
     ? mode
     : "default";
+}
+
+function normalizeSandboxMode(
+  mode: unknown,
+  legacySandboxEnabled: unknown,
+  fallback: AgentSettings["sandboxMode"],
+): AgentSettings["sandboxMode"] {
+  if (
+    mode === "read-only" ||
+    mode === "workspace-write" ||
+    mode === "workspace-write-network" ||
+    mode === "danger-full-access"
+  ) {
+    return mode;
+  }
+  if (legacySandboxEnabled === false) return "danger-full-access";
+  if (legacySandboxEnabled === true) return "workspace-write";
+  return fallback ?? "workspace-write";
 }
 
 function normalizeWorkMode(

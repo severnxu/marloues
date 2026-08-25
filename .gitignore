@@ -31,6 +31,8 @@ npm-debug.log*
 playwright-report/
 test-results/
 playwright/.cache/
+test-artifacts/
+client/test-artifacts/
 
 # Native build temp
 build/

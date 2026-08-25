@@ -1,4 +1,11 @@
-import { Bot, CircleAlert, Shield } from "lucide-react";
+import {
+  Bot,
+  CircleAlert,
+  FolderLock,
+  Shield,
+  ShieldOff,
+  Wifi,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import type {
   ExecutionTaskRecord,
@@ -9,7 +16,7 @@ import type {
   SlashCommandItem,
   UserMessageContent,
 } from "../../../types";
-import type { SkillInfo } from "@shared/types";
+import type { AgentSandboxMode, SkillInfo } from "@shared/types";
 import type { SandboxGatePhase } from "./SandboxInstallBanner";
 import type { ContextUsageRecord, TokenUsage } from "@shared/types";
 
@@ -26,7 +33,18 @@ export const accessOptions: Array<{
 }> = [
   { level: "default", label: "默认权限", icon: Shield },
   { level: "review", label: "自动审查", icon: Bot },
-  { level: "full", label: "完全访问", icon: CircleAlert },
+  { level: "full", label: "免审批", icon: CircleAlert },
+];
+
+export const sandboxOptions: Array<{
+  mode: AgentSandboxMode;
+  label: string;
+  icon: typeof Shield;
+}> = [
+  { mode: "read-only", label: "只读沙箱", icon: Shield },
+  { mode: "workspace-write", label: "工作区沙箱", icon: FolderLock },
+  { mode: "workspace-write-network", label: "工作区 + 网络", icon: Wifi },
+  { mode: "danger-full-access", label: "关闭沙箱", icon: ShieldOff },
 ];
 
 export interface WorkflowComposerShellProps {
@@ -34,12 +52,15 @@ export interface WorkflowComposerShellProps {
   conversationKey?: string;
   input: string;
   isGenerating: boolean;
+  accessLevel?: ComposerAccessLevel;
+  sandboxMode?: AgentSandboxMode;
   selectedProvider: Provider | null;
   onInputChange: (value: string) => void;
   onKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   onSend: (attachments?: UserMessageContent[]) => void;
   onStop: () => void;
   onAccessLevelChange?: (level: ComposerAccessLevel) => void;
+  onSandboxModeChange?: (mode: AgentSandboxMode) => void;
   permissionPanel?: ReactNode;
   modelControl?: ReactNode;
   placeholder?: string;

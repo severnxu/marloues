@@ -392,6 +392,11 @@ async function convertStream(
         ? new OpenAIResponsesSseFormatter(
             irRequest.meta.requestId,
             irRequest.meta.originalModel,
+            new Set(
+              irRequest.tools
+                ?.filter((tool) => tool.kind === "custom")
+                .map((tool) => tool.name) ?? [],
+            ),
           )
         : new OpenAIChatSseFormatter(
             irRequest.meta.requestId,
@@ -399,7 +404,6 @@ async function convertStream(
           );
 
   let buffer = "";
-  let currentEvent = "";
   let lastUsage: { inputTokens: number; outputTokens: number } | undefined;
   let lastStopReason = "stop";
 
@@ -412,8 +416,9 @@ async function convertStream(
 
   const flushLine = (line: string): void => {
     try {
-      const fullLine = currentEvent ? `event: ${currentEvent}\n${line}` : line;
-      const deltas = parser.parseLine(fullLine);
+      // Both upstream parsers consume the JSON carried by the data line. An
+      // Anthropic `event:` prefix is metadata, not part of that data line.
+      const deltas = parser.parseLine(line);
       if (!deltas || deltas.length === 0) return;
 
       for (const delta of deltas) {
@@ -447,7 +452,7 @@ async function convertStream(
 
       for (const line of lines) {
         if (line.indexOf("event: ") === 0) {
-          currentEvent = line.slice(7).trim();
+          continue;
         } else if (line.indexOf("data: ") === 0) {
           const dataStr = line.slice(6).trim();
           // Only log SSE data when DevMode is ON — hot-path optimization
