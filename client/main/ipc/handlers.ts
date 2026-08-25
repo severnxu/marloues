@@ -2994,8 +2994,9 @@ export function registerHandlers(): void {
 
   ipcMain.handle(IPC.RUNTIME_SWITCH, async (_e, runtimeId: RuntimeKind) => {
     const prev = getRuntime();
-    await switchRuntime(runtimeId);
+    const state = await switchRuntime(runtimeId);
     logInfo("runtime.switched", { from: prev.name, to: runtimeId });
+    return state;
   });
 
   ipcMain.handle(IPC.RUNTIME_LIST_MODELS, async () => listRuntimeModels());

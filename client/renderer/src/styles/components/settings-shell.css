@@ -272,6 +272,11 @@
     min-width: 0;
   }
 
+  .settings-card:has(.settings-select[data-open]) {
+    position: relative;
+    z-index: 50;
+  }
+
   .settings-select-trigger {
     display: flex;
     width: 100%;
@@ -330,6 +335,10 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .runtime-settings-select {
+    width: min(260px, 40vw);
   }
 
   .settings-select-menu {

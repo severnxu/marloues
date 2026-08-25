@@ -49,6 +49,7 @@ import {
   copyToClipboard,
 } from "./workflow-chat-helpers";
 import { ModelSelector } from "./WorkflowChatModelSelector";
+import { RuntimeSelector } from "./WorkflowChatRuntimeSelector";
 import {
   ModelChangeDivider,
   PlanImplementationPromptCard,
@@ -776,6 +777,7 @@ export function WorkflowChatPage({
         onStop={() => void abort(activeSessionId ?? undefined)}
         onSecurityModeChange={handleSecurityModeChange}
         onOpenSecuritySettings={() => openSettings("security")}
+        runtimeControl={<RuntimeSelector />}
         modelControl={
           <ModelSelector switchWarningVisible={modelSwitchWarningVisible} />
         }

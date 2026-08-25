@@ -296,6 +296,10 @@
   padding: 0 var(--space-4);
 }
 
+.workbench :global(.settings-card:has(.settings-select) .settings-fields) {
+  overflow: visible;
+}
+
 .workbench :global(.settings-card--plain .settings-fields) {
   overflow: visible;
   border: 0;

@@ -87,6 +87,8 @@ async function main(): Promise<void> {
     console.info(
       "Provider settings: built-in hidden routes/custom multi-endpoint ok",
     );
+    await verifyRuntimeSwitching(window, binaryMode ? "binary" : "sdk");
+    console.info("Runtime switching: composer/settings/persistence ok");
     await verifyUnifiedSecurityControls(window);
     console.info("UI controls: unified modes/full-access confirmation ok");
     await verifySecurityCenter(window);
@@ -125,6 +127,71 @@ async function main(): Promise<void> {
   } finally {
     await app.close();
   }
+}
+
+async function verifyRuntimeSwitching(
+  window: ElectronPage,
+  originalRuntimeId: "sdk" | "binary",
+): Promise<void> {
+  const originalLabel =
+    originalRuntimeId === "sdk" ? "Claude SDK" : "Codex CLI";
+  const trigger = window.getByRole("button", {
+    name: `运行时：${originalLabel}`,
+  });
+  await expect(trigger).toBeVisible();
+  await trigger.click();
+  const menu = window.getByRole("menu", { name: "选择运行时" });
+  await expect(menu.getByRole("menuitemradio")).toHaveCount(3);
+  await expect(menu).toContainText("Anthropic");
+  await expect(menu).toContainText("OpenAI Responses");
+  await expect(menu).toContainText("OpenAI Chat");
+  await menu.getByRole("menuitemradio", { name: /Marloues 自研/ }).click();
+  await expect(
+    window.getByRole("button", { name: "运行时：Marloues 自研" }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      window.evaluate(
+        async () =>
+          (await window.marloues.config.getAgentSettings()).activeRuntimeId,
+      ),
+    )
+    .toBe("self-built");
+
+  await window.getByRole("button", { name: "运行时：Marloues 自研" }).click();
+  await window
+    .getByRole("menu", { name: "选择运行时" })
+    .getByRole("menuitemradio", { name: new RegExp(originalLabel) })
+    .click();
+  await expect(
+    window.getByRole("button", { name: `运行时：${originalLabel}` }),
+  ).toBeVisible();
+
+  await window.locator('button[title="用户信息"]').click();
+  await window
+    .getByRole("dialog", { name: "用户信息" })
+    .getByRole("button", { name: "设置" })
+    .click();
+  const settings = window.getByRole("dialog", { name: "设置" });
+  await settings.getByRole("button", { name: "运行时" }).click();
+  await expect(
+    settings.getByRole("heading", { name: "运行时", exact: true }),
+  ).toBeVisible();
+  const runtimeSelect = settings.getByRole("button", {
+    name: "默认 Agent 运行时",
+  });
+  await expect(runtimeSelect).toContainText(originalLabel);
+  await runtimeSelect.click();
+  const runtimeOptions = settings.getByRole("listbox", {
+    name: "默认 Agent 运行时",
+  });
+  await expect(runtimeOptions.getByRole("option")).toHaveCount(3);
+  await window.screenshot({
+    path: join(artifactsDir, "04-runtime-switching.png"),
+    fullPage: true,
+  });
+  await runtimeSelect.click();
+  await settings.getByRole("button", { name: "返回工作区" }).click();
 }
 
 async function verifyProviderRoutingSettings(

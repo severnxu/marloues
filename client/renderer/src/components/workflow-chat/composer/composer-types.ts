@@ -57,6 +57,7 @@ export interface WorkflowComposerShellProps {
   onOpenSecuritySettings?: () => void;
   permissionPanel?: ReactNode;
   emptyHeader?: ReactNode;
+  runtimeControl?: ReactNode;
   modelControl?: ReactNode;
   placeholder?: string;
   slashCommands?: SlashCommandItem[];

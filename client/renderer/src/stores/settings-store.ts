@@ -1,23 +1,36 @@
 import { create } from "zustand";
-import type { AgentSettings, ModelOption } from "@shared/types";
+import type {
+  AgentSettings,
+  ModelOption,
+  RuntimeKind,
+  RuntimeState,
+} from "@shared/types";
 import { ipc } from "@/lib/ipc-client";
 
 interface SettingsStore {
   settings: AgentSettings | null;
   models: ModelOption[];
+  runtimeState: RuntimeState | null;
+  switchingRuntimeId: RuntimeKind | null;
   load: () => Promise<void>;
   save: (settings: AgentSettings) => Promise<void>;
   listModels: () => Promise<void>;
   setModel: (providerId: string, modelId: string) => Promise<void>;
+  switchRuntime: (runtimeId: RuntimeKind) => Promise<RuntimeState>;
 }
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
   settings: null,
   models: [],
+  runtimeState: null,
+  switchingRuntimeId: null,
 
   load: async () => {
-    const settings = await ipc.config.getAgentSettings();
-    set({ settings });
+    const [settings, runtimeState] = await Promise.all([
+      ipc.config.getAgentSettings(),
+      ipc.runtime.getState(),
+    ]);
+    set({ settings, runtimeState });
     await get().listModels();
   },
   save: async (settings) => {
@@ -59,5 +72,22 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       ipc.runtime.listModels(),
     ]);
     set({ settings, models });
+  },
+  switchRuntime: async (runtimeId) => {
+    const current = get().runtimeState;
+    if (current?.activeRuntimeId === runtimeId) return current;
+    set({ switchingRuntimeId: runtimeId });
+    try {
+      const runtimeState = await ipc.runtime.switch(runtimeId);
+      const [settings, models] = await Promise.all([
+        ipc.config.getAgentSettings(),
+        ipc.runtime.listModels(),
+      ]);
+      set({ settings, models, runtimeState, switchingRuntimeId: null });
+      return runtimeState;
+    } catch (error) {
+      set({ switchingRuntimeId: null });
+      throw error;
+    }
   },
 }));
