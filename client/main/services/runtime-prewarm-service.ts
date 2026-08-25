@@ -1,6 +1,6 @@
 import { resolveModelProvider } from "../core/config/model-provider";
 import { logInfo, logRuntime, logWarn } from "../core/logging/app-logger";
-import { diagnoseAnthropicCompatibleEndpoint } from "../core/sdk/endpoint-diagnostics";
+import { diagnoseEndpointModel } from "../core/sdk/endpoint-diagnostics";
 import { getAgentSettings } from "./config-service";
 import { probeMcpServer } from "./mcp-probe";
 import { prepareSkillRuntimeCache } from "./skill-service";
@@ -36,7 +36,9 @@ async function prewarmRuntimeDependencies(): Promise<void> {
   }
 }
 
-async function prewarmEndpoint(modelProvider: ReturnType<typeof resolveModelProvider>): Promise<void> {
+async function prewarmEndpoint(
+  modelProvider: ReturnType<typeof resolveModelProvider>,
+): Promise<void> {
   const startedAt = Date.now();
   if (!modelProvider.baseUrl || !modelProvider.apiKey || !modelProvider.model) {
     logRuntime("prewarm.endpoint.skipped", {
@@ -49,10 +51,16 @@ async function prewarmEndpoint(modelProvider: ReturnType<typeof resolveModelProv
   }
 
   try {
-    const result = await diagnoseAnthropicCompatibleEndpoint({
+    const result = await diagnoseEndpointModel({
       baseUrl: modelProvider.baseUrl,
       apiKey: modelProvider.apiKey,
       model: modelProvider.model,
+      protocol:
+        modelProvider.provider.type === "anthropic"
+          ? "anthropic"
+          : modelProvider.provider.type === "openai-responses"
+            ? "openai-responses"
+            : "openai-chat",
       timeoutMs: 3000,
     });
     logRuntime("prewarm.endpoint", {
@@ -70,7 +78,9 @@ async function prewarmEndpoint(modelProvider: ReturnType<typeof resolveModelProv
   }
 }
 
-async function prewarmMcpProbe(servers: ReturnType<typeof getAgentSettings>["mcpServers"]): Promise<void> {
+async function prewarmMcpProbe(
+  servers: ReturnType<typeof getAgentSettings>["mcpServers"],
+): Promise<void> {
   const enabledServers = servers.filter((server) => server.enabled);
   if (!enabledServers.length) {
     logRuntime("prewarm.mcpProbe.skipped", { reason: "no enabled servers" });

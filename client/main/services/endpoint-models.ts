@@ -4,7 +4,7 @@ import type {
   ModelOption,
   ModelProviderConfig,
 } from "@shared/types";
-import { diagnoseAnthropicCompatibleEndpoint } from "../core/sdk/endpoint-diagnostics";
+import { diagnoseEndpointModel } from "../core/sdk/endpoint-diagnostics";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -95,10 +95,11 @@ export async function testEndpointModel(
       latencyMs: Date.now() - startedAt,
     };
 
-  const result = await diagnoseAnthropicCompatibleEndpoint({
+  const result = await diagnoseEndpointModel({
     baseUrl: profile.baseUrl,
     apiKey: resolveApiKey(profile),
     model,
+    protocol: diagnosticProtocol(profile.type),
     timeoutMs: DEFAULT_TIMEOUT_MS,
   });
 
@@ -221,6 +222,14 @@ function endpointHeaders(profile: ModelProviderConfig): Record<string, string> {
     headers.Authorization = `Bearer ${apiKey}`;
   }
   return headers;
+}
+
+function diagnosticProtocol(
+  type: ModelProviderConfig["type"],
+): "anthropic" | "openai-chat" | "openai-responses" {
+  if (type === "anthropic") return "anthropic";
+  if (type === "openai-responses") return "openai-responses";
+  return "openai-chat";
 }
 
 function resolveApiKey(profile: ModelProviderConfig): string {

@@ -136,7 +136,7 @@ async function main(): Promise<void> {
     {
       id: "probe-provider",
       name: "Probe Provider",
-      type: "openai-compatible",
+      type: "openai-chat",
       enabled: true,
       baseUrl: modelServer.baseUrl,
       apiKey: "contract-key",
@@ -145,6 +145,38 @@ async function main(): Promise<void> {
     "contract-model-b",
   );
   assert(modelTest.ok, "endpoint model test should verify an advertised model");
+  const responsesModelTest = await testEndpointModel(
+    {
+      id: "probe-provider-responses",
+      name: "Probe Provider Responses",
+      type: "openai-responses",
+      enabled: true,
+      baseUrl: modelServer.baseUrl,
+      apiKey: "contract-key",
+      models: [],
+    },
+    "contract-model-r",
+  );
+  assert(
+    responsesModelTest.ok,
+    "endpoint model test should use the Responses protocol",
+  );
+  const anthropicModelTest = await testEndpointModel(
+    {
+      id: "probe-provider-anthropic",
+      name: "Probe Provider Anthropic",
+      type: "anthropic",
+      enabled: true,
+      baseUrl: modelServer.baseUrl,
+      apiKey: "contract-key",
+      models: [],
+    },
+    "contract-model-b",
+  );
+  assert(
+    anthropicModelTest.ok,
+    "endpoint model test should use the Anthropic protocol",
+  );
 
   const thread = await runtime.createThread("contract");
   const loopWorkspace = join(process.env.MARLOUES_HOME!, "loop-workspace");
@@ -566,7 +598,51 @@ async function startModelServer(): Promise<{
       );
       return;
     }
-    // testEndpointModel sends a diagnostic POST /v1/messages ping
+    // Model diagnostics send one ping request per selected endpoint protocol.
+    if (
+      req.url === "/v1/chat/completions" &&
+      req.method === "POST" &&
+      req.headers.authorization === "Bearer contract-key"
+    ) {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          id: "chat-contract",
+          object: "chat.completion",
+          choices: [
+            {
+              message: { role: "assistant", content: "pong" },
+              finish_reason: "stop",
+            },
+          ],
+          model: "contract-model-b",
+        }),
+      );
+      return;
+    }
+    if (
+      req.url === "/v1/responses" &&
+      req.method === "POST" &&
+      req.headers.authorization === "Bearer contract-key"
+    ) {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          id: "resp-contract",
+          object: "response",
+          status: "completed",
+          output: [
+            {
+              type: "message",
+              role: "assistant",
+              content: [{ type: "output_text", text: "pong" }],
+            },
+          ],
+          model: "contract-model-r",
+        }),
+      );
+      return;
+    }
     if (
       req.url === "/v1/messages" &&
       req.method === "POST" &&
