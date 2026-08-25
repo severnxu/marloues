@@ -122,11 +122,13 @@ export function SettingsSelect({
   value,
   options,
   onChange,
+  disabled,
 }: {
   ariaLabel: string;
   value: string;
   options: Array<{ value: string; label: string }>;
   onChange: (value: string) => void;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [openUp, setOpenUp] = useState(false);
@@ -171,6 +173,7 @@ export function SettingsSelect({
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
+        disabled={disabled}
         onClick={() => setOpen((current) => !current)}
         onKeyDown={(event) => {
           if (

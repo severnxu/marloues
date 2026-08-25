@@ -17,6 +17,7 @@ import type {
   ModelProviderType,
 } from "@shared/types";
 import { STRINGS } from "@shared/strings.zh";
+import { SettingsSelect } from "./shared";
 import { withModelMetadataDefaults } from "./SettingsWorkbench.utils";
 import styles from "./AddEndpointDialog.module.css";
 
@@ -43,7 +44,7 @@ export function AddEndpointDialog({
   const [providerId] = useState(() => crypto.randomUUID());
   const [name, setName] = useState(`Endpoint ${index}`);
   const [providerType, setProviderType] =
-    useState<ModelProviderType>("openai-compatible");
+    useState<ModelProviderType>("openai-chat");
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
@@ -352,17 +353,18 @@ export function AddEndpointDialog({
             </label>
             <label className={styles.field}>
               <span>API 协议</span>
-              <select
+              <SettingsSelect
+                ariaLabel="API 协议"
                 value={providerType}
-                onChange={(event) =>
-                  setProviderType(event.target.value as ModelProviderType)
+                options={[
+                  { value: "openai-chat", label: "OpenAI Chat" },
+                  { value: "openai-responses", label: "OpenAI Responses" },
+                  { value: "anthropic", label: "Anthropic" },
+                ]}
+                onChange={(value) =>
+                  setProviderType(value as ModelProviderType)
                 }
-              >
-                <option value="openai-compatible">OpenAI Compatible</option>
-                <option value="openai-chat">OpenAI Chat</option>
-                <option value="openai-responses">OpenAI Responses</option>
-                <option value="anthropic">Anthropic</option>
-              </select>
+              />
             </label>
             <label className={styles.field}>
               <span>Base URL</span>

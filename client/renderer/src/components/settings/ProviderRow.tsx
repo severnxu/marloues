@@ -13,6 +13,7 @@ import {
 import type { ModelProviderConfig, ModelSelection } from "@shared/types";
 import { STRINGS } from "@shared/strings.zh";
 import { ProviderModelCard } from "./ProviderModelCard";
+import { SettingsSelect } from "./shared";
 import type { ProviderManagement } from "./use-provider-management";
 
 export function ProviderRow({
@@ -137,22 +138,27 @@ export function ProviderRow({
             </label>
             <label>
               API 协议
-              <select
-                value={provider.type}
+              <SettingsSelect
+                ariaLabel="API 协议"
+                value={
+                  provider.type === "openai-compatible"
+                    ? "openai-chat"
+                    : provider.type
+                }
+                options={[
+                  { value: "openai-chat", label: "OpenAI Chat" },
+                  { value: "openai-responses", label: "OpenAI Responses" },
+                  { value: "anthropic", label: "Anthropic" },
+                ]}
                 disabled={provider.locked || !canEdit}
-                onChange={(event) =>
+                onChange={(value) =>
                   pm.updateProviderField(
                     provider.id,
                     "type",
-                    event.target.value,
+                    value as ModelProviderConfig["type"],
                   )
                 }
-              >
-                <option value="openai-compatible">OpenAI Compatible</option>
-                <option value="openai-chat">OpenAI Chat</option>
-                <option value="openai-responses">OpenAI Responses</option>
-                <option value="anthropic">Anthropic</option>
-              </select>
+              />
             </label>
             <label>
               Base URL
