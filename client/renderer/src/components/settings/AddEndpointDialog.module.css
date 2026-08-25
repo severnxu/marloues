@@ -136,6 +136,13 @@
   color: var(--text-3);
 }
 
+.field :global(.settings-select-trigger),
+.field :global(.settings-select-menu button) {
+  font-size: var(--text-sm);
+  font-weight: 400;
+  line-height: 18px;
+}
+
 .apiKeyWrap {
   position: relative;
   display: flex;
