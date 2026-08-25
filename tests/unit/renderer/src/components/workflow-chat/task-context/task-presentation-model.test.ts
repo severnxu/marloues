@@ -49,6 +49,12 @@ const readThread: WorkflowReadThreadResponse = {
             },
           ],
         },
+        {
+          id: "agent",
+          type: "agentMessage",
+          text: "已修复固定摘要按钮，并保留辅助区展开按钮的原有逻辑。",
+          phase: "final_answer",
+        },
       ],
     },
   ],
@@ -68,6 +74,10 @@ describe("buildTaskPresentationModel", () => {
       permissionMode: "default",
     });
     expect(model.hasData).toBe(true);
+    expect(model.outputContent[0]).toMatchObject({
+      label: "最终回复",
+      detail: "已修复固定摘要按钮，并保留辅助区展开按钮的原有逻辑。",
+    });
     expect(model.changes).toMatchObject({
       filesChanged: 1,
       insertions: 1,
@@ -77,9 +87,172 @@ describe("buildTaskPresentationModel", () => {
     expect(model.sources[0]).toMatchObject({ kind: "web", count: 1 });
   });
 
-  it("hides the surface when a session has no task data", () => {
-    const model = buildTaskPresentationModel({ sessionId: "empty" });
+  it("keeps the summary surface available for an active empty session", () => {
+    const model = buildTaskPresentationModel({
+      sessionId: "empty",
+      workspace: {
+        id: "tmp",
+        name: "tmp",
+        path: "C:/tmp",
+        lastOpenedAt: 1,
+      },
+      fallbackModelName: "fallback-model",
+      permissionMode: "default",
+    });
+
+    expect(model.hasData).toBe(true);
+    expect(model.workspace?.path).toBe("C:/tmp");
+    expect(model.changes).toBeNull();
+    expect(model.modelName).toBe("fallback-model");
+    expect(model.outputContent).toHaveLength(0);
+    expect(model.tasks).toHaveLength(0);
+  });
+
+  it("does not treat command output or file diffs as output content", () => {
+    const model = buildTaskPresentationModel({
+      sessionId: "session-1",
+      readThread: {
+        ...readThread,
+        turns: [
+          {
+            ...readThread.turns[0],
+            items: readThread.turns[0].items.filter(
+              (item) => item.type !== "agentMessage",
+            ),
+          },
+        ],
+      },
+    });
+
+    expect(model.outputContent).toHaveLength(0);
+    expect(model.changes?.filesChanged).toBe(1);
+    expect(model.processes[0]?.command).toBe("npm test");
+  });
+
+  it("uses Codex summary-selected agent output rules", () => {
+    const model = buildTaskPresentationModel({
+      sessionId: "session-1",
+      readThread: {
+        ...readThread,
+        turns: [
+          {
+            ...readThread.turns[0],
+            items: [
+              {
+                id: "commentary",
+                type: "agentMessage",
+                text: "处理中间说明",
+                phase: "commentary",
+              },
+              {
+                id: "unknown",
+                type: "agentMessage",
+                text: "兼容旧模型回复",
+              },
+              {
+                id: "final",
+                type: "agentMessage",
+                text: "最终输出",
+                phase: "final_answer",
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(model.outputContent[0]?.detail).toBe("最终输出");
+  });
+
+  it("uses the last unknown-phase agent message as summary output", () => {
+    const model = buildTaskPresentationModel({
+      sessionId: "session-1",
+      readThread: {
+        ...readThread,
+        turns: [
+          {
+            ...readThread.turns[0],
+            items: [
+              {
+                id: "first",
+                type: "agentMessage",
+                text: "第一条",
+              },
+              {
+                id: "commentary",
+                type: "agentMessage",
+                text: "中间说明",
+                phase: "commentary",
+              },
+              {
+                id: "last",
+                type: "agentMessage",
+                text: "最后一条旧模型回复",
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(model.outputContent[0]?.detail).toBe("最后一条旧模型回复");
+  });
+
+  it("uses the last summary-eligible agent message", () => {
+    const model = buildTaskPresentationModel({
+      sessionId: "session-1",
+      readThread: {
+        ...readThread,
+        turns: [
+          {
+            ...readThread.turns[0],
+            items: [
+              {
+                id: "final",
+                type: "agentMessage",
+                text: "显式最终输出",
+                phase: "final_answer",
+              },
+              {
+                id: "later",
+                type: "agentMessage",
+                text: "后续兼容输出",
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(model.outputContent[0]?.detail).toBe("后续兼容输出");
+  });
+
+  it("does not show commentary-only messages as output content", () => {
+    const model = buildTaskPresentationModel({
+      sessionId: "session-1",
+      readThread: {
+        ...readThread,
+        turns: [
+          {
+            ...readThread.turns[0],
+            items: [
+              {
+                id: "commentary",
+                type: "agentMessage",
+                text: "这里只是中间说明",
+                phase: "commentary",
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(model.outputContent).toHaveLength(0);
+  });
+
+  it("hides the surface when no session is active", () => {
+    const model = buildTaskPresentationModel({ sessionId: null });
     expect(model.hasData).toBe(false);
-    expect(model.workspace).toBeNull();
   });
 });

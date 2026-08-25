@@ -83,6 +83,26 @@ describe("auxiliary sidebar components", () => {
     );
   });
 
+  it("marks the auxiliary primary action pressed in primary mode", () => {
+    const markup = renderToStaticMarkup(
+      <AuxiliaryHeader
+        open
+        primary
+        tabs={[]}
+        availableViews={AUXILIARY_VIEW_OPTIONS}
+        onActivate={vi.fn()}
+        onCloseTab={vi.fn()}
+        onMoveTab={vi.fn()}
+        onOpenView={vi.fn()}
+        onTogglePrimary={vi.fn()}
+      />,
+    );
+
+    expect(markup).toContain("inspector-head-action is-active");
+    expect(markup).toContain('aria-pressed="true"');
+    expect(markup).toContain("收回辅助区至右栏");
+  });
+
   it("keeps an inactive view mounted but hidden", () => {
     const markup = renderToStaticMarkup(
       <AuxiliaryViewPanel tabId="outputs-1" active={false}>

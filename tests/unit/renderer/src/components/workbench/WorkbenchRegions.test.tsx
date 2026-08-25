@@ -72,4 +72,22 @@ describe("workbench region contracts", () => {
     expect(markup).toContain('data-review="acceptance"');
     expect(markup).toContain("product-chrome");
   });
+
+  it("does not use page state to mark the settings surface", () => {
+    const markup = renderToStaticMarkup(
+      <PlatformWindow
+        platform="windows"
+        page="plugins"
+        primaryOpen
+        primaryPeeking={false}
+        primaryTransition="idle"
+        auxiliaryMode="closed"
+      >
+        <header>settings-chrome</header>
+      </PlatformWindow>,
+    );
+
+    expect(markup).not.toContain("settings-page-open");
+    expect(markup).toContain('data-page="plugins"');
+  });
 });
