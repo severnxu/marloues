@@ -855,7 +855,7 @@
   line-height: 1;
 }
 
-.workbench :global(.provider-fields-grid > label:last-child) {
+.workbench :global(.provider-fields-grid > .provider-field-wide) {
   grid-column: 1 / -1;
 }
 

@@ -160,7 +160,7 @@ export function ProviderRow({
                 }
               />
             </label>
-            <label>
+            <label className="provider-field-wide">
               Base URL
               <input
                 value={provider.baseUrl ?? ""}
@@ -175,7 +175,7 @@ export function ProviderRow({
                 placeholder="Base URL"
               />
             </label>
-            <label>
+            <label className="provider-field-wide">
               API Key
               <div className="api-key-input-wrap">
                 <input
