@@ -10,7 +10,6 @@ const GUARDIAN_REVIEW_TIMEOUT_MS = 90_000;
 const GUARDIAN_REVIEW_MAX_ATTEMPTS = 3;
 const GUARDIAN_ATTEMPT_TIMEOUT_MS = 30_000;
 const GUARDIAN_MAX_OUTPUT_TOKENS = 1_200;
-const PREFERRED_REVIEW_MODELS = ["codex-auto-review", "gpt-5.6-luna"];
 
 export interface GuardianReviewResult {
   action: "allow" | "deny" | "ask";
@@ -46,7 +45,7 @@ export async function runGuardianReview(
   settings: AgentSettings,
   context: GuardianReviewContext = {},
 ): Promise<GuardianReviewResult> {
-  const provider = resolveGuardianProvider(settings);
+  const provider = resolveModelProvider(settings);
   if (!provider.baseUrl?.trim() || !provider.apiKey?.trim()) {
     return failedClosed(
       provider.model,
@@ -97,20 +96,6 @@ export async function runGuardianReview(
     attemptCount,
     `隔离审查失败，已按安全策略拒绝执行：${lastError}`,
   );
-}
-
-function resolveGuardianProvider(settings: AgentSettings) {
-  const preferred = settings.providers
-    .filter((provider) => provider.enabled)
-    .flatMap((provider) =>
-      provider.models
-        .filter(
-          (model) =>
-            model.enabled && PREFERRED_REVIEW_MODELS.includes(model.id),
-        )
-        .map((model) => ({ providerId: provider.id, modelId: model.id })),
-    )[0];
-  return resolveModelProvider(settings, preferred);
 }
 
 async function requestGuardianReview(input: {

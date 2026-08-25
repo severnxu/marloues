@@ -63,7 +63,7 @@ function decision() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Guardian reviewer", () => {
-  it("uses a dedicated review model and parses structured risk output", async () => {
+  it("uses the current model even when a dedicated review model exists", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -93,7 +93,7 @@ describe("Guardian reviewer", () => {
       riskLevel: "low",
       userAuthorization: "high",
       reason: "Read-only repository inspection.",
-      model: "gpt-5.6-luna",
+      model: "main-model",
       attemptCount: 1,
     });
     expect(fetchMock.mock.calls[0][0]).toBe(
@@ -103,7 +103,7 @@ describe("Guardian reviewer", () => {
     expect(request.headers).toMatchObject({
       authorization: "Bearer test-key",
     });
-    expect(String(request.body)).toContain('"model":"gpt-5.6-luna"');
+    expect(String(request.body)).toContain('"model":"main-model"');
     expect(String(request.body)).toContain(
       '"role":"system","content":"You are Guardian',
     );
