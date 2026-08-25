@@ -642,7 +642,7 @@ export function WorkflowChatPage({
     <section
       className={`chat-page ${isEmpty ? "chat-page-empty" : ""} ${leftCollapsed ? "left-collapsed" : ""} ${titleHidden ? "chat-title-hidden" : ""} ${showHeader ? "has-inline-header" : ""} ${taskContextMode === "docked" ? "task-context-docked" : ""}`}
     >
-      {showHeader ? (
+      {showHeader && !isEmpty ? (
         <WorkflowChatHeader
           titleHidden={titleHidden}
           threadSummary={taskContextControl}
