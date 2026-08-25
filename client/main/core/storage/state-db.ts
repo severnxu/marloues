@@ -24,21 +24,55 @@ export function closeStateDbForTests(): void {
   db = null;
 }
 
-
 function importDevStateIfAvailable(database: Database.Database): void {
   const sourcePath = getDevStateDbPathForImport();
-  if (!sourcePath || !existsSync(sourcePath) || sourcePath === getStateDbPath()) return;
+  if (!sourcePath || !existsSync(sourcePath) || sourcePath === getStateDbPath())
+    return;
 
   try {
     database.prepare("ATTACH DATABASE ? AS dev_state").run(sourcePath);
     importTableRows(database, "sessions", "dev_state.sessions");
-    const importedArtifacts = importTableRows(database, "session_artifacts", "dev_state.session_artifacts");
-    const importedAuditEvents = importTableRows(database, "audit_events", "dev_state.audit_events");
-    importTableRows(database, "session_checkpoints", "dev_state.session_checkpoints");
-    importTableRows(database, "checkpoint_artifact_refs", "dev_state.checkpoint_artifact_refs");
-    importTableRows(database, "workspace_checkpoints", "dev_state.workspace_checkpoints");
-    importTableRows(database, "workspace_file_changes", "dev_state.workspace_file_changes");
-    importTableRows(database, "workspace_rewind_events", "dev_state.workspace_rewind_events");
+    const importedArtifacts = importTableRows(
+      database,
+      "session_artifacts",
+      "dev_state.session_artifacts",
+    );
+    const importedAuditEvents = importTableRows(
+      database,
+      "audit_events",
+      "dev_state.audit_events",
+    );
+    importTableRows(
+      database,
+      "session_checkpoints",
+      "dev_state.session_checkpoints",
+    );
+    importTableRows(
+      database,
+      "checkpoint_artifact_refs",
+      "dev_state.checkpoint_artifact_refs",
+    );
+    importTableRows(
+      database,
+      "workspace_checkpoints",
+      "dev_state.workspace_checkpoints",
+    );
+    importTableRows(
+      database,
+      "workspace_file_changes",
+      "dev_state.workspace_file_changes",
+    );
+    importTableRows(
+      database,
+      "workspace_rewind_events",
+      "dev_state.workspace_rewind_events",
+    );
+    importTableRows(database, "scheduled_tasks", "dev_state.scheduled_tasks");
+    importTableRows(
+      database,
+      "scheduled_task_runs",
+      "dev_state.scheduled_task_runs",
+    );
 
     if (importedArtifacts > 0 || importedAuditEvents > 0) {
       logInfo("stateDb.devStateImported", {
@@ -61,10 +95,16 @@ function importDevStateIfAvailable(database: Database.Database): void {
   }
 }
 
-function importTableRows(database: Database.Database, targetTable: string, sourceTable: string): number {
+function importTableRows(
+  database: Database.Database,
+  targetTable: string,
+  sourceTable: string,
+): number {
   const targetColumns = listTableColumns(database, targetTable);
   const sourceColumns = listTableColumns(database, sourceTable);
-  const columns = targetColumns.filter((column) => sourceColumns.includes(column));
+  const columns = targetColumns.filter((column) =>
+    sourceColumns.includes(column),
+  );
   if (!columns.length) return 0;
 
   const columnList = columns.map(quoteIdentifier).join(", ");
@@ -77,18 +117,28 @@ function importTableRows(database: Database.Database, targetTable: string, sourc
   return Math.max(0, readTableCount(database, targetTable) - before);
 }
 
-function readTableCount(database: Database.Database, tableName: string): number {
+function readTableCount(
+  database: Database.Database,
+  tableName: string,
+): number {
   try {
-    const row = database.prepare(`SELECT COUNT(*) AS count FROM ${quoteIdentifier(tableName)}`).get() as { count: number };
+    const row = database
+      .prepare(`SELECT COUNT(*) AS count FROM ${quoteIdentifier(tableName)}`)
+      .get() as { count: number };
     return row.count;
   } catch {
     return 0;
   }
 }
 
-function listTableColumns(database: Database.Database, tableName: string): string[] {
+function listTableColumns(
+  database: Database.Database,
+  tableName: string,
+): string[] {
   try {
-    const [schemaName, rawTableName] = tableName.includes(".") ? tableName.split(".", 2) : [undefined, tableName];
+    const [schemaName, rawTableName] = tableName.includes(".")
+      ? tableName.split(".", 2)
+      : [undefined, tableName];
     const pragma = schemaName
       ? `PRAGMA ${quoteIdentifier(schemaName)}.table_info(${quoteIdentifier(rawTableName)})`
       : `PRAGMA table_info(${quoteIdentifier(rawTableName)})`;
@@ -130,7 +180,9 @@ function migrate(database: Database.Database): void {
     logInfo("stateDb.migrated", { version: 1, dbPath: getStateDbPath() });
   }
 
-  const afterAuditVersion = database.pragma("user_version", { simple: true }) as number;
+  const afterAuditVersion = database.pragma("user_version", {
+    simple: true,
+  }) as number;
   if (afterAuditVersion < 2) {
     database.exec(`
       CREATE TABLE IF NOT EXISTS session_artifacts (
@@ -182,7 +234,9 @@ function migrate(database: Database.Database): void {
     logInfo("stateDb.migrated", { version: 2, dbPath: getStateDbPath() });
   }
 
-  const afterArtifactVersion = database.pragma("user_version", { simple: true }) as number;
+  const afterArtifactVersion = database.pragma("user_version", {
+    simple: true,
+  }) as number;
   if (afterArtifactVersion < 3) {
     database.exec(`
       CREATE TABLE IF NOT EXISTS session_checkpoints (
@@ -216,15 +270,21 @@ function migrate(database: Database.Database): void {
     logInfo("stateDb.migrated", { version: 3, dbPath: getStateDbPath() });
   }
 
-  const afterCheckpointVersion = database.pragma("user_version", { simple: true }) as number;
+  const afterCheckpointVersion = database.pragma("user_version", {
+    simple: true,
+  }) as number;
   if (afterCheckpointVersion < 4) {
     if (!tableHasColumn(database, "session_artifacts", "byte_length")) {
-      database.exec("ALTER TABLE session_artifacts ADD COLUMN byte_length INTEGER NOT NULL DEFAULT 0;");
+      database.exec(
+        "ALTER TABLE session_artifacts ADD COLUMN byte_length INTEGER NOT NULL DEFAULT 0;",
+      );
     }
     database.pragma("user_version = 4");
     logInfo("stateDb.migrated", { version: 4, dbPath: getStateDbPath() });
   }
-  const afterArtifactByteLengthVersion = database.pragma("user_version", { simple: true }) as number;
+  const afterArtifactByteLengthVersion = database.pragma("user_version", {
+    simple: true,
+  }) as number;
   if (afterArtifactByteLengthVersion < 5) {
     database.exec(`
       CREATE TABLE IF NOT EXISTS workspace_rewind_events (
@@ -244,7 +304,9 @@ function migrate(database: Database.Database): void {
     logInfo("stateDb.migrated", { version: 5, dbPath: getStateDbPath() });
   }
 
-  const afterWorkspaceRewindVersion = database.pragma("user_version", { simple: true }) as number;
+  const afterWorkspaceRewindVersion = database.pragma("user_version", {
+    simple: true,
+  }) as number;
   if (afterWorkspaceRewindVersion < 6) {
     database.exec(`
       CREATE TABLE IF NOT EXISTS sessions (
@@ -268,7 +330,9 @@ function migrate(database: Database.Database): void {
     logInfo("stateDb.migrated", { version: 6, dbPath: getStateDbPath() });
   }
 
-  const afterSessionsVersion = database.pragma("user_version", { simple: true }) as number;
+  const afterSessionsVersion = database.pragma("user_version", {
+    simple: true,
+  }) as number;
   if (afterSessionsVersion < 7) {
     database.exec(`
       CREATE TABLE IF NOT EXISTS outbox_messages (
@@ -301,9 +365,62 @@ function migrate(database: Database.Database): void {
     `);
     logInfo("stateDb.migrated", { version: 7, dbPath: getStateDbPath() });
   }
+
+  const afterOutboxVersion = database.pragma("user_version", {
+    simple: true,
+  }) as number;
+  if (afterOutboxVersion < 8) {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS scheduled_tasks (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        instruction TEXT NOT NULL,
+        workspace_path TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        run_at INTEGER,
+        cron_expr TEXT,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        next_run_at INTEGER,
+        last_run_at INTEGER,
+        last_run_status TEXT,
+        fail_count INTEGER NOT NULL DEFAULT 0,
+        metadata_json TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_next_run
+        ON scheduled_tasks(enabled, next_run_at);
+      CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_workspace
+        ON scheduled_tasks(workspace_path, updated_at DESC);
+
+      CREATE TABLE IF NOT EXISTS scheduled_task_runs (
+        id TEXT PRIMARY KEY,
+        task_id TEXT NOT NULL REFERENCES scheduled_tasks(id) ON DELETE CASCADE,
+        session_id TEXT,
+        status TEXT NOT NULL,
+        started_at INTEGER,
+        finished_at INTEGER,
+        error TEXT,
+        receipt_json TEXT,
+        created_at INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_scheduled_task_runs_task
+        ON scheduled_task_runs(task_id, created_at DESC);
+      PRAGMA user_version = 8;
+    `);
+    logInfo("stateDb.migrated", { version: 8, dbPath: getStateDbPath() });
+  }
 }
 
-function tableHasColumn(database: Database.Database, tableName: string, columnName: string): boolean {
-  const rows = database.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{ name: string }>;
+function tableHasColumn(
+  database: Database.Database,
+  tableName: string,
+  columnName: string,
+): boolean {
+  const rows = database
+    .prepare(`PRAGMA table_info(${tableName})`)
+    .all() as Array<{ name: string }>;
   return rows.some((row) => row.name === columnName);
 }

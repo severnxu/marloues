@@ -58,8 +58,11 @@
     "@codemirror/view": "^6.43.8",
     "@electron-toolkit/preload": "^3.0.1",
     "@electron-toolkit/utils": "^2.0.0",
+    "@larksuiteoapi/node-sdk": "^1.73.0",
     "@lezer/highlight": "^1.2.3",
     "@pierre/diffs": "^1.2.10",
+    "@types/qrcode": "^1.5.6",
+    "@wecom/aibot-node-sdk": "^1.0.7",
     "better-sqlite3": "^13.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -72,6 +75,7 @@
     "lowlight": "^3.3.0",
     "lucide-react": "^0.468.0",
     "marked": "^17.0.6",
+    "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-diff-viewer-continued": "^3.4.0",
     "react-dom": "^18.3.1",
@@ -125,6 +129,12 @@
       "out/**/*",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "resources/tray-icon.png",
+        "to": "tray-icon.png"
+      }
+    ],
     "asar": true,
     "asarUnpack": [
       "node_modules/@anthropic-ai/claude-agent-sdk-*/**"
@@ -172,6 +182,7 @@
       "artifactName": "Marloues-${version}-${arch}-Setup.${ext}"
     },
     "linux": {
+      "icon": "build/icon.png",
       "category": "Development",
       "maintainer": "Marloues <severnxu@users.noreply.github.com>",
       "target": [

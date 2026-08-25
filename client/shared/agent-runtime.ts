@@ -195,6 +195,7 @@ export interface AgentRuntime {
   listThreads(): Promise<Thread[]>;
   createThread(title?: string): Promise<Thread>;
   deleteThread(threadId: string): Promise<void>;
+  clearThread(threadId: string): Promise<void>;
   forkThread?(threadId: string, upToMessageId?: string): Promise<Thread>;
 
   sendMessage(opts: {

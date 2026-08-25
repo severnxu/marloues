@@ -3,11 +3,27 @@
  * Provides the full IPC surface expected by the marloues UI.
  */
 
-import { app, ipcMain, BrowserWindow, dialog, shell } from "electron";
+import {
+  app,
+  ipcMain,
+  BrowserWindow,
+  dialog,
+  shell,
+  type IpcMainInvokeEvent,
+} from "electron";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import * as QRCode from "qrcode";
 import { IPC } from "./channels";
 import { logInfo } from "../core/logging/app-logger";
+import { IM_IPC } from "@shared/im/im-ipc";
+import type {
+  FeishuQrCodePush,
+  FeishuQrRegisterResult,
+  FeishuQrStatusPush,
+  ImChannelTestResult,
+} from "@shared/im/im-ipc";
+import type { ImChannelId, ImChannelSecretsConfig } from "@shared/im/im-types";
 import type {
   ChatSendRequest,
   ChatSendReceipt,
@@ -21,6 +37,7 @@ import type {
   TimelineItem,
   RuntimeKind,
   WorkspaceInfo,
+  WorkspaceGitContext,
   WorkspaceSettings,
   ChatSessionRecord,
   AgentSettings,
@@ -29,8 +46,11 @@ import type {
   SkillDetail,
   SkillInfo,
   SessionSearchResult,
+  ScheduleChangedPayload,
+  ScheduledTaskInput,
   ScheduledTaskRecord,
   ScheduledTaskRunRecord,
+  ScheduledTaskRunStatus,
 } from "@shared/types";
 import type { WorkflowUserMessageContent } from "@shared/workflow-read-thread-contract";
 import {
@@ -131,6 +151,7 @@ import {
   applyWorkspaceRewind,
   captureWorkspaceCheckpoint,
   previewWorkspaceRewind,
+  readWorkspaceGitContext,
 } from "../services/workspace-checkpoint-service";
 import {
   claimNextOutboxMessage,
@@ -138,6 +159,45 @@ import {
   subscribeOutbox,
   cancelSessionOutbox,
 } from "../services/outbox-service";
+import {
+  generateWecomBotQRCode,
+  pollWecomBotQRResult,
+} from "../im/channels/wecom-qr-auth";
+import { startFeishuRegisterApp } from "../im/channels/feishu-qr-auth";
+import { FeishuAdapter } from "../im/channels/feishu-adapter";
+import { WecomAdapter } from "../im/channels/wecom-adapter";
+import {
+  getImChannelSecretsConfig,
+  saveImChannelSecretsConfig,
+  validateChannelConfig,
+} from "../im/bridge/im-config-store";
+import { ImSessionRegistry } from "../im/bridge/im-session-registry";
+import {
+  emitImItemEvent,
+  emitImUIEvent,
+  imEventBus,
+} from "../im/bridge/im-event-bus";
+import { ImInboundPipeline } from "../im/pipeline/im-inbound-pipeline";
+import { ImCommandRouter } from "../im/pipeline/im-command-router";
+import { ImStreamAdapter } from "../im/outbound/im-stream-adapter";
+import { ImApprovalDispatcher } from "../im/outbound/im-approval-dispatcher";
+import type { ImChannelAdapter } from "../im/outbound/im-channel-adapter";
+import type { ImStreamTarget } from "../im/outbound/im-stream-adapter";
+import {
+  createScheduledTask,
+  finishScheduledTaskRun,
+  getScheduledTask,
+  listDueScheduledTasks,
+  listScheduledTaskRuns,
+  listScheduledTasks,
+  markScheduledTaskAfterRun,
+  removeScheduledTask,
+  scheduledSessionId,
+  startScheduledTaskRun,
+  toggleScheduledTask,
+  updateScheduledTask,
+} from "../services/schedule-service";
+import type { ImPermissionContext } from "../im/pipeline/im-permission-context";
 
 const pendingApprovalItems = new Map<
   string,
@@ -220,6 +280,571 @@ function getMainWindow(): BrowserWindow | null {
   return wins.find((w) => !w.isDestroyed()) ?? null;
 }
 
+function sendImStatus(
+  channel: ImChannelId,
+  state: "offline" | "connecting" | "online" | "error",
+  error?: string,
+): void {
+  const mainWindow = getMainWindow();
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.send(IM_IPC.SET_STATUS, {
+    channel,
+    state,
+    error,
+    lastHeartbeat: state === "online" ? Date.now() : undefined,
+  });
+}
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  message: string,
+): Promise<T> {
+  return new Promise<T>((resolvePromise, rejectPromise) => {
+    const timer = setTimeout(() => {
+      rejectPromise(new Error(message));
+    }, timeoutMs);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolvePromise(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        rejectPromise(error);
+      },
+    );
+  });
+}
+
+async function waitForImHealthy(
+  adapter: { isHealthy(): boolean },
+  timeoutMs: number,
+  message: string,
+): Promise<void> {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    if (adapter.isHealthy()) return;
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 250));
+  }
+  throw new Error(message);
+}
+
+class ImRuntimeBridge {
+  readonly sessions = new ImSessionRegistry();
+  readonly commandRouter = new ImCommandRouter({
+    newSession: (ctx) => this.cmdNewSession(ctx),
+    listSessions: (ctx) => this.cmdListSessions(ctx),
+    stopTurn: (ctx) => this.cmdStopTurn(ctx),
+    compact: (ctx) => this.cmdCompact(ctx),
+    clear: (ctx) => this.cmdClear(ctx),
+  });
+  readonly pipeline = new ImInboundPipeline(
+    {
+      sendText: (channel, chatId, text) => this.sendText(channel, chatId, text),
+      dispatch: (ctx, text) => this.dispatchChatMessage(ctx, text),
+      commandRouter: this.commandRouter,
+      claimOwner: (channel, senderId) => this.claimOwner(channel, senderId),
+    },
+    () => this.config,
+  );
+  readonly streamAdapter = new ImStreamAdapter((channel) =>
+    this.adapters.get(channel),
+  );
+  readonly approvalDispatcher = new ImApprovalDispatcher(
+    (channel) => this.adapters.get(channel),
+    (threadId) => this.sessions.getByThreadId(threadId),
+  );
+
+  private readonly adapters = new Map<ImChannelId, ImChannelAdapter>();
+  private config: ImChannelSecretsConfig = {};
+  private started = false;
+  private eventBusOff: (() => void) | null = null;
+
+  start(): void {
+    if (this.started) return;
+    this.started = true;
+    this.config = getImChannelSecretsConfig();
+    this.sessions.loadAll();
+    this.eventBusOff = this.subscribeTurnEvents();
+    void this.applyChannelConfig(this.config);
+    logInfo("im.bridge.started", {});
+  }
+
+  async stop(): Promise<void> {
+    if (!this.started) return;
+    this.started = false;
+    this.eventBusOff?.();
+    this.eventBusOff = null;
+    this.approvalDispatcher.dispose();
+    for (const channel of Array.from(this.adapters.keys())) {
+      await this.stopChannel(channel);
+    }
+    logInfo("im.bridge.stopped", {});
+  }
+
+  async applyChannelConfig(config: ImChannelSecretsConfig): Promise<void> {
+    this.config = config;
+    for (const channel of ["wecom", "feishu"] as const) {
+      const enabled = Boolean(config[channel]?.enabled);
+      if (!enabled) {
+        await this.stopChannel(channel);
+        continue;
+      }
+      await this.restartChannel(channel);
+    }
+  }
+
+  listSessionsForRenderer() {
+    return this.sessions.listForRenderer(
+      (threadId, chatId) =>
+        store.getSession(threadId)?.title ?? `[IM] ${chatId}`,
+    );
+  }
+
+  handleCardAction(action: {
+    requestId: string;
+    approved: boolean;
+    reason?: string;
+    chatId: string;
+  }): void {
+    void this.approvalDispatcher.handleCardAction(action);
+  }
+
+  async sendText(
+    channel: ImChannelId,
+    chatId: string,
+    text: string,
+  ): Promise<void> {
+    const adapter = this.adapters.get(channel);
+    if (!adapter) return;
+    await adapter.sendText(chatId, text);
+  }
+
+  async dispatchChatMessage(
+    ctx: ImPermissionContext,
+    text: string,
+  ): Promise<void> {
+    const threadId = await this.ensureImThread(ctx);
+    const runtimeContent =
+      ctx.role === "guest" && ctx.securityPrompt
+        ? `${ctx.securityPrompt}\n\n${text}`
+        : text;
+    const receipt = await sendChatTurn(
+      {
+        sessionId: threadId,
+        text,
+        workMode: "execute",
+        permissionMode: "default",
+        deliveryMode: "normal",
+      },
+      {
+        displayContent: text,
+        runtimeContent,
+        cwd: this.sessions.getByThreadId(threadId)?.workspacePath,
+        imTarget: { channel: ctx.channel, chatId: ctx.chatId },
+      },
+    );
+    if (receipt.turnId) {
+      this.sessions.updateLastTurnForThread(threadId, receipt.turnId);
+      this.pushSessionsChanged();
+    }
+    if (receipt.status !== "started" && receipt.status !== "fallback") {
+      await this.sendText(
+        ctx.channel,
+        ctx.chatId,
+        `消息处理失败：${receipt.error ?? receipt.reason ?? "未知错误"}`,
+      );
+    }
+  }
+
+  async claimOwner(channel: ImChannelId, senderId: string): Promise<void> {
+    if (channel === "wecom") {
+      this.config.wecom = {
+        ...(this.config.wecom ?? {
+          enabled: true,
+          botId: "",
+          secret: "",
+          requireMention: true,
+        }),
+        ownerUserIds: [senderId],
+      };
+    } else {
+      this.config.feishu = {
+        ...(this.config.feishu ?? {
+          enabled: true,
+          appId: "",
+          appSecret: "",
+          requireMention: true,
+        }),
+        ownerOpenIds: [senderId],
+      };
+    }
+    saveImChannelSecretsConfig(this.config);
+    logInfo("im.bridge.ownerClaimed", { channel, senderId });
+  }
+
+  async ensureImThread(ctx: ImPermissionContext): Promise<string> {
+    const existing = this.sessions.getThreadId(ctx.channel, ctx.chatId);
+    if (existing) return existing;
+
+    return this.createImThread(ctx);
+  }
+
+  private async createImThread(ctx: ImPermissionContext): Promise<string> {
+    const runtime = getRuntime();
+    const thread = await runtime.createThread(`[IM] ${ctx.chatId}`);
+    const workspacePath = this.sessions.ensureWorkspace(
+      ctx.channel,
+      ctx.chatId,
+    );
+    store.saveSession({
+      id: thread.id,
+      title: thread.title,
+      updatedAt: thread.updatedAt,
+      pinned: false,
+      cwd: workspacePath,
+      turnCount: 0,
+      messages: [],
+    });
+    this.sessions.bind({
+      channel: ctx.channel,
+      chatId: ctx.chatId,
+      threadId: thread.id,
+      ownerUserId: ctx.senderId,
+      workspacePath,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      state: "active",
+    });
+    this.pushSessionsChanged();
+    logInfo("im.thread.created", {
+      channel: ctx.channel,
+      chatId: ctx.chatId,
+      threadId: thread.id,
+    });
+    return thread.id;
+  }
+
+  private subscribeTurnEvents(): () => void {
+    return imEventBus.on((event) => {
+      if (event.type === "ui-event") {
+        this.streamAdapter.onUIEvent(
+          event.target,
+          event.threadId,
+          event.turnId,
+          event.evt as Parameters<ImStreamAdapter["onUIEvent"]>[3],
+        );
+        return;
+      }
+      this.streamAdapter.onItemEvent(
+        event.target,
+        event.threadId,
+        event.evt as Parameters<ImStreamAdapter["onItemEvent"]>[2],
+      );
+      const raw = event.evt as { type?: string; result?: string };
+      if (raw.type === "turn.complete") {
+        const record = this.sessions.getByThreadId(event.threadId);
+        if (record) {
+          this.sessions.updateLastTurnForThread(event.threadId, event.turnId);
+          this.pushSessionsChanged();
+        }
+      }
+    });
+  }
+
+  private async cmdNewSession(ctx: ImPermissionContext): Promise<string> {
+    const previousThreadId = this.sessions.getThreadId(ctx.channel, ctx.chatId);
+    await this.createImThread(ctx);
+    if (previousThreadId) {
+      await this.stopThreadIfRunning(previousThreadId).catch((error) => {
+        logInfo("im.command.new.previousStopFailed", {
+          channel: ctx.channel,
+          chatId: ctx.chatId,
+          threadId: previousThreadId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    }
+    return "已开启新会话";
+  }
+
+  private async cmdListSessions(ctx: ImPermissionContext): Promise<string> {
+    const sessions = this.listSessionsForRenderer().filter(
+      (session) => session.channel === ctx.channel,
+    );
+    if (!sessions.length) return "暂无 IM 会话";
+    return sessions
+      .slice(0, 20)
+      .map((session, index) => `${index + 1}. ${session.title}`)
+      .join("\n");
+  }
+
+  private async cmdStopTurn(ctx: ImPermissionContext): Promise<string> {
+    const threadId = this.sessions.getThreadId(ctx.channel, ctx.chatId);
+    const record = threadId ? this.sessions.getByThreadId(threadId) : undefined;
+    if (!threadId || !record?.lastTurnId) return "当前没有正在运行的回合";
+    await this.stopThreadIfRunning(threadId);
+    return "已发送停止指令";
+  }
+
+  private async cmdCompact(ctx: ImPermissionContext): Promise<string> {
+    const threadId = this.sessions.getThreadId(ctx.channel, ctx.chatId);
+    if (!threadId) return "当前没有进行中的会话";
+    const stored = store.getSession(threadId);
+    if (!stored) return "当前会话尚未落库，无法压缩";
+    const settings = getAgentSettings();
+    const modelProvider = resolveModelProvider(settings);
+    const contextMgmt = settings.contextManagement;
+    const sessionRecord = sessionRecordFromStoredSession(stored);
+    const sessionTokens = estimateSessionTokens(sessionRecord);
+    const threshold = contextMgmt?.compactThresholdPercent ?? 75;
+    const targetTokens = Math.max(
+      1,
+      Math.round((sessionTokens * threshold) / 100),
+    );
+    await compactAndRecordSessionState({
+      session: sessionRecord,
+      modelProvider,
+      targetTokens,
+      reason: "manual",
+    });
+    sendReadThreadUpdate(threadId);
+    return "已触发上下文压缩";
+  }
+
+  private async cmdClear(ctx: ImPermissionContext): Promise<string> {
+    const threadId = this.sessions.getThreadId(ctx.channel, ctx.chatId);
+    if (!threadId) return "当前没有上下文，无需清空";
+    const record = this.sessions.getByThreadId(threadId);
+    if (!record) return "当前会话映射不存在，无需清空";
+
+    const runtime = getRuntime();
+    await runtime.clearThread(threadId);
+    cancelSessionOutbox(threadId);
+    clearStoredSessionContext(threadId);
+    this.sessions.clearThreadState(threadId);
+    this.streamAdapter.clearForThread(record.channel, threadId);
+    sendReadThreadUpdate(threadId);
+    this.pushSessionsChanged();
+    return "已清空当前会话上下文";
+  }
+
+  private async stopThreadIfRunning(threadId: string): Promise<void> {
+    const record = this.sessions.getByThreadId(threadId);
+    if (!record?.lastTurnId) return;
+    const runtime = getRuntime();
+    await runtime.interruptTurn?.(record.lastTurnId);
+    this.streamAdapter.clearForThread(record.channel, threadId);
+  }
+
+  private async restartChannel(channel: ImChannelId): Promise<void> {
+    await this.stopChannel(channel);
+    const validationError = validateChannelConfig(channel, this.config);
+    if (validationError) {
+      sendImStatus(channel, "error", validationError);
+      return;
+    }
+    const adapter =
+      channel === "wecom"
+        ? new WecomAdapter(this.config.wecom!)
+        : new FeishuAdapter(this.config.feishu!);
+    adapter.onMessage((message) => this.pipeline.handleMessage(message));
+    adapter.onCardAction((action) => this.handleCardAction(action));
+    this.adapters.set(channel, adapter);
+    sendImStatus(channel, "connecting");
+    try {
+      await adapter.start();
+      sendImStatus(channel, "online");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      sendImStatus(channel, "error", message);
+      logInfo("im.bridge.channelStartFailed", { channel, error: message });
+    }
+  }
+
+  private async stopChannel(channel: ImChannelId): Promise<void> {
+    const adapter = this.adapters.get(channel);
+    if (adapter) {
+      await adapter.stop().catch(() => undefined);
+      this.adapters.delete(channel);
+    }
+    sendImStatus(channel, "offline");
+  }
+
+  private pushSessionsChanged(): void {
+    getMainWindow()?.webContents.send(IM_IPC.SESSION_UPDATED);
+  }
+}
+
+const imRuntimeBridge = new ImRuntimeBridge();
+
+export function stopImBridge(): Promise<void> {
+  return imRuntimeBridge.stop();
+}
+
+async function testImChannel(
+  channel: ImChannelId,
+): Promise<ImChannelTestResult> {
+  const config = getImChannelSecretsConfig();
+  const validationError = validateChannelConfig(channel, config);
+  if (validationError) {
+    return {
+      channel,
+      success: false,
+      error: validationError,
+    };
+  }
+
+  const started = Date.now();
+  const adapter =
+    channel === "wecom"
+      ? new WecomAdapter(config.wecom!)
+      : new FeishuAdapter(config.feishu!);
+
+  sendImStatus(channel, "connecting");
+  try {
+    await withTimeout(
+      (async () => {
+        await adapter.start();
+        await waitForImHealthy(
+          adapter,
+          15_000,
+          `${channel === "wecom" ? "企业微信" : "飞书"}连接超时`,
+        );
+      })(),
+      15_000,
+      `${channel === "wecom" ? "企业微信" : "飞书"}连接超时`,
+    );
+    sendImStatus(channel, "online");
+    return {
+      channel,
+      success: true,
+      latencyMs: Date.now() - started,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    sendImStatus(channel, "error", message);
+    return {
+      channel,
+      success: false,
+      error: message,
+      latencyMs: Date.now() - started,
+    };
+  } finally {
+    await adapter.stop().catch(() => undefined);
+  }
+}
+
+function registerImHandlers(): void {
+  ipcMain.handle(IM_IPC.GET_CONFIG, () => getImChannelSecretsConfig());
+
+  ipcMain.handle(
+    IM_IPC.SAVE_CONFIG,
+    async (_event, channels: ImChannelSecretsConfig) => {
+      saveImChannelSecretsConfig(channels);
+      await imRuntimeBridge.applyChannelConfig(channels);
+      logInfo("im.ipc.configSaved", {});
+      return { ok: true as const };
+    },
+  );
+
+  ipcMain.handle(IM_IPC.TEST_CHANNEL, (_event, channel: ImChannelId) =>
+    testImChannel(channel),
+  );
+
+  ipcMain.handle(IM_IPC.LIST_SESSIONS, () => ({
+    sessions: imRuntimeBridge.listSessionsForRenderer(),
+  }));
+
+  ipcMain.handle(IM_IPC.WECOM_QR_GENERATE, async () => {
+    const result = await generateWecomBotQRCode("marloues");
+    try {
+      const dataUrl = await QRCode.toDataURL(result.authUrl, {
+        width: 220,
+        margin: 2,
+        errorCorrectionLevel: "M",
+      });
+      logInfo("im.wecom.qrDataUrlGenerated", {
+        bytes: dataUrl.length,
+      });
+      return { ...result, dataUrl };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logInfo("im.wecom.qrDataUrlFailed", { error: message });
+      throw error;
+    }
+  });
+
+  ipcMain.handle(IM_IPC.WECOM_QR_POLL, (_event, scode: string) =>
+    pollWecomBotQRResult(scode),
+  );
+
+  let activeFeishuAbort: { cancel: () => void } | null = null;
+
+  ipcMain.handle(
+    IM_IPC.FEISHU_QR_START,
+    async (event: IpcMainInvokeEvent): Promise<FeishuQrRegisterResult> => {
+      activeFeishuAbort?.cancel();
+      const { controller, promise } = startFeishuRegisterApp({
+        source: "marloues",
+        appName: "Marloues",
+        onQRCodeReady: (info) => {
+          if (event.sender.isDestroyed()) return;
+          void QRCode.toDataURL(info.url, {
+            width: 220,
+            margin: 2,
+            errorCorrectionLevel: "M",
+          })
+            .then((dataUrl) => {
+              if (event.sender.isDestroyed()) return;
+              logInfo("im.feishu.qrDataUrlGenerated", {
+                bytes: dataUrl.length,
+              });
+              event.sender.send(IM_IPC.FEISHU_QR_CODE, {
+                url: info.url,
+                dataUrl,
+                expireIn: info.expireIn,
+              } satisfies FeishuQrCodePush);
+            })
+            .catch(() => {
+              if (event.sender.isDestroyed()) return;
+              event.sender.send(IM_IPC.FEISHU_QR_CODE, {
+                url: info.url,
+                dataUrl: "",
+                expireIn: info.expireIn,
+              } satisfies FeishuQrCodePush);
+            });
+        },
+        onStatusChange: (info) => {
+          if (event.sender.isDestroyed()) return;
+          event.sender.send(IM_IPC.FEISHU_QR_STATUS, {
+            status: info.status,
+            interval: info.interval,
+          } satisfies FeishuQrStatusPush);
+        },
+      });
+      activeFeishuAbort = controller;
+      try {
+        const outcome = await promise;
+        if ("canceled" in outcome && outcome.canceled) {
+          return { appId: "", appSecret: "", canceled: true };
+        }
+        return outcome;
+      } finally {
+        if (activeFeishuAbort === controller) {
+          activeFeishuAbort = null;
+        }
+      }
+    },
+  );
+
+  ipcMain.handle(IM_IPC.FEISHU_QR_CANCEL, () => {
+    activeFeishuAbort?.cancel();
+    activeFeishuAbort = null;
+  });
+}
+
 async function buildPendingStateSnapshot(
   sessionId?: string,
 ): Promise<PendingStateSnapshot> {
@@ -262,9 +887,10 @@ function registerPendingStateBroadcast(): void {
   subscribeOutbox(() => void broadcastPendingState());
 }
 
-
 function isDefaultSessionTitle(title: string): boolean {
-  return title === "New chat" || title === "Untitled";
+  return (
+    title === "New chat" || title === "Untitled" || /^\[IM\]\s+/.test(title)
+  );
 }
 
 function titleFromText(text: string): string {
@@ -1018,12 +1644,28 @@ function truncateStoredSession(
   return sessionRecordFromStoredSession(next);
 }
 
+function clearStoredSessionContext(sessionId: string): void {
+  const existing = store.getSession(sessionId);
+  if (!existing) return;
+  store.saveSession({
+    ...existing,
+    updatedAt: Date.now(),
+    runtimeThreadId: undefined,
+    runtimeThreadIds: {},
+    tokenUsage: undefined,
+    turnCount: 0,
+    messages: [],
+  });
+}
+
 async function sendChatTurn(
   request: ChatSendRequest,
   overrides: {
     displayContent?: string;
     runtimeContent?: string;
     userContent?: WorkflowUserMessageContent[];
+    cwd?: string;
+    imTarget?: ImStreamTarget;
   } = {},
 ): Promise<ChatSendReceipt> {
   const runtime = getRuntime();
@@ -1044,7 +1686,7 @@ async function sendChatTurn(
   const turnId = crypto.randomUUID();
   const startedAt = Date.now();
   const userMessageId = request.clientMessageId || `user-${turnId}`;
-  const workspacePath = currentWorkspace()?.path;
+  const workspacePath = overrides.cwd ?? currentWorkspace()?.path;
   const turnSettings = getAgentSettings();
   const turnModelProvider = resolveModelProvider(turnSettings);
   const turnModelSnapshot = modelSnapshotFromProvider(turnModelProvider);
@@ -1056,6 +1698,28 @@ async function sendChatTurn(
   const userContent =
     overrides.userContent ??
     userContentFromAttachments(content, request.attachments);
+  const imTarget = overrides.imTarget;
+  const emitImItemUpdate = (item: MessageItem, prevItem?: MessageItem) => {
+    emitImItemEvent(imTarget, threadId, turnId, {
+      type: "item.updated",
+      turnId,
+      item: messageItemToWorkflowTurnItem(item),
+      prevItem: prevItem ? messageItemToWorkflowTurnItem(prevItem) : undefined,
+    });
+  };
+  const emitImTurnComplete = (
+    result: string,
+    error: string | undefined,
+    completedAt: number,
+  ) => {
+    emitImItemEvent(imTarget, threadId, turnId, {
+      type: "turn.complete",
+      turnId,
+      result,
+      error,
+      completedAt,
+    });
+  };
 
   // Steer path: route to the runtime's steer queue instead of starting a turn.
   let fellBackFromSteer = false;
@@ -1120,6 +1784,13 @@ async function sendChatTurn(
     modelId: turnModelSnapshot.modelId,
     modelName: turnModelSnapshot.modelName,
   });
+  emitImItemEvent(imTarget, threadId, turnId, {
+    type: "turn.start",
+    turnId,
+    startedAt,
+    modelId: turnModelSnapshot.modelId,
+    modelName: turnModelSnapshot.modelName,
+  });
 
   void (async () => {
     const items = new Map<string, MessageItem>();
@@ -1148,6 +1819,7 @@ async function sendChatTurn(
         turnId,
         item,
       });
+      emitImItemUpdate(item);
       lastAgentId = "";
     };
 
@@ -1175,6 +1847,7 @@ async function sendChatTurn(
           turnId,
           item,
         });
+        emitImItemUpdate(item);
         return;
       }
 
@@ -1192,6 +1865,7 @@ async function sendChatTurn(
         turnId,
         item,
       });
+      emitImItemUpdate(item, existing);
     };
 
     try {
@@ -1309,6 +1983,11 @@ async function sendChatTurn(
               "Context window is nearly full. Start a new session or choose a larger context model.",
             completedAt,
           });
+          emitImTurnComplete(
+            "error",
+            "Context window is nearly full. Start a new session or choose a larger context model.",
+            completedAt,
+          );
           appendStoredMessage(threadId, {
             id: `assistant-${turnId}`,
             role: "assistant",
@@ -1334,7 +2013,7 @@ async function sendChatTurn(
         turnId,
         content: runtimeContent,
         displayContent: content,
-        cwd: currentWorkspace()?.path,
+        cwd: workspacePath,
         attachments: request.attachments,
         messageId: userMessageId,
         runtimeThreadId: nativeRuntimeThreadId,
@@ -1344,6 +2023,7 @@ async function sendChatTurn(
         const ts = Date.now();
         const uiEvent = translateRuntimeEventToUIEvent(evt, threadId, turnId);
         if (!uiEvent) continue;
+        emitImUIEvent(imTarget, threadId, turnId, uiEvent);
         if (uiEvent.type === "steer.message") {
           mainWindow.webContents.send(IPC.CHAT_EVENT, uiEvent);
           continue;
@@ -1354,7 +2034,7 @@ async function sendChatTurn(
           mainWindow.webContents.send(IPC.CHAT_EVENT, uiEvent);
           continue;
         }
-        // 状态类事件全量转发（对齐 neobot emitChatEvent 行为）：adapter 已把
+        // 状态类事件全量转发：adapter 已把
         // session.info/mcp.status/memory.recall/prompt.suggestion/context.warning/
         // runtime.status 翻译出来，必须送达 renderer 的 handleStatusEvents。
         // 实时流事件（text/thinking/tool/approval/turn 生命周期）继续走
@@ -1398,6 +2078,7 @@ async function sendChatTurn(
             turnId,
             item,
           });
+          emitImItemUpdate(item, existing);
           continue;
         }
 
@@ -1421,6 +2102,7 @@ async function sendChatTurn(
             turnId,
             item,
           });
+          emitImItemUpdate(item);
           continue;
         }
 
@@ -1449,6 +2131,7 @@ async function sendChatTurn(
             turnId,
             item,
           });
+          emitImItemUpdate(item, existing);
           continue;
         }
 
@@ -1480,6 +2163,18 @@ async function sendChatTurn(
             turnId,
             item,
           });
+          emitImItemUpdate(item);
+          imRuntimeBridge.approvalDispatcher.dispatch(
+            threadId,
+            {
+              id: uiEvent.requestId,
+              toolName: uiEvent.toolName,
+              reason: uiEvent.reason,
+              timeout: uiEvent.timeout,
+              expiresAt: Date.now() + uiEvent.timeout,
+            },
+            imTarget,
+          );
           getMainWindow()?.webContents.send(IPC.CHAT_PERMISSION_REQUEST, {
             id: uiEvent.requestId,
             requestId: uiEvent.requestId,
@@ -1488,7 +2183,7 @@ async function sendChatTurn(
             toolName: uiEvent.toolName,
             reason: uiEvent.reason,
             inputSummary: uiEvent.reason,
-            cwd: currentWorkspace()?.path,
+            cwd: workspacePath,
             timeout: uiEvent.timeout,
           });
           continue;
@@ -1519,6 +2214,7 @@ async function sendChatTurn(
             usage: tokenUsage,
             completedAt,
           });
+          emitImTurnComplete(uiEvent.result, uiEvent.error, completedAt);
           appendStoredMessage(
             threadId,
             {
@@ -1573,6 +2269,7 @@ async function sendChatTurn(
             error: uiEvent.message,
             completedAt,
           });
+          emitImTurnComplete("error", uiEvent.message, completedAt);
           appendStoredMessage(threadId, {
             id: `assistant-${turnId}`,
             role: "assistant",
@@ -1609,6 +2306,7 @@ async function sendChatTurn(
         error: errorMessage,
         completedAt,
       });
+      emitImTurnComplete("error", errorMessage, completedAt);
       appendStoredMessage(threadId, {
         id: `assistant-${turnId}`,
         role: "assistant",
@@ -1634,9 +2332,113 @@ async function sendChatTurn(
   };
 }
 
+const SCHEDULE_POLL_INTERVAL_MS = 30_000;
+let schedulePollTimer: NodeJS.Timeout | null = null;
+let schedulePollInFlight = false;
+
+function sendScheduleChanged(payload: ScheduleChangedPayload): void {
+  const mainWindow = getMainWindow();
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.send(IPC.SCHEDULE_CHANGED, payload);
+}
+
+function ensureScheduledSession(task: ScheduledTaskRecord): string {
+  const sessionId = scheduledSessionId(task.id);
+  const existing = store.getSession(sessionId);
+  if (existing) {
+    if (existing.cwd !== task.workspacePath || existing.title !== task.name) {
+      store.saveSession({
+        ...existing,
+        title: task.name,
+        cwd: task.workspacePath,
+        updatedAt: Date.now(),
+      });
+    }
+    return sessionId;
+  }
+  store.saveSession({
+    id: sessionId,
+    title: task.name,
+    updatedAt: Date.now(),
+    cwd: task.workspacePath,
+    messages: [],
+    turnCount: 0,
+  });
+  return sessionId;
+}
+
+async function executeScheduledTask(
+  task: ScheduledTaskRecord,
+): Promise<ScheduledTaskRunRecord> {
+  const sessionId = ensureScheduledSession(task);
+  const started = startScheduledTaskRun(task.id, sessionId);
+  sendScheduleChanged({ kind: "run", record: task, run: started });
+
+  let status: ScheduledTaskRunStatus = "success";
+  let error: string | undefined;
+  let receipt: ChatSendReceipt | undefined;
+  try {
+    receipt = await sendChatTurn(
+      {
+        sessionId,
+        text: task.instruction,
+        clientMessageId: `scheduled-${started.id}`,
+        deliveryMode: "normal",
+        forceSend: true,
+      },
+      {
+        displayContent: task.instruction,
+        runtimeContent: task.instruction,
+        cwd: task.workspacePath,
+      },
+    );
+    if (receipt.status === "failed") {
+      status = receipt.reason === "no_window" ? "no_window" : "failed";
+      error = receipt.error ?? receipt.reason;
+    }
+  } catch (caught) {
+    status = "failed";
+    error = caught instanceof Error ? caught.message : String(caught);
+  }
+
+  const finished = finishScheduledTaskRun(started.id, status, {
+    error,
+    receipt,
+  });
+  const latest = getScheduledTask(task.id) ?? task;
+  const record = markScheduledTaskAfterRun(latest, status, Date.now());
+  sendScheduleChanged({ kind: "run", record, run: finished });
+  return finished;
+}
+
+async function pollDueScheduledTasks(): Promise<void> {
+  if (schedulePollInFlight) return;
+  schedulePollInFlight = true;
+  try {
+    const dueTasks = listDueScheduledTasks();
+    for (const task of dueTasks) {
+      await executeScheduledTask(task);
+    }
+  } finally {
+    schedulePollInFlight = false;
+  }
+}
+
+function startSchedulePoller(): void {
+  if (schedulePollTimer) return;
+  schedulePollTimer = setInterval(() => {
+    void pollDueScheduledTasks();
+  }, SCHEDULE_POLL_INTERVAL_MS);
+  schedulePollTimer.unref?.();
+  void pollDueScheduledTasks();
+}
+
 export function registerHandlers(): void {
   registerReadThreadBroadcast();
   registerPendingStateBroadcast();
+  registerImHandlers();
+  imRuntimeBridge.start();
+  startSchedulePoller();
   // ---------- App ----------
 
   ipcMain.handle(IPC.APP_GET_VERSION, () => app.getVersion());
@@ -1800,7 +2602,6 @@ export function registerHandlers(): void {
         store.saveSession({
           ...existing,
           pinned: !existing.pinned,
-          updatedAt: Date.now(),
         });
         return;
       }
@@ -1812,7 +2613,6 @@ export function registerHandlers(): void {
       const record = {
         ...sessionRecordFromThread(thread),
         isPinned: true,
-        updatedAt: Date.now(),
       };
       persistSessionRecord(record);
     },
@@ -1939,7 +2739,11 @@ export function registerHandlers(): void {
 
   ipcMain.handle(
     IPC.CHAT_RESUME_OUTBOX,
-    async (_e, sessionId: string, messageId?: string): Promise<ChatSendReceipt> => {
+    async (
+      _e,
+      sessionId: string,
+      messageId?: string,
+    ): Promise<ChatSendReceipt> => {
       const claimed = claimNextOutboxMessage(sessionId, messageId);
       if (!claimed) {
         return {
@@ -1978,11 +2782,17 @@ export function registerHandlers(): void {
 
   ipcMain.handle(
     IPC.CHAT_CANCEL_STEER,
-    async (_e, sessionId: string, messageId: string): Promise<SteerActionReceipt> => {
+    async (
+      _e,
+      sessionId: string,
+      messageId: string,
+    ): Promise<SteerActionReceipt> => {
       const runtime = getRuntime();
       try {
         if (!runtime.cancelSteerMessage) {
-          throw new Error(`${runtime.name} does not support steer cancellation`);
+          throw new Error(
+            `${runtime.name} does not support steer cancellation`,
+          );
         }
         return await runtime.cancelSteerMessage(sessionId, messageId);
       } catch (error) {
@@ -1999,7 +2809,11 @@ export function registerHandlers(): void {
 
   ipcMain.handle(
     IPC.CHAT_APPLY_STEER_NOW,
-    async (_e, sessionId: string, messageId: string): Promise<SteerActionReceipt> => {
+    async (
+      _e,
+      sessionId: string,
+      messageId: string,
+    ): Promise<SteerActionReceipt> => {
       const runtime = getRuntime();
       try {
         if (!runtime.applyPendingSteerNow) {
@@ -2020,7 +2834,11 @@ export function registerHandlers(): void {
 
   ipcMain.handle(
     IPC.CHAT_REORDER_STEERS,
-    async (_e, sessionId: string, messageIds: string[]): Promise<SteerActionReceipt> => {
+    async (
+      _e,
+      sessionId: string,
+      messageIds: string[],
+    ): Promise<SteerActionReceipt> => {
       const runtime = getRuntime();
       try {
         if (!runtime.reorderSteers) {
@@ -2100,6 +2918,25 @@ export function registerHandlers(): void {
           turnId: pending.turnId,
           item,
         });
+        imRuntimeBridge.approvalDispatcher.resolve(
+          requestId,
+          approved ? "approved" : "denied",
+        );
+        const binding = imRuntimeBridge.sessions.getByThreadId(
+          pending.sessionId,
+        );
+        if (binding) {
+          emitImItemEvent(
+            { channel: binding.channel, chatId: binding.chatId },
+            pending.sessionId,
+            pending.turnId,
+            {
+              type: "item.updated",
+              turnId: pending.turnId,
+              item: messageItemToWorkflowTurnItem(item),
+            },
+          );
+        }
       }
     },
   );
@@ -2155,6 +2992,32 @@ export function registerHandlers(): void {
 
   ipcMain.handle(IPC.WORKSPACE_GET_SETTINGS, (): WorkspaceSettings =>
     getWorkspaceSettings(),
+  );
+
+  ipcMain.handle(
+    IPC.WORKSPACE_GET_GIT_CONTEXT,
+    async (
+      _e,
+      id: string,
+      workspacePath?: string,
+    ): Promise<WorkspaceGitContext | null> => {
+      const settings = getWorkspaceSettings();
+      const workspace =
+        settings.workspaces.find((item) => item.id === id) ??
+        settings.workspaces.find((item) =>
+          workspacePathsEqual(item.path, workspacePath),
+        );
+      const sessionWorkspacePath =
+        workspacePath &&
+        store
+          .getSessions()
+          .some((session) => workspacePathsEqual(session.cwd, workspacePath))
+          ? workspacePath
+          : undefined;
+      const targetPath = workspace?.path ?? sessionWorkspacePath;
+      if (!targetPath) return null;
+      return readWorkspaceGitContext(targetPath);
+    },
   );
 
   ipcMain.handle(
@@ -2369,32 +3232,59 @@ export function registerHandlers(): void {
     listAuditEvents(limit),
   );
 
-  // ---------- Schedule (stub) ----------
-  // Marloues main process does not ship a scheduler backend yet. The renderer
-  // keeps the full task page/interaction; all data endpoints return empty and
-  // mutations report the feature as not wired up.
-  const SCHEDULE_NOT_WIRED = "定时任务后端尚未接入，此操作暂不可用";
-  ipcMain.handle(
-    IPC.SCHEDULE_LIST,
-    async (): Promise<ScheduledTaskRecord[]> => [],
+  // ---------- Schedule ----------
+  ipcMain.handle(IPC.SCHEDULE_LIST, async (): Promise<ScheduledTaskRecord[]> =>
+    listScheduledTasks(),
   );
   ipcMain.handle(
     IPC.SCHEDULE_LIST_RUNS,
-    async (): Promise<ScheduledTaskRunRecord[]> => [],
+    async (
+      _event,
+      taskId: string,
+      limit?: number,
+    ): Promise<ScheduledTaskRunRecord[]> =>
+      listScheduledTaskRuns(taskId, limit),
   );
-  ipcMain.handle(IPC.SCHEDULE_CREATE, async () => {
-    throw new Error(SCHEDULE_NOT_WIRED);
+  ipcMain.handle(
+    IPC.SCHEDULE_CREATE,
+    async (_event, input: ScheduledTaskInput): Promise<ScheduledTaskRecord> => {
+      const record = createScheduledTask(input);
+      sendScheduleChanged({ kind: "upsert", record });
+      return record;
+    },
+  );
+  ipcMain.handle(
+    IPC.SCHEDULE_UPDATE,
+    async (
+      _event,
+      taskId: string,
+      input: Partial<ScheduledTaskInput>,
+    ): Promise<ScheduledTaskRecord> => {
+      const record = updateScheduledTask(taskId, input);
+      sendScheduleChanged({ kind: "upsert", record });
+      return record;
+    },
+  );
+  ipcMain.handle(IPC.SCHEDULE_REMOVE, async (_event, taskId: string) => {
+    const record = removeScheduledTask(taskId);
+    if (record) sendScheduleChanged({ kind: "remove", record });
   });
-  ipcMain.handle(IPC.SCHEDULE_UPDATE, async () => {
-    throw new Error(SCHEDULE_NOT_WIRED);
-  });
-  ipcMain.handle(IPC.SCHEDULE_REMOVE, async () => {
-    throw new Error(SCHEDULE_NOT_WIRED);
-  });
-  ipcMain.handle(IPC.SCHEDULE_TOGGLE, async () => {
-    throw new Error(SCHEDULE_NOT_WIRED);
-  });
-  ipcMain.handle(IPC.SCHEDULE_RUN_NOW, async () => null);
+  ipcMain.handle(
+    IPC.SCHEDULE_TOGGLE,
+    async (_event, taskId: string): Promise<ScheduledTaskRecord> => {
+      const record = toggleScheduledTask(taskId);
+      sendScheduleChanged({ kind: "upsert", record });
+      return record;
+    },
+  );
+  ipcMain.handle(
+    IPC.SCHEDULE_RUN_NOW,
+    async (_event, taskId: string): Promise<ScheduledTaskRunRecord | null> => {
+      const task = getScheduledTask(taskId);
+      if (!task) return null;
+      return executeScheduledTask(task);
+    },
+  );
 
   // ---------- Skill ----------
 

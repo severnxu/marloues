@@ -27,7 +27,9 @@ function now(): number {
 function modelSnapshotFromSettings(): { modelId: string; modelName: string } {
   const modelProvider = resolveModelProvider(getAgentSettings());
   const modelId = modelProvider.selection.modelId || modelProvider.model;
-  const model = modelProvider.provider?.models.find((item) => item.id === modelId);
+  const model = modelProvider.provider?.models.find(
+    (item) => item.id === modelId,
+  );
   return {
     modelId,
     modelName: model?.label || modelId,
@@ -83,7 +85,9 @@ export class BinaryRuntime implements AgentRuntime {
   }
 
   async listThreads(): Promise<Thread[]> {
-    return Array.from(threads.values()).sort((a, b) => b.updatedAt - a.updatedAt);
+    return Array.from(threads.values()).sort(
+      (a, b) => b.updatedAt - a.updatedAt,
+    );
   }
 
   async createThread(title?: string): Promise<Thread> {
@@ -105,12 +109,23 @@ export class BinaryRuntime implements AgentRuntime {
     await codexService.closeSession(threadId);
   }
 
+  async clearThread(threadId: string): Promise<void> {
+    const thread = ensureThread(threadId);
+    thread.messages = [];
+    thread.updatedAt = now();
+    workflowThreadStore.clearThread(threadId);
+    await codexService.closeSession(threadId);
+  }
+
   async forkThread(threadId: string, upToMessageId?: string): Promise<Thread> {
     const source = ensureThread(threadId);
     const endIndex = upToMessageId
       ? source.messages.findIndex((message) => message.id === upToMessageId)
       : -1;
-    const messages = endIndex >= 0 ? source.messages.slice(0, endIndex + 1) : [...source.messages];
+    const messages =
+      endIndex >= 0
+        ? source.messages.slice(0, endIndex + 1)
+        : [...source.messages];
     const forked: Thread = {
       id: genId(),
       title: `Forked: ${source.title}`,
@@ -119,7 +134,10 @@ export class BinaryRuntime implements AgentRuntime {
       updatedAt: now(),
     };
     threads.set(forked.id, forked);
-    workflowThreadStore.cloneThread(threadId, forked.id, { title: forked.title, upToMessageId });
+    workflowThreadStore.cloneThread(threadId, forked.id, {
+      title: forked.title,
+      upToMessageId,
+    });
     return forked;
   }
 
@@ -157,8 +175,13 @@ export class BinaryRuntime implements AgentRuntime {
       modelName: modelSnapshot.modelName,
     });
 
-    const stream = async function* (this: BinaryRuntime): AsyncIterable<RuntimeEvent> {
-      const startEvent: RuntimeEvent = { kind: "turn-start", payload: { turnId, timestamp: now() } };
+    const stream = async function* (
+      this: BinaryRuntime,
+    ): AsyncIterable<RuntimeEvent> {
+      const startEvent: RuntimeEvent = {
+        kind: "turn-start",
+        payload: { turnId, timestamp: now() },
+      };
       yield startEvent;
       const statusEvent: RuntimeEvent = {
         kind: "runtime-status",
@@ -183,9 +206,14 @@ export class BinaryRuntime implements AgentRuntime {
         if (sessionId !== opts.threadId) return;
         const converted = convertThreadEvent(turnId, event);
         for (const runtimeEvent of converted) {
-          if (runtimeEvent.kind === "text-chunk") assistantText += runtimeEvent.payload.content;
+          if (runtimeEvent.kind === "text-chunk")
+            assistantText += runtimeEvent.payload.content;
           if (runtimeEvent.kind === "turn-complete") completed = true;
-          workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, runtimeEvent);
+          workflowThreadStore.applyRuntimeEvent(
+            opts.threadId,
+            turnId,
+            runtimeEvent,
+          );
           queue.push(runtimeEvent);
         }
         wake();
@@ -194,19 +222,42 @@ export class BinaryRuntime implements AgentRuntime {
         if (sessionId !== opts.threadId) return;
         error = message;
         completed = true;
-        const errorEvent: RuntimeEvent = { kind: "error", payload: { code: "BINARY_RUNTIME_ERROR", message, recoverable: false } };
-        const completeEvent: RuntimeEvent = { kind: "turn-complete", payload: { turnId, result: "error", error: message } };
-        workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, errorEvent);
-        workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, completeEvent);
+        const errorEvent: RuntimeEvent = {
+          kind: "error",
+          payload: {
+            code: "BINARY_RUNTIME_ERROR",
+            message,
+            recoverable: false,
+          },
+        };
+        const completeEvent: RuntimeEvent = {
+          kind: "turn-complete",
+          payload: { turnId, result: "error", error: message },
+        };
+        workflowThreadStore.applyRuntimeEvent(
+          opts.threadId,
+          turnId,
+          errorEvent,
+        );
+        workflowThreadStore.applyRuntimeEvent(
+          opts.threadId,
+          turnId,
+          completeEvent,
+        );
         queue.push(errorEvent, completeEvent);
         wake();
       };
 
       codexService.onEvent(onEvent);
       codexService.onError(onError);
-      void codexService.sendMessage(opts.threadId, opts.content).catch((err) => {
-        onError(opts.threadId, err instanceof Error ? err.message : String(err));
-      });
+      void codexService
+        .sendMessage(opts.threadId, opts.content)
+        .catch((err) => {
+          onError(
+            opts.threadId,
+            err instanceof Error ? err.message : String(err),
+          );
+        });
 
       while (!completed || queue.length > 0) {
         const next = queue.shift();
@@ -248,30 +299,57 @@ export class BinaryRuntime implements AgentRuntime {
     return configuredMcpTools();
   }
 
-  async readThread(input: import("@shared/workflow-thread-data-source").WorkflowReadThreadInput) {
+  async readThread(
+    input: import("@shared/workflow-thread-data-source").WorkflowReadThreadInput,
+  ) {
     return workflowThreadStore.readThread(input);
   }
 
-  subscribeThread(input: import("@shared/workflow-thread-data-source").WorkflowSubscribeThreadInput) {
+  subscribeThread(
+    input: import("@shared/workflow-thread-data-source").WorkflowSubscribeThreadInput,
+  ) {
     return workflowThreadStore.subscribeThread(input);
   }
 
-  respondApproval(requestId: string, approved: boolean, _scope: "once" | "session" = "once", reason?: string): void {
+  respondApproval(
+    requestId: string,
+    approved: boolean,
+    _scope: "once" | "session" = "once",
+    reason?: string,
+  ): void {
     for (const threadId of this.turnToThread.values()) {
-      void codexService.respondToApproval(threadId, requestId, approved ? "approve" : "deny", reason);
+      void codexService.respondToApproval(
+        threadId,
+        requestId,
+        approved ? "approve" : "deny",
+        reason,
+      );
     }
   }
 }
 
-function convertThreadEvent(turnId: string, event: ThreadEvent): RuntimeEvent[] {
+function convertThreadEvent(
+  turnId: string,
+  event: ThreadEvent,
+): RuntimeEvent[] {
   if (event.type === "turn.completed") {
     return [{ kind: "turn-complete", payload: { turnId, result: "success" } }];
   }
   if (event.type === "turn.failed") {
     const message = event.error?.message ?? "Binary runtime failed";
     return [
-      { kind: "error", payload: { code: "BINARY_TURN_FAILED", message, recoverable: Boolean(event.error?.recoverable) } },
-      { kind: "turn-complete", payload: { turnId, result: "error", error: message } },
+      {
+        kind: "error",
+        payload: {
+          code: "BINARY_TURN_FAILED",
+          message,
+          recoverable: Boolean(event.error?.recoverable),
+        },
+      },
+      {
+        kind: "turn-complete",
+        payload: { turnId, result: "error", error: message },
+      },
     ];
   }
   if (event.type === "approval_requested" && event.approval) {
@@ -290,10 +368,14 @@ function convertThreadEvent(turnId: string, event: ThreadEvent): RuntimeEvent[] 
   if (!event.item) return [];
 
   if (event.item.type === "agent_message" && event.item.text) {
-    return [{ kind: "text-chunk", payload: { turnId, content: event.item.text } }];
+    return [
+      { kind: "text-chunk", payload: { turnId, content: event.item.text } },
+    ];
   }
   if (event.item.type === "reasoning" && event.item.text) {
-    return [{ kind: "thinking-chunk", payload: { turnId, content: event.item.text } }];
+    return [
+      { kind: "thinking-chunk", payload: { turnId, content: event.item.text } },
+    ];
   }
   if (event.type === "item.started" && event.item.type === "mcp_tool_call") {
     return [
@@ -322,8 +404,16 @@ function convertThreadEvent(turnId: string, event: ThreadEvent): RuntimeEvent[] 
     ];
   }
   if (event.item.type === "error") {
-    const message = event.item.message ?? event.item.error?.message ?? "Binary runtime item error";
-    return [{ kind: "error", payload: { code: "BINARY_ITEM_ERROR", message, recoverable: true } }];
+    const message =
+      event.item.message ??
+      event.item.error?.message ??
+      "Binary runtime item error";
+    return [
+      {
+        kind: "error",
+        payload: { code: "BINARY_ITEM_ERROR", message, recoverable: true },
+      },
+    ];
   }
   return [];
 }

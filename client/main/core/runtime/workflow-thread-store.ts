@@ -154,6 +154,18 @@ class WorkflowThreadStore {
     this.emit(threadId);
   }
 
+  clearThread(threadId: string): void {
+    const thread = this.threads.get(threadId);
+    if (!thread) return;
+    thread.preview = "";
+    thread.status = { type: "idle" };
+    thread.turnOrder = [];
+    thread.turns.clear();
+    thread.displayTurnIds.clear();
+    thread.updatedAt = now();
+    this.emit(threadId);
+  }
+
   forkThread(threadId: string, upToTurnId?: string): Thread {
     const source = this.ensureThread(threadId);
     const forkId = crypto.randomUUID();
@@ -312,7 +324,8 @@ class WorkflowThreadStore {
           durationMs: null,
           modelId: previousTurn.modelId ?? null,
           modelName: previousTurn.modelName ?? null,
-          continuesPreviousTurn: event.payload.status === "applied" || undefined,
+          continuesPreviousTurn:
+            event.payload.status === "applied" || undefined,
           appliedInterruptPending: event.payload.status === "applied",
           itemOrder: [item.id],
           items: new Map([[item.id, { item }]]),
@@ -423,7 +436,10 @@ class WorkflowThreadStore {
       // apply (priority:"now") 中断：SDK 先发 turn.complete(interrupted) 收尾
       // 被中断的前一段，再续跑 steer 段。该 stray 终态因 displayTurnIds 已切换
       // 而路由到 steer 段，但它属于已收尾的前一段，不可把 steer 段标成完成。
-      if (turn.appliedInterruptPending && event.payload.result === "interrupted") {
+      if (
+        turn.appliedInterruptPending &&
+        event.payload.result === "interrupted"
+      ) {
         turn.appliedInterruptPending = false;
       } else {
         this.finalizeTurn(

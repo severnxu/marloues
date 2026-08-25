@@ -1053,6 +1053,38 @@ export class ClaudeRuntime implements AgentRuntime {
     workflowThreadStore.deleteThread(threadId);
   }
 
+  async clearThread(threadId: string): Promise<void> {
+    const active = this.activeTurns.get(threadId);
+    if (active) {
+      active.stopRequested = true;
+      active.acceptingSteers = false;
+      if (active.channel && !active.channel.isClosed()) active.channel.close();
+      if (active.query?.close) {
+        try {
+          active.query.close();
+        } catch {
+          /* best-effort */
+        }
+      }
+      this.activeTurns.delete(threadId);
+      active.finish();
+    }
+    const thread = ensureThread(threadId);
+    thread.messages = [];
+    thread.updatedAt = now();
+    this.threadSdkSession.delete(threadId);
+    this.resolvePendingApprovals(false, "canceled", threadId);
+    for (const snapshot of this.steerQueue.listSnapshots(
+      threadId,
+      () => true,
+    )) {
+      for (const item of snapshot.items) {
+        await this.steerQueue.cancel(threadId, item.messageId);
+      }
+    }
+    workflowThreadStore.clearThread(threadId);
+  }
+
   async forkThread(threadId: string, upToMessageId?: string): Promise<Thread> {
     const src = threads.get(threadId);
     const t: Thread = {
@@ -1420,9 +1452,7 @@ export class ClaudeRuntime implements AgentRuntime {
               if (resultVal === "success") {
                 // Natural boundary: FIFO inject the next queued steer (if any)
                 // and keep this same runtime turn alive instead of closing.
-                if (
-                  flushNextPendingSteerAtBoundary(opts.threadId, entry)
-                ) {
+                if (flushNextPendingSteerAtBoundary(opts.threadId, entry)) {
                   logInfo("claude.turn.steer.flushPending", {
                     threadId: opts.threadId,
                     turnId,
@@ -1656,9 +1686,9 @@ export class ClaudeRuntime implements AgentRuntime {
     return this.steerQueue.listSnapshots(sessionId, (active) =>
       Boolean(
         active?.channel &&
-          !active.channel.isClosed() &&
-          active.acceptingSteers &&
-          !active.canceled,
+        !active.channel.isClosed() &&
+        active.acceptingSteers &&
+        !active.canceled,
       ),
     );
   }

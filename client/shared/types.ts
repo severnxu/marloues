@@ -79,10 +79,7 @@ export interface SessionSearchResult {
 }
 
 export type OutboxMessageState =
-  | "queued"
-  | "applying"
-  | "dispatched"
-  | "canceled";
+  "queued" | "applying" | "dispatched" | "canceled";
 
 export interface OutboxMessageRecord {
   sessionId: string;
@@ -508,6 +505,7 @@ export interface AgentSettings {
   activeToolProfileId: string;
   toolProfiles: ToolProfile[];
   mcpServers: McpServerConfig[];
+  imBotBindings: ImBotBindingsConfig;
   skillDirectories?: string[];
   disabledSkills: string[];
   enterprisePolicy?: EnterprisePolicy;
@@ -597,6 +595,47 @@ export interface McpServerConfig {
   tools?: string[];
   lastProbeTool?: string;
   lastProbeResult?: string;
+}
+
+export interface ImBotBindingsConfig {
+  bots: ImBotInstance[];
+  defaultWorkspacePath?: string;
+  defaultToolProfileId?: string;
+}
+
+export type ImChannelKind = "wecom" | "feishu";
+
+export type ImBotBindMode = "scan" | "manual";
+
+export type ImBotStatus =
+  "binding" | "connected" | "paused" | "needsRebind" | "error";
+
+export type ImBotCapability =
+  | "inboundTasks"
+  | "taskNotifications"
+  | "scheduledNotifications"
+  | "permissionApprovals";
+
+export interface ImBotInstance {
+  id: string;
+  channel: ImChannelKind;
+  name: string;
+  enabled: boolean;
+  bindMode: ImBotBindMode;
+  status: ImBotStatus;
+  capabilities: ImBotCapability[];
+  workspacePath?: string;
+  toolProfileId?: string;
+  tenantId?: string;
+  tenantName?: string;
+  botExternalId?: string;
+  manualSecret?: string;
+  chatId?: string;
+  chatName?: string;
+  createdAt?: number;
+  updatedAt?: number;
+  lastEventAt?: number;
+  lastError?: string;
 }
 
 export interface SkillInfo {
@@ -934,6 +973,10 @@ export interface MarlouesAPI {
     remove(workspaceId: string): Promise<WorkspaceInfo | null>;
     getCurrent(): Promise<WorkspaceInfo | null>;
     getSettings(): Promise<WorkspaceSettings>;
+    getGitContext(
+      workspaceId: string,
+      workspacePath?: string,
+    ): Promise<WorkspaceGitContext | null>;
     openInExplorer(workspaceId: string): Promise<void>;
   };
   fs: {
@@ -975,6 +1018,32 @@ export interface MarlouesAPI {
   };
   audit: {
     list(limit?: number): Promise<AuditEventRecord[]>;
+  };
+  im: {
+    getConfig(): Promise<import("./im/im-types").ImChannelSecretsConfig>;
+    saveConfig(
+      channels: import("./im/im-types").ImChannelSecretsConfig,
+    ): Promise<{ ok: true }>;
+    testChannel(
+      channel: import("./im/im-types").ImChannelId,
+    ): Promise<import("./im/im-ipc").ImChannelTestResult>;
+    listSessions(): Promise<import("./im/im-ipc").ImListSessionsResponse>;
+    onStatus(
+      callback: (status: import("./im/im-types").ImChannelStatus) => void,
+    ): () => void;
+    onSessionsChanged(callback: () => void): () => void;
+    generateWecomQr(): Promise<import("./im/im-ipc").WecomQrGenerateResponse>;
+    pollWecomQr(
+      scode: string,
+    ): Promise<import("./im/im-ipc").WecomQrPollResponse>;
+    registerFeishuApp(): Promise<import("./im/im-ipc").FeishuQrRegisterResult>;
+    cancelFeishuRegister(): Promise<void>;
+    onFeishuQrCode(
+      callback: (payload: import("./im/im-ipc").FeishuQrCodePush) => void,
+    ): () => void;
+    onFeishuQrStatus(
+      callback: (payload: import("./im/im-ipc").FeishuQrStatusPush) => void,
+    ): () => void;
   };
   schedule: {
     list(): Promise<ScheduledTaskRecord[]>;
@@ -1095,6 +1164,7 @@ export const IPC = {
   WORKSPACE_REMOVE: "workspace:remove",
   WORKSPACE_GET_CURRENT: "workspace:get-current",
   WORKSPACE_GET_SETTINGS: "workspace:get-settings",
+  WORKSPACE_GET_GIT_CONTEXT: "workspace:get-git-context",
   WORKSPACE_OPEN_IN_EXPLORER: "workspace:open-in-explorer",
   FS_LIST_DIR: "fs:list-dir",
   FS_READ_FILE: "fs:read-file",

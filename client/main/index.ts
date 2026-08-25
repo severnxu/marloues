@@ -1,6 +1,7 @@
 import { app, BrowserWindow, Menu, Tray, nativeImage, shell } from "electron";
+import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { registerHandlers } from "./ipc/handlers";
+import { registerHandlers, stopImBridge } from "./ipc/handlers";
 import { initRuntime, destroyRuntime } from "./core/runtime/manager";
 import {
   installMainConsoleCapture,
@@ -31,21 +32,59 @@ import {
   loadSelectedRenderer,
 } from "./hot-update/renderer-controller";
 
-const isTest = process.env.NODE_ENV === "test";
-const gotSingleInstanceLock = isTest || app.requestSingleInstanceLock();
-if (!gotSingleInstanceLock) {
-  app.quit();
-}
-
 const isDev =
   process.env.NODE_ENV === "development" || !!process.env.ELECTRON_RENDERER_URL;
+const isTest = process.env.NODE_ENV === "test";
+const isWindows = process.platform === "win32";
 const isMacOS = process.platform === "darwin";
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
 
+const fallbackTrayIconDataUrl =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAABoElEQVRYhe2WwWrCQBCG8xBtz/sHzUERxIMEfYti38K7gqfGHvSgV0GfSe0biCCeVNI2gl6cMrGG2GyiqLs91B9+WDK7M19m9zCGcZdEpmk+CSHeAIwBeADoQvPZEYAm5zTOEYAXIcTnFUWl/slZOVkcwO7WxUPexUKY+7bf/M8lnfhIpVKPEQCxv3PSZEfW/neNACNZB77iDrTb7cDVajU2McfCe5MepKwDFOewttst2bYd2VMsFmmz2RztTcp5MQCr3+9H9gwGA/otZQDr9ZoKhUIQz+fz5HmePgBWp9MJ4t1ul2RSCrBarSibzVImk6HlcqkPYLFYBGvHcXzLYsoAWq1WsJ7P575lMWUApVKJJpNJpN3T6ZTK5bJ6ANu2qV6vRwBqtZof0wKQTqdpNpsdXYVlWfoAAFCj0SDXdX3zmr9pBYDEdwD7misQCdNQr9cLnMvlYpNyLLw3aSqSvYFxErHygQRAUyPA618Opa5lWQ8RABaPzKrHctM0n40kAajwI1Hx5yeLH8RzO4/OAIZJw+oZRfnskO88tu3Gf9c3d8h7/xPUzzkAAAAASUVORK5CYII=";
+
+function configureDevelopmentIdentity(): void {
+  if (!isDev || isTest) return;
+
+  const devUserDataPath = join(getMarlouesHome(), "electron-user-data");
+  mkdirSync(devUserDataPath, { recursive: true });
+  app.setName("Marloues Dev");
+  app.setPath("userData", devUserDataPath);
+  if (isWindows) app.setAppUserModelId("com.marloues.desktop.dev");
+}
+
+configureDevelopmentIdentity();
+
+if (!isDev && isWindows) app.setAppUserModelId("com.marloues.desktop");
+
+const gotSingleInstanceLock = isTest || app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+}
+
+function getAppIconCandidates(): string[] {
+  return [
+    join(process.resourcesPath, "tray-icon.png"),
+    join(app.getAppPath(), "resources", "tray-icon.png"),
+    join(__dirname, "../../resources/tray-icon.png"),
+  ];
+}
+
+function createAppIcon(): Electron.NativeImage {
+  const candidates = getAppIconCandidates();
+  const iconPath = candidates.find((candidate) => existsSync(candidate));
+  if (!iconPath) {
+    logWarn("app.icon.missing", { candidates });
+    return nativeImage.createFromDataURL(fallbackTrayIconDataUrl);
+  }
+  logInfo("app.icon.loaded", { iconPath });
+  return nativeImage.createFromPath(iconPath);
+}
+
 function createWindow(): void {
   const applicationUrl = getRendererApplicationUrl();
+  const appIcon = createAppIcon();
   const window = new BrowserWindow({
     width: 1280,
     height: 860,
@@ -53,7 +92,9 @@ function createWindow(): void {
     minHeight: 640,
     show: false,
     title: "Marloues",
+    icon: appIcon.isEmpty() ? undefined : appIcon,
     frame: isMacOS,
+    thickFrame: isMacOS ? undefined : false,
     titleBarStyle: isMacOS ? "hiddenInset" : undefined,
     trafficLightPosition: isMacOS ? { x: 20, y: 17 } : undefined,
     backgroundColor: "#212121",
@@ -82,6 +123,10 @@ function createWindow(): void {
     if (isMacOS || isQuitting) return;
     event.preventDefault();
     window.hide();
+  });
+
+  window.on("closed", () => {
+    if (mainWindow === window) mainWindow = null;
   });
 
   window.webContents.setWindowOpenHandler((details) => {
@@ -137,17 +182,15 @@ function createWindow(): void {
       logError("renderer.loadFailed", error);
     });
   }
-
-  if (!isMacOS) ensureTray();
 }
 
 function ensureTray(): void {
   if (tray) return;
-  const icon = nativeImage
-    .createFromDataURL(
-      "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='28' height='28' rx='8' fill='%23212121'/%3E%3Cpath d='M9 23V9h3.4l3.6 7.1L19.6 9H23v14h-3v-8.4l-2.9 5.6h-2.2L12 14.6V23H9Z' fill='white'/%3E%3C/svg%3E",
-    )
-    .resize({ width: 16, height: 16 });
+  const icon = createTrayIcon();
+  if (icon.isEmpty()) {
+    logWarn("tray.icon.empty", {});
+    return;
+  }
   tray = new Tray(icon);
   tray.setToolTip("Marloues");
   tray.setContextMenu(
@@ -160,13 +203,30 @@ function ensureTray(): void {
       {
         label: "退出",
         click: () => {
-          isQuitting = true;
-          app.quit();
+          quitApplication();
         },
       },
     ]),
   );
+  tray.on("click", showMainWindow);
   tray.on("double-click", showMainWindow);
+  logInfo("tray.created", {});
+}
+
+function createTrayIcon(): Electron.NativeImage {
+  return createAppIcon().resize({ width: 16, height: 16 });
+}
+
+function destroyTray(): void {
+  if (!tray) return;
+  tray.destroy();
+  tray = null;
+}
+
+function quitApplication(): void {
+  isQuitting = true;
+  destroyTray();
+  app.quit();
 }
 
 function showMainWindow(): void {
@@ -181,6 +241,7 @@ function showMainWindow(): void {
 
 app.whenReady().then(async () => {
   if (!gotSingleInstanceLock) return;
+  if (!isMacOS) ensureTray();
   try {
     await initRuntime();
     logInfo("runtime.initialized", {});
@@ -214,11 +275,14 @@ app.on("second-instance", () => showMainWindow());
 
 app.on("before-quit", () => {
   isQuitting = true;
+  void stopImBridge();
+  destroyTray();
 });
 
 app.on("window-all-closed", () => {
+  void stopImBridge();
   void destroyRuntime();
-  if (!isMacOS && isQuitting) app.quit();
+  if (!isMacOS && isQuitting) quitApplication();
 });
 
 function logInitialConfig(): void {

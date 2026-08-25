@@ -7,6 +7,7 @@ import { dirname, join } from "node:path";
 import type {
   AgentSettings,
   ContextManagementSettings,
+  ImBotBindingsConfig,
   ModelProviderConfig,
   McpServerConfig,
   ModelOption,
@@ -126,8 +127,15 @@ function defaultAgentSettings(): AgentSettings {
       },
     ],
     mcpServers: [],
+    imBotBindings: defaultImBotBindingsConfig(),
     skillDirectories: [],
     disabledSkills: [],
+  };
+}
+
+function defaultImBotBindingsConfig(): ImBotBindingsConfig {
+  return {
+    bots: [],
   };
 }
 
@@ -310,6 +318,7 @@ export function applyEnterpriseConfigToAgentSettings(
       thinkingEnabled: enterprise.thinkingEnabled,
       maxThinkingTokens: enterprise.maxThinkingTokens,
       activeToolProfileId: enterprise.activeToolProfileId,
+      imBotBindings: enterprise.imBotBindings,
       skillDirectories: enterprise.skillDirectories,
       disabledSkills: enterprise.disabledSkills,
     }),
@@ -356,6 +365,7 @@ function decryptAgentSettings(
       ...provider,
       apiKey: decryptSecret(provider.apiKey),
     })),
+    imBotBindings: decryptImBotBindingsConfig(settings.imBotBindings),
   };
 }
 
@@ -369,6 +379,7 @@ function encryptAgentSettings(settings: AgentSettings): AgentSettings {
     ...settingsForDisk,
     providers: settingsForDisk.providers.map(materializeProviderForDisk),
     mcpServers: settingsForDisk.mcpServers.map(stripMcpServerForDisk),
+    imBotBindings: encryptImBotBindingsConfig(settingsForDisk.imBotBindings),
     toolProfiles: settingsForDisk.toolProfiles.map(stripPolicyMetadata),
   };
 }
@@ -520,9 +531,166 @@ function normalizeAgentSettings(
       activeToolProfile,
     ),
     mcpServers: settings.mcpServers ?? [],
+    imBotBindings: normalizeImBotBindingsConfig(settings.imBotBindings),
     skillDirectories: settings.skillDirectories ?? [],
     disabledSkills: settings.disabledSkills ?? [],
   };
+}
+
+function normalizeImBotBindingsConfig(
+  channels: Partial<ImBotBindingsConfig> | undefined,
+): ImBotBindingsConfig {
+  const raw =
+    channels && typeof channels === "object"
+      ? (channels as Record<string, unknown>)
+      : {};
+  const explicitBots = Array.isArray(raw.bots)
+    ? raw.bots
+        .map((item, index) => normalizeImBotInstance(item, index))
+        .filter((item): item is ImBotBindingsConfig["bots"][number] =>
+          Boolean(item),
+        )
+    : [];
+  const bots = explicitBots;
+  const defaultWorkspacePath = compactString(raw.defaultWorkspacePath);
+  const defaultToolProfileId = compactString(raw.defaultToolProfileId);
+
+  return {
+    bots: dedupeImBots(bots),
+    ...(defaultWorkspacePath ? { defaultWorkspacePath } : {}),
+    ...(defaultToolProfileId ? { defaultToolProfileId } : {}),
+  };
+}
+
+function decryptImBotBindingsConfig(
+  channels: Partial<ImBotBindingsConfig> | undefined,
+): ImBotBindingsConfig {
+  const normalized = normalizeImBotBindingsConfig(channels);
+  return {
+    ...normalized,
+    bots: normalized.bots.map((bot) =>
+      bot.manualSecret
+        ? { ...bot, manualSecret: decryptSecret(bot.manualSecret) }
+        : bot,
+    ),
+  };
+}
+
+function encryptImBotBindingsConfig(
+  channels: Partial<ImBotBindingsConfig> | undefined,
+): ImBotBindingsConfig {
+  const normalized = normalizeImBotBindingsConfig(channels);
+  return {
+    ...normalized,
+    bots: normalized.bots.map((bot) =>
+      bot.manualSecret
+        ? { ...bot, manualSecret: encryptSecret(bot.manualSecret) }
+        : bot,
+    ),
+  };
+}
+
+const IM_CHANNELS = new Set(["wecom", "feishu"]);
+const IM_BOT_STATUSES = new Set([
+  "binding",
+  "connected",
+  "paused",
+  "needsRebind",
+  "error",
+]);
+const IM_BOT_CAPABILITIES = new Set([
+  "inboundTasks",
+  "taskNotifications",
+  "scheduledNotifications",
+  "permissionApprovals",
+]);
+const DEFAULT_IM_BOT_CAPABILITIES: ImBotBindingsConfig["bots"][number]["capabilities"] =
+  [
+    "inboundTasks",
+    "taskNotifications",
+    "scheduledNotifications",
+    "permissionApprovals",
+  ];
+
+function normalizeImBotInstance(
+  value: unknown,
+  index: number,
+): ImBotBindingsConfig["bots"][number] | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const channel = typeof record.channel === "string" ? record.channel : "";
+  if (!IM_CHANNELS.has(channel)) return null;
+  const id = nonEmptyString(record.id) ?? `im-bot-${channel}-${index + 1}`;
+  const bindMode = record.bindMode === "manual" ? "manual" : "scan";
+  const status =
+    typeof record.status === "string" && IM_BOT_STATUSES.has(record.status)
+      ? record.status
+      : record.enabled === false
+        ? "paused"
+        : "connected";
+  const capabilities = Array.isArray(record.capabilities)
+    ? record.capabilities.filter(
+        (
+          capability,
+        ): capability is ImBotBindingsConfig["bots"][number]["capabilities"][number] =>
+          typeof capability === "string" && IM_BOT_CAPABILITIES.has(capability),
+      )
+    : [];
+
+  return stripUndefined({
+    id,
+    channel,
+    name: nonEmptyString(record.name) ?? channelLabel(channel),
+    enabled: record.enabled !== false,
+    bindMode,
+    status,
+    capabilities: capabilities.length
+      ? capabilities
+      : DEFAULT_IM_BOT_CAPABILITIES,
+    workspacePath: nonEmptyString(record.workspacePath),
+    toolProfileId: nonEmptyString(record.toolProfileId),
+    tenantId: nonEmptyString(record.tenantId),
+    tenantName: nonEmptyString(record.tenantName),
+    botExternalId: nonEmptyString(record.botExternalId),
+    manualSecret: nonEmptyString(record.manualSecret),
+    chatId: nonEmptyString(record.chatId),
+    chatName: nonEmptyString(record.chatName),
+    createdAt: normalizeTimestamp(record.createdAt),
+    updatedAt: normalizeTimestamp(record.updatedAt),
+    lastEventAt: normalizeTimestamp(record.lastEventAt),
+    lastError: nonEmptyString(record.lastError),
+  }) as ImBotBindingsConfig["bots"][number];
+}
+
+function dedupeImBots(
+  bots: ImBotBindingsConfig["bots"],
+): ImBotBindingsConfig["bots"] {
+  const seen = new Set<string>();
+  return bots.filter((bot) => {
+    if (seen.has(bot.id)) return false;
+    seen.add(bot.id);
+    return true;
+  });
+}
+
+function channelLabel(channel: string): string {
+  return channel === "wecom" ? "企业微信" : "飞书";
+}
+
+function nonEmptyString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function normalizeTimestamp(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
+}
+
+function compactString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed || undefined;
 }
 
 function normalizeProviders(
@@ -873,6 +1041,7 @@ function stripTransientPolicyFields(settings: AgentSettings): AgentSettings {
     ...settingsWithoutPolicy,
     providers: settingsWithoutPolicy.providers.map(stripPolicyMetadata),
     mcpServers: settingsWithoutPolicy.mcpServers.map(stripPolicyMetadata),
+    imBotBindings: settingsWithoutPolicy.imBotBindings,
     toolProfiles: settingsWithoutPolicy.toolProfiles.map(stripPolicyMetadata),
   };
 }
@@ -903,6 +1072,7 @@ function preserveEnterpriseControlledScalars(
     "thinkingEnabled",
     "maxThinkingTokens",
     "activeToolProfileId",
+    "imBotBindings",
     "skillDirectories",
   ] as const) {
     preserved[key] = (

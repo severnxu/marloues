@@ -11,6 +11,13 @@ import type {
   PermissionDialogRequest,
 } from "@shared/types";
 import type { UpdateState } from "@shared/hot-update";
+import { IM_IPC } from "@shared/im/im-ipc";
+import type { FeishuQrCodePush, FeishuQrStatusPush } from "@shared/im/im-ipc";
+import type {
+  ImChannelId,
+  ImChannelStatus,
+  ImChannelSecretsConfig,
+} from "@shared/im/im-types";
 import { IPC } from "@shared/types";
 import type { UIEvent } from "@shared/ui-protocol";
 
@@ -88,6 +95,12 @@ const api: MarlouesAPI = {
       ipcRenderer.invoke(IPC.WORKSPACE_REMOVE, workspaceId),
     getCurrent: () => ipcRenderer.invoke(IPC.WORKSPACE_GET_CURRENT),
     getSettings: () => ipcRenderer.invoke(IPC.WORKSPACE_GET_SETTINGS),
+    getGitContext: (workspaceId: string, workspacePath?: string) =>
+      ipcRenderer.invoke(
+        IPC.WORKSPACE_GET_GIT_CONTEXT,
+        workspaceId,
+        workspacePath,
+      ),
     openInExplorer: (workspaceId: string) =>
       ipcRenderer.invoke(IPC.WORKSPACE_OPEN_IN_EXPLORER, workspaceId),
   },
@@ -132,6 +145,48 @@ const api: MarlouesAPI = {
   },
   audit: {
     list: (limit?: number) => ipcRenderer.invoke(IPC.AUDIT_LIST, limit),
+  },
+  im: {
+    getConfig: () => ipcRenderer.invoke(IM_IPC.GET_CONFIG),
+    saveConfig: (channels: ImChannelSecretsConfig) =>
+      ipcRenderer.invoke(IM_IPC.SAVE_CONFIG, channels),
+    testChannel: (channel: ImChannelId) =>
+      ipcRenderer.invoke(IM_IPC.TEST_CHANNEL, channel),
+    listSessions: () => ipcRenderer.invoke(IM_IPC.LIST_SESSIONS),
+    onStatus: (callback) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        status: ImChannelStatus,
+      ) => callback(status);
+      ipcRenderer.on(IM_IPC.SET_STATUS, listener);
+      return () => ipcRenderer.off(IM_IPC.SET_STATUS, listener);
+    },
+    onSessionsChanged: (callback) => {
+      const listener = () => callback();
+      ipcRenderer.on(IM_IPC.SESSION_UPDATED, listener);
+      return () => ipcRenderer.off(IM_IPC.SESSION_UPDATED, listener);
+    },
+    generateWecomQr: () => ipcRenderer.invoke(IM_IPC.WECOM_QR_GENERATE),
+    pollWecomQr: (scode: string) =>
+      ipcRenderer.invoke(IM_IPC.WECOM_QR_POLL, scode),
+    registerFeishuApp: () => ipcRenderer.invoke(IM_IPC.FEISHU_QR_START),
+    cancelFeishuRegister: () => ipcRenderer.invoke(IM_IPC.FEISHU_QR_CANCEL),
+    onFeishuQrCode: (callback) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        payload: FeishuQrCodePush,
+      ) => callback(payload);
+      ipcRenderer.on(IM_IPC.FEISHU_QR_CODE, listener);
+      return () => ipcRenderer.off(IM_IPC.FEISHU_QR_CODE, listener);
+    },
+    onFeishuQrStatus: (callback) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        payload: FeishuQrStatusPush,
+      ) => callback(payload);
+      ipcRenderer.on(IM_IPC.FEISHU_QR_STATUS, listener);
+      return () => ipcRenderer.off(IM_IPC.FEISHU_QR_STATUS, listener);
+    },
   },
   skill: {
     list: () => ipcRenderer.invoke(IPC.SKILL_LIST),
@@ -190,16 +245,12 @@ const api: MarlouesAPI = {
       ipcRenderer.invoke(IPC.CHAT_REORDER_STEERS, sessionId, messageIds),
     onPendingState: (
       callback: (
-        snapshot: Awaited<
-          ReturnType<MarlouesAPI["chat"]["getPendingState"]>
-        >,
+        snapshot: Awaited<ReturnType<MarlouesAPI["chat"]["getPendingState"]>>,
       ) => void,
     ) => {
       const listener = (
         _event: Electron.IpcRendererEvent,
-        snapshot: Awaited<
-          ReturnType<MarlouesAPI["chat"]["getPendingState"]>
-        >,
+        snapshot: Awaited<ReturnType<MarlouesAPI["chat"]["getPendingState"]>>,
       ) => callback(snapshot);
       ipcRenderer.on(IPC.CHAT_PENDING_STATE_UPDATE, listener);
       return () => ipcRenderer.off(IPC.CHAT_PENDING_STATE_UPDATE, listener);
