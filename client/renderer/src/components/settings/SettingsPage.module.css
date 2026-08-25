@@ -230,7 +230,9 @@
 .workbench :global(.appearance-settings),
 .workbench :global(.im-channels-page),
 .workbench :global(.im-bots-page),
-.workbench :global(.runtimes-page) {
+.workbench :global(.runtimes-page),
+.workbench :global(.provider-settings),
+.workbench :global(.security-settings) {
   display: grid;
   gap: var(--space-8);
 }
@@ -342,6 +344,21 @@
 
 .workbench :global(.settings-row-trailing) {
   margin-left: var(--space-4);
+}
+
+.workbench :global(.security-select-control) {
+  width: 200px;
+  max-width: 100%;
+}
+
+.workbench :global(.security-number-control) {
+  width: 120px;
+  max-width: 100%;
+}
+
+.workbench :global(.security-builtins-field .security-builtins) {
+  grid-column: 2;
+  justify-content: flex-start;
 }
 
 .workbench :global(.settings-fields > label:not(.settings-toggle)),
@@ -1739,6 +1756,14 @@
   .workbench :global(.settings-fields > label:not(.settings-toggle) > textarea),
   .workbench :global(.settings-field > input) {
     grid-column: 1;
+  }
+
+  .workbench :global(.security-builtins-field .security-builtins) {
+    grid-column: 1;
+  }
+
+  .workbench :global(.security-select-control) {
+    width: min(200px, 100%);
   }
 }
 

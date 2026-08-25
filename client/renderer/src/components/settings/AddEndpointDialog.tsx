@@ -415,9 +415,15 @@ export function AddEndpointDialog({
         </div>
 
         <div className={`${styles.body} scrollbar-thin`}>
-          <div className={styles.kindSwitch} aria-label="供应商类型">
+          <div
+            className={styles.kindSwitch}
+            role="tablist"
+            aria-label="供应商类型"
+          >
             <button
               type="button"
+              role="tab"
+              aria-selected={kind === "builtin"}
               className={kind === "builtin" ? styles.kindActive : undefined}
               onClick={() => setKind("builtin")}
             >
@@ -425,6 +431,8 @@ export function AddEndpointDialog({
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={kind === "custom"}
               className={kind === "custom" ? styles.kindActive : undefined}
               onClick={() => setKind("custom")}
             >

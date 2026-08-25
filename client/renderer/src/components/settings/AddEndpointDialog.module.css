@@ -102,20 +102,24 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 2px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-workspace);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--raised-1);
   padding: 2px;
 }
 
 .kindSwitch button {
   min-height: 30px;
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-2);
   font-size: var(--text-sm);
   font-weight: 560;
+  transition:
+    background var(--motion-fast) var(--ease),
+    color var(--motion-fast) var(--ease),
+    box-shadow var(--motion-fast) var(--ease);
 }
 
 .kindSwitch button:hover {
@@ -124,9 +128,9 @@
 }
 
 .kindSwitch .kindActive {
-  background: var(--raised-2);
+  background: var(--surface-workspace);
   color: var(--text-1);
-  box-shadow: inset 0 0 0 1px var(--border-subtle);
+  box-shadow: var(--shadow-sm);
 }
 
 .fieldGrid {
@@ -171,6 +175,14 @@
   padding: 0 var(--space-2);
   font-size: var(--text-sm);
   font-weight: 560;
+  transition:
+    border-color var(--motion-fast) var(--ease),
+    background var(--motion-fast) var(--ease);
+}
+
+.addEndpointButton:hover {
+  border-color: var(--border-strong);
+  background: var(--raised-2);
 }
 
 .endpointRow {
@@ -344,13 +356,15 @@
   cursor: not-allowed;
 }
 
-.primary {
+.rowActions button.primary,
+.footer button.primary {
   border-color: var(--accent);
   background: var(--accent);
   color: var(--primary-ink);
 }
 
-.primary:hover:not(:disabled) {
+.rowActions button.primary:hover:not(:disabled),
+.footer button.primary:hover:not(:disabled) {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 88%, black);
   color: var(--primary-ink);
@@ -595,7 +609,7 @@
 
 .errorText {
   margin: 0;
-  color: hsl(0 70% 65%);
+  color: var(--danger);
   font-size: var(--text-xs);
   line-height: 16px;
 }
@@ -629,11 +643,35 @@
 }
 
 @media (max-width: 520px) {
-  .modal {
-    width: calc(100vw - 24px);
+  .overlay {
+    padding: var(--space-2);
   }
-  .fieldGrid {
+
+  .modal {
+    width: calc(100vw - 16px);
+    max-height: calc(100vh - 16px);
+  }
+
+  .fieldGrid,
+  .endpointGrid {
     grid-template-columns: 1fr;
+  }
+
+  .endpointUrl {
+    grid-column: 1;
+  }
+
+  .modelSectionHead {
+    align-items: flex-start;
+  }
+
+  .rowActions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .modelConfigGrid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 
@@ -644,6 +682,6 @@
   font-size: 11px;
   font-weight: 560;
   line-height: 14px;
-  color: var(--accent-on, #fff);
-  background: var(--accent, #007aff);
+  color: var(--primary-ink);
+  background: var(--accent);
 }

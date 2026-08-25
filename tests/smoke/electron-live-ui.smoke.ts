@@ -152,16 +152,14 @@ async function verifyProviderRoutingSettings(
 
   await settings.getByRole("button", { name: "添加供应商" }).click();
   const dialog = window.getByRole("dialog", { name: "添加模型" });
-  await expect(
-    dialog.getByRole("button", { name: "内置供应商" }),
-  ).toBeVisible();
+  await expect(dialog.getByRole("tab", { name: "内置供应商" })).toBeVisible();
   await expect(dialog.getByText("Base URL", { exact: true })).toHaveCount(0);
   await window.screenshot({
     path: join(artifactsDir, "02-provider-builtin-hidden-routes.png"),
     fullPage: true,
   });
 
-  await dialog.getByRole("button", { name: "自定义", exact: true }).click();
+  await dialog.getByRole("tab", { name: "自定义", exact: true }).click();
   await expect(dialog.getByText("Base URL", { exact: true })).toHaveCount(1);
   await dialog.getByRole("button", { name: "添加端点" }).click();
   await expect(dialog.getByText("Base URL", { exact: true })).toHaveCount(2);
@@ -216,9 +214,11 @@ async function verifySecurityCenter(window: ElectronPage): Promise<void> {
   await expect(window.getByRole("heading", { name: "网络安全" })).toBeVisible();
 
   const networkPolicy = window.getByLabel("默认网络策略");
-  await networkPolicy.selectOption("deny");
+  await networkPolicy.click();
+  await window.getByRole("option", { name: "阻断所有网络" }).click();
   await expectSecurityRule(window, "networkAccess", "deny");
-  await networkPolicy.selectOption("ask");
+  await networkPolicy.click();
+  await window.getByRole("option", { name: "按请求审批" }).click();
   await expectSecurityRule(window, "networkAccess", "ask");
   const allowedDomains = window.getByLabel("允许域名（每行一项）");
   await allowedDomains.fill("api.example.com");
