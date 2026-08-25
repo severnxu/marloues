@@ -3,6 +3,7 @@ import type { TaskContextMode } from "./use-task-context-layout";
 import type { TaskPresentationModel } from "./task-presentation-model";
 import {
   BackgroundProcessesSection,
+  OutputContentSection,
   SourcesSection,
   TaskProgressSection,
   WorkspaceContextSection,
@@ -75,6 +76,10 @@ export function TaskContextPanel({
           }}
         />
         <TaskProgressSection sessionId={model.sessionId} tasks={model.tasks} />
+        <OutputContentSection
+          sessionId={model.sessionId}
+          outputContent={model.outputContent}
+        />
         <BackgroundProcessesSection
           sessionId={model.sessionId}
           processes={model.processes}

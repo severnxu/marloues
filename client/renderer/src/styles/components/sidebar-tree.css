@@ -36,7 +36,7 @@
     background: transparent;
     padding: 0 7px 0 10px;
     color: var(--text-3);
-    font-size: 14px;
+    font-size: var(--text-base);
     text-align: left;
   }
 
@@ -47,8 +47,8 @@
   .work-area-label {
     min-width: 0;
     overflow: hidden;
-    font-size: 14px;
-    font-weight: 560;
+    font-size: var(--text-base);
+    font-weight: 500;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -132,6 +132,21 @@
     margin-top: var(--sidebar-row-gap);
   }
 
+  .work-area-section {
+    display: grid;
+    min-width: 0;
+    gap: var(--sidebar-row-gap);
+  }
+
+  .work-area-section-label {
+    min-width: 0;
+    padding: 8px 10px 4px;
+    color: var(--text-3);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 18px;
+  }
+
   .project-row {
     position: relative;
     display: grid;
@@ -146,7 +161,7 @@
     border-radius: var(--control-radius);
     background: transparent;
     color: var(--text-2);
-    font-size: 14px;
+    font-size: var(--text-base);
   }
 
   .project-row:hover,
@@ -190,8 +205,8 @@
     min-width: 0;
     overflow: hidden;
     color: var(--text-3);
-    font-size: 13px;
-    font-weight: 560;
+    font-size: var(--text-base);
+    font-weight: 400;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -274,20 +289,20 @@
     border-radius: var(--control-radius);
     background: transparent;
     padding: 0 8px 0 34px;
-    color: var(--text-1);
-    font-size: 14px;
-    font-weight: 560;
+    color: var(--text-2);
+    font-size: var(--text-base);
+    font-weight: 400;
     text-align: left;
   }
 
   .session-item:has(.session-trailing time),
   .work-area-leaf:has(.work-area-leaf-trailing time) {
-    --session-safe-area: 28px;
+    --session-safe-area: 34px;
   }
 
   .session-item:has(.session-activity-indicator),
   .work-area-leaf:has(.sidebar-activity-indicator) {
-    --session-safe-area: 18px;
+    --session-safe-area: 24px;
   }
 
   .session-item:hover,
@@ -299,10 +314,17 @@
     color: var(--text-1);
   }
 
-  .session-item:hover,
-  .session-item:focus-visible,
-  .session-item:focus-within {
-    --session-safe-area: 46px;
+  .session-item.active,
+  .work-area-leaf.active {
+    background: var(--raised-2);
+    color: var(--text-1);
+    font-weight: 500;
+  }
+
+  .session-item.session-item:hover,
+  .session-item.session-item:focus-visible,
+  .session-item.session-item:focus-within {
+    --session-safe-area: 54px;
   }
 
   .session-item.pinned,
@@ -329,18 +351,19 @@
   .session-content,
   .work-area-leaf-title {
     display: block;
-    width: calc(100% - var(--session-safe-area));
-    max-width: calc(100% - var(--session-safe-area));
+    width: auto;
+    max-width: none;
     min-width: 0;
-    flex: 0 1 auto;
+    flex: 1 1 auto;
+    margin-right: var(--session-safe-area);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .work-area-leaf-title {
-    font-size: 14px;
-    font-weight: 560;
+    font-size: var(--text-base);
+    font-weight: inherit;
   }
 
   .session-title-line,
@@ -529,6 +552,16 @@
     box-shadow: var(--shadow-md);
   }
 
+  .project-menu {
+    min-width: 220px;
+    border-color: color-mix(in srgb, var(--border) 72%, transparent);
+    border-radius: 12px;
+    padding: 7px;
+    box-shadow:
+      0 14px 34px color-mix(in srgb, #000 12%, transparent),
+      0 2px 7px color-mix(in srgb, #000 8%, transparent);
+  }
+
   .session-menu button {
     display: flex;
     width: 100%;
@@ -544,10 +577,35 @@
     white-space: nowrap;
   }
 
+  .project-menu button {
+    height: 30px;
+    gap: 12px;
+    border-radius: 7px;
+    padding: 0 10px;
+    font-size: 14px;
+  }
+
+  .project-menu button svg {
+    width: 15px;
+    height: 15px;
+    flex: 0 0 15px;
+  }
+
   .session-menu button:hover,
   .session-menu button:focus-visible {
     outline: 0;
     background: var(--raised-2);
+  }
+
+  .session-menu button:disabled {
+    color: var(--text-3);
+    cursor: default;
+    opacity: 0.48;
+  }
+
+  .session-menu button:disabled:hover,
+  .session-menu button:disabled:focus-visible {
+    background: transparent;
   }
 
   .session-menu button.danger {

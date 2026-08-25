@@ -57,69 +57,156 @@ export function DailyProjectTree(props: DailyProjectTreeProps) {
     ],
   );
 
-  return props.projectList.map((project) => {
-    const activeProject = Boolean(
-      props.activeWorkspace &&
-      (project.id === props.activeWorkspace.id ||
-        workspacePathsEqual(project.path, props.activeWorkspace.path)),
-    );
-    const projectRunning = [...props.runningWorkspacePaths].some((path) =>
-      workspacePathsEqual(path, project.path),
-    );
-    const sessions = props.sessionsByWorkspace.get(project.path) || [];
-    const sessionWindow = getSidebarSessionWindow(
-      sessions,
-      sessionRenderLimits[project.path] ?? SIDEBAR_SESSION_PAGE_SIZE,
-      prioritySessionIds,
-    );
-    const expanded = props.expandedWorkspaces.has(project.path);
-    const activity = resolveSidebarActivity(
-      sessions.some((session) =>
-        props.unreadCompletedSessionIds.has(session.id),
-      ),
-      projectRunning,
-    );
+  return (
+    <>
+      {props.projectList.map((project) => {
+        const activeProject = Boolean(
+          props.activeWorkspace &&
+          (project.id === props.activeWorkspace.id ||
+            workspacePathsEqual(project.path, props.activeWorkspace.path)),
+        );
+        const projectRunning = [...props.runningWorkspacePaths].some((path) =>
+          workspacePathsEqual(path, project.path),
+        );
+        const sessions = (
+          props.sessionsByWorkspace.get(project.path) || []
+        ).filter((session) => !session.isPinned);
+        const sessionWindow = getSidebarSessionWindow(
+          sessions,
+          sessionRenderLimits[project.path] ?? SIDEBAR_SESSION_PAGE_SIZE,
+          prioritySessionIds,
+        );
+        const expanded = props.expandedWorkspaces.has(project.path);
+        const activity = resolveSidebarActivity(
+          sessions.some((session) =>
+            props.unreadCompletedSessionIds.has(session.id),
+          ),
+          projectRunning,
+        );
 
-    return (
-      <WorkAreaProjectRow
-        key={project.id}
-        name={project.name}
-        title={project.path}
-        expanded={expanded}
-        activity={activity}
-        onToggle={() => props.onToggleWorkspaceExpanded(project.path)}
-        actions={
-          <>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                const rect = event.currentTarget.getBoundingClientRect();
-                props.onOpenProjectMenu(rect.left, rect.bottom + 4, project.id);
-              }}
-              title="项目操作"
-              aria-label="项目操作"
-            >
-              <MoreHorizontal aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                props.onCreateProjectSession(project);
-              }}
-              title="在此项目中新建会话"
-              aria-label="在此项目中新建会话"
-            >
-              <SquarePen aria-hidden="true" />
-            </button>
-          </>
-        }
-      >
-        {sessionWindow.sessions.map((session) => (
+        return (
+          <WorkAreaProjectRow
+            key={project.id}
+            name={project.name}
+            title={project.path}
+            expanded={expanded}
+            activity={activity}
+            onToggle={() => props.onToggleWorkspaceExpanded(project.path)}
+            actions={
+              <>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    props.onOpenProjectMenu(
+                      rect.left,
+                      rect.bottom + 4,
+                      project.id,
+                    );
+                  }}
+                  title="项目操作"
+                  aria-label="项目操作"
+                >
+                  <MoreHorizontal aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    props.onCreateProjectSession(project);
+                  }}
+                  title="在此项目中新建会话"
+                  aria-label="在此项目中新建会话"
+                >
+                  <SquarePen aria-hidden="true" />
+                </button>
+              </>
+            }
+          >
+            {sessionWindow.sessions.map((session) => (
+              <SidebarParts.SessionRow
+                key={session.id}
+                session={session}
+                active={
+                  session.id === props.activeSessionId && props.page === "chat"
+                }
+                executionRunning={props.runningSessionIds.has(session.id)}
+                permissionPending={props.pendingPermissionSessionIdSet.has(
+                  session.id,
+                )}
+                activity={resolveSidebarActivity(
+                  props.unreadCompletedSessionIds.has(session.id),
+                  props.runningSessionIds.has(session.id),
+                )}
+                renaming={props.renamingId === session.id}
+                renameValue={props.renameValue}
+                onRenameValue={props.onRenameValue}
+                onCommitRename={props.onCommitRename}
+                onCancelRename={props.onCancelRename}
+                onOpen={async () => {
+                  if (!activeProject) await props.onSwitchProject(project.id);
+                  props.onSetActiveSession(session.id);
+                  props.onPage("chat");
+                }}
+                onTogglePinned={() => props.onTogglePinned(session)}
+                onOpenMenu={(x, y) => props.onOpenSessionMenu(x, y, session.id)}
+              />
+            ))}
+            {sessionWindow.hiddenCount > 0 ? (
+              <button
+                className="workspace-sessions-more"
+                type="button"
+                onClick={() =>
+                  setSessionRenderLimits((current) => ({
+                    ...current,
+                    [project.path]:
+                      (current[project.path] ?? SIDEBAR_SESSION_PAGE_SIZE) +
+                      SIDEBAR_SESSION_PAGE_SIZE,
+                  }))
+                }
+              >
+                显示更早会话（剩余 {sessionWindow.hiddenCount}）
+              </button>
+            ) : null}
+          </WorkAreaProjectRow>
+        );
+      })}
+    </>
+  );
+}
+
+export function PinnedSessionGroup(props: DailyProjectTreeProps) {
+  const pinnedSessions = useMemo(
+    () =>
+      Array.from(props.sessionsByWorkspace.values())
+        .flat()
+        .filter((session) => session.isPinned)
+        .sort((a, b) => b.updatedAt - a.updatedAt),
+    [props.sessionsByWorkspace],
+  );
+
+  if (pinnedSessions.length === 0) return null;
+
+  return (
+    <div className="work-area-section pinned-session-group">
+      <div className="work-area-section-label">置顶</div>
+      {pinnedSessions.map((session) => {
+        const project = props.projectList.find((item) =>
+          workspacePathsEqual(item.path, session.workspacePath),
+        );
+        const activeProject = Boolean(
+          project &&
+          props.activeWorkspace &&
+          (project.id === props.activeWorkspace.id ||
+            workspacePathsEqual(project.path, props.activeWorkspace.path)),
+        );
+
+        return (
           <SidebarParts.SessionRow
             key={session.id}
             session={session}
+            showPinnedIndicator={false}
             active={
               session.id === props.activeSessionId && props.page === "chat"
             }
@@ -137,31 +224,16 @@ export function DailyProjectTree(props: DailyProjectTreeProps) {
             onCommitRename={props.onCommitRename}
             onCancelRename={props.onCancelRename}
             onOpen={async () => {
-              if (!activeProject) await props.onSwitchProject(project.id);
+              if (project && !activeProject)
+                await props.onSwitchProject(project.id);
               props.onSetActiveSession(session.id);
               props.onPage("chat");
             }}
             onTogglePinned={() => props.onTogglePinned(session)}
             onOpenMenu={(x, y) => props.onOpenSessionMenu(x, y, session.id)}
           />
-        ))}
-        {sessionWindow.hiddenCount > 0 ? (
-          <button
-            className="workspace-sessions-more"
-            type="button"
-            onClick={() =>
-              setSessionRenderLimits((current) => ({
-                ...current,
-                [project.path]:
-                  (current[project.path] ?? SIDEBAR_SESSION_PAGE_SIZE) +
-                  SIDEBAR_SESSION_PAGE_SIZE,
-              }))
-            }
-          >
-            显示更早会话（剩余 {sessionWindow.hiddenCount}）
-          </button>
-        ) : null}
-      </WorkAreaProjectRow>
-    );
-  });
+        );
+      })}
+    </div>
+  );
 }

@@ -243,18 +243,15 @@ export function createSessionSlice(
 
     toggleSessionPinned: async (id) => {
       await window.marloues.chat.toggleSessionPinned(id);
-      const updatedAt = Date.now();
       set((state) => {
         const current = state.sessions.find((s) => s.id === id);
         const isPinned = current ? !current.isPinned : false;
         return {
           sessions: patchSessionMeta(state.sessions, id, {
             isPinned,
-            updatedAt,
           }),
           allSessions: patchSessionMeta(state.allSessions, id, {
             isPinned,
-            updatedAt,
           }),
         };
       });

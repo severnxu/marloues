@@ -41,6 +41,7 @@ export interface WorkflowComposerShellProps {
   onStop: () => void;
   onAccessLevelChange?: (level: ComposerAccessLevel) => void;
   permissionPanel?: ReactNode;
+  emptyHeader?: ReactNode;
   modelControl?: ReactNode;
   placeholder?: string;
   slashCommands?: SlashCommandItem[];

@@ -17,19 +17,44 @@
     -webkit-app-region: drag;
   }
 
-  .settings-surface-open .window-chrome {
+  .settings-page-open .window-chrome {
     z-index: 260;
     pointer-events: auto;
+    -webkit-app-region: drag;
   }
 
-  .settings-surface-open .title-sidebar-toggle,
-  .settings-surface-open .title-return-main,
-  .settings-surface-open .title-new-session,
-  .settings-surface-open .title-product-lockup,
-  .settings-surface-open .title-global-search,
-  .settings-surface-open .title-runtime-status,
-  .settings-surface-open .thread-inspector-toggle,
-  .settings-surface-open .title-action--auxiliary-contract {
+  .settings-page-open .window-caption-controls,
+  .settings-page-open .window-chrome-trailing,
+  .settings-page-open .window-caption-controls * {
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
+    -webkit-app-region: no-drag;
+  }
+
+  .platform-windows.settings-page-open .window-chrome-trailing {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: var(--windows-caption-controls-width);
+    height: var(--workbench-titlebar-height);
+    justify-content: flex-end;
+  }
+
+  .settings-page-open .window-chrome-leading,
+  .settings-page-open .window-chrome-leading * {
+    pointer-events: auto;
+    -webkit-app-region: drag;
+  }
+
+  .settings-page-open .title-sidebar-toggle,
+  .settings-page-open .title-return-main,
+  .settings-page-open .title-new-session,
+  .settings-page-open .title-product-lockup,
+  .settings-page-open .title-global-search,
+  .settings-page-open .title-runtime-status,
+  .settings-page-open .titlebar-context-actions,
+  .settings-page-open .thread-inspector-toggle {
     display: none;
   }
 
@@ -235,40 +260,41 @@
     color: var(--window-close-ink);
   }
 
-  .title-action--auxiliary-contract {
-    margin-inline: var(--space-1);
-  }
-
-  .platform-windows.auxiliary-primary-overlay
-    .title-action--auxiliary-contract {
-    position: absolute;
-    top: 10px;
-    right: calc(
-      var(--windows-caption-controls-width) + var(--space-2) + 30px + 12px
-    );
-    width: 26px;
-    height: 26px;
-    margin: 0;
-  }
-
   .platform-windows .window-caption-controls {
     margin-left: 0;
   }
 
-  .thread-inspector-toggle {
+  .titlebar-context-actions {
     position: absolute;
-    top: 8px;
-    right: var(--space-2);
+    top: calc((var(--titlebar-height) - 30px) / 2);
+    right: calc(var(--windows-caption-controls-width) + var(--space-2) + 4px);
     z-index: 2;
+    display: flex;
+    height: 30px;
+    align-items: center;
+    gap: var(--space-1);
+    pointer-events: auto;
+    -webkit-app-region: no-drag;
   }
 
-  .platform-macos .thread-inspector-toggle {
+  .titlebar-context-actions > button,
+  .thread-summary-titlebar-slot > button {
+    position: static;
+  }
+
+  .auxiliary-primary-titlebar-slot,
+  .thread-summary-titlebar-slot {
+    display: contents;
+  }
+
+  .platform-macos .titlebar-context-actions {
     top: 9px;
     right: 14px;
+    height: 28px;
   }
 
-  .platform-windows .thread-inspector-toggle {
-    right: calc(var(--windows-caption-controls-width) + var(--space-3) + 6px);
+  .platform-macos .titlebar-context-actions {
+    gap: var(--space-1);
   }
 
   .platform-windows .title-runtime-status {
@@ -283,6 +309,8 @@
     transform: translateY(-50%);
   }
 
+  .thread-inspector-toggle.is-active,
+  .thread-inspector-toggle[aria-pressed="true"],
   .auxiliary-open .thread-inspector-toggle {
     background: var(--raised-2);
     color: var(--text-1);

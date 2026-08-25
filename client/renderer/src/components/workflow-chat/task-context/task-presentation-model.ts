@@ -25,6 +25,11 @@ export interface TaskPresentationModel {
     deletions: number;
     reviewTarget?: ComposerFileChangeTarget;
   } | null;
+  outputContent: Array<{
+    id: string;
+    label: string;
+    detail: string;
+  }>;
   modelName?: string;
   permissionMode?: AgentPermissionMode;
   tasks: ExecutionTaskRecord[];
@@ -66,20 +71,21 @@ export function buildTaskPresentationModel({
       (task) => !focusTurn || !task.turnId || task.turnId === focusTurn.id,
     )
     .sort((left, right) => left.ordinal - right.ordinal);
-  const hasData = Boolean(sessionId && (focusTurn || scopedTasks.length));
+  const hasData = Boolean(sessionId);
 
   return {
     sessionId,
     hasData,
-    workspace:
-      hasData && workspace ? { ...workspace, git: gitContext ?? null } : null,
+    workspace: workspace ? { ...workspace, git: gitContext ?? null } : null,
     changes:
-      hasData && focusTurn ? taskChangeSummary(focusTurn, gitContext) : null,
+      sessionId && focusTurn ? taskChangeSummary(focusTurn, gitContext) : null,
+    outputContent:
+      sessionId && focusTurn ? taskOutputContent(focusTurn.items) : [],
     modelName: focusTurn?.modelName ?? focusTurn?.modelId ?? fallbackModelName,
     permissionMode,
-    tasks: hasData ? scopedTasks : [],
-    processes: hasData && focusTurn ? runningProcesses(focusTurn.items) : [],
-    sources: hasData && focusTurn ? taskSources(focusTurn.items) : [],
+    tasks: sessionId ? scopedTasks : [],
+    processes: sessionId && focusTurn ? runningProcesses(focusTurn.items) : [],
+    sources: sessionId && focusTurn ? taskSources(focusTurn.items) : [],
   };
 }
 
@@ -112,6 +118,38 @@ function taskChangeSummary(
       : undefined;
   const summary = gitSummary ?? eventSummary;
   return summary ? { ...summary, reviewTarget } : null;
+}
+
+function taskOutputContent(
+  items: WorkflowTurnItem[],
+): TaskPresentationModel["outputContent"] {
+  const text = finalAgentResponseText(items);
+  if (!text) return [];
+  return [
+    {
+      id: "agent-reply",
+      label: "最终回复",
+      detail: compactOutputContent(text),
+    },
+  ];
+}
+
+function finalAgentResponseText(items: WorkflowTurnItem[]): string {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const item = items[index];
+    if (item?.type !== "agentMessage") continue;
+    const text = item.text.trim();
+    if (!text) continue;
+    const phase = item.phase?.trim().toLowerCase();
+    if (phase === "final_answer" || phase === "final") return text;
+    if (phase === undefined) return text;
+  }
+  return "";
+}
+
+function compactOutputContent(text: string): string {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  return normalized.length > 96 ? `${normalized.slice(0, 95)}…` : normalized;
 }
 
 function runningProcesses(

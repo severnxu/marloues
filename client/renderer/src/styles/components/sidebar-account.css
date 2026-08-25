@@ -30,6 +30,7 @@
     padding: 0 var(--space-2);
     color: var(--text-2);
     font-size: var(--text-base);
+    font-weight: 400;
     text-align: left;
     transition:
       background-color var(--motion-fast) var(--ease),
@@ -79,7 +80,7 @@
   .quick-access-entry.active {
     background: var(--raised-2);
     color: var(--text-1);
-    font-weight: 600;
+    font-weight: 500;
   }
 
   .sidebar-command.active > svg,

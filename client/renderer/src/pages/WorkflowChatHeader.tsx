@@ -4,8 +4,14 @@
  * independently without pulling in the entire page.
  */
 
+import { useEffect, useLayoutEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Folder, type LucideIcon } from "lucide-react";
 import { useUnifiedChatStore } from "@/stores/unified-chat-store";
+
+const THREAD_SUMMARY_TITLEBAR_SLOT_ID = "thread-summary-titlebar-slot";
+const useIsomorphicLayoutEffect =
+  typeof document === "undefined" ? useEffect : useLayoutEffect;
 
 function formatSessionTitle(title?: string): string {
   const value = title?.trim();
@@ -28,11 +34,48 @@ export function WorkflowChatHeader({
   className?: string;
   threadSummary?: WorkflowChatHeaderThreadSummary;
 }) {
+  const [titlebarSlot, setTitlebarSlot] = useState<HTMLElement | false | null>(
+    null,
+  );
   const activeSessionTitle = useUnifiedChatStore(
     (state) =>
       state.sessions.find((session) => session.id === state.activeSessionId)
         ?.title,
   );
+
+  useIsomorphicLayoutEffect(() => {
+    setTitlebarSlot(
+      document.getElementById(THREAD_SUMMARY_TITLEBAR_SLOT_ID) ?? false,
+    );
+  }, []);
+
+  const threadSummaryControl = threadSummary ? (
+    <button
+      type="button"
+      className={`thread-summary-toggle${threadSummary.open ? " is-active" : ""}`}
+      data-thread-summary-toggle
+      data-state={threadSummary.open ? "open" : "closed"}
+      aria-label={
+        threadSummary.available
+          ? threadSummary.open
+            ? "隐藏固定摘要"
+            : "显示固定摘要"
+          : "固定摘要暂不可用"
+      }
+      aria-pressed={threadSummary.open}
+      disabled={!threadSummary.available}
+      title={
+        threadSummary.available
+          ? threadSummary.open
+            ? "隐藏固定摘要"
+            : "显示固定摘要"
+          : "固定摘要暂不可用"
+      }
+      onClick={threadSummary.onToggle}
+    >
+      <PinnedSummaryIcon />
+    </button>
+  ) : null;
 
   return (
     <div
@@ -46,19 +89,11 @@ export function WorkflowChatHeader({
             ? formatSessionTitle(activeSessionTitle)
             : title}
       </span>
-      {threadSummary?.available ? (
-        <button
-          type="button"
-          className={`thread-summary-toggle${threadSummary.open ? " is-active" : ""}`}
-          data-thread-summary-toggle
-          aria-label={threadSummary.open ? "隐藏固定摘要" : "显示固定摘要"}
-          aria-pressed={threadSummary.open}
-          title={threadSummary.open ? "隐藏固定摘要" : "显示固定摘要"}
-          onClick={threadSummary.onToggle}
-        >
-          <PinnedSummaryIcon />
-        </button>
-      ) : null}
+      {threadSummaryControl && titlebarSlot
+        ? createPortal(threadSummaryControl, titlebarSlot)
+        : titlebarSlot === false || typeof document === "undefined"
+          ? threadSummaryControl
+          : null}
     </div>
   );
 }

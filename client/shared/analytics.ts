@@ -1,11 +1,10 @@
 /**
- * 行为埋点抽象（替代 @webank/wa-sdk 内部 SDK）
+ * 行为埋点抽象
  *
  * 定义通用 AnalyticsProvider 接口 + 事件清单。
- * 默认 NoopAnalyticsProvider（无副作用），可扩展接入任意后端
- * （Sentry / 自建后端 / 公司内部 WA 等）。
+ * 默认 NoopAnalyticsProvider（无副作用），可扩展接入任意后端。
  *
- * 事件清单对齐 marloues-client 的 WA_EVENTS，去掉 runtime 维度字段。
+ * 事件清单保留稳定事件名，供渲染端统一调用。
  */
 
 export const ANALYTICS_EVENTS = {

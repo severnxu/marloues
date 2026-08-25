@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import {
   ArchiveRestore,
   ChevronRight,
-  Copy,
   Folder,
   GitBranch,
   LogOut,
@@ -13,7 +12,6 @@ import {
   Pin,
   RefreshCcw,
   Settings,
-  SquarePen,
   Trash2,
 } from "lucide-react";
 import { getThemeDefinitions, type ThemeMode } from "@/stores/theme-store";
@@ -38,6 +36,7 @@ export function SessionRow({
   permissionPending,
   renaming,
   renameValue,
+  showPinnedIndicator = true,
   onRenameValue,
   onCommitRename,
   onCancelRename,
@@ -52,6 +51,7 @@ export function SessionRow({
   permissionPending?: boolean;
   renaming: boolean;
   renameValue: string;
+  showPinnedIndicator?: boolean;
   onRenameValue: (value: string) => void;
   onCommitRename: (session: ChatSessionRecord) => void;
   onCancelRename: () => void;
@@ -72,7 +72,7 @@ export function SessionRow({
         if (event.key === "Enter") onOpen();
       }}
     >
-      {session.isPinned ? (
+      {session.isPinned && showPinnedIndicator ? (
         <span className="session-pinned-indicator" aria-label="已置顶">
           <Pin aria-hidden="true" />
         </span>
@@ -441,9 +441,7 @@ export function ProjectContextMenu({
   menu,
   projects,
   firstProjectId,
-  onNewSession,
   onOpen,
-  onCopyPath,
   onRename,
   onMoveToTop,
   onRemove,
@@ -452,9 +450,7 @@ export function ProjectContextMenu({
   menu: { x: number; y: number; projectId: string };
   projects: WorkspaceInfo[];
   firstProjectId?: string;
-  onNewSession: (project: WorkspaceInfo) => void;
   onOpen: (project: WorkspaceInfo) => void;
-  onCopyPath: (project: WorkspaceInfo) => void;
   onRename: (project: WorkspaceInfo) => void;
   onMoveToTop: (project: WorkspaceInfo) => void;
   onRemove: (project: WorkspaceInfo) => void;
@@ -463,21 +459,30 @@ export function ProjectContextMenu({
   const project = projects.find((item) => item.id === menu.projectId);
   if (!project) return null;
 
-  const itemCount = 5 + (project.id !== firstProjectId ? 1 : 0);
   const menuElement = (
     <div
       data-project-menu
       className="session-menu project-menu"
-      style={getFloatingMenuPosition(menu.x, menu.y, 178, itemCount * 37 + 10)}
+      style={getFloatingMenuPosition(menu.x, menu.y, 220, 170)}
     >
       <button
         onClick={() => {
-          onNewSession(project);
+          onRename(project);
           onClose();
         }}
       >
-        <SquarePen size={14} />
-        {"\u65b0\u5efa\u4f1a\u8bdd"}
+        <Pencil size={14} />
+        重命名项目
+      </button>
+      <button
+        disabled={project.id === firstProjectId}
+        onClick={() => {
+          if (project.id !== firstProjectId) onMoveToTop(project);
+          onClose();
+        }}
+      >
+        <Pin size={14} />
+        置顶项目
       </button>
       <button
         onClick={() => {
@@ -486,32 +491,12 @@ export function ProjectContextMenu({
         }}
       >
         <Folder size={14} />
-        打开空间
+        在文件夹中显示
       </button>
-      <button
-        onClick={() => {
-          onCopyPath(project);
-          onClose();
-        }}
-      >
-        <Copy size={14} />
-        {"\u590d\u5236\u8def\u5f84"}
+      <button disabled>
+        <ArchiveRestore size={14} />
+        归档对话
       </button>
-      <button
-        onClick={() => {
-          onRename(project);
-          onClose();
-        }}
-      >
-        <Pencil size={14} />
-        {"\u91cd\u547d\u540d"}
-      </button>
-      {project.id !== firstProjectId ? (
-        <button onClick={() => onMoveToTop(project)}>
-          <Pin size={14} />
-          移到顶部
-        </button>
-      ) : null}
       <button
         className="danger"
         onClick={() => {
@@ -520,7 +505,7 @@ export function ProjectContextMenu({
         }}
       >
         <Trash2 size={14} />
-        {"\u4ece\u5217\u8868\u79fb\u9664"}
+        移除
       </button>
     </div>
   );

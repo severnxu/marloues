@@ -1,10 +1,10 @@
 /**
- * 自建 canvas DOM 水印（替代 @webank/watermark 内部 SDK）
+ * 自建 canvas DOM 水印
  *
- * 不依赖内部 SDK：用 canvas 绘制文字 → 平铺为 position:fixed 背景
+ * 用 canvas 绘制文字 → 平铺为 position:fixed 背景
  * → MutationObserver 监听容器防篡改（被删除/修改时重建）。
  *
- * 配置项对齐 marloues-client 的 WatermarkOptions，便于企业场景复用。
+ * 配置项保持简单稳定，供登录态水印复用。
  */
 
 export interface WatermarkOptions {

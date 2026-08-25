@@ -1,6 +1,4 @@
 import { memo, useCallback, useRef, type ReactNode } from "react";
-import type { SettingsSection } from "@/components/settings";
-import { SettingsPage } from "@/pages/SettingsPage";
 import { WorkflowChatHeader } from "@/pages/WorkflowChatHeader";
 import { WorkflowChatPage } from "@/pages/WorkflowChatPage";
 import type { PermissionDialogRequest } from "@shared/types";
@@ -13,8 +11,6 @@ import {
 
 export interface WorkbenchViewHostProps {
   page: Page;
-  settingsSection: SettingsSection;
-  onSettingsSection: (section: SettingsSection) => void;
   isMacOS: boolean;
   sidebarOpen: boolean;
   hideChatTitle: boolean;
@@ -125,8 +121,6 @@ const PersistentChatWorkspace = memo(function PersistentChatWorkspace({
 
 export function WorkbenchViewHost({
   page,
-  settingsSection,
-  onSettingsSection,
   isMacOS,
   sidebarOpen,
   hideChatTitle,
@@ -152,19 +146,6 @@ export function WorkbenchViewHost({
           onPermissionRespond={onPermissionRespond}
         />
       </KeepAliveWorkbenchView>
-
-      {mountedViews.current.has("settings") ? (
-        <KeepAliveWorkbenchView
-          name="settings"
-          active={page === "settings"}
-          className="settings-region"
-        >
-          <SettingsPage
-            section={settingsSection}
-            onSection={onSettingsSection}
-          />
-        </KeepAliveWorkbenchView>
-      ) : null}
 
       {page !== "chat" && permissionRequest ? (
         <div className="permission-page-overlay">

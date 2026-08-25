@@ -2,7 +2,6 @@ import type { CSSProperties } from "react";
 import {
   ArrowLeft,
   Columns2,
-  Minimize2,
   Minus,
   PanelLeft,
   PanelRight,
@@ -36,7 +35,6 @@ export function WindowChrome({
   onToggleTheme: _onToggleTheme,
   auxiliaryOpen = false,
   onToggleAuxiliary,
-  onToggleAuxiliaryPrimary,
   onReturnToMain,
   auxiliaryMode = "closed",
   auxiliarySwitching = false,
@@ -59,9 +57,6 @@ export function WindowChrome({
   onToggleTheme: () => void;
   auxiliaryOpen?: boolean;
   onToggleAuxiliary: () => void;
-  /** Contract / expand the auxiliary panel. Only rendered in the trailing
-   *  controls on Windows when the auxiliary is in `primary-overlay` mode. */
-  onToggleAuxiliaryPrimary?: () => void;
   /** Leave primary-overlay while keeping the standard auxiliary column open. */
   onReturnToMain?: () => void;
   /** Current auxiliary mode — needed to decide which trailing slot to
@@ -81,8 +76,7 @@ export function WindowChrome({
     !sidebarOpen && !sidebarPeeking
       ? resolveCollapsedSidebarToggleActivity(hasUnreadCompletion)
       : null;
-  const showCollapsedActions =
-    !titleExtrasHidden && !sidebarOpen && page !== "settings";
+  const showCollapsedActions = !titleExtrasHidden && !sidebarOpen;
   const showProductLockup =
     !titleExtrasHidden && (sidebarOpen || sidebarPeeking);
   const auxiliaryPrimary = auxiliaryMode === "primary-overlay";
@@ -95,23 +89,21 @@ export function WindowChrome({
       onDoubleClick={onDoubleClickTitleBar}
     >
       <div className="title-left window-chrome-leading">
-        {page !== "settings" ? (
-          <button
-            type="button"
-            className="title-sidebar-toggle window-chrome-control"
-            onClick={onToggleSidebar}
-            onPointerEnter={onSidebarTogglePointerEnter}
-            onPointerLeave={onSidebarTogglePointerLeave}
-            title={sidebarOpen ? "收起左侧边栏" : "展开左侧边栏"}
-            aria-label="切换左侧边栏"
-          >
-            {sidebarOpen ? <Columns2 size={16} /> : <PanelLeft size={16} />}
-            <SidebarActivityIndicator
-              status={collapsedSidebarActivity}
-              className="title-sidebar-activity"
-            />
-          </button>
-        ) : null}
+        <button
+          type="button"
+          className="title-sidebar-toggle window-chrome-control"
+          onClick={onToggleSidebar}
+          onPointerEnter={onSidebarTogglePointerEnter}
+          onPointerLeave={onSidebarTogglePointerLeave}
+          title={sidebarOpen ? "收起左侧边栏" : "展开左侧边栏"}
+          aria-label="切换左侧边栏"
+        >
+          {sidebarOpen ? <Columns2 size={16} /> : <PanelLeft size={16} />}
+          <SidebarActivityIndicator
+            status={collapsedSidebarActivity}
+            className="title-sidebar-activity"
+          />
+        </button>
         {showReturnToMain ? (
           <button
             type="button"
@@ -163,24 +155,6 @@ export function WindowChrome({
       </div>
       {isMacOS ? null : (
         <div className="title-right window-chrome-trailing">
-          {/* Windows-specific: when the auxiliary has expanded to the main
-              view (`primary-overlay` mode), surface a "contract" button in
-              the trailing controls. The same command also lives in
-              AuxiliaryHeader for macOS users; on Windows we mirror
-              it here so users don't have to reach into the auxiliary
-              chrome to dismiss the overlay. */}
-          {auxiliaryPrimary && onToggleAuxiliaryPrimary ? (
-            <button
-              type="button"
-              className="title-action title-action--auxiliary-contract window-chrome-control"
-              onClick={onToggleAuxiliaryPrimary}
-              disabled={auxiliarySwitching}
-              aria-label="收回辅助区至右栏"
-              title="收回辅助区至右栏"
-            >
-              <Minimize2 size={15} />
-            </button>
-          ) : null}
           <div className="window-actions window-caption-controls">
             <button
               type="button"
@@ -208,16 +182,27 @@ export function WindowChrome({
         </div>
       )}
       {page === "chat" ? (
-        <button
-          className="thread-inspector-toggle window-chrome-control"
-          type="button"
-          onClick={onToggleAuxiliary}
-          disabled={auxiliarySwitching}
-          title={auxiliaryOpen ? "收起侧栏" : "展开侧栏"}
-          aria-label={auxiliaryOpen ? "收起侧栏" : "展开侧栏"}
-        >
-          {auxiliaryOpen ? <Columns2 size={15} /> : <PanelRight size={15} />}
-        </button>
+        <div className="titlebar-context-actions">
+          <div
+            id="auxiliary-primary-titlebar-slot"
+            className="auxiliary-primary-titlebar-slot"
+          />
+          <div
+            id="thread-summary-titlebar-slot"
+            className="thread-summary-titlebar-slot"
+          />
+          <button
+            className={`thread-inspector-toggle window-chrome-control${auxiliaryOpen ? " is-active" : ""}`}
+            type="button"
+            onClick={onToggleAuxiliary}
+            disabled={auxiliarySwitching}
+            title={auxiliaryOpen ? "收起侧栏" : "展开侧栏"}
+            aria-label={auxiliaryOpen ? "收起侧栏" : "展开侧栏"}
+            aria-pressed={auxiliaryOpen}
+          >
+            {auxiliaryOpen ? <Columns2 size={15} /> : <PanelRight size={15} />}
+          </button>
+        </div>
       ) : null}
     </header>
   );

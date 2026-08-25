@@ -79,9 +79,22 @@
 
 .thread-summary-toggle:hover,
 .thread-summary-toggle:focus-visible,
+.thread-summary-toggle[aria-pressed="true"],
 .thread-summary-toggle.is-active {
   background: var(--raised-2);
   color: var(--text-1);
+}
+
+.thread-summary-toggle:focus-visible {
+  outline: 1px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.thread-summary-toggle:disabled {
+  background: transparent;
+  color: var(--text-3);
+  cursor: var(--cursor-disabled);
+  opacity: 0.45;
 }
 
 :root.platform-darwin .chat-header button {
@@ -127,11 +140,15 @@
 
 /* WindowChrome owns the right-most caption controls and auxiliary toggle.
    Reserve that native title-track area for conversation-header actions. */
-.platform-windows.auxiliary-closed .workspace-view-chat > .chat-header {
+.platform-windows .workspace-view-chat > .chat-header {
   padding-right: calc(
     var(--windows-caption-controls-width) +
-      var(--windows-auxiliary-control-width) + var(--space-3)
+      var(--windows-auxiliary-control-width) + 28px + 30px + var(--space-5)
   );
+}
+
+.platform-macos .chat-page > .chat-header {
+  padding-right: 112px;
 }
 
 .messages-scroll {
@@ -163,8 +180,7 @@
 .chat-page.task-context-docked .messages-inner,
 .chat-page.task-context-docked .composer-steer-stack,
 .chat-page.task-context-docked .composer-task-progress-anchor,
-.chat-page.task-context-docked .composer-permission-slot,
-.chat-page.task-context-docked .empty-composer-prompt {
+.chat-page.task-context-docked .composer-permission-slot {
   transform: translateX(var(--task-context-shift));
   transition: transform var(--motion-normal) var(--ease);
 }
@@ -207,7 +223,7 @@
 }
 
 .chat-page-empty {
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 .chat-page-empty .messages-scroll {
@@ -215,14 +231,18 @@
 }
 
 .empty-composer-prompt {
-  width: min(100%, var(--chat-max-width));
-  margin: auto auto 28px;
-  padding: 0 var(--space-8);
+  width: 100%;
+  margin: 0;
+  padding: 0 var(--space-3);
   color: var(--text-1);
+  overflow: hidden;
   font-size: 28px;
   font-weight: 600;
+  letter-spacing: 0;
   line-height: 1.2;
   text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebar-collapsed .chat-header::before {
@@ -335,8 +355,8 @@
   }
 
   .empty-composer-prompt {
-    margin-bottom: var(--space-5);
     padding-inline: var(--space-4);
     font-size: var(--text-2xl);
+    white-space: normal;
   }
 }

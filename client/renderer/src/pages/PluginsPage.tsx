@@ -3,9 +3,11 @@ import { Package, PlugZap } from "lucide-react";
 import { SkillMarketplaceView } from "@/components/skills";
 import { McpServersPanel } from "@/components/mcp";
 
-type PluginsTab = "skills" | "mcp";
+export type PluginsTab = "skills" | "mcp";
 
 interface PluginsViewProps {
+  tab?: PluginsTab;
+  onTabChange?: (tab: PluginsTab) => void;
   onClose?: () => void;
 }
 
@@ -30,8 +32,17 @@ const TABS: Array<{
  * 插件中心：统一管理 Skills（市场/已安装）与 MCP 服务。
  * 页面级 Tab 导航：顶部按钮式切换。
  */
-export function PluginsView({ onClose }: PluginsViewProps) {
-  const [tab, setTab] = useState<PluginsTab>("skills");
+export function PluginsView({
+  tab: controlledTab,
+  onTabChange,
+  onClose,
+}: PluginsViewProps) {
+  const [internalTab, setInternalTab] = useState<PluginsTab>("skills");
+  const tab = controlledTab ?? internalTab;
+  const setTab = (nextTab: PluginsTab) => {
+    setInternalTab(nextTab);
+    onTabChange?.(nextTab);
+  };
 
   return (
     <div data-testid="plugins-page" className="plugins-page" aria-label="插件">

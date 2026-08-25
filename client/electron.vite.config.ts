@@ -84,7 +84,7 @@ export default defineConfig(({ command }) => {
   return {
     main: {
       define: defineEntries,
-      plugins: [externalizeDepsPlugin()],
+      plugins: [externalizeDepsPlugin({ exclude: ["fflate"] })],
       build: {
         rollupOptions: {
           input: resolve(__here, "main/index.ts"),

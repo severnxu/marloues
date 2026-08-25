@@ -8,9 +8,8 @@
 //   - WorkbenchViewHost.tsx (page routing)
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { SettingsDialog } from "@/components/settings/SettingsDialog";
-import type { SettingsSection } from "@/components/settings/types";
-import { PluginsView } from "@/pages/PluginsPage";
+import { SettingsPage } from "@/components/settings/SettingsPage";
+import { PluginsView, type PluginsTab } from "@/pages/PluginsPage";
 import { SchedulePage } from "@/pages/SchedulePage";
 import {
   getAuxiliarySessionScope,
@@ -20,7 +19,7 @@ import { GlobalSearchOverlay } from "./overlays/GlobalSearchOverlay";
 import { PrimarySidebar } from "./primary-sidebar";
 import type { Page } from "./types";
 import { useInspectorStore } from "@/stores/inspector-store";
-import { useSettingsDialogStore } from "@/stores/settings-dialog-store";
+import { useSettingsPageStore } from "@/stores/settings-page-store";
 import { useUnifiedChatStore } from "@/stores/unified-chat-store";
 import type { ThemeMode } from "@/stores/theme-store";
 import type { PermissionDialogRequest } from "@shared/types";
@@ -49,8 +48,6 @@ import { CREATE_NEW_SESSION_EVENT, OPEN_GLOBAL_SEARCH_EVENT } from "./events";
 export function WorkbenchRoot({
   page,
   onPage,
-  settingsSection,
-  onSettingsSection,
   isDark,
   themeMode,
   onToggleTheme,
@@ -60,8 +57,6 @@ export function WorkbenchRoot({
 }: {
   page: Page;
   onPage: (page: Page) => void;
-  settingsSection: SettingsSection;
-  onSettingsSection: (section: SettingsSection) => void;
   isDark: boolean;
   themeMode: ThemeMode;
   onToggleTheme: () => void;
@@ -91,6 +86,7 @@ export function WorkbenchRoot({
   } = useWorkbenchTransitions(layout, activeSessionId);
 
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [pluginsTab, setPluginsTab] = useState<PluginsTab>("skills");
   const [isMaximized, setIsMaximized] = useState(false);
   const createSession = useUnifiedChatStore((s) => s.createSession);
   const setActiveSession = useUnifiedChatStore((s) => s.setActiveSession);
@@ -210,8 +206,6 @@ export function WorkbenchRoot({
   );
   const isMacOS = platform === "macos";
   const reviewAcceptance = readReviewAcceptanceMode();
-  const settingsPage = page === "settings";
-
   // ---- Derived layout values ---------------------------------------------
   const auxiliaryScope = getAuxiliarySessionScope(activeSessionId);
   const auxiliaryOpen = isAuxiliaryOpenForSession(
@@ -223,11 +217,10 @@ export function WorkbenchRoot({
     state.auxiliaryPrimaryOverlay,
   );
   const effectiveAuxiliaryMode = page === "chat" ? auxiliaryMode : "closed";
-  const sidebarVisible = state.primaryOpen || settingsPage;
-  const leftResizable = state.primaryOpen && !settingsPage;
-  const sidebarFloating =
-    !state.primaryOpen && !settingsPage && state.primaryPeeking;
-  const sidebarIsCollapsed = !state.primaryOpen && !settingsPage;
+  const sidebarVisible = state.primaryOpen;
+  const leftResizable = state.primaryOpen;
+  const sidebarFloating = !state.primaryOpen && state.primaryPeeking;
+  const sidebarIsCollapsed = !state.primaryOpen;
   const hideTitleBarExtras =
     effectiveAuxiliaryMode === "primary-overlay" && sidebarIsCollapsed;
   // Quick pages temporarily close the visible auxiliary column, but the
@@ -243,8 +236,12 @@ export function WorkbenchRoot({
     [state.auxiliaryWidth, state.primaryWidth],
   );
 
-  // ---- OPEN_SETTINGS dialog shortcut via GlobalSearchOverlay --------------
-  const openSettingsDialog = useSettingsDialogStore((s) => s.openSection);
+  // ---- OPEN_SETTINGS shortcut via GlobalSearchOverlay ---------------------
+  const openSettingsPage = useSettingsPageStore((s) => s.openSection);
+  const openPluginsPage = (tab: PluginsTab) => {
+    setPluginsTab(tab);
+    onPage("plugins");
+  };
 
   // The macOS vs standard WindowChrome variants only differ by a positioning
   // Props are identical across platforms, so the chrome is rendered once.
@@ -267,9 +264,6 @@ export function WorkbenchRoot({
       onToggleAuxiliary={toggleAuxiliary}
       auxiliaryMode={effectiveAuxiliaryMode}
       auxiliarySwitching={auxiliarySwitching}
-      // Windows mirrors the contract action in the trailing title-bar controls.
-      // macOS keeps that action in AuxiliaryHeader.
-      onToggleAuxiliaryPrimary={isMacOS ? undefined : toggleAuxiliaryPrimary}
       onReturnToMain={toggleAuxiliaryPrimary}
       isMacOS={isMacOS}
       onDoubleClickTitleBar={isMacOS ? undefined : handleDoubleClickTitleBar}
@@ -289,7 +283,7 @@ export function WorkbenchRoot({
       style={shellStyle}
     >
       {windowChrome}
-      <WorkbenchLayout settingsPage={settingsPage}>
+      <WorkbenchLayout>
         <PrimarySidebarShell
           open={sidebarVisible}
           peeking={sidebarFloating}
@@ -304,8 +298,6 @@ export function WorkbenchRoot({
             page={page}
             onPage={onPage}
             isMacOS={isMacOS}
-            settingsSection={settingsSection}
-            onSettingsSection={onSettingsSection}
             pendingPermissionSessionIds={pendingPermissionSessionIds}
           />
         </PrimarySidebarShell>
@@ -321,14 +313,9 @@ export function WorkbenchRoot({
             layout.contentFrameRef.current = node;
           }}
         >
-          <MainWorkspaceShell
-            settingsPage={settingsPage}
-            obscured={auxiliaryMode === "primary-overlay"}
-          >
+          <MainWorkspaceShell obscured={auxiliaryMode === "primary-overlay"}>
             <WorkbenchViewHost
               page={page}
-              settingsSection={settingsSection}
-              onSettingsSection={onSettingsSection}
               isMacOS={isMacOS}
               sidebarOpen={state.primaryOpen}
               hideChatTitle={hideChatTitle}
@@ -362,7 +349,11 @@ export function WorkbenchRoot({
             active={page === "plugins"}
             className="quick-page-overlay-host plugins-page-host"
           >
-            <PluginsView onClose={() => onPage("chat")} />
+            <PluginsView
+              tab={pluginsTab}
+              onTabChange={setPluginsTab}
+              onClose={() => onPage("chat")}
+            />
           </KeepAliveWorkbenchView>
         </WorkbenchMainColumns>
       </WorkbenchLayout>
@@ -372,10 +363,11 @@ export function WorkbenchRoot({
           open={globalSearchOpen}
           onClose={() => setGlobalSearchOpen(false)}
           onPage={onPage}
-          onOpenSettings={openSettingsDialog}
+          onOpenSettings={openSettingsPage}
+          onOpenPlugins={openPluginsPage}
         />
       </WorkbenchOverlayHost>
-      <SettingsDialog />
+      <SettingsPage />
     </PlatformWindow>
   );
 }

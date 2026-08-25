@@ -3,7 +3,7 @@ import { ArrowRight, Check, FolderOpen, Settings } from "lucide-react";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
-import { useSettingsDialogStore } from "@/stores/settings-dialog-store";
+import { useSettingsPageStore } from "@/stores/settings-page-store";
 
 /**
  * Full-screen onboarding view shown when the user has not yet selected a
@@ -26,7 +26,7 @@ export function OnboardingView() {
   const workspace = useWorkspaceStore((state) => state.current);
   const selectWorkspace = useWorkspaceStore((state) => state.select);
 
-  const openSettingsSection = useSettingsDialogStore(
+  const openSettingsSection = useSettingsPageStore(
     (state) => state.openSection,
   );
 

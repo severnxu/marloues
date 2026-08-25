@@ -34,6 +34,7 @@ export const CONVERSATION_ICONS = {
   },
   summary: {
     changes: ListChecks,
+    outputContent: FileText,
     workspace: Laptop,
     branch: GitBranch,
     model: Network,

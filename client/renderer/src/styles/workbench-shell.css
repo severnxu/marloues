@@ -21,6 +21,30 @@
   pointer-events: none;
 }
 
+.settings-page-open .window-chrome {
+  z-index: 260;
+  pointer-events: none;
+  -webkit-app-region: no-drag;
+}
+
+.settings-page-open .window-chrome-trailing,
+.settings-page-open .window-caption-controls,
+.settings-page-open .window-caption-controls * {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+}
+
+.platform-windows.settings-page-open .window-chrome-trailing {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: var(--windows-caption-controls-width);
+  height: var(--workbench-titlebar-height);
+  justify-content: flex-end;
+}
+
 .platform-windows .window-chrome::after {
   position: absolute;
   right: 0;

@@ -3,7 +3,7 @@
 .thread-summary-panel {
   position: absolute;
   z-index: 35;
-  top: 12px;
+  top: 10px;
   right: 16px;
   bottom: calc(var(--interaction-dock-safe-area) + 4px);
   display: flex;
@@ -12,6 +12,7 @@
   min-height: 0;
   flex-direction: column;
   overflow: hidden;
+  border: 1px solid var(--border-subtle);
   border-radius: var(--task-context-radius);
   background: var(--task-context-surface);
   box-shadow: var(--task-context-shadow);
@@ -20,16 +21,30 @@
 }
 
 .chat-page.has-inline-header .thread-summary-panel {
-  top: calc(var(--titlebar-height) + 12px);
+  top: calc(var(--titlebar-height) + 10px);
 }
 
 .thread-summary-panel.is-docked {
+  right: 16px;
+  bottom: calc(var(--interaction-dock-safe-area) + 4px);
   box-shadow: var(--shadow-md);
 }
 
 .thread-summary-panel.is-floating {
   z-index: 55;
+  top: 10px;
+  right: 12px;
+  bottom: auto;
+  max-height: min(
+    var(--task-context-max-height),
+    calc(100dvh - var(--titlebar-height) - 28px)
+  );
+  border-radius: calc(var(--control-radius) + 6px);
   box-shadow: var(--shadow-lg);
+}
+
+.chat-page.has-inline-header .thread-summary-panel.is-floating {
+  top: calc(var(--titlebar-height) + 8px);
 }
 
 .thread-summary-panel-scroll {

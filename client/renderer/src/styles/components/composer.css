@@ -31,7 +31,28 @@
 }
 
 .chat-page-empty .composer-wrap {
+  top: 50%;
+  right: auto;
+  bottom: auto;
+  left: 50%;
+  width: min(var(--chat-max-width), calc(100% - 64px));
   margin: 0;
+  padding: 0;
+  transform: translate(-50%, -50%);
+}
+
+.chat-page-empty .composer-wrap::before {
+  display: none;
+}
+
+.composer-empty-header {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 24px);
+  left: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
 }
 
 .composer-steer-stack {

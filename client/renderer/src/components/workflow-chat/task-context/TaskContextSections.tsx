@@ -23,13 +23,26 @@ export function WorkspaceContextSection({
   onRefresh: () => void;
 }) {
   const workspace = model.workspace;
-  if (!workspace) return null;
-  const git = workspace.git;
+  const git = workspace?.git;
+  const showGitRow = gitLoading || Boolean(git);
+  const gitRowLabel = git?.isRepository ? "分支" : "Git";
+  const gitDetail = gitLoading
+    ? "检测中"
+    : git?.isRepository
+      ? git.branch || "未检测到分支"
+      : "未初始化";
+  const branchSyncDetail =
+    git?.isRepository && (git.ahead || git.behind)
+      ? `${git.ahead ? `↑${git.ahead}` : ""}${
+          git.ahead && git.behind ? " " : ""
+        }${git.behind ? `↓${git.behind}` : ""}`
+      : undefined;
+  const showChanges = Boolean(model.changes || git?.isRepository);
   return (
     <ThreadSummarySection
       sectionKey="workspace"
       sessionId={sessionId}
-      title={workspace.name}
+      title={workspace?.name ?? "工作区"}
       after={
         <button
           type="button"
@@ -46,45 +59,48 @@ export function WorkspaceContextSection({
         </button>
       }
     >
-      {model.changes ? (
+      {showChanges ? (
         <button
           type="button"
           className="task-context-row task-context-change-row"
           onClick={onOpenChanges}
-          disabled={!onOpenChanges}
+          disabled={!model.changes?.reviewTarget || !onOpenChanges}
         >
           <SUMMARY_ICONS.changes
             size={15}
             data-icon-contract="summary-changes"
           />
           <span>变更</span>
-          <ChangeStats changes={model.changes} />
+          {model.changes ? (
+            <ChangeStats changes={model.changes} />
+          ) : (
+            <small className="task-context-row-detail">无变更</small>
+          )}
         </button>
       ) : null}
-      <button
-        type="button"
-        className="task-context-row"
-        onClick={onOpenWorkspace}
-        title={workspace.path}
-      >
-        <SUMMARY_ICONS.workspace
-          size={15}
-          data-icon-contract="summary-workspace"
-        />
-        <span>本地</span>
-        <small className="task-context-row-detail">{workspace.path}</small>
-      </button>
-      {git?.branch ? (
-        <div className="task-context-row" title={git.upstream}>
+      {workspace ? (
+        <button
+          type="button"
+          className="task-context-row"
+          onClick={onOpenWorkspace}
+          title={workspace.path}
+        >
+          <SUMMARY_ICONS.workspace
+            size={15}
+            data-icon-contract="summary-workspace"
+          />
+          <span>本地</span>
+          <small className="task-context-row-detail">{workspace.path}</small>
+        </button>
+      ) : null}
+      {showGitRow ? (
+        <div className="task-context-row" title={git?.upstream}>
           <SUMMARY_ICONS.branch size={15} data-icon-contract="summary-branch" />
-          <span>{git.branch}</span>
-          {git.ahead || git.behind ? (
-            <small className="task-context-row-detail">
-              {git.ahead ? `↑${git.ahead}` : ""}
-              {git.ahead && git.behind ? " " : ""}
-              {git.behind ? `↓${git.behind}` : ""}
-            </small>
-          ) : null}
+          <span>{gitRowLabel}</span>
+          <small className="task-context-row-detail">
+            {gitDetail}
+            {branchSyncDetail ? ` ${branchSyncDetail}` : ""}
+          </small>
         </div>
       ) : null}
       {model.modelName ? (
@@ -150,6 +166,41 @@ export function TaskProgressSection({
             </div>
           );
         }}
+      />
+    </ThreadSummarySection>
+  );
+}
+
+export function OutputContentSection({
+  sessionId,
+  outputContent,
+}: {
+  sessionId: string | null;
+  outputContent: TaskPresentationModel["outputContent"];
+}) {
+  if (!outputContent.length) return null;
+  return (
+    <ThreadSummarySection
+      sectionKey="output-content"
+      sessionId={sessionId}
+      title="输出内容"
+      count={outputContent.length}
+    >
+      <ThreadSummaryExpandableList
+        items={outputContent}
+        scopeKey={`${sessionId ?? "none"}:output-content`}
+        ariaLabel="输出内容"
+        getKey={(item) => item.id}
+        renderItem={(item) => (
+          <div className="task-context-row" title={item.detail}>
+            <SUMMARY_ICONS.outputContent
+              size={15}
+              data-icon-contract="summary-output-content"
+            />
+            <span>{item.label}</span>
+            <small className="task-context-row-detail">{item.detail}</small>
+          </div>
+        )}
       />
     </ThreadSummarySection>
   );

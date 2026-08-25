@@ -50,6 +50,7 @@ export function TaskContextFixturePage() {
           <h2>这次包含的内容</h2>
           <ul>
             <li>工作区、分支、变更与运行权限</li>
+            <li>本轮 agent 回复对应的输出内容</li>
             <li>当前任务进度和仍在运行的后台命令</li>
             <li>网页搜索与 MCP 等本轮来源</li>
           </ul>
@@ -65,14 +66,14 @@ export function TaskContextFixturePage() {
 function fixtureModel(hasData: boolean): TaskPresentationModel {
   return {
     sessionId: hasData ? "fixture-session" : "empty-session",
-    hasData,
-    workspace: hasData
-      ? {
-          id: "fixture-workspace",
-          name: "marloues",
-          path: "C:\\workspace\\marloues",
-          lastOpenedAt: Date.now(),
-          git: {
+    hasData: true,
+    workspace: {
+      id: "fixture-workspace",
+      name: hasData ? "marloues" : "tmp",
+      path: hasData ? "C:\\workspace\\marloues" : "C:\\tmp",
+      lastOpenedAt: Date.now(),
+      git: hasData
+        ? {
             isRepository: true,
             branch: "codex/task-context",
             upstream: "origin/codex/task-context",
@@ -81,9 +82,16 @@ function fixtureModel(hasData: boolean): TaskPresentationModel {
             changedFiles: 8,
             insertions: 523,
             deletions: 41,
+          }
+        : {
+            isRepository: false,
+            ahead: 0,
+            behind: 0,
+            changedFiles: 0,
+            insertions: 0,
+            deletions: 0,
           },
-        }
-      : null,
+    },
     changes: hasData
       ? {
           filesChanged: 8,
@@ -94,6 +102,16 @@ function fixtureModel(hasData: boolean): TaskPresentationModel {
       : null,
     modelName: hasData ? "Marloues 5.6" : undefined,
     permissionMode: hasData ? "bypassPermissions" : undefined,
+    outputContent: hasData
+      ? [
+          {
+            id: "agent-reply",
+            label: "最终回复",
+            detail:
+              "已完成摘要按钮布局修正，并保留展开时辅助区按钮的原有逻辑。",
+          },
+        ]
+      : [],
     tasks: hasData
       ? [
           {

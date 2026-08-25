@@ -734,13 +734,6 @@ export function WorkflowChatPage({
         visible={!isEmpty && !isAtBottom}
         onClick={() => scrollToBottom("smooth")}
       />
-      {isEmpty ? (
-        <h1 className="empty-composer-prompt">
-          {workspace?.path
-            ? `我们应该在 ${promptWorkspaceName} 中构建什么？`
-            : "请先选择工作区目录"}
-        </h1>
-      ) : null}
       {activePlanImplementationPrompt && !activeSessionIsStreaming ? (
         <PlanImplementationPromptCard
           planText={activePlanImplementationPrompt.planText}
@@ -760,6 +753,15 @@ export function WorkflowChatPage({
               request={permissionRequest}
               onRespond={onPermissionRespond}
             />
+          ) : undefined
+        }
+        emptyHeader={
+          isEmpty ? (
+            <h1 className="empty-composer-prompt" title={workspace?.path}>
+              {workspace?.path
+                ? `你想让我们在 ${promptWorkspaceName} 中构建什么？`
+                : "我们要构建什么？"}
+            </h1>
           ) : undefined
         }
         taskProgress={

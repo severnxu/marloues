@@ -41,6 +41,7 @@ export function WorkflowComposerShell({
   onStop,
   onAccessLevelChange,
   permissionPanel,
+  emptyHeader,
   modelControl,
   placeholder = CONVERSATION_PAGE_CONTRACT.composer.placeholder,
   slashCommands,
@@ -360,6 +361,9 @@ export function WorkflowComposerShell({
 
   return (
     <div ref={dockRef} className="composer-wrap">
+      {emptyHeader ? (
+        <div className="composer-empty-header">{emptyHeader}</div>
+      ) : null}
       {hasPermissionPanel ? (
         <div className="composer-permission-slot">{permissionPanel}</div>
       ) : (

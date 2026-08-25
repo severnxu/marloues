@@ -1,1 +1,1 @@
-export type Page = "chat" | "settings" | "schedules" | "plugins";
+export type Page = "chat" | "schedules" | "plugins";

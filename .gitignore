@@ -34,14 +34,25 @@ playwright/.cache/
 
 # Native build temp
 build/
+!client/build/
+!client/build/icon.ico
+!client/build/icon.png
+client/release2/
+client/release-tray-fix/
 
 # Packages
 *.tgz
 
 # Recordings / screenshots
 recordings/
+e2e-settings-*.png
+electron-settings-*.png
 
 # Audit browser profiles (transient)
 .codex-*audit*/
 
 # UI migration analysis scratch.ui-revamp-analysis/
+
+# Runtime analysis scratch directories
+.runtime-analysis/Mini-Agent/
+.runtime-analysis/openai-codex/

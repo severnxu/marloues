@@ -3,20 +3,8 @@ import type { AuxiliaryMode } from "./layout-model";
 
 type RegionRef = (node: HTMLDivElement | null) => void;
 
-export function WorkbenchLayout({
-  settingsPage = false,
-  children,
-}: {
-  settingsPage?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <div
-      className={`workspace workbench-layout ${settingsPage ? "settings-paper-workspace" : ""}`}
-    >
-      {children}
-    </div>
-  );
+export function WorkbenchLayout({ children }: { children: ReactNode }) {
+  return <div className="workspace workbench-layout">{children}</div>;
 }
 
 export function PrimarySidebarShell({
@@ -80,11 +68,9 @@ export function WorkbenchOverlayHost({ children }: { children: ReactNode }) {
 }
 
 export function MainWorkspaceShell({
-  settingsPage,
   obscured = false,
   children,
 }: {
-  settingsPage: boolean;
   obscured?: boolean;
   children: ReactNode;
 }) {
@@ -93,7 +79,7 @@ export function MainWorkspaceShell({
       ref={(node) => {
         if (node) node.inert = obscured;
       }}
-      className={`main-panel main-workspace ${settingsPage ? "settings-paper-main" : ""}`}
+      className="main-panel main-workspace"
       aria-hidden={obscured || undefined}
     >
       <div className="content-frame">{children}</div>

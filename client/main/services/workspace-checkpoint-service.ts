@@ -1,9 +1,13 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import type { ChatRewindResult } from "@shared/types";
+import type { ChatRewindResult, WorkspaceGitContext } from "@shared/types";
 import { logWarn } from "../core/logging/app-logger";
 import { getStateDb } from "../core/storage/state-db";
-import { recordSessionArtifact, recordWorkspaceCheckpoint, recordWorkspaceFileChange } from "./session-store";
+import {
+  recordSessionArtifact,
+  recordWorkspaceCheckpoint,
+  recordWorkspaceFileChange,
+} from "./session-store";
 
 const execFileAsync = promisify(execFile);
 
@@ -21,6 +25,66 @@ interface WorkspaceFileChangeRow {
 
 interface SessionArtifactRow {
   content_text: string | null;
+}
+
+export async function readWorkspaceGitContext(
+  workspacePath: string,
+): Promise<WorkspaceGitContext> {
+  const gitRoot = await runGit(workspacePath, ["rev-parse", "--show-toplevel"])
+    .then((value) => value.trim())
+    .catch(() => "");
+  if (!gitRoot) return emptyGitContext(false);
+
+  const status = await runGit(workspacePath, [
+    "status",
+    "--porcelain=v1",
+    "-z",
+  ]).catch(() => "");
+  const branch =
+    (await runGit(workspacePath, ["branch", "--show-current"])
+      .then((value) => value.trim())
+      .catch(() => "")) ||
+    (await runGit(workspacePath, ["rev-parse", "--abbrev-ref", "HEAD"])
+      .then((value) => value.trim())
+      .catch(() => ""));
+  const upstream = await runGit(workspacePath, [
+    "rev-parse",
+    "--abbrev-ref",
+    "--symbolic-full-name",
+    "@{u}",
+  ])
+    .then((value) => value.trim())
+    .catch(() => undefined);
+  const sync = upstream
+    ? await runGit(workspacePath, [
+        "rev-list",
+        "--left-right",
+        "--count",
+        "HEAD...@{u}",
+      ])
+        .then(parseAheadBehind)
+        .catch(() => ({ ahead: 0, behind: 0 }))
+    : { ahead: 0, behind: 0 };
+  const lineStats = await runGit(workspacePath, [
+    "diff",
+    "--numstat",
+    "HEAD",
+    "--",
+    ".",
+  ])
+    .then(parseNumstat)
+    .catch(() => ({ insertions: 0, deletions: 0 }));
+
+  return {
+    isRepository: true,
+    branch: branch && branch !== "HEAD" ? branch : undefined,
+    upstream,
+    ahead: sync.ahead,
+    behind: sync.behind,
+    changedFiles: parsePorcelainStatus(status).length,
+    insertions: lineStats.insertions,
+    deletions: lineStats.deletions,
+  };
 }
 
 export async function captureWorkspaceCheckpoint(params: {
@@ -97,7 +161,9 @@ export async function captureWorkspaceCheckpoint(params: {
         workspacePath: params.workspacePath,
         phase: params.phase,
         status: "error",
-        manifest: { error: error instanceof Error ? error.message : String(error) },
+        manifest: {
+          error: error instanceof Error ? error.message : String(error),
+        },
         createdAt: Date.now(),
         completedAt: Date.now(),
       });
@@ -106,7 +172,10 @@ export async function captureWorkspaceCheckpoint(params: {
         sessionId: params.sessionId,
         turnId: params.turnId,
         phase: params.phase,
-        error: recordError instanceof Error ? recordError.message : String(recordError),
+        error:
+          recordError instanceof Error
+            ? recordError.message
+            : String(recordError),
       });
       return null;
     }
@@ -117,7 +186,10 @@ export function previewWorkspaceRewind(params: {
   sessionId: string;
   targetMessageId: string;
 }): ChatRewindResult {
-  const checkpoint = findTurnStartCheckpoint(params.sessionId, params.targetMessageId);
+  const checkpoint = findTurnStartCheckpoint(
+    params.sessionId,
+    params.targetMessageId,
+  );
   if (!checkpoint?.workspace_path) {
     return {
       canRewind: false,
@@ -125,7 +197,9 @@ export function previewWorkspaceRewind(params: {
       filesChanged: [],
     };
   }
-  const filesChanged = findCheckpointFiles(checkpoint.id).map((file) => file.path);
+  const filesChanged = findCheckpointFiles(checkpoint.id).map(
+    (file) => file.path,
+  );
   return {
     canRewind: true,
     filesChanged: unique(filesChanged),
@@ -146,7 +220,10 @@ export async function applyWorkspaceRewind(params: {
   const preview = previewWorkspaceRewind(params);
   if (!preview.canRewind) return preview;
 
-  const checkpoint = findTurnStartCheckpoint(params.sessionId, params.targetMessageId);
+  const checkpoint = findTurnStartCheckpoint(
+    params.sessionId,
+    params.targetMessageId,
+  );
   if (!checkpoint?.workspace_path) return preview;
 
   const confirmedFiles = unique(params.confirmedFiles);
@@ -159,7 +236,9 @@ export async function applyWorkspaceRewind(params: {
   }
 
   const allowedFiles = new Set(preview.filesChanged ?? []);
-  const outsideCheckpoint = confirmedFiles.filter((file) => !allowedFiles.has(file));
+  const outsideCheckpoint = confirmedFiles.filter(
+    (file) => !allowedFiles.has(file),
+  );
   if (outsideCheckpoint.length) {
     return {
       ...preview,
@@ -177,7 +256,9 @@ export async function applyWorkspaceRewind(params: {
     };
   }
 
-  const currentUntracked = currentSnapshot.files.filter((file) => file.status === "??").map((file) => file.path);
+  const currentUntracked = currentSnapshot.files
+    .filter((file) => file.status === "??")
+    .map((file) => file.path);
   if (currentUntracked.length) {
     return {
       ...preview,
@@ -190,10 +271,16 @@ export async function applyWorkspaceRewind(params: {
   const targetDiff = readCheckpointDiff(checkpoint.id);
   const appliedFiles: string[] = [];
   for (const filePath of confirmedFiles) {
-    const currentPatch = await runGit(checkpoint.workspace_path, ["diff", "--", filePath]).catch(() => "");
+    const currentPatch = await runGit(checkpoint.workspace_path, [
+      "diff",
+      "--",
+      filePath,
+    ]).catch(() => "");
     const targetPatch = extractFilePatch(targetDiff, filePath);
 
-    const unsafePatch = [currentPatch, targetPatch].find((patch) => patch && patchHasUnsafeFileOperation(patch));
+    const unsafePatch = [currentPatch, targetPatch].find(
+      (patch) => patch && patchHasUnsafeFileOperation(patch),
+    );
     if (unsafePatch) {
       return {
         ...preview,
@@ -205,10 +292,18 @@ export async function applyWorkspaceRewind(params: {
 
     try {
       if (currentPatch.trim()) {
-        await gitApply(checkpoint.workspace_path, ["apply", "--check", "--reverse", "--whitespace=nowarn", "-"], currentPatch);
+        await gitApply(
+          checkpoint.workspace_path,
+          ["apply", "--check", "--reverse", "--whitespace=nowarn", "-"],
+          currentPatch,
+        );
       }
       if (targetPatch.trim()) {
-        await gitApply(checkpoint.workspace_path, ["apply", "--check", "--whitespace=nowarn", "-"], targetPatch);
+        await gitApply(
+          checkpoint.workspace_path,
+          ["apply", "--check", "--whitespace=nowarn", "-"],
+          targetPatch,
+        );
       }
     } catch (error) {
       return {
@@ -221,13 +316,25 @@ export async function applyWorkspaceRewind(params: {
   }
 
   for (const filePath of confirmedFiles) {
-    const currentPatch = await runGit(checkpoint.workspace_path, ["diff", "--", filePath]).catch(() => "");
+    const currentPatch = await runGit(checkpoint.workspace_path, [
+      "diff",
+      "--",
+      filePath,
+    ]).catch(() => "");
     const targetPatch = extractFilePatch(targetDiff, filePath);
     if (currentPatch.trim()) {
-      await gitApply(checkpoint.workspace_path, ["apply", "--reverse", "--whitespace=nowarn", "-"], currentPatch);
+      await gitApply(
+        checkpoint.workspace_path,
+        ["apply", "--reverse", "--whitespace=nowarn", "-"],
+        currentPatch,
+      );
     }
     if (targetPatch.trim()) {
-      await gitApply(checkpoint.workspace_path, ["apply", "--whitespace=nowarn", "-"], targetPatch);
+      await gitApply(
+        checkpoint.workspace_path,
+        ["apply", "--whitespace=nowarn", "-"],
+        targetPatch,
+      );
     }
     appliedFiles.push(filePath);
   }
@@ -267,7 +374,11 @@ async function readGitSnapshot(workspacePath: string): Promise<{
   const head = await runGit(workspacePath, ["rev-parse", "HEAD"])
     .then((value) => value.trim())
     .catch(() => undefined);
-  const status = await runGit(workspacePath, ["status", "--porcelain=v1", "-z"]).catch(() => "");
+  const status = await runGit(workspacePath, [
+    "status",
+    "--porcelain=v1",
+    "-z",
+  ]).catch(() => "");
   const diff = await runGit(workspacePath, ["diff", "--", "."]).catch(() => "");
   return {
     isGit: true,
@@ -287,7 +398,11 @@ async function runGit(cwd: string, args: string[]): Promise<string> {
   return stdout;
 }
 
-async function gitApply(cwd: string, args: string[], input: string): Promise<void> {
+async function gitApply(
+  cwd: string,
+  args: string[],
+  input: string,
+): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const child = execFile(
       "git",
@@ -309,7 +424,10 @@ async function gitApply(cwd: string, args: string[], input: string): Promise<voi
   });
 }
 
-function findTurnStartCheckpoint(sessionId: string, targetMessageId: string): WorkspaceCheckpointRow | null {
+function findTurnStartCheckpoint(
+  sessionId: string,
+  targetMessageId: string,
+): WorkspaceCheckpointRow | null {
   return (
     (getStateDb()
       .prepare(
@@ -321,7 +439,8 @@ function findTurnStartCheckpoint(sessionId: string, targetMessageId: string): Wo
         LIMIT 1
       `,
       )
-      .get(sessionId, targetMessageId) as WorkspaceCheckpointRow | undefined) ?? null
+      .get(sessionId, targetMessageId) as WorkspaceCheckpointRow | undefined) ??
+    null
   );
 }
 
@@ -338,11 +457,13 @@ function findCheckpointFiles(checkpointId: string): WorkspaceFileChangeRow[] {
 }
 
 function readCheckpointDiff(checkpointId: string): string {
-  const diffArtifactId = findCheckpointFiles(checkpointId).find((file) => file.diff_artifact_id)?.diff_artifact_id;
+  const diffArtifactId = findCheckpointFiles(checkpointId).find(
+    (file) => file.diff_artifact_id,
+  )?.diff_artifact_id;
   if (!diffArtifactId) return "";
-  const row = getStateDb().prepare("SELECT content_text FROM session_artifacts WHERE id = ?").get(diffArtifactId) as
-    | SessionArtifactRow
-    | undefined;
+  const row = getStateDb()
+    .prepare("SELECT content_text FROM session_artifacts WHERE id = ?")
+    .get(diffArtifactId) as SessionArtifactRow | undefined;
   return row?.content_text ?? "";
 }
 
@@ -368,7 +489,11 @@ function extractFilePatch(diff: string, filePath: string): string {
 
 function diffHeaderMatchesPath(header: string, filePath: string): boolean {
   const normalized = normalizeDiffPath(filePath);
-  return header.includes(` a/${normalized} `) || header.endsWith(` a/${normalized}`) || header.includes(` b/${normalized}`);
+  return (
+    header.includes(` a/${normalized} `) ||
+    header.endsWith(` a/${normalized}`) ||
+    header.includes(` b/${normalized}`)
+  );
 }
 
 function normalizeDiffPath(filePath: string): string {
@@ -376,10 +501,14 @@ function normalizeDiffPath(filePath: string): string {
 }
 
 function patchHasUnsafeFileOperation(patch: string): boolean {
-  return /^(new file mode|deleted file mode|rename from|rename to|copy from|copy to)\b/m.test(patch);
+  return /^(new file mode|deleted file mode|rename from|rename to|copy from|copy to)\b/m.test(
+    patch,
+  );
 }
 
-function parsePorcelainStatus(value: string): Array<{ path: string; status: string }> {
+function parsePorcelainStatus(
+  value: string,
+): Array<{ path: string; status: string }> {
   if (!value) return [];
   const parts = value.split("\0").filter(Boolean);
   const files: Array<{ path: string; status: string }> = [];
@@ -394,6 +523,41 @@ function parsePorcelainStatus(value: string): Array<{ path: string; status: stri
   return files;
 }
 
+function parseNumstat(value: string): {
+  insertions: number;
+  deletions: number;
+} {
+  const totals = { insertions: 0, deletions: 0 };
+  for (const line of value.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    const [added, removed] = line.split(/\s+/, 3);
+    totals.insertions += Number.parseInt(added, 10) || 0;
+    totals.deletions += Number.parseInt(removed, 10) || 0;
+  }
+  return totals;
+}
+
+function parseAheadBehind(value: string): { ahead: number; behind: number } {
+  const [ahead, behind] = value.trim().split(/\s+/, 2);
+  return {
+    ahead: Number.parseInt(ahead, 10) || 0,
+    behind: Number.parseInt(behind, 10) || 0,
+  };
+}
+
+function emptyGitContext(isRepository: boolean): WorkspaceGitContext {
+  return {
+    isRepository,
+    ahead: 0,
+    behind: 0,
+    changedFiles: 0,
+    insertions: 0,
+    deletions: 0,
+  };
+}
+
 function unique(values: string[]): string[] {
-  return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  return [...new Set(values.filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b),
+  );
 }

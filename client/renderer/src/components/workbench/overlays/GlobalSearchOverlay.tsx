@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import type { SettingsSection } from "@/components/settings/types";
+import type { PluginsTab } from "@/pages/PluginsPage";
 import type { Page } from "../types";
 import { useUnifiedChatStore } from "@/stores/unified-chat-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
@@ -32,11 +33,13 @@ export function GlobalSearchOverlay({
   onClose,
   onPage,
   onOpenSettings,
+  onOpenPlugins,
 }: {
   open: boolean;
   onClose: () => void;
   onPage: (page: Page) => void;
   onOpenSettings: (section: SettingsSection) => void;
+  onOpenPlugins: (tab: PluginsTab) => void;
 }) {
   const [query, setQuery] = useState("");
   const [allSessions, setAllSessions] = useState<ChatSessionRecord[]>([]);
@@ -192,17 +195,17 @@ export function GlobalSearchOverlay({
         icon: "provider",
       },
       {
-        id: "settings-mcp",
+        id: "plugins-mcp",
         title: "MCP",
         detail: "Server 与工具发现",
-        section: "mcp",
+        pluginTab: "mcp",
         icon: "mcp",
       },
       {
-        id: "settings-skills",
+        id: "plugins-skills",
         title: "Skills",
         detail: "本地技能、项目技能、企业技能",
-        section: "skills",
+        pluginTab: "skills",
         icon: "skill",
       },
       {
@@ -253,7 +256,7 @@ export function GlobalSearchOverlay({
         id: `mcp-server-${server.id}`,
         title: server.name || server.id || "未命名 MCP Server",
         detail: `${server.enabled ? "已启用" : "已停用"} · ${server.lastStatus ?? "未测试"}${server.lastError ? ` · ${server.lastError}` : ""}`,
-        section: "mcp" as const,
+        pluginTab: "mcp" as const,
         icon: "mcp" as const,
       }),
     );
@@ -261,7 +264,7 @@ export function GlobalSearchOverlay({
       id: `mcp-tool-${String(tool)}`,
       title: String(tool),
       detail: "MCP 工具",
-      section: "mcp" as const,
+      pluginTab: "mcp" as const,
       icon: "mcp" as const,
     }));
     return filterShortcuts([...serverItems, ...toolItems], normalizedQuery);
@@ -272,7 +275,7 @@ export function GlobalSearchOverlay({
       id: `skill-${skill.id}`,
       title: skill.name || skill.id || "未命名 Skill",
       detail: `${skill.enabled ? "已启用" : "已停用"} · ${skill.scope}${skill.description ? ` · ${skill.description}` : ""}`,
-      section: "skills",
+      pluginTab: "skills",
       icon: "skill",
     }));
     return filterShortcuts(items, normalizedQuery);
@@ -351,6 +354,8 @@ export function GlobalSearchOverlay({
   const handleShortcutPick = (shortcut: SearchShortcut) => {
     if (shortcut.page) {
       onPage(shortcut.page);
+    } else if (shortcut.pluginTab) {
+      onOpenPlugins(shortcut.pluginTab);
     } else if (shortcut.section) {
       onOpenSettings(shortcut.section);
     }
@@ -530,10 +535,12 @@ interface SearchShortcut {
   id: string;
   title: string;
   detail: string;
-  /** 设置分区入口（与 page 二选一） */
+  /** 设置分区入口（与 page/pluginTab 三选一） */
   section?: SettingsSection;
-  /** 页面级入口，例如插件中心（与 section 二选一） */
+  /** 页面级入口（与 section/pluginTab 三选一） */
   page?: Page;
+  /** 插件中心 tab 入口（与 section/page 三选一） */
+  pluginTab?: PluginsTab;
   icon: SearchShortcutIcon;
 }
 

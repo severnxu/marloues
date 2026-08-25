@@ -3,14 +3,12 @@ import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { notify } from "@/lib/notifications";
 import { useUnifiedChatStore } from "@/stores/unified-chat-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
-import type { SettingsSection } from "@/components/settings/types";
 import type { Page } from "../types";
 import type { ChatSessionRecord, WorkspaceInfo } from "@shared/types";
 import { STRINGS } from "@shared/strings.zh";
 import { workspacePathsEqual } from "@shared/workspace-path";
 import * as SidebarParts from "./SidebarParts";
 import { QuickAccessZone } from "./QuickAccessZone";
-import { SettingsSidebar } from "./SettingsSidebar";
 import { SidebarUserDock } from "./SidebarUserDock";
 import { WorkAreaZone } from "./WorkAreaZone";
 import { SidebarMenus } from "./SidebarMenus";
@@ -19,15 +17,11 @@ export function PrimarySidebar({
   page,
   onPage,
   isMacOS,
-  settingsSection,
-  onSettingsSection,
   pendingPermissionSessionIds = [],
 }: {
   page: Page;
   onPage: (page: Page) => void;
   isMacOS: boolean;
-  settingsSection: SettingsSection;
-  onSettingsSection: (section: SettingsSection) => void;
   pendingPermissionSessionIds?: readonly string[];
 }) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -160,6 +154,15 @@ export function PrimarySidebar({
     if (!workspacePathKey) return;
     void loadAllSessions();
   }, [workspacePathKey, loadAllSessions]);
+
+  useEffect(() => {
+    const unsubscribe = window.marloues.im?.onSessionsChanged?.(() => {
+      void loadAllSessions();
+    });
+    return () => {
+      unsubscribe?.();
+    };
+  }, [loadAllSessions]);
 
   // Group sessions by workspace path.
   const sessionsByWorkspace = useMemo(() => {
@@ -299,23 +302,6 @@ export function PrimarySidebar({
     onPage("chat");
   };
 
-  const copyProjectPath = async (project: WorkspaceInfo) => {
-    try {
-      await navigator.clipboard.writeText(project.path);
-      notify({
-        title: "Path copied",
-        description: project.path,
-        tone: "success",
-      });
-    } catch (error) {
-      notify({
-        title: "Copy failed",
-        description: error instanceof Error ? error.message : String(error),
-        tone: "error",
-      });
-    }
-  };
-
   const renameProject = async (project: WorkspaceInfo) => {
     const nextName = window.prompt("Rename workspace", project.name)?.trim();
     if (!nextName || nextName === project.name) return;
@@ -386,16 +372,6 @@ export function PrimarySidebar({
     await toggleSessionPinned(session.id);
   };
 
-  if (page === "settings") {
-    return (
-      <SettingsSidebar
-        settingsSection={settingsSection}
-        onSettingsSection={onSettingsSection}
-        onPage={onPage}
-      />
-    );
-  }
-
   return (
     <aside className="sidebar">
       <div className="sidebar-panel">
@@ -458,9 +434,7 @@ export function PrimarySidebar({
         onDelete={(session) => void removeSession(session)}
         projectMenu={projectMenu}
         projectList={projectList}
-        onNewSession={(project) => void createProjectSession(project)}
         onOpenInExplorer={(project) => void openInExplorer(project.id)}
-        onCopyPath={(project) => void copyProjectPath(project)}
         onRenameProject={(project) => void renameProject(project)}
         onMoveToTop={(projectId) => moveProjectToTop(projectId)}
         onRemoveProject={(project) => void removeProject(project)}

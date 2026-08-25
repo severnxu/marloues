@@ -56,11 +56,10 @@
 }
 
 .chat-page-empty .empty-composer-prompt {
-  position: absolute;
-  right: 0;
-  bottom: calc(var(--interaction-dock-height) + 26px);
-  left: 0;
+  position: static;
+  width: 100%;
   margin: 0;
+  transform: none;
 }
 
 .task-result-summary {

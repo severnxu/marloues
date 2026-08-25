@@ -3,7 +3,7 @@ import { MoreHorizontal } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import { useUnifiedChatStore } from "@/stores/unified-chat-store";
 import { useThemeStore } from "@/stores/theme-store";
-import { useSettingsDialogStore } from "@/stores/settings-dialog-store";
+import { useSettingsPageStore } from "@/stores/settings-page-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import * as SidebarParts from "./SidebarParts";
 import { SidebarUpdateBadge } from "./SidebarUpdateBadge";
@@ -17,7 +17,7 @@ export function SidebarUserDock() {
   const themeMode = useThemeStore((state) => state.mode);
   const setThemeMode = useThemeStore((state) => state.setMode);
   const workspace = useWorkspaceStore((state) => state.current);
-  const openSettingsDialog = useSettingsDialogStore((s) => s.openSection);
+  const openSettingsPage = useSettingsPageStore((s) => s.openSection);
   const streamingSessionIds = useUnifiedChatStore(
     (state) => state.streamingSessionIds,
   );
@@ -68,7 +68,7 @@ export function SidebarUserDock() {
           themeMode={themeMode}
           onSetThemeMode={setThemeMode}
           onSettings={(section) => {
-            openSettingsDialog(section);
+            openSettingsPage(section);
             setUserMenuOpen(false);
           }}
           onLogout={() => {
