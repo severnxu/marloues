@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="zh-CN" data-platform="macos" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Marloues 设置页设计稿 — 对齐真实代码结构" />
+    <title>Marloues 设置页 · 设计稿</title>
+    <link rel="stylesheet" href="./tokens.css" />
+    <link rel="stylesheet" href="./prototype.css" />
+  </head>
+  <body>
+    <!-- ── Presentation toolbar ── -->
+    <header class="prototype-toolbar">
+      <div class="prototype-title">
+        <span class="prototype-mark">M</span>
+        <span>设置页设计稿</span>
+        <span class="prototype-version">v0.2 · 对齐真实代码结构</span>
+      </div>
+      <div class="prototype-controls">
+        <div class="segment" role="group" aria-label="平台">
+          <button class="segment-button is-active" data-platform="macos" type="button">macOS</button>
+          <button class="segment-button" data-platform="windows" type="button">Windows</button>
+        </div>
+        <div class="segment" role="group" aria-label="主题">
+          <button class="segment-button" data-theme="light" type="button">浅色</button>
+          <button class="segment-button is-active" data-theme="dark" type="button">深色</button>
+          <button class="segment-button" data-theme="warm" type="button">羊皮纸</button>
+        </div>
+        <a class="toolbar-button" href="../workbench-prototype/index.html">← 返回工作台原型</a>
+        <a class="toolbar-button" href="../onboarding-prototype/index.html">引导页</a>
+        <a class="toolbar-button" href="./index.html?review=acceptance" data-review="acceptance">像素验收</a>
+      </div>
+    </header>
+
+    <!-- ── Stage / window ── -->
+    <div class="prototype-stage">
+      <div class="app-window">
+        <!-- Titlebar -->
+        <div class="window-titlebar">
+          <div class="traffic-lights">
+            <span class="traffic-light is-close"></span>
+            <span class="traffic-light is-minimize"></span>
+            <span class="traffic-light is-zoom"></span>
+          </div>
+          <div class="title-leading">
+            <button class="icon-button" aria-label="返回工作区" data-action="back">
+              <svg viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+            </button>
+            <div class="product-lockup">
+              <span class="product-mark">M</span>
+              <span>marloues · 设置</span>
+            </div>
+          </div>
+          <div class="title-trailing">
+            <button class="icon-button" aria-label="搜索"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button>
+          </div>
+          <div class="windows-caption-controls">
+            <button aria-label="最小化"><svg viewBox="0 0 12 12"><path d="M2 6h8"/></svg></button>
+            <button aria-label="最大化"><svg viewBox="0 0 12 12"><rect x="2.5" y="2.5" width="7" height="7"/></svg></button>
+            <button class="is-close" aria-label="关闭"><svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg></button>
+          </div>
+        </div>
+
+        <!-- Settings surface -->
+        <section class="settings-surface" role="dialog" aria-modal="true" aria-label="设置">
+          <!-- Sidebar -->
+          <aside class="settings-sidebar">
+            <div class="settings-sidebar-header">
+              <button class="return-button" type="button" data-action="back">
+                <svg viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+                <span>返回工作区</span>
+              </button>
+            </div>
+            <nav class="settings-nav" aria-label="设置分组">
+              <span class="nav-caption">设置</span>
+              <ul class="nav-list">
+                <li><button class="nav-item is-active" data-section="general" type="button"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span><span class="nav-label">通用</span></button></li>
+                <li><button class="nav-item" data-section="personalization" type="button"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></span><span class="nav-label">个性化</span></button></li>
+                <li><button class="nav-item" data-section="appearance" type="button"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 17v4"/><path d="m15.2 4.9-.9-.4"/><path d="m15.2 7.1-.9.4"/><path d="m16.9 3.2-.4-.9"/><path d="m16.9 8.8-.4.9"/><path d="m19.5 2.3-.4.9"/><path d="m19.5 9.7-.4-.9"/><path d="m21.7 4.5-.9.4"/><path d="m21.7 7.5-.9-.4"/><path d="M22 13v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/><path d="M8 21h8"/><circle cx="18" cy="6" r="3"/></svg></span><span class="nav-label">外观</span></button></li>
+                <li><button class="nav-item" data-section="providers" type="button"><span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M4.5 10H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-.5"/><path d="M4.5 14H4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2h-.5"/><path d="M6 6h.01"/><path d="M6 18h.01"/><path d="m15.7 13.4-.9-.3"/><path d="m9.2 10.9-.9-.3"/><path d="m10.6 15.7.3-.9"/><path d="m13.6 15.7-.4-1"/><path d="m10.8 9.3-.4-1"/><path d="m8.3 13.6 1-.4"/><path d="m14.7 10.8 1-.4"/><path d="m13.4 8.3-.3.9"/></svg></span><span class="nav-label">模型</span></button></li>
+                <li><button class="nav-item" data-section="runtimes" type="button"><span class="nav-icon"><svg viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg></span><span class="nav-label">运行时</span></button></li>
+                <li><button class="nav-item" data-section="security" type="button"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span><span class="nav-label">安全中心</span></button></li>
+                <li><button class="nav-item" data-section="audit" type="button"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span><span class="nav-label">审计</span></button></li>
+                <li><button class="nav-item" data-section="im-channels" type="button"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg></span><span class="nav-label">IM 渠道</span></button></li>
+                <li><button class="nav-item" data-section="im-bots" type="button"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></span><span class="nav-label">机器人实例</span></button></li>
+                <li><button class="nav-item" data-section="version" type="button"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span><span class="nav-label">更新</span></button></li>
+              </ul>
+            </nav>
+          </aside>
+
+          <!-- Content -->
+          <main class="settings-content">
+            <div class="settings-content-scroll scrollbar-thin">
+              <header class="settings-content-header" data-section-head>
+                <h1>通用</h1>
+                <p>运行行为与通知</p>
+              </header>
+              <div class="settings-content-body">
+
+                <!-- ═══ general ═══ -->
+                <div class="section-pane is-active" data-pane="general">
+                  <div class="settings-card settings-card--list">
+                    <div class="settings-card-head">
+                      <div class="settings-card-title"><span class="settings-card-icon"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span><div><h2>运行</h2><p>控制任务运行时的桌面行为。</p></div></div>
+                    </div>
+                    <div class="settings-fields">
+                      <div class="settings-row-inline"><span class="settings-row-icon"><svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></span><span class="settings-row-copy"><strong>运行任务时防止睡眠</strong><small>长任务执行时保持电脑唤醒。</small></span><span class="settings-row-trailing"><button class="settings-switch active" data-toggle type="button" aria-pressed="true"></button></span></div>
+                      <div class="settings-row-inline"><span class="settings-row-icon"><svg viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></span><span class="settings-row-copy"><strong>桌面通知</strong><small>任务完成或需要确认时提醒你。</small></span><span class="settings-row-trailing"><button class="settings-switch active" data-toggle type="button" aria-pressed="true"></button></span></div>
+                    </div>
+                  </div>
+                  <div class="settings-card settings-card--plain">
+                    <div class="settings-card-head">
+                      <div class="settings-card-title"><span class="settings-card-icon"><svg viewBox="0 0 24 24"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg></span><div><h2>输出风格</h2><p>决定 Marloues 回复的详细程度与风格。</p></div></div>
+                    </div>
+                    <div class="settings-fields">
+                      <div class="settings-segmented-options">
+                        <button class="active" data-segment type="button"><span><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span><strong>Default</strong><small>展示关键进度，保持对话清爽。</small></button>
+                        <button data-segment type="button"><span><svg viewBox="0 0 24 24" style="opacity:0"><path d="M20 6 9 17l-5-5"/></svg></span><strong>Coding</strong><small>聚焦代码，精简解释，注重正确性。</small></button>
+                        <button data-segment type="button"><span><svg viewBox="0 0 24 24" style="opacity:0"><path d="M20 6 9 17l-5-5"/></svg></span><strong>Explanatory</strong><small>附带实现选择与模式的教学性解释。</small></button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ═══ personalization ═══ -->
+                <div class="section-pane" data-pane="personalization">
+                  <div class="settings-card settings-card--plain">
+                    <div class="settings-card-head">
+                      <div class="settings-card-title"><span class="settings-card-icon"><svg viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg></span><div><h2>自定义指令</h2><p>这些偏好会附加到系统提示词，塑造后续任务的默认沟通方式。</p></div></div>
+                    </div>
+                    <div class="settings-fields">
+                      <textarea class="settings-large-textarea" aria-label="自定义指令" placeholder="例如：始终使用 TypeScript，回复尽量简短，中文优先。">回复尽量简短，使用中文；代码注释用英文；优先选择最简实现。</textarea>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ═══ appearance ═══ -->
+                <div class="section-pane" data-pane="appearance">
+                  <div class="settings-card settings-card--plain">
+                    <div class="settings-card-head">
+                      <div class="settings-card-title"><span class="settings-card-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></span><div><h2>基础主题</h2><p>在浅色和深色界面之间切换。</p></div></div>
+                    </div>
+                    <div class="settings-fields">
+                      <div class="settings-segmented-options">
+                        <button data-segment type="button"><span><svg viewBox="0 0 24 24" style="opacity:0"><path d="M20 6 9 17l-5-5"/></svg></span><strong>System</strong><small>跟随系统外观自动切换。</small></button>
+                        <button class="active" data-segment type="button"><span><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span><strong>深色</strong><small>适合长时间使用与低光环境。</small></button>
+                        <button data-segment type="button"><span><svg viewBox="0 0 24 24" style="opacity:0"><path d="M20 6 9 17l-5-5"/></svg></span><strong>浅色</strong><small>适合明亮环境。</small></button>
+                        <button data-segment type="button"><span><svg viewBox="0 0 24 24" style="opacity:0"><path d="M20 6 9 17l-5-5"/></svg></span><strong>羊皮纸</strong><small>柔和纸感，适合长时间阅读。</small></button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="settings-card">
+                    <div class="settings-card-head">
+                      <div class="settings-card-title"><span class="settings-card-icon"><svg viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg></span><div><h2>强调色</h2><p>默认是 personal-claw 使用的蓝色，也可以自定义并随时恢复。</p></div></div>
+                    </div>
+                    <div class="settings-fields">
+                      <div class="appearance-accent-panel">
+                        <div class="appearance-accent-current">
+                          <span class="appearance-accent-swatch" style="background: var(--accent)"></span>
+                          <div><strong>主题默认色</strong><small>#3B9BFF</small></div>
+                          <button class="appearance-accent-reset" type="button" aria-label="恢复默认强调色"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
+                        </div>
+                        <div class="appearance-accent-controls">
+                          <label>自定义颜色<input placeholder="#3B9BFF" value="" /></label>
+                          <label class="appearance-color-picker" title="选择强调色"><input type="color" value="#3b9bff" /><svg viewBox="0 0 24 24"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z"/></svg></label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ═══ providers ═══ -->
+                <div class="section-pane" data-pane="providers">
+                  <div class="settings-stat-grid">
+                    <div class="settings-stat-card"><small>供应商</small><strong>2</strong></div>
+                    <div class="settings-stat-card"><small>启用模型</small><strong>5/9</strong></div>
+                    <div class="settings-stat-card"><small>可用模型</small><strong>5</strong></div>
+                  </div>
+                  <div class="settings-card settings-card--plain">
+                    <div class="settings-card-head">
+                      <div class="settings-card-title"><span class="settings-card-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M4.5 10H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-.5"/><path d="M4.5 14H4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2h-.5"/><path d="M6 6h.01"/><path d="M6 18h.01"/><path d="m15.7 13.4-.9-.3"/><path d="m9.2 10.9-.9-.3"/><path d="m10.6 15.7.3-.9"/><path d="m13.6 15.7-.4-1"/><path d="m10.8 9.3-.4-1"/><path d="m8.3 13.6 1-.4"/><path d="m14.7 10.8 1-.4"/><path d="m13.4 8.3-.3.9"/></svg></span><div><h2>模型池</h2><p>供应商进入统一模型池，运行时会自动选择兼容的协议端点。</p></div></div>
+                      <div class="settings-card-action"><button class="btn btn-ghost" type="button"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>添加供应商</button></div>
+                    </div>
+                    <div class="settings-fields">
+                      <div class="provider-list">
+                        <div class="provider-row">
+                          <div class="provider-row-head">
+                            <button class="provider-expand-button" type="button" aria-label="展开模型"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+                            <div class="provider-row-title"><div><strong>OpenAI · 官方</strong></div><small>内置供应商 · 自动适配运行时 · 6 个模型</small></div>
+                            <div class="settings-row-actions provider-actions">
+                              <label class="settings-inline-check" title="供应商已启用"><input type="checkbox" checked />启用</label>
+                              <button class="icon-button" aria-label="测试连接" title="测试连接"><svg viewBox="0 0 24 24"><path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z"/><path d="m2 22 3-3"/><path d="M7.5 13.5 10 11"/><path d="M10.5 16.5 13 14"/><path d="m18 3-4 4h6l-4 4"/></svg></button>
+                              <button class="icon-button" disabled aria-label="删除供应商" title="企业预置供应商不可删除"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="provider-row">
+                          <div class="provider-row-head">
+                            <button class="provider-expand-button" type="button" aria-label="展开模型"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+                            <div class="provider-row-title"><div><strong>阿里云百炼</strong></div><small>2 个端点 · 3 个模型（已启用 2 个）</small></div>
+                            <div class="settings-row-actions provider-actions">
+                              <label class="settings-inline-check" title="供应商已启用"><input type="checkbox" checked />启用</label>
+                              <button class="icon-button" aria-label="测试连接" title="测试连接"><svg viewBox="0 0 24 24"><path d="M6.3 20.3a2.4 2.4 0 0 0 3.4 0L12 18l-6-6-2.3 2.3a2.4 2.4 0 0 0 0 3.4Z"/><path d="m2 22 3-3"/><path d="M7.5 13.5 10 11"/><path d="M10.5 16.5 13 14"/><path d="m18 3-4 4h6l-4 4"/></svg></button>
+                              <button class="icon-button" aria-label="删除供应商" title="删除供应商"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ═══ runtimes ═══ -->
+                <div class="section-pane" data-pane="runtimes">
+                  <div class="settings-card settings-card--list">
+                    <div class="settings-card-head">
+                      <div class="settings-card-title"><span class="settings-card-icon"><svg viewBox="0 0 24 24"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg></span><div><h2>Agent 运行时</h2><p>选择执行任务的引擎，模型供应商会自动匹配对应协议。</p></div></div>
+                    </div>
+                    <div class="settings-fields">
+                      <div class="settings-row-inline"><span class="settings-row-icon"><svg viewBox="0 0 24 24"><path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/></svg></span><span class="settings-row-copy"><strong>默认运行时</strong><small>SDK 模式；当前协议为 Responses API。</small></span><span class="settings-row-trailing"><div class="settings-select runtime-settings-select"><button class="settings-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false"><span class="settings-select-value">SDK · Responses</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></div></span></div>
+                    </div>
+                  </div>
+                  <div class="settings-card settings-card--list">
+                    <div class="settings-card-head">
+                      <div class="settings-card-title"><span class="settings-card-icon"><svg viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg></span><div><h2>任务运行</h2><p>控制任务轮次和模型思考预算。</p></div></div>
+                    </div>
+                    <div class="settings-fields">
+                      <label class="settings-field"><span>最大轮次</span><input type="number" value="50" /></label>
+                      <label class="settings-field"><span>最大思考 Token</span><input type="number" value="0" /></label>
+                      <label class="settings-toggle"><input type="checkbox" checked />启用思考</label>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ═══ security ═══ -->
+                <div class="section-pane" data-pane="security">
+                  <div class="settings-card settings-card--list">
+                    <div class="settings-card-head">
+                      <div class="settings-card-title"><span class="settings-card-icon"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span><div><h2>权限模式</h2><p>所有运行时共享同一套批准策略；计划模式始终只读。</p></div></div>
+                    </div>
+                    <div class="settings-fields">
+                      <div class="settings-segmented-options">
+                        <button class="active" data-segment type="button"><span><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span><strong>请求批准</strong><small>越过工作区或联网前询问</small></button>
+                        <button data-segment type="button"><span><svg viewBox="0 0 24 24" style="opacity:0"><path d="M20 6 9 17l-5-5"/></svg></span><strong>帮我批准</strong><small>隔离审查器评估风险请求</small></button>
+                        <button data-segment type="button"><span><svg viewBox="0 0 24 24" style="opacity:0"><path d="M20 6 9 17l-5-5"/></svg></span><strong>完全访问</strong><small>不受沙箱和审批限制</small></button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="settings-card settings-card--list">
+                    <div class="settings-card-head">
+                      <div class="settings-card-title"><span class="settings-card-icon"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span><div><h2>沙箱边界</h2><p>限制进程实际能够读取、写入和联网的范围，与运行时实现无关。</p></div></div>
+                    </div>
+                    <div class="settings-fields">
+                      <div class="settings-row-inline"><span class="settings-row-icon"><svg viewBox="0 0 24 24"><path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v1"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><rect width="8" height="5" x="2" y="13" rx="1"/><path d="M8 13v-2a2 2 0 1 0-4 0v2"/></svg></span><span class="settings-row-copy"><strong>执行边界</strong><small>审批通过时只为当前操作临时提升边界</small></span><span class="settings-row-trailing"><div class="security-select-control"><div class="settings-select"><button class="settings-select-trigger" type="button"><span class="settings-select-value">工作区可写</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></div></div></span></div>
+                      <div class="settings-row-inline"><span class="settings-row-icon"><svg viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="settings-row-copy"><strong>敏感操作确认</strong><small>Bash、写文件和 MCP 等敏感工具需要策略检查</small></span><span class="settings-row-trailing"><button class="settings-switch active" data-toggle type="button" aria-pressed="true"></button></span></div>
+                      <div class="settings-row-inline"><span class="settings-row-icon"><svg viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg></span><span class="settings-row-copy"><strong>审批超时</strong><small>等待批准超过该时长后自动拒绝</small></span><span class="settings-row-trailing"><input class="security-number-control" aria-label="审批超时（秒）" type="number" min="10" max="3600" value="120" /></span></div>
+                    </div>
+                  </div>
+                  <div class="settings-card settings-card--list">
+                    <div class="settings-card-head">
+                      <div class="settings-card-title"><span class="settings-card-icon"><svg viewBox="0 0 24 24"><path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v1"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><rect width="8" height="5" x="2" y="13" rx="1"/><path d="M8 13v-2a2 2 0 1 0-4 0v2"/></svg></span><div><h2>文件安全</h2><p>白名单只降低审批频率；内置敏感目录始终优先保护。</p></div></div>
+                    </div>
+                    <div class="settings-fields">
+                      <label class="settings-field settings-field--textarea"><span>自动放行路径（每行一项）</span><textarea rows="3" placeholder="例如：C:\workspace\shared-cache"></textarea></label>
+                      <label class="settings-field settings-field--textarea"><span>强制审批路径（每行一项）</span><textarea rows="3" placeholder="例如：C:\Users\me\Documents"></textarea></label>
+                      <div class="settings-field security-builtins-field"><span>内置保护路径</span><div class="security-builtins"><code>~/.ssh</code><code>~/.aws</code><code>~/.azure</code><code>~/.kube</code><code>~/.gnupg</code><code>.git</code><code>.marloues</code></div></div>
+                    </div>
+                  </div>
+                  <div class="settings-card settings-card--list">
+                    <div class="settings-card-head">
+                      <div class="settings-card-title"><span class="settings-card-icon"><svg viewBox="0 0 24 24"><path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/></svg></span><div><h2>命令安全</h2><p>按命令前缀匹配；强制审批规则优先于自动放行。</p></div></div>
+                    </div>
+                    <div class="settings-fields">
+                      <label class="settings-field settings-field--textarea"><span>放行命令（每行一项）</span><textarea rows="3" placeholder="例如：git status"></textarea></label>
+                      <label class="settings-field settings-field--textarea"><span>询问命令（每行一项）</span><textarea rows="3" placeholder="例如：git push"></textarea></label>
+                    </div>
+                  </div>
+                  <div class="settings-card settings-card--list">
+                    <div class="settings-card-head">
+                      <div class="settings-card-title"><span class="settings-card-icon"><svg viewBox="0 0 24 24"><path d="M21.54 15H17a2 2 0 0 0-2 2v4.54"/><path d="M7 3.34V5a3 3 0 0 0 3 3a2 2 0 0 1 2 2c0 1.1.9 2 2 2a2 2 0 0 0 2-2c0-1.1.9-2 2-2h3.17"/><path d="M11 21.95V18a2 2 0 0 0-2-2a2 2 0 0 1-2-2v-1a2 2 0 0 0-2-2H2.05"/><circle cx="12" cy="12" r="10"/></svg></span><div><h2>网络安全</h2><p>域名规则在沙箱联网许可之前检查，拒绝列表优先。</p></div></div>
+                    </div>
+                    <div class="settings-fields">
+                      <div class="settings-row-inline"><span class="settings-row-icon"><svg viewBox="0 0 24 24"><path d="M21.54 15H17a2 2 0 0 0-2 2v4.54"/><path d="M7 3.34V5a3 3 0 0 0 3 3a2 2 0 0 1 2 2c0 1.1.9 2 2 2a2 2 0 0 0 2-2c0-1.1.9-2 2-2h3.17"/><path d="M11 21.95V18a2 2 0 0 0-2-2a2 2 0 0 1-2-2v-1a2 2 0 0 0-2-2H2.05"/><circle cx="12" cy="12" r="10"/></svg></span><span class="settings-row-copy"><strong>默认网络策略</strong><small>未命中域名规则时采用的访问策略</small></span><span class="settings-row-trailing"><div class="security-select-control"><div class="settings-select"><button class="settings-select-trigger" type="button"><span class="settings-select-value">按请求审批</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button></div></div></span></div>
+                      <label class="settings-field settings-field--textarea"><span>允许域名（每行一项）</span><textarea rows="3" placeholder="api.example.com"></textarea></label>
+                      <label class="settings-field settings-field--textarea"><span>拒绝域名（每行一项）</span><textarea rows="3" placeholder="tracking.example.com"></textarea></label>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ═══ audit ═══ -->
+                <div class="section-pane" data-pane="audit">
+                  <div class="settings-card settings-card--plain">
+                    <div class="settings-card-head">
+                      <div class="settings-card-title"><span class="settings-card-icon"><svg viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span><div><h2>工具调用审计</h2><p>查看、导出最近的工具调用记录，方便排查权限、路径、端点和上下文。</p></div></div>
+                      <div class="settings-card-action"><div class="settings-toolbar"><button class="btn btn-ghost" type="button"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg>刷新</button><button class="btn btn-ghost" type="button"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>导出审计日志</button><button class="btn btn-ghost" type="button"><svg viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>导出诊断包</button></div></div>
+                    </div>
+                    <div class="settings-fields">
+                      <div class="audit-event-list">
+                        <div class="audit-event-card">
+                          <div class="audit-card-header"><span class="audit-card-tool"><svg viewBox="0 0 24 24"><path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/></svg><strong>shell.run</strong></span><span class="audit-status-badge ok">成功</span></div>
+                          <div class="audit-card-meta"><span>2026-08-26 10:42</span><span>OpenAI · 官方</span><span class="audit-card-path">/Users/severnxu/workspace/personal/marloues</span></div>
+                          <div class="audit-card-section"><span class="audit-card-label">输入</span><pre class="audit-card-code">npm test</pre></div>
+                          <div class="audit-card-section"><span class="audit-card-label">输出</span><pre class="audit-card-code">✓ 12 个测试全部通过</pre></div>
+                        </div>
+                        <div class="audit-event-card is-error">
+                          <div class="audit-card-header"><span class="audit-card-tool"><svg viewBox="0 0 24 24"><path d="m7 11 2-2-2-2"/><path d="M11 13h4"/><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/></svg><strong>fs.write</strong></span><span class="audit-status-badge error">失败</span></div>
+                          <div class="audit-card-meta"><span>2026-08-26 10:35</span><span>阿里云百炼</span><span class="audit-card-path">src/App.tsx</span></div>
+                          <div class="audit-card-section"><span class="audit-card-label">输入</span><pre class="audit-card-code">覆盖写入 src/App.tsx</pre></div>
+                          <div class="audit-card-section"><span class="audit-card-label">输出</span><pre class="audit-card-code">EACCES: 路径在强制审批清单内，已被安全策略拒绝</pre></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ═══ im-channels ═══ -->
+                <div class="section-pane" data-pane="im-channels">
+                  <div class="im-channel-bind-grid">
+                    <button class="im-bind-tile" type="button">
+                      <span class="im-channel-mark wecom"><svg viewBox="0 0 24 24"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg></span>
+                      <span><strong>扫码绑定企业微信</strong><small>管理员扫码安装应用或机器人后，将群消息、审批和通知接入 Marloues。</small></span>
+                      <svg class="im-bind-qrcode" viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>
+                    </button>
+                    <button class="im-bind-tile" type="button">
+                      <span class="im-channel-mark feishu"><svg viewBox="0 0 24 24"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg></span>
+                      <span><strong>扫码绑定飞书</strong><small>管理员扫码授权后，可为不同群或机器人分别绑定空间和权限策略。</small></span>
+                      <svg class="im-bind-qrcode" viewBox="0 0 24 24"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>
+                    </button>
+                  </div>
+                  <div class="settings-card settings-card--list">
+                    <div class="settings-card-head">
+                      <div class="settings-card-title"><span class="settings-card-icon"><svg viewBox="0 0 24 24"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" x2="16" y1="12" y2="12"/></svg></span><div><h2>数据与权限映射</h2><p>IM 只承载入口、通知和审批，任务仍使用统一 WorkflowTurnItem 数据模型。</p></div></div>
+                    </div>
+                    <div class="settings-fields">
+                      <div class="settings-row-inline"><span class="settings-row-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span><span class="settings-row-copy"><strong>输入来源</strong><small>群消息写入 wecom / feishu zone，并携带 botId、chatId、userId。</small></span><span class="settings-row-trailing"><span class="settings-status">设计就绪</span></span></div>
+                      <div class="settings-row-inline"><span class="settings-row-icon"><svg viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></span><span class="settings-row-copy"><strong>通知路由</strong><small>定时任务后续应选择具体机器人实例，而不是只选企微或飞书。</small></span><span class="settings-row-trailing"><span class="settings-status">待选择机器人</span></span></div>
+                      <div class="settings-row-inline"><span class="settings-row-icon"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span><span class="settings-row-copy"><strong>权限控制</strong><small>每个机器人绑定工具权限策略，IM 内审批只回写对应会话。</small></span><span class="settings-row-trailing"><span class="settings-status ok">纳入配置</span></span></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ═══ im-bots ═══ -->
+                <div class="section-pane" data-pane="im-bots">
+                  <div class="settings-stat-grid">
+                    <div class="settings-stat-card"><small>已绑定机器人</small><strong>0</strong></div>
+                    <div class="settings-stat-card"><small>可作为输入</small><strong>0</strong></div>
+                    <div class="settings-stat-card"><small>可接定时通知</small><strong>0</strong></div>
+                  </div>
+                  <div class="settings-empty-state">
+                    <strong>还没有绑定机器人</strong>
+                    <p>在 IM 渠道页选择企微或飞书完成绑定。绑定后，可在这里分别设置工作空间、通知用途和权限策略。</p>
+                  </div>
+                </div>
+
+                <!-- ═══ version ═══ -->
+                <div class="section-pane" data-pane="version">
+                  <div class="settings-card settings-card--list">
+                    <div class="settings-card-head">
+                      <div class="settings-card-title"><span class="settings-card-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span><div><h2>版本信息</h2><p>当前客户端与界面版本</p></div></div>
+                    </div>
+                    <div class="settings-fields">
+                      <div class="settings-row-inline"><span class="settings-row-icon"><svg viewBox="0 0 24 24"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"/><path d="m7.5 4.27 9 5.15"/></svg></span><span class="settings-row-copy"><strong>客户端</strong><small>Marloues 主程序</small></span><span class="settings-row-trailing"><span class="settings-version-value">v0.9.4</span></span></div>
+                      <div class="settings-row-inline"><span class="settings-row-icon"><svg viewBox="0 0 24 24"><path d="M12 17v4"/><path d="m15.2 4.9-.9-.4"/><path d="m15.2 7.1-.9.4"/><path d="m16.9 3.2-.4-.9"/><path d="m16.9 8.8-.4.9"/><path d="m19.5 2.3-.4.9"/><path d="m19.5 9.7-.4-.9"/><path d="m21.7 4.5-.9.4"/><path d="m21.7 7.5-.9-.4"/><path d="M22 13v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/><path d="M8 21h8"/><circle cx="18" cy="6" r="3"/></svg></span><span class="settings-row-copy"><strong>UI</strong><small>界面资源</small></span><span class="settings-row-trailing"><span class="settings-version-value">v0.9.4</span></span></div>
+                    </div>
+                  </div>
+                  <div class="settings-card settings-card--list">
+                    <div class="settings-card-head">
+                      <div class="settings-card-title"><span class="settings-card-icon"><svg viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span><div><h2>更新状态</h2><p>检查完整客户端和独立 UI 包的最新版本。</p></div></div>
+                      <div class="settings-card-action"><div class="settings-row-actions"><button class="btn btn-ghost" type="button"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>检查更新</button></div></div>
+                    </div>
+                    <div class="settings-fields">
+                      <div class="update-status-panel" data-status="idle">
+                        <strong>暂无待处理更新</strong>
+                        <small>当前没有待处理的更新</small>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="settings-card settings-card--plain">
+                    <div class="settings-card-head">
+                      <div class="settings-card-title"><span class="settings-card-icon"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></span><div><h2>更新通道</h2><p>稳定版适合日常使用；测试版和每夜版由用户主动选择。</p></div></div>
+                    </div>
+                    <div class="settings-fields">
+                      <div class="settings-segmented-options">
+                        <button class="active" data-segment type="button"><span><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span><strong>稳定版</strong><small>经过验证的正式版本</small></button>
+                        <button data-segment type="button"><span><svg viewBox="0 0 24 24" style="opacity:0"><path d="M20 6 9 17l-5-5"/></svg></span><strong>测试版</strong><small>提前体验即将发布的功能</small></button>
+                        <button data-segment type="button"><span><svg viewBox="0 0 24 24" style="opacity:0"><path d="M20 6 9 17l-5-5"/></svg></span><strong>每夜版</strong><small>跟随最新开发进度</small></button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="settings-card settings-card--list">
+                    <div class="settings-card-head">
+                      <div class="settings-card-title"><span class="settings-card-icon"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg></span><div><h2>自动化</h2><p>自动下载不会自动安装完整客户端；客户端安装始终需要确认。</p></div></div>
+                    </div>
+                    <div class="settings-fields">
+                      <div class="settings-row-inline"><span class="settings-row-icon"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></span><span class="settings-row-copy"><strong>自动检查更新</strong><small>启动时检查，并每 30 分钟重新检查一次。</small></span><span class="settings-row-trailing"><button class="settings-switch active" data-toggle type="button" aria-pressed="true"></button></span></div>
+                      <div class="settings-row-inline"><span class="settings-row-icon"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg></span><span class="settings-row-copy"><strong>自动下载</strong><small>发现更新后在后台下载，应用时仍会显示确认操作。</small></span><span class="settings-row-trailing"><button class="settings-switch" data-toggle type="button" aria-pressed="false"></button></span></div>
+                      <div class="settings-row-inline"><span class="settings-row-icon"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></span><span class="settings-row-copy"><strong>自动应用界面更新</strong><small>仅刷新 UI，不自动安装或重启完整客户端。</small></span><span class="settings-row-trailing"><button class="settings-switch" data-toggle type="button" aria-pressed="false" disabled></button></span></div>
+                    </div>
+                  </div>
+                  <div class="settings-card settings-card--list">
+                    <div class="settings-card-head">
+                      <div class="settings-card-title"><span class="settings-card-icon"><svg viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg></span><div><h2>签名信任</h2><p>Marloues 只会安装由内置 Ed25519 公钥签名的界面包。</p></div></div>
+                    </div>
+                    <div class="settings-fields">
+                      <div class="settings-row-inline"><span class="settings-row-icon"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span><span class="settings-row-copy"><strong>UI 热更新</strong><small>已配置可信密钥：marloues-ed25519</small></span><span class="settings-row-trailing"><span class="settings-chip ok">已启用</span></span></div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </main>
+        </section>
+      </div>
+    </div>
+
+    <footer class="prototype-hints">
+      <span>左侧切换分区 · 顶部切换平台 / 主题</span>
+      <span><kbd>Esc</kbd> 返回工作区</span>
+    </footer>
+
+    <script src="./prototype.js"></script>
+  </body>
+</html>

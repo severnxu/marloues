@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN" data-platform="macos" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Marloues 引导页设计稿 — 对齐工作台语义令牌设计语言" />
+    <title>Marloues 引导页 · 设计稿</title>
+    <link rel="stylesheet" href="./tokens.css" />
+    <link rel="stylesheet" href="./prototype.css" />
+  </head>
+  <body>
+    <!-- ── Presentation toolbar ── -->
+    <header class="prototype-toolbar">
+      <div class="prototype-title">
+        <span class="prototype-mark">M</span>
+        <span>引导页设计稿</span>
+        <span class="prototype-version">v0.1 · 对齐工作台语义令牌</span>
+      </div>
+      <div class="prototype-controls">
+        <div class="segment" role="group" aria-label="平台">
+          <button class="segment-button is-active" data-platform="macos" type="button">macOS</button>
+          <button class="segment-button" data-platform="windows" type="button">Windows</button>
+        </div>
+        <div class="segment" role="group" aria-label="主题">
+          <button class="segment-button" data-theme="light" type="button">浅色</button>
+          <button class="segment-button is-active" data-theme="dark" type="button">深色</button>
+          <button class="segment-button" data-theme="warm" type="button">羊皮纸</button>
+        </div>
+       <a class="toolbar-button" href="../workbench-prototype/index.html">← 返回工作台原型</a>
+        <a class="toolbar-button" href="../settings-prototype/index.html">设置页</a>
+       <a class="toolbar-button" href="./index.html?review=acceptance" data-review="acceptance">像素验收</a>
+      </div>
+    </header>
+
+    <!-- ── Stage / window ── -->
+    <div class="prototype-stage">
+      <div class="app-window">
+        <!-- Titlebar -->
+        <div class="window-titlebar">
+          <div class="traffic-lights">
+            <span class="traffic-light is-close" data-action="close"></span>
+            <span class="traffic-light is-minimize" data-action="minimize"></span>
+            <span class="traffic-light is-zoom" data-action="zoom"></span>
+          </div>
+          <div class="title-leading">
+            <div class="product-lockup">
+              <span class="product-mark">M</span>
+              <span>marloues</span>
+            </div>
+          </div>
+          <div class="title-trailing"></div>
+          <div class="windows-caption-controls">
+            <button data-action="minimize" aria-label="最小化"><svg viewBox="0 0 12 12"><path d="M2 6h8"/></svg></button>
+            <button data-action="zoom" aria-label="最大化"><svg viewBox="0 0 12 12"><rect x="2.5" y="2.5" width="7" height="7"/></svg></button>
+            <button class="is-close" data-action="close" aria-label="关闭"><svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg></button>
+          </div>
+        </div>
+
+        <!-- Onboarding overlay -->
+        <div class="onboarding-view" role="dialog" aria-modal="true" aria-label="marloues 初次设置">
+          <div class="onboarding-view-card">
+            <header class="onboarding-head">
+              <span class="onboarding-brand">marloues</span>
+              <h1>初次设置</h1>
+              <p>两步即可开始：选好工作区，Agent 就有家了。</p>
+            </header>
+
+            <!-- Step 1: Workspace — mandatory -->
+            <section class="onboarding-step" id="onboarding-step-workspace" data-step="workspace">
+              <div class="onboarding-step-head">
+                <span class="onboarding-step-index" aria-hidden="true" data-step-index="1">1</span>
+                <h2>
+                  <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+                  选择工作区
+                </h2>
+              </div>
+              <p class="onboarding-models-hint" data-step-hint>Agent 会在该目录下读写文件、运行命令。</p>
+              <div class="onboarding-step-actions">
+                <button type="button" class="onboarding-action" data-action="open-folder">
+                  <span data-action-label>打开文件夹</span>
+                  <kbd class="onboarding-kbd" aria-hidden="true">⌘O</kbd>
+                </button>
+              </div>
+            </section>
+
+            <!-- Step 2: Model endpoint — skippable -->
+            <section class="onboarding-step" id="onboarding-step-model" data-step="model">
+              <div class="onboarding-step-head">
+                <span class="onboarding-step-index" aria-hidden="true" data-step-index="2">2</span>
+                <h2>
+                  <svg viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                  配置模型端点
+                </h2>
+              </div>
+              <p class="onboarding-models-hint" data-step-hint>尚未配置模型端点，可在「设置 → 模型端点」中完成。</p>
+              <div class="onboarding-step-actions">
+                <button type="button" class="onboarding-skip" data-action="skip-model">稍后配置</button>
+                <button type="button" class="onboarding-action" data-action="open-settings">
+                  <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                  前往设置
+                </button>
+              </div>
+            </section>
+
+            <footer class="onboarding-footer">
+              <small data-footer-status>请先选择工作区</small>
+              <button type="button" class="onboarding-start" data-action="finish" disabled>
+                开始使用
+                <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </button>
+            </footer>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Hints ── -->
+    <footer class="prototype-hints">
+      <span>切换平台 / 主题以预览不同视觉</span>
+      <span><kbd>⌘O</kbd> 模拟打开文件夹</span>
+      <span><kbd>Esc</kbd> 退出验收模式</span>
+    </footer>
+
+    <script src="./prototype.js"></script>
+  </body>
+</html>
