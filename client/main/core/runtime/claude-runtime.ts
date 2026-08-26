@@ -1233,15 +1233,18 @@ export class ClaudeRuntime implements AgentRuntime {
     if (!routePlan.routes.length) {
       throw new Error("当前供应商没有可用于 SDK 运行时的模型端点");
     }
-    // Always route SDK traffic through the local gateway. The gateway handles
-    // protocol translation, header normalization, and streaming adaptation that
-    // the upstream proxy requires. Direct connections hang silently.
-    const gateway = await startGateway();
-    const connection = {
-      baseUrl: gateway.baseUrl,
-      apiKey: gateway.token,
-      model: routePlan.routes[0].model,
-    };
+    const directRoute = routePlan.directRoute;
+    const connection = directRoute
+      ? {
+          baseUrl: directRoute.baseUrl,
+          apiKey: directRoute.apiKey,
+          model: directRoute.model,
+        }
+      : await startGateway().then((gateway) => ({
+          baseUrl: gateway.baseUrl,
+          apiKey: gateway.token,
+          model: routePlan.routes[0].model,
+        }));
     const sdkEnv = buildSdkEnv(effectiveSettings, undefined, connection);
     const channel = createMessageChannel();
     const entry: ActiveTurn = {
