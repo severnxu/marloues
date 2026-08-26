@@ -3,6 +3,7 @@
  */
 
 import http from "http";
+import { timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "http";
 import { handleRequest } from "./pipeline";
 import { detectProtocol } from "./protocol";
@@ -14,6 +15,7 @@ export interface RouteDecision {
   targetProtocol: "anthropic" | "openai-chat" | "openai-responses";
   targetBaseUrl: string;
   apiKey: string;
+  adapterId?: string;
 }
 
 export type RouteResolver = (
@@ -23,6 +25,7 @@ export type RouteResolver = (
 
 export interface ServerConfig {
   port: number;
+  internalToken: string;
   resolveRoute: RouteResolver;
   getModels: () => string[];
 }
@@ -31,13 +34,14 @@ let server: http.Server | null = null;
 
 export function createServer(config: ServerConfig): http.Server {
   const srv = http.createServer((req: IncomingMessage, res: ServerResponse) => {
+    if (req.headers.origin || !isAuthorized(req, config.internalToken)) {
+      res.writeHead(403, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: { message: "Forbidden" } }));
+      return;
+    }
+
     if (req.method === "OPTIONS") {
-      res.writeHead(204, {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "*",
-        "Access-Control-Max-Age": "86400",
-      });
+      res.writeHead(204);
       res.end();
       return;
     }
@@ -58,10 +62,7 @@ export function createServer(config: ServerConfig): http.Server {
 
     if (url === "/v1/models" || url.startsWith("/v1/models?")) {
       const modelIds = config.getModels();
-      res.writeHead(200, {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      });
+      res.writeHead(200, { "Content-Type": "application/json" });
       res.end(
         JSON.stringify({
           object: "list",
@@ -99,29 +100,15 @@ export function createServer(config: ServerConfig): http.Server {
 
 export function startServer(config: ServerConfig): Promise<number> {
   return new Promise((resolve, reject) => {
-    let port = config.port;
-
-    const tryListen = () => {
-      server = createServer(config);
-      server.listen(port, "127.0.0.1", () => {
-        const addr = server?.address();
-        const actualPort =
-          typeof addr === "object" && addr !== null ? addr.port : port;
-        log(`[Gateway] Server listening on port ${actualPort}`);
-        resolve(actualPort);
-      });
-      server.on("error", (err: NodeJS.ErrnoException) => {
-        if (err.code === "EADDRINUSE" && port < 65535) {
-          log(`[Gateway] Port ${port} in use, trying ${port + 1}`);
-          port++;
-          tryListen();
-        } else {
-          reject(err);
-        }
-      });
-    };
-
-    tryListen();
+    server = createServer(config);
+    server.once("error", reject);
+    server.listen(config.port, "127.0.0.1", () => {
+      const addr = server?.address();
+      const actualPort =
+        typeof addr === "object" && addr !== null ? addr.port : config.port;
+      log(`[Gateway] Server listening on port ${actualPort}`);
+      resolve(actualPort);
+    });
   });
 }
 
@@ -138,4 +125,21 @@ export function stopServer(): Promise<void> {
       resolve();
     }
   });
+}
+
+function isAuthorized(req: IncomingMessage, expectedToken: string): boolean {
+  const header = firstHeader(req.headers.authorization);
+  const bearer = header?.match(/^Bearer\s+(.+)$/i)?.[1];
+  const provided =
+    bearer ??
+    firstHeader(req.headers["x-api-key"]) ??
+    firstHeader(req.headers["api-key"]);
+  if (!provided) return false;
+  const expected = Buffer.from(expectedToken);
+  const actual = Buffer.from(provided);
+  return expected.length === actual.length && timingSafeEqual(expected, actual);
+}
+
+function firstHeader(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
 }

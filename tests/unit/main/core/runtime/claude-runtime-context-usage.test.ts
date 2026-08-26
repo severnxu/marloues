@@ -26,9 +26,26 @@ vi.mock("../../../../../client/main/core/context/context-policy", () => ({
 }));
 vi.mock("../../../../../client/main/core/config/model-provider", () => ({
   resolveModelProvider: vi.fn(() => ({
-    provider: undefined,
+    provider: {
+      id: "test",
+      name: "Test",
+      kind: "custom",
+      enabled: true,
+      apiKey: "test-key",
+      endpoints: [
+        {
+          id: "test-anthropic",
+          protocol: "anthropic",
+          baseUrl: "https://models.example.test",
+          enabled: true,
+          priority: 10,
+        },
+      ],
+      models: [{ id: "test-model", label: "Test", enabled: true }],
+    },
     selection: { providerId: "test", modelId: "test-model" },
     model: "test-model",
+    apiKey: "test-key",
   })),
 }));
 vi.mock("../../../../../client/main/core/config/options-builder", () => ({
@@ -64,7 +81,11 @@ vi.mock("../../../../../client/main/core/logging/app-logger", () => ({
   logWarn: vi.fn(),
 }));
 vi.mock("../../../../../client/main/gateway", () => ({
-  startGateway: vi.fn(async () => ({ port: 0 })),
+  startGateway: vi.fn(async () => ({
+    port: 45678,
+    baseUrl: "http://127.0.0.1:45678",
+    token: "gateway-token",
+  })),
   stopGateway: vi.fn(),
   isGatewayStarted: vi.fn(() => false),
   getGatewayPort: vi.fn(() => 0),

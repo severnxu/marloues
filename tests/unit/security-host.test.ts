@@ -1,5 +1,5 @@
 import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { AgentSettings } from "../../client/shared/types";
@@ -224,6 +224,26 @@ describe("SecurityHost", () => {
 
     expect(decision.action).toBe("ask");
     expect(decision.elevationProfile).toBe("danger-full-access");
+  });
+
+  it("always surfaces Codex permission profile requests for approval", () => {
+    const workspace = mkdtempSync(join(tmpdir(), "marloues-security-"));
+    const decision = host().evaluate({
+      threadId: "thread-permissions",
+      toolName: "Permissions",
+      input: {
+        permissions: {
+          file_system: {
+            write: [join(homedir(), "outside.txt")],
+          },
+        },
+      },
+      workspaceRoot: workspace,
+      settings: settings(),
+    });
+
+    expect(decision.action).toBe("ask");
+    expect(decision.reason).toMatch(/sensitive/i);
   });
 
   it("allows sandboxed command writes inside the workspace after permission grants", () => {

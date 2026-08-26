@@ -48,6 +48,184 @@
   display: flex;
 }
 
+.runtime-menu {
+  display: flex;
+}
+
+.runtime-selector-surface {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+
+.runtime-chip {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 156px;
+  height: 30px;
+  align-items: center;
+  gap: var(--select-control-gap);
+  border: 1px solid transparent;
+  border-radius: var(--select-control-radius);
+  padding: 0 8px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: var(--cursor-control);
+  transition:
+    border-color var(--motion-fast) var(--ease),
+    background var(--motion-fast) var(--ease),
+    color var(--motion-fast) var(--ease),
+    box-shadow var(--motion-fast) var(--ease);
+}
+
+.runtime-chip:hover:not(:disabled),
+.runtime-chip[aria-expanded="true"] {
+  border-color: var(--border);
+  background: var(--raised-2);
+  color: var(--text-1);
+}
+
+.runtime-chip[aria-expanded="true"] {
+  box-shadow: var(--shadow-sm);
+}
+
+.runtime-chip:disabled {
+  color: var(--text-3);
+  cursor: var(--cursor-disabled);
+}
+
+.runtime-chip > svg {
+  width: var(--select-control-icon-size);
+  height: var(--select-control-icon-size);
+  flex: 0 0 var(--select-control-icon-size);
+}
+
+.runtime-chip > svg:first-child {
+  color: var(--text-3);
+}
+
+.runtime-chip strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runtime-chip > svg:last-child {
+  color: var(--text-3);
+}
+
+.runtime-spinner {
+  animation: runtime-spin 0.8s linear infinite;
+}
+
+.runtime-popover {
+  right: 0;
+  bottom: calc(100% + 6px);
+  width: min(332px, calc(100vw - 24px));
+  padding: 0;
+}
+
+.runtime-option-list {
+  display: grid;
+  gap: 2px;
+  padding: 5px;
+}
+
+.runtime-option {
+  display: grid;
+  min-height: 54px;
+  grid-template-columns: 28px minmax(0, 1fr) auto 16px;
+  align-items: center;
+  gap: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 6px var(--space-2);
+  background: transparent;
+  color: var(--text-2);
+  text-align: left;
+}
+
+.runtime-option:hover:not(:disabled),
+.runtime-option:focus-visible,
+.runtime-option.active {
+  outline: 0;
+  background: var(--raised-2);
+  color: var(--text-1);
+}
+
+.runtime-option:disabled:not(.active) {
+  opacity: 0.55;
+  cursor: var(--cursor-disabled);
+}
+
+.runtime-option-icon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--raised-2);
+  color: var(--text-2);
+}
+
+.runtime-option-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.runtime-option-copy strong,
+.runtime-option-copy small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runtime-option-copy strong {
+  color: var(--text-1);
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.runtime-option-copy small {
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+
+.runtime-protocol {
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 2px 5px;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.runtime-check {
+  color: var(--accent);
+}
+
+.runtime-popover-note {
+  margin: 0;
+  border-top: 1px solid var(--border-subtle);
+  padding: 7px 10px;
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+
+@keyframes runtime-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .model-selector-surface {
   position: relative;
   display: flex;
@@ -397,6 +575,17 @@
 }
 
 @media (max-width: 520px) {
+  .runtime-chip {
+    width: 30px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .runtime-chip strong,
+  .runtime-chip > svg:last-child {
+    display: none;
+  }
+
   .model-chip > span {
     display: none;
   }
@@ -407,6 +596,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .runtime-chip,
   .model-chip,
   .context-usage-ring .ring-progress,
   .context-usage-tooltip,
@@ -416,6 +606,10 @@
 
   .model-change-divider,
   .model-switch-warning-bubble {
+    animation: none;
+  }
+
+  .runtime-spinner {
     animation: none;
   }
 }

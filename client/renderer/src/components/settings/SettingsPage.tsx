@@ -46,7 +46,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     id: "runtimes",
     label: "运行时",
-    description: "Python/Node 下载",
+    description: "引擎与任务执行",
     Icon: Terminal,
   },
   {

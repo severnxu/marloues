@@ -350,7 +350,7 @@ function logRendererInitialConfig(
       "endpointProfiles:",
       ...settings.providers.map(
         (provider) =>
-          `  - ${provider.id} (${provider.type}) enabled=${provider.enabled} purpose=${provider.purpose ?? "dev"} models=${provider.models.map((model) => model.id).join(", ") || "(none)"}`,
+          `  - ${provider.id} (${provider.kind}) enabled=${provider.enabled} purpose=${provider.purpose ?? "dev"} models=${provider.models.map((model) => model.id).join(", ") || "(none)"}`,
       ),
       "defaultModel:",
       `  provider=${settings.defaultModel.providerId}`,

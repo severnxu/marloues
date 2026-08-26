@@ -98,9 +98,115 @@
   padding: var(--space-4);
 }
 
+.kindSwitch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--raised-1);
+  padding: 2px;
+}
+
+.kindSwitch button {
+  min-height: 30px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  font-weight: 560;
+  transition:
+    background var(--motion-fast) var(--ease),
+    color var(--motion-fast) var(--ease),
+    box-shadow var(--motion-fast) var(--ease);
+}
+
+.kindSwitch button:hover {
+  background: var(--raised-1);
+  color: var(--text-1);
+}
+
+.kindSwitch .kindActive {
+  background: var(--surface-workspace);
+  color: var(--text-1);
+  box-shadow: var(--shadow-sm);
+}
+
 .fieldGrid {
   display: grid;
   gap: var(--space-3);
+}
+
+.routingNote {
+  display: grid;
+  gap: 2px;
+  border-left: 2px solid var(--accent);
+  padding: 4px 0 4px var(--space-3);
+}
+
+.routingNote strong {
+  color: var(--text-1);
+  font-size: var(--text-sm);
+  line-height: 18px;
+}
+
+.routingNote span {
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  line-height: 16px;
+}
+
+.endpointSection,
+.endpointList {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.addEndpointButton {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--raised-1);
+  color: var(--text-1);
+  padding: 0 var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 560;
+  transition:
+    border-color var(--motion-fast) var(--ease),
+    background var(--motion-fast) var(--ease);
+}
+
+.addEndpointButton:hover {
+  border-color: var(--border-strong);
+  background: var(--raised-2);
+}
+
+.endpointRow {
+  display: grid;
+  gap: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-3);
+}
+
+.endpointRowHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.endpointGrid {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.7fr) minmax(80px, 0.3fr);
+  gap: var(--space-2);
+}
+
+.endpointUrl {
+  grid-column: 1 / -1;
 }
 
 .field {
@@ -149,8 +255,7 @@
   color: var(--text-3);
 }
 
-.field :global(.settings-select-trigger),
-.field :global(.settings-select-menu button) {
+.field :global(.settings-select-trigger) {
   min-height: 32px;
   border: 1px solid var(--border);
   border-radius: var(--select-control-radius);
@@ -163,11 +268,37 @@
   box-shadow: none;
 }
 
+.field :global(.settings-select-menu) {
+  top: calc(100% + 6px);
+  overflow: hidden auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-popover);
+  padding: 4px;
+  box-shadow: var(--shadow-md);
+}
+
 .field :global(.settings-select-menu button) {
   min-height: 30px;
-  border-color: transparent;
+  border: 0;
   border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--text-2);
+  padding: 6px var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.field :global(.settings-select-menu button:hover),
+.field :global(.settings-select-menu button:focus-visible) {
+  background: var(--raised-2);
+  color: var(--text-1);
+}
+
+.field :global(.settings-select-menu button[aria-selected="true"]) {
+  background: var(--accent-soft);
+  color: var(--text-1);
 }
 
 .apiKeyWrap {
@@ -184,6 +315,19 @@
 .apiKeyWrap .iconButton {
   position: absolute;
   right: 4px;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  border: 0;
+  background: transparent;
+  color: var(--text-3);
+  box-shadow: none;
+}
+
+.apiKeyWrap .iconButton:hover {
+  border-color: transparent;
+  background: var(--raised-1);
+  color: var(--text-1);
 }
 
 .modelSection {
@@ -250,13 +394,15 @@
   cursor: not-allowed;
 }
 
-.primary {
+.rowActions button.primary,
+.footer button.primary {
   border-color: var(--accent);
   background: var(--accent);
   color: var(--primary-ink);
 }
 
-.primary:hover:not(:disabled) {
+.rowActions button.primary:hover:not(:disabled),
+.footer button.primary:hover:not(:disabled) {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 88%, black);
   color: var(--primary-ink);
@@ -501,7 +647,7 @@
 
 .errorText {
   margin: 0;
-  color: hsl(0 70% 65%);
+  color: var(--danger);
   font-size: var(--text-xs);
   line-height: 16px;
 }
@@ -535,11 +681,35 @@
 }
 
 @media (max-width: 520px) {
-  .modal {
-    width: calc(100vw - 24px);
+  .overlay {
+    padding: var(--space-2);
   }
-  .fieldGrid {
+
+  .modal {
+    width: calc(100vw - 16px);
+    max-height: calc(100vh - 16px);
+  }
+
+  .fieldGrid,
+  .endpointGrid {
     grid-template-columns: 1fr;
+  }
+
+  .endpointUrl {
+    grid-column: 1;
+  }
+
+  .modelSectionHead {
+    align-items: flex-start;
+  }
+
+  .rowActions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .modelConfigGrid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 
@@ -550,6 +720,6 @@
   font-size: 11px;
   font-weight: 560;
   line-height: 14px;
-  color: var(--accent-on, #fff);
-  background: var(--accent, #007aff);
+  color: var(--primary-ink);
+  background: var(--accent);
 }

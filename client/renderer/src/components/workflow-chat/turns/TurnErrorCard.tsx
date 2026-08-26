@@ -109,9 +109,9 @@ function classifyError(message: string): {
       title: "网关鉴权失败",
       summary: "模型端点可达，但当前凭据或权限没有通过。",
       actions: [
-        "检查当前 Endpoint Profile 的 Base URL 和 Token。",
+        "检查当前供应商的 API Key、模型和端点配置。",
         "确认网关侧已给当前模型和账号授权。",
-        "切换到测试 provider，验证是否为单端点问题。",
+        "切换到其他供应商，验证是否为单端点问题。",
       ],
     };
   }

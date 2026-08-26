@@ -4,6 +4,7 @@ import type {
   AgentSettings,
   ModelOption,
   ModelProviderConfig,
+  ModelProviderEndpoint,
 } from "@shared/types";
 import { STRINGS } from "@shared/strings.zh";
 import {
@@ -72,9 +73,9 @@ export function useProviderManagement(
         {
           id,
           name: `Endpoint ${draft.providers.length + 1}`,
-          type: "openai-compatible",
+          kind: "custom",
           enabled: true,
-          baseUrl: "",
+          endpoints: [createProviderEndpoint(1)],
           apiKey: "",
           models: [],
         },
@@ -89,7 +90,7 @@ export function useProviderManagement(
   const removeEndpointProfile = async (providerId: string) => {
     if (!draft) return;
     if (draft.providers.length <= 1) {
-      setStatus("至少需要保留一个模型端点 Profile。", "error");
+      setStatus("至少需要保留一个模型供应商。", "error");
       return;
     }
     const removedProvider = draft.providers.find(
@@ -152,7 +153,13 @@ export function useProviderManagement(
     if (!draft) return;
     const provider = draft.providers.find((item) => item.id === providerId);
     if (!provider) return;
-    if (!provider.baseUrl?.trim() || !provider.apiKey?.trim()) {
+    if (
+      !provider.apiKey?.trim() ||
+      (provider.kind === "custom" &&
+        !provider.endpoints.some(
+          (endpoint) => endpoint.enabled && endpoint.baseUrl.trim(),
+        ))
+    ) {
       setStatus(STRINGS.model.missingEndpointFields, "error");
       return;
     }
@@ -216,7 +223,7 @@ export function useProviderManagement(
 
   const updateProviderField = (
     providerId: string,
-    field: "name" | "baseUrl" | "apiKey" | "type",
+    field: "name" | "apiKey",
     value: string,
   ) => {
     if (!draft) return;
@@ -230,6 +237,67 @@ export function useProviderManagement(
       setDraft(nextDraft);
       return;
     }
+    void commitDraft(nextDraft);
+  };
+
+  const updateProviderEndpoint = (
+    providerId: string,
+    endpointId: string,
+    patch: Partial<ModelProviderEndpoint>,
+  ) => {
+    if (!draft) return;
+    const nextDraft: AgentSettings = {
+      ...draft,
+      providers: draft.providers.map((provider) =>
+        provider.id === providerId && provider.kind === "custom"
+          ? {
+              ...provider,
+              endpoints: provider.endpoints.map((endpoint) =>
+                endpoint.id === endpointId
+                  ? { ...endpoint, ...patch }
+                  : endpoint,
+              ),
+            }
+          : provider,
+      ),
+    };
+    void commitDraft(nextDraft);
+  };
+
+  const addProviderEndpoint = (providerId: string) => {
+    if (!draft) return;
+    const nextDraft: AgentSettings = {
+      ...draft,
+      providers: draft.providers.map((provider) =>
+        provider.id === providerId && provider.kind === "custom"
+          ? {
+              ...provider,
+              endpoints: [
+                ...provider.endpoints,
+                createProviderEndpoint(provider.endpoints.length + 1),
+              ],
+            }
+          : provider,
+      ),
+    };
+    void commitDraft(nextDraft);
+  };
+
+  const removeProviderEndpoint = (providerId: string, endpointId: string) => {
+    if (!draft) return;
+    const nextDraft: AgentSettings = {
+      ...draft,
+      providers: draft.providers.map((provider) =>
+        provider.id === providerId && provider.kind === "custom"
+          ? {
+              ...provider,
+              endpoints: provider.endpoints.filter(
+                (endpoint) => endpoint.id !== endpointId,
+              ),
+            }
+          : provider,
+      ),
+    };
     void commitDraft(nextDraft);
   };
 
@@ -252,14 +320,21 @@ export function useProviderManagement(
     );
   };
 
-  const testEndpointProfile = async (providerId: string) => {
+  const testEndpointProfile = async (
+    providerId: string,
+    endpointId?: string,
+  ) => {
     if (!draft) return;
     const provider = draft.providers.find((item) => item.id === providerId);
     if (!provider) return;
-    setCheckingEndpointIds((ids) => new Set(ids).add(provider.id));
+    const checkId = endpointId ? `${provider.id}:${endpointId}` : provider.id;
+    setCheckingEndpointIds((ids) => new Set(ids).add(checkId));
     setStatus(STRINGS.model.testingProvider(provider.name));
     try {
-      const result = await window.marloues.config.testEndpointProfile(provider);
+      const result = await window.marloues.config.testEndpointProfile(
+        provider,
+        endpointId,
+      );
       setStatus(
         STRINGS.model.endpointResult(
           provider.name,
@@ -271,7 +346,7 @@ export function useProviderManagement(
     } finally {
       setCheckingEndpointIds((ids) => {
         const next = new Set(ids);
-        next.delete(provider.id);
+        next.delete(checkId);
         return next;
       });
     }
@@ -633,6 +708,9 @@ export function useProviderManagement(
     updateProviderModel,
     testProviderModel,
     updateProviderField,
+    updateProviderEndpoint,
+    addProviderEndpoint,
+    removeProviderEndpoint,
     toggleProviderEnabled,
     testEndpointProfile,
     setDefaultModel,
@@ -641,3 +719,14 @@ export function useProviderManagement(
 }
 
 export type ProviderManagement = ReturnType<typeof useProviderManagement>;
+
+function createProviderEndpoint(index: number): ModelProviderEndpoint {
+  return {
+    id: crypto.randomUUID(),
+    name: `端点 ${index}`,
+    protocol: "openai-chat",
+    baseUrl: "",
+    enabled: true,
+    priority: index * 10,
+  };
+}

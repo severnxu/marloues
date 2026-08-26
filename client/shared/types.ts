@@ -539,8 +539,8 @@ export interface ContextManagementSettings {
   restartThresholdPercent: number;
   autoCompactEnabled: boolean;
 }
-export type ModelProviderType =
-  "openai-compatible" | "openai-chat" | "openai-responses" | "anthropic";
+export type ModelEndpointProtocol =
+  "openai-chat" | "openai-responses" | "anthropic";
 export type ModelEndpointPurpose = "prod" | "test" | "dev";
 
 export interface ModelSelection {
@@ -548,19 +548,39 @@ export interface ModelSelection {
   modelId: string;
 }
 
-export interface ModelProviderConfig {
+export interface ModelProviderEndpoint {
+  id: string;
+  name?: string;
+  protocol: ModelEndpointProtocol;
+  baseUrl: string;
+  enabled: boolean;
+  priority: number;
+}
+
+interface ModelProviderConfigBase {
   id: string;
   name: string;
-  type: ModelProviderType;
   enabled: boolean;
   source?: "local" | "enterprise";
   locked?: boolean;
-  baseUrl?: string;
   apiKey?: string;
   apiKeyEnv?: string;
   purpose?: ModelEndpointPurpose;
   models: ModelOption[];
 }
+
+export interface BuiltinModelProviderConfig extends ModelProviderConfigBase {
+  kind: "builtin";
+  presetId: string;
+}
+
+export interface CustomModelProviderConfig extends ModelProviderConfigBase {
+  kind: "custom";
+  endpoints: ModelProviderEndpoint[];
+}
+
+export type ModelProviderConfig =
+  BuiltinModelProviderConfig | CustomModelProviderConfig;
 
 export interface EndpointTestResult {
   ok: boolean;
@@ -1019,13 +1039,16 @@ export interface MarlouesAPI {
     saveAgentSettings(settings: AgentSettings): Promise<void>;
     testEndpointProfile(
       profile: ModelProviderConfig,
+      endpointId?: string,
     ): Promise<EndpointTestResult>;
     testEndpointModel(
       profile: ModelProviderConfig,
       modelId: string,
+      endpointId?: string,
     ): Promise<EndpointTestResult>;
     listEndpointModels(
       profile: ModelProviderConfig,
+      endpointId?: string,
     ): Promise<EndpointModelsResult>;
   };
   runtime: {

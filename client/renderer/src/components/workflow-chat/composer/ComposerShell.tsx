@@ -44,6 +44,7 @@ export function WorkflowComposerShell({
   onOpenSecuritySettings,
   permissionPanel,
   emptyHeader,
+  runtimeControl,
   modelControl,
   placeholder = CONVERSATION_PAGE_CONTRACT.composer.placeholder,
   slashCommands,
@@ -600,6 +601,12 @@ export function WorkflowComposerShell({
 
                 {contextUsage ? (
                   <ContextUsageRing snapshot={contextUsage} usage={usage} />
+                ) : null}
+
+                {runtimeControl ? (
+                  <div className="composer-menu runtime-menu">
+                    {runtimeControl}
+                  </div>
                 ) : null}
 
                 <div

@@ -29,6 +29,7 @@ import {
 import { forwardRequest, forwardStreamRequest } from "./http-client";
 import { log } from "./logger";
 import { logHttp, isDeveloperMode } from "../core/logging/app-logger";
+import { buildProviderEndpointUrl } from "../core/config/provider-endpoint-url";
 
 export interface RouteDecision {
   targetProvider: string;
@@ -137,10 +138,7 @@ async function handleNonStreamRequest(
     );
     if (result.ok || result.status < 500) {
       if (result.ok && result.response) {
-        res.writeHead(200, {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        });
+        res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify(result.response));
         return;
       }
@@ -175,11 +173,7 @@ async function tryNonStreamRequest(
     (body as { model: string }).model = route.targetModel;
   }
 
-  let baseUrl = route.targetBaseUrl.replace(/\/+$/, "");
-  if (baseUrl.endsWith("/v1")) {
-    baseUrl = baseUrl.slice(0, -3);
-  }
-  const url = `${baseUrl}${path}`;
+  const url = buildProviderEndpointUrl(route.targetBaseUrl, path);
 
   if (route.targetProtocol === "anthropic") {
     headers["x-api-key"] = route.apiKey;
@@ -187,13 +181,22 @@ async function tryNonStreamRequest(
     headers["Authorization"] = `Bearer ${route.apiKey}`;
   }
 
-  const upstream = await forwardRequest({
-    url,
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-    adapterId: route.adapterId,
-  });
+  let upstream: Awaited<ReturnType<typeof forwardRequest>>;
+  try {
+    upstream = await forwardRequest({
+      url,
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      adapterId: route.adapterId,
+    });
+  } catch (error) {
+    log(
+      `[Pipeline] Upstream ${route.adapterId ?? route.targetProvider} failed:`,
+      error,
+    );
+    return { ok: false, status: 502 };
+  }
 
   if (upstream.status >= 500) {
     return { ok: false, status: upstream.status };
@@ -263,11 +266,7 @@ async function tryStreamRequest(
     (body as { model: string }).model = route.targetModel;
   }
 
-  let baseUrl = route.targetBaseUrl.replace(/\/+$/, "");
-  if (baseUrl.endsWith("/v1")) {
-    baseUrl = baseUrl.slice(0, -3);
-  }
-  const url = `${baseUrl}${path}`;
+  const url = buildProviderEndpointUrl(route.targetBaseUrl, path);
 
   if (route.targetProtocol === "anthropic") {
     headers["x-api-key"] = route.apiKey;
@@ -275,13 +274,22 @@ async function tryStreamRequest(
     headers["Authorization"] = `Bearer ${route.apiKey}`;
   }
 
-  const upstream = await forwardStreamRequest({
-    url,
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-    adapterId: route.adapterId,
-  });
+  let upstream: Awaited<ReturnType<typeof forwardStreamRequest>>;
+  try {
+    upstream = await forwardStreamRequest({
+      url,
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      adapterId: route.adapterId,
+    });
+  } catch (error) {
+    log(
+      `[Pipeline] Upstream ${route.adapterId ?? route.targetProvider} failed:`,
+      error,
+    );
+    return { ok: false, status: 502 };
+  }
 
   if (upstream.status >= 500) {
     await drainStream(upstream.stream);
@@ -291,7 +299,6 @@ async function tryStreamRequest(
   if (upstream.status >= 400) {
     res.writeHead(upstream.status, {
       "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
     });
     const chunks: Buffer[] = [];
     upstream.stream.on("data", (c: Buffer) => chunks.push(c));
@@ -308,7 +315,6 @@ async function tryStreamRequest(
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
     Connection: "keep-alive",
-    "Access-Control-Allow-Origin": "*",
   });
 
   const needConv = needsConversion(sourceProtocol, route.targetProtocol);

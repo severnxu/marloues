@@ -431,9 +431,17 @@ function loadCcSwitchProvider(): {
     provider: {
       id: "cc-switch-binary-live",
       name: "cc-switch Binary Live",
-      type: "anthropic",
+      kind: "custom",
       enabled: true,
-      baseUrl,
+      endpoints: [
+        {
+          id: "cc-switch-anthropic",
+          protocol: "anthropic",
+          baseUrl,
+          enabled: true,
+          priority: 10,
+        },
+      ],
       apiKeyEnv: "CCSWITCH_BINARY_LIVE_API_KEY",
       purpose: "test",
       models: [{ id: model, label: model, enabled: true }],

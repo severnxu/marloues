@@ -1,10 +1,13 @@
-import type { AgentSettings, ModelProviderConfig, ModelSelection } from "@shared/types";
+import type {
+  AgentSettings,
+  ModelProviderConfig,
+  ModelSelection,
+} from "@shared/types";
 
 export interface ResolvedModelProvider {
   provider: ModelProviderConfig;
   selection: ModelSelection;
   model: string;
-  baseUrl?: string;
   apiKey?: string;
 }
 
@@ -12,15 +15,20 @@ export function resolveModelProvider(
   settings: AgentSettings,
   selection?: Partial<ModelSelection> | null,
 ): ResolvedModelProvider {
-  const selectedProviderId = selection?.providerId || settings.defaultModel.providerId;
+  const selectedProviderId =
+    selection?.providerId || settings.defaultModel.providerId;
   const selectedModelId = selection?.modelId || settings.defaultModel.modelId;
   const provider =
-    settings.providers.find((item) => item.id === selectedProviderId && item.enabled) ??
+    settings.providers.find(
+      (item) => item.id === selectedProviderId && item.enabled,
+    ) ??
     settings.providers.find((item) => item.enabled) ??
     settings.providers[0];
 
   const model =
-    provider?.models.find((item) => item.id === selectedModelId && item.enabled) ??
+    provider?.models.find(
+      (item) => item.id === selectedModelId && item.enabled,
+    ) ??
     provider?.models.find((item) => item.enabled) ??
     provider?.models[0];
 
@@ -31,7 +39,6 @@ export function resolveModelProvider(
       modelId: model?.id ?? selectedModelId,
     },
     model: model?.id ?? selectedModelId,
-    baseUrl: provider?.baseUrl,
     apiKey: resolveProviderApiKey(provider),
   };
 }

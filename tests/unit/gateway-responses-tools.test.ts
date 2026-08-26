@@ -1,21 +1,30 @@
 import { describe, expect, it } from "vitest";
 
-import { providerTargetProtocol } from "../../client/main/gateway";
+import { configuredProviderEndpoints } from "../../client/main/core/config/provider-routing";
 import { encodeAnthropicRequest } from "../../client/main/gateway/protocol/from-internal/anthropic";
 import { encodeOpenAIChatRequest } from "../../client/main/gateway/protocol/from-internal/openai-chat";
 import { OpenAIResponsesSseFormatter } from "../../client/main/gateway/protocol/stream/responses-formatter";
 import { decodeOpenAIResponsesRequest } from "../../client/main/gateway/protocol/to-internal/responses";
 import type {
+  ModelEndpointProtocol,
   ModelProviderConfig,
-  ModelProviderType,
 } from "../../client/shared/types";
 
-function provider(type: ModelProviderType): ModelProviderConfig {
+function provider(protocol: ModelEndpointProtocol): ModelProviderConfig {
   return {
-    id: type,
-    name: type,
-    type,
+    id: protocol,
+    name: protocol,
+    kind: "custom",
     enabled: true,
+    endpoints: [
+      {
+        id: `${protocol}-endpoint`,
+        protocol,
+        baseUrl: "https://models.example.test/v1",
+        enabled: true,
+        priority: 10,
+      },
+    ],
     models: [],
   };
 }
@@ -248,14 +257,15 @@ describe("Responses gateway tool conversion", () => {
     ]);
   });
 
-  it("routes providers by their explicit protocol type", () => {
-    expect(providerTargetProtocol(provider("openai-compatible"))).toBe(
-      "openai-chat",
+  it("exposes each configured endpoint protocol to the gateway router", () => {
+    expect(
+      configuredProviderEndpoints(provider("openai-chat"))[0].protocol,
+    ).toBe("openai-chat");
+    expect(
+      configuredProviderEndpoints(provider("openai-responses"))[0].protocol,
+    ).toBe("openai-responses");
+    expect(configuredProviderEndpoints(provider("anthropic"))[0].protocol).toBe(
+      "anthropic",
     );
-    expect(providerTargetProtocol(provider("openai-chat"))).toBe("openai-chat");
-    expect(providerTargetProtocol(provider("openai-responses"))).toBe(
-      "openai-responses",
-    );
-    expect(providerTargetProtocol(provider("anthropic"))).toBe("anthropic");
   });
 });

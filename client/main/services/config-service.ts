@@ -40,12 +40,7 @@ type ExtendedToolPermissionPolicy = NonNullable<
 > & {
   rules?: ToolPermissionRuleConfig[];
 };
-type LegacyAgentSettings = Partial<AgentSettings> & {
-  model?: string;
-  baseUrl?: string;
-  apiKey?: string;
-  apiKeyEnv?: string;
-};
+type LegacyAgentSettings = Partial<AgentSettings>;
 
 interface EnterpriseConfig {
   agentSettings?: LegacyAgentSettings;
@@ -56,11 +51,12 @@ interface EnterpriseConfig {
 function defaultProviders(): ModelProviderConfig[] {
   return [
     {
-      id: "default-endpoint",
-      name: "Default Endpoint",
-      type: "openai-compatible",
+      id: "unconfigured-provider",
+      name: "未配置供应商",
+      kind: "custom",
       enabled: true,
       purpose: "prod",
+      endpoints: [],
       models: [
         normalizeModelOption({
           id: DEFAULT_MODEL,
@@ -76,7 +72,7 @@ function defaultAgentSettings(): AgentSettings {
   return {
     providers: defaultProviders(),
     defaultModel: {
-      providerId: "default-endpoint",
+      providerId: "unconfigured-provider",
       modelId: DEFAULT_MODEL,
     },
     activeRuntimeId: "sdk",
@@ -377,7 +373,6 @@ function decryptAgentSettings(
   if (!settings) return {};
   return {
     ...settings,
-    apiKey: decryptSecret(settings.apiKey),
     providers: settings.providers?.map((provider) => ({
       ...provider,
       apiKey: decryptSecret(provider.apiKey),
@@ -730,47 +725,49 @@ function normalizeProviders(
   defaults: ModelProviderConfig[],
 ): ModelProviderConfig[] {
   if (settings.providers?.length) {
-    return settings.providers.map((p) => ({
-      ...p,
-      type: normalizeProviderType(p.type),
-      enabled: p.enabled !== false,
-      models: p.models?.length ? p.models.map(normalizeModelOption) : [],
-    }));
+    return settings.providers.map(normalizeProvider);
   }
+  return defaults;
+}
 
-  if (
-    !settings.model &&
-    !settings.baseUrl &&
-    !settings.apiKey &&
-    !settings.apiKeyEnv
-  ) {
-    return defaults;
+function normalizeProvider(provider: ModelProviderConfig): ModelProviderConfig {
+  const common = {
+    id: provider.id,
+    name: provider.name,
+    enabled: provider.enabled !== false,
+    source: provider.source,
+    locked: provider.locked,
+    apiKey: provider.apiKey,
+    apiKeyEnv: provider.apiKeyEnv,
+    purpose: provider.purpose,
+    models: provider.models?.length
+      ? provider.models.map(normalizeModelOption)
+      : [],
+  };
+  if (provider.kind === "builtin" && compactString(provider.presetId)) {
+    const { presetId } = provider;
+    return { ...common, kind: "builtin", presetId };
   }
-
-  const modelId = settings.model || DEFAULT_MODEL;
-  const providerId = modelId.toLowerCase().includes("minimax")
-    ? "minimax"
-    : "legacy-endpoint";
-  const providerName =
-    providerId === "minimax" ? "MiniMax Test Endpoint" : "Legacy Endpoint";
-  return [
-    {
-      id: providerId,
-      name: providerName,
-      type: "openai-compatible",
-      enabled: true,
-      baseUrl: settings.baseUrl,
-      apiKey: settings.apiKey,
-      apiKeyEnv: settings.apiKeyEnv,
-      purpose: providerId === "minimax" ? "test" : "prod",
-      models: [
-        normalizeModelOption({ id: modelId, label: modelId, enabled: true }),
-      ],
-    },
-    ...defaults
-      .filter((provider) => provider.id !== providerId)
-      .map((provider) => ({ ...provider, enabled: false })),
-  ];
+  return {
+    ...common,
+    kind: "custom",
+    endpoints:
+      provider.kind === "custom" && Array.isArray(provider.endpoints)
+        ? provider.endpoints
+            .map((endpoint, index) => ({
+              id: compactString(endpoint.id) ?? `endpoint-${index + 1}`,
+              name: compactString(endpoint.name),
+              protocol: normalizeEndpointProtocol(endpoint.protocol),
+              baseUrl: compactString(endpoint.baseUrl) ?? "",
+              enabled: endpoint.enabled !== false,
+              priority:
+                Number.isFinite(endpoint.priority) && endpoint.priority >= 0
+                  ? Math.trunc(endpoint.priority)
+                  : (index + 1) * 10,
+            }))
+            .filter((endpoint) => endpoint.baseUrl)
+        : [],
+  };
 }
 
 function normalizeDefaultModel(
@@ -778,24 +775,11 @@ function normalizeDefaultModel(
   providers: ModelProviderConfig[],
   fallback: ModelSelection,
 ): ModelSelection {
-  if (settings.providers?.length && settings.defaultModel) {
-    // 迁移旧模拟占位模型：self-built 时代的 local-loop → 默认占位，
-    // 引导用户在真实内核下配置端点。
-    if (settings.defaultModel.modelId === "local-loop") {
-      return { ...settings.defaultModel, modelId: DEFAULT_MODEL };
-    }
-    return settings.defaultModel;
-  }
   if (!providers.length) return settings.defaultModel ?? fallback;
   const requested = settings.defaultModel;
   const provider =
     providers.find(
       (item) => item.id === requested?.providerId && item.enabled,
-    ) ??
-    providers.find((item) =>
-      item.models.some(
-        (model) => model.id === (requested?.modelId || settings.model),
-      ),
     ) ??
     providers.find((item) => item.enabled) ??
     providers[0];
@@ -803,14 +787,11 @@ function normalizeDefaultModel(
     provider.models.find(
       (item) => item.id === requested?.modelId && item.enabled,
     ) ??
-    provider.models.find(
-      (item) => item.id === settings.model && item.enabled,
-    ) ??
     provider.models.find((item) => item.enabled) ??
     provider.models[0];
   return {
     providerId: provider.id,
-    modelId: model?.id ?? settings.model ?? fallback.modelId,
+    modelId: model?.id ?? fallback.modelId,
   };
 }
 function resolveActiveToolProfileId(
@@ -859,12 +840,12 @@ function normalizeToolList(tools: unknown): string[] | undefined {
   return normalized.length ? Array.from(new Set(normalized)) : [];
 }
 
-function normalizeProviderType(type: unknown): ModelProviderConfig["type"] {
-  return type === "openai-chat" ||
-    type === "openai-responses" ||
-    type === "anthropic"
-    ? type
-    : "openai-compatible";
+function normalizeEndpointProtocol(
+  protocol: unknown,
+): "openai-chat" | "openai-responses" | "anthropic" {
+  return protocol === "openai-responses" || protocol === "anthropic"
+    ? protocol
+    : "openai-chat";
 }
 function normalizePermissionMode(
   mode: unknown,
@@ -1125,7 +1106,9 @@ function stripTransientPolicyFields(settings: AgentSettings): AgentSettings {
   } = settings;
   return {
     ...settingsWithoutPolicy,
-    providers: settingsWithoutPolicy.providers.map(stripPolicyMetadata),
+    providers: settingsWithoutPolicy.providers.map(
+      (provider) => stripPolicyMetadata(provider) as ModelProviderConfig,
+    ),
     mcpServers: settingsWithoutPolicy.mcpServers.map(stripPolicyMetadata),
     imBotBindings: settingsWithoutPolicy.imBotBindings,
     toolProfiles: settingsWithoutPolicy.toolProfiles.map(stripPolicyMetadata),
@@ -1189,7 +1172,7 @@ function filterEnterpriseItems<T>(
 export function buildSdkEnv(
   settings: AgentSettings,
   selection?: Partial<ModelSelection> | null,
-  gatewayBaseUrl?: string,
+  connection?: { baseUrl: string; apiKey: string; model?: string },
 ): Record<string, string | undefined> {
   const resolved = resolveModelProvider(settings, selection);
 
@@ -1206,10 +1189,10 @@ export function buildSdkEnv(
 
   return {
     ...env,
-    ANTHROPIC_API_KEY: resolved.apiKey,
-    ANTHROPIC_AUTH_TOKEN: resolved.apiKey,
-    ANTHROPIC_BASE_URL: gatewayBaseUrl ?? resolved.baseUrl,
-    ANTHROPIC_MODEL: resolved.model,
+    ANTHROPIC_API_KEY: connection?.apiKey ?? resolved.apiKey,
+    ANTHROPIC_AUTH_TOKEN: connection?.apiKey ?? resolved.apiKey,
+    ANTHROPIC_BASE_URL: connection?.baseUrl,
+    ANTHROPIC_MODEL: connection?.model ?? resolved.model,
     // 运行时状态统一：sdk 内核的配置/会话落到 runtime-config/claude 子目录，
     // 与 binary（runtime-config/codex）、self-built（runtime-config/self-built）对称。
     CLAUDE_CONFIG_DIR: join(

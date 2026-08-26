@@ -38,6 +38,7 @@ async function main(): Promise<void> {
   }
 
   const { apiKey, baseUrl, model } = loadCcSwitchClaudeSettings();
+  const presetId = builtinPresetForBaseUrl(baseUrl);
   const liveHome = mkdtempSync(join(tmpdir(), "marloues-electron-live-"));
   const workspace = join(liveHome, "workspace");
   const configDir = join(liveHome, "config");
@@ -82,6 +83,12 @@ async function main(): Promise<void> {
       path: join(artifactsDir, "01-shell-ready.png"),
       fullPage: true,
     });
+    await verifyProviderRoutingSettings(window, presetId);
+    console.info(
+      "Provider settings: built-in hidden routes/custom multi-endpoint ok",
+    );
+    await verifyRuntimeSwitching(window, binaryMode ? "binary" : "sdk");
+    console.info("Runtime switching: composer/settings/persistence ok");
     await verifyUnifiedSecurityControls(window);
     console.info("UI controls: unified modes/full-access confirmation ok");
     await verifySecurityCenter(window);
@@ -120,6 +127,128 @@ async function main(): Promise<void> {
   } finally {
     await app.close();
   }
+}
+
+async function verifyRuntimeSwitching(
+  window: ElectronPage,
+  originalRuntimeId: "sdk" | "binary",
+): Promise<void> {
+  const originalLabel =
+    originalRuntimeId === "sdk" ? "Claude SDK" : "Codex CLI";
+  const trigger = window.getByRole("button", {
+    name: `运行时：${originalLabel}`,
+  });
+  await expect(trigger).toBeVisible();
+  await trigger.click();
+  const menu = window.getByRole("menu", { name: "选择运行时" });
+  await expect(menu.getByRole("menuitemradio")).toHaveCount(3);
+  await expect(menu).toContainText("Anthropic");
+  await expect(menu).toContainText("OpenAI Responses");
+  await expect(menu).toContainText("OpenAI Chat");
+  await menu.getByRole("menuitemradio", { name: /Marloues 自研/ }).click();
+  await expect(
+    window.getByRole("button", { name: "运行时：Marloues 自研" }),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      window.evaluate(
+        async () =>
+          (await window.marloues.config.getAgentSettings()).activeRuntimeId,
+      ),
+    )
+    .toBe("self-built");
+
+  await window.getByRole("button", { name: "运行时：Marloues 自研" }).click();
+  await window
+    .getByRole("menu", { name: "选择运行时" })
+    .getByRole("menuitemradio", { name: new RegExp(originalLabel) })
+    .click();
+  await expect(
+    window.getByRole("button", { name: `运行时：${originalLabel}` }),
+  ).toBeVisible();
+
+  await window.locator('button[title="用户信息"]').click();
+  await window
+    .getByRole("dialog", { name: "用户信息" })
+    .getByRole("button", { name: "设置" })
+    .click();
+  const settings = window.getByRole("dialog", { name: "设置" });
+  await settings.getByRole("button", { name: "运行时" }).click();
+  await expect(
+    settings.getByRole("heading", { name: "运行时", exact: true }),
+  ).toBeVisible();
+  const runtimeSelect = settings.getByRole("button", {
+    name: "默认 Agent 运行时",
+  });
+  await expect(runtimeSelect).toContainText(originalLabel);
+  await runtimeSelect.click();
+  const runtimeOptions = settings.getByRole("listbox", {
+    name: "默认 Agent 运行时",
+  });
+  await expect(runtimeOptions.getByRole("option")).toHaveCount(3);
+  await window.screenshot({
+    path: join(artifactsDir, "04-runtime-switching.png"),
+    fullPage: true,
+  });
+  await runtimeSelect.click();
+  await settings.getByRole("button", { name: "返回工作区" }).click();
+}
+
+async function verifyProviderRoutingSettings(
+  window: ElectronPage,
+  presetId: string | null,
+): Promise<void> {
+  await window.locator('button[title="用户信息"]').click();
+  const userMenu = window.getByRole("dialog", { name: "用户信息" });
+  await userMenu.getByRole("button", { name: "设置" }).click();
+  const settings = window.getByRole("dialog", { name: "设置" });
+  await settings.getByRole("button", { name: "模型" }).click();
+  await expect(
+    settings.getByRole("heading", { name: "模型", exact: true }),
+  ).toBeVisible();
+
+  if (presetId) {
+    const providerRow = settings.locator(".provider-row").first();
+    await expect(providerRow).toContainText("内置供应商 · 自动适配运行时");
+    await providerRow.locator(".provider-expand-button").click();
+    await expect(providerRow).toContainText("地址不可查看或修改");
+    await expect(
+      providerRow.getByText("Base URL", { exact: true }),
+    ).toHaveCount(0);
+  }
+
+  await settings.getByRole("button", { name: "添加供应商" }).click();
+  const dialog = window.getByRole("dialog", { name: "添加模型" });
+  await expect(dialog.getByRole("tab", { name: "内置供应商" })).toBeVisible();
+  await expect(dialog.getByText("Base URL", { exact: true })).toHaveCount(0);
+  await expect(
+    dialog.getByText("还没有模型。获取模型或手动添加一个。"),
+  ).toBeVisible();
+  await expect(
+    dialog.locator('input[name="add-endpoint-default-model"]'),
+  ).toHaveCount(0);
+  await expect(
+    dialog.getByRole("button", { name: "确定", exact: true }),
+  ).toBeDisabled();
+  await window.screenshot({
+    path: join(artifactsDir, "02-provider-builtin-hidden-routes.png"),
+    fullPage: true,
+  });
+
+  await dialog.getByRole("tab", { name: "自定义", exact: true }).click();
+  await expect(dialog.getByText("Base URL", { exact: true })).toHaveCount(1);
+  await expect(
+    dialog.locator('input[name="add-endpoint-default-model"]'),
+  ).toHaveCount(0);
+  await dialog.getByRole("button", { name: "添加端点" }).click();
+  await expect(dialog.getByText("Base URL", { exact: true })).toHaveCount(2);
+  await window.screenshot({
+    path: join(artifactsDir, "03-provider-custom-multi-endpoint.png"),
+    fullPage: true,
+  });
+  await dialog.getByRole("button", { name: "关闭" }).click();
+  await settings.getByRole("button", { name: "返回工作区" }).click();
+  await expect(window.locator(".app-shell")).toBeVisible();
 }
 
 async function verifyUnifiedSecurityControls(
@@ -164,9 +293,11 @@ async function verifySecurityCenter(window: ElectronPage): Promise<void> {
   await expect(window.getByRole("heading", { name: "网络安全" })).toBeVisible();
 
   const networkPolicy = window.getByLabel("默认网络策略");
-  await networkPolicy.selectOption("deny");
+  await networkPolicy.click();
+  await window.getByRole("option", { name: "阻断所有网络" }).click();
   await expectSecurityRule(window, "networkAccess", "deny");
-  await networkPolicy.selectOption("ask");
+  await networkPolicy.click();
+  await window.getByRole("option", { name: "按请求审批" }).click();
   await expectSecurityRule(window, "networkAccess", "ask");
   const allowedDomains = window.getByLabel("允许域名（每行一项）");
   await allowedDomains.fill("api.example.com");
@@ -681,25 +812,44 @@ function writeLiveSettings(
     activeRuntimeId: "sdk" | "binary";
   },
 ): void {
+  const presetId = builtinPresetForBaseUrl(input.baseUrl);
+  const provider = presetId
+    ? {
+        id: `builtin-${presetId}`,
+        name: builtinProviderName(presetId),
+        kind: "builtin",
+        presetId,
+        enabled: true,
+        apiKeyEnv: "CCSWITCH_LIVE_API_KEY",
+        purpose: "test",
+        models: [{ id: input.model, label: input.model, enabled: true }],
+      }
+    : {
+        id: "cc-switch-claude",
+        name: "cc-switch Claude",
+        kind: "custom",
+        enabled: true,
+        endpoints: [
+          {
+            id: "cc-switch-anthropic",
+            protocol: "anthropic",
+            baseUrl: input.baseUrl,
+            enabled: true,
+            priority: 10,
+          },
+        ],
+        apiKeyEnv: "CCSWITCH_LIVE_API_KEY",
+        purpose: "test",
+        models: [{ id: input.model, label: input.model, enabled: true }],
+      };
   writeFileSync(
     join(configDir, "settings.json"),
     JSON.stringify(
       {
         agentSettings: {
-          providers: [
-            {
-              id: "cc-switch-claude",
-              name: "cc-switch Claude",
-              type: "anthropic",
-              enabled: true,
-              baseUrl: input.baseUrl,
-              apiKeyEnv: "CCSWITCH_LIVE_API_KEY",
-              purpose: "test",
-              models: [{ id: input.model, label: input.model, enabled: true }],
-            },
-          ],
+          providers: [provider],
           defaultModel: {
-            providerId: "cc-switch-claude",
+            providerId: provider.id,
             modelId: input.model,
           },
           activeRuntimeId: input.activeRuntimeId,
@@ -748,6 +898,23 @@ function writeLiveSettings(
     ),
     "utf-8",
   );
+}
+
+function builtinPresetForBaseUrl(baseUrl: string): string | null {
+  const normalized = baseUrl.toLowerCase();
+  if (normalized.includes("deepseek.com")) return "deepseek";
+  if (normalized.includes("minimaxi.com") || normalized.includes("minimax")) {
+    return "minimax";
+  }
+  if (normalized.includes("bigmodel.cn")) return "zhipu";
+  return null;
+}
+
+function builtinProviderName(presetId: string): string {
+  if (presetId === "deepseek") return "DeepSeek";
+  if (presetId === "minimax") return "MiniMax";
+  if (presetId === "zhipu") return "智谱 GLM";
+  return presetId;
 }
 
 function writeWorkspaceSettings(configDir: string, workspace: string): void {

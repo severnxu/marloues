@@ -168,10 +168,6 @@ export function SettingsWorkbench({ section }: { section: SettingsSection }) {
                 }
                 preventSleep={draft.preventSleep ?? true}
               />
-              <RuntimeSettings
-                draft={draft}
-                onCommitDraft={(nextDraft) => void commitDraft(nextDraft)}
-              />
             </>
           ) : null}
 
@@ -207,6 +203,13 @@ export function SettingsWorkbench({ section }: { section: SettingsSection }) {
               draft={draft}
               canEdit={canEditEndpointProfiles}
               pm={pm}
+            />
+          ) : null}
+
+          {section === "runtimes" ? (
+            <RuntimeSettings
+              draft={draft}
+              onCommitDraft={(nextDraft) => void commitDraft(nextDraft)}
             />
           ) : null}
 

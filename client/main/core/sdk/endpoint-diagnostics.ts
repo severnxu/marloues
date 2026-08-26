@@ -96,20 +96,13 @@ function buildEndpointUrl(
   baseUrl: string,
   protocol: DiagnosticProtocol,
 ): string {
-  const url = new URL(baseUrl);
-  const path = url.pathname.replace(/\/+$/, "");
   const endpointPath =
     protocol === "anthropic"
       ? "/messages"
       : protocol === "openai-chat"
         ? "/chat/completions"
         : "/responses";
-  url.pathname = path.endsWith("/v1")
-    ? `${path}${endpointPath}`
-    : `${path}/v1${endpointPath}`;
-  url.search = "";
-  url.hash = "";
-  return url.toString();
+  return buildProviderEndpointUrl(baseUrl, `/v1${endpointPath}`);
 }
 
 function diagnosticHeaders(
@@ -192,3 +185,4 @@ async function readBodyPreview(response: Response): Promise<string> {
     return "";
   }
 }
+import { buildProviderEndpointUrl } from "../config/provider-endpoint-url";

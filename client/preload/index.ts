@@ -122,12 +122,21 @@ const api: MarlouesAPI = {
     getAgentSettings: () => ipcRenderer.invoke(IPC.CONFIG_GET_AGENT_SETTINGS),
     saveAgentSettings: (settings: AgentSettings) =>
       ipcRenderer.invoke(IPC.CONFIG_SAVE_AGENT_SETTINGS, settings),
-    testEndpointProfile: (profile: ModelProviderConfig) =>
-      ipcRenderer.invoke(IPC.CONFIG_TEST_ENDPOINT_PROFILE, profile),
-    testEndpointModel: (profile: ModelProviderConfig, modelId: string) =>
-      ipcRenderer.invoke(IPC.CONFIG_TEST_ENDPOINT_MODEL, profile, modelId),
-    listEndpointModels: (profile: ModelProviderConfig) =>
-      ipcRenderer.invoke(IPC.CONFIG_LIST_ENDPOINT_MODELS, profile),
+    testEndpointProfile: (profile: ModelProviderConfig, endpointId?: string) =>
+      ipcRenderer.invoke(IPC.CONFIG_TEST_ENDPOINT_PROFILE, profile, endpointId),
+    testEndpointModel: (
+      profile: ModelProviderConfig,
+      modelId: string,
+      endpointId?: string,
+    ) =>
+      ipcRenderer.invoke(
+        IPC.CONFIG_TEST_ENDPOINT_MODEL,
+        profile,
+        modelId,
+        endpointId,
+      ),
+    listEndpointModels: (profile: ModelProviderConfig, endpointId?: string) =>
+      ipcRenderer.invoke(IPC.CONFIG_LIST_ENDPOINT_MODELS, profile, endpointId),
   },
   runtime: {
     getState: () => ipcRenderer.invoke(IPC.RUNTIME_GET_STATE),
