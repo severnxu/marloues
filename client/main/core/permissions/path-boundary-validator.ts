@@ -51,6 +51,9 @@ export function validatePathBoundary(
   const invalidInput = validateInput(filePath, workspaceRoot, flavor);
   if (invalidInput) return denied("invalid_path", invalidInput, false);
 
+  const foreignRoot = foreignAbsoluteRoot(filePath, flavor);
+  if (foreignRoot) return denied("outside_workspace", foreignRoot, false);
+
   let lexicalRoot: string;
   let lexicalTarget: string;
   try {
@@ -287,6 +290,29 @@ function canResolveFlavorOnHost(flavor: PathFlavor): boolean {
   return flavor === "win32"
     ? process.platform === "win32"
     : process.platform !== "win32";
+}
+
+/**
+ * Detects absolute paths rooted in a foreign platform's namespace, such as a
+ * Windows drive path on a POSIX host. The native path API treats these as
+ * relative, so without this guard they would resolve inside the workspace and
+ * mask an out-of-workspace write.
+ */
+function foreignAbsoluteRoot(
+  filePath: string,
+  flavor: PathFlavor,
+): string | null {
+  if (flavor !== "native") return null;
+  if (process.platform === "win32") {
+    if (/^\/[^/]/.test(filePath) && !/^[A-Za-z]:[\\/]/.test(filePath)) {
+      return "Target path is rooted outside the native workspace root.";
+    }
+    return null;
+  }
+  if (/^[A-Za-z]:[\\/]/.test(filePath) || /^\\\\[^\\]/.test(filePath)) {
+    return "Target path is rooted outside the native workspace root.";
+  }
+  return null;
 }
 
 function denied(
