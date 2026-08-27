@@ -847,6 +847,9 @@ MCP，子进程里没有 TerminalService 单例，且需要额外的"子进程�
 - `terminal:list` (renderer→main, 列出活跃会话，renderer reload 后恢复)
 - `terminal:history` (renderer→main, 获取全量输出回放)
 - `browser:navigate` (renderer→main)
+- `browser:new_page` (renderer→main, 用户手动开浏览器 tab)
+- `browser:close_page` (renderer→main, 关闭 page)
+- `browser:list_pages` (renderer→main, 列出活跃 page, renderer reload 后恢复)
 - `browser:screenshot` (main→renderer)
 - `browser:url-changed` (main→renderer, 模型 navigate 后推送 URL 到 UI)
 
@@ -865,6 +868,9 @@ const api: MarlouesAPI = {
   },
   browser: {
     navigate: (url) => ipcRenderer.invoke(IPC.BROWSER_NAVIGATE, url),
+    newPage: (url) => ipcRenderer.invoke(IPC.BROWSER_NEW_PAGE, url),
+    closePage: (pageId) => ipcRenderer.invoke(IPC.BROWSER_CLOSE_PAGE, pageId),
+    listPages: () => ipcRenderer.invoke(IPC.BROWSER_LIST_PAGES),
     onUrlChanged: (callback) => { /* ipcRenderer.on(IPC.BROWSER_URL_CHANGED, ...) */ },
     screenshot: () => ipcRenderer.invoke(IPC.BROWSER_SCREENSHOT),
   },
@@ -877,7 +883,8 @@ const api: MarlouesAPI = {
 `client/renderer/src/components/workbench/auxiliary-sidebar/types.ts` (修改) +
 `client/renderer/src/components/workbench/auxiliary-sidebar/catalog.ts` (修改) +
 `client/renderer/src/components/workbench/auxiliary-sidebar/panels/index.ts` (修改) +
-`client/renderer/src/components/workbench/auxiliary-sidebar/AuxiliarySidebar.tsx` (修改)
+`client/renderer/src/components/workbench/auxiliary-sidebar/AuxiliarySidebar.tsx` (修改) +
+`client/shared/types.ts` (修改, MarlouesAPI.terminal 新增 spawn 返回值类型)
 
 > **v6 补充 — 面板注册**：TerminalPanel 不是独立组件，需接入辅助侧边栏的
 > 面板注册体系（参照现有 OutputsPanel / FileExplorer / MemoryPanel / ReviewPanel）：
@@ -886,8 +893,31 @@ const api: MarlouesAPI = {
 >    `{ type: "terminal", label: "终端", icon: TerminalSquare }`（lucide 图标）
 > 3. `panels/index.ts`：barrel export 追加 `export { TerminalPanel } from "./TerminalPanel"`
 > 4. `AuxiliarySidebar.tsx`：import TerminalPanel，渲染分支追加
->    `tab.type === "terminal" ? <TerminalPanel /> :`（现有 if/else 链在
->    `tabs.map` 内，参照 files/outputs/memory/review 分支写法）
+>    `tab.type === "terminal" ? <TerminalPanel sessionId={tab.sessionId} /> :`
+>    （现有 if/else 链在 `tabs.map` 内，参照 files/outputs/memory/review 分支写法）
+>
+> **v6 补充 — 多 tab 走辅助侧边栏 tab 体系**：
+> 终端支持开多个 tab（多个 PTY 会话），复用辅助侧边栏已有的 tab 管理
+> （打开/关闭/切换/拖拽排序/scroll-into-view），不在面板内部另建 tab 系统。
+> 需要改 4 处（均在 `AuxiliarySidebar.tsx`）：
+> 1. **`TabState`** 追加 `sessionId?: string` 字段——每个终端 tab 关联一个
+>    PTY session。参照现有 `subagentId` / `reviewTarget` 的模式
+> 2. **`addTab`** 去掉同类型只允许一个的限制：当前逻辑
+>    `const existing = tabs.find((tab) => tab.type === type)` 找到已有同类型
+>    tab 就只切过去不新建。改为：terminal/browser 类型每次都新建 tab
+>    （`if (type === "terminal" || type === "browser") { 每次新建 }`），
+>    其余类型保持单例行为不变
+> 3. **`availableViews`** 过滤逻辑调整：当前
+>    `AUXILIARY_VIEW_OPTIONS.filter(option => !tabs.some(tab => tab.type === option.type))`
+>    会把已有 tab 的类型从"添加"菜单里隐藏。改为 terminal/browser 类型
+>    不受此过滤——始终出现在添加菜单里（用户可开任意数量）
+> 4. **`tabLabel`** 终端 tab 显示会话标识：默认 "终端"，模型 spawn 的
+>    会话用命令名做后缀（如 "终端 · python"），用户手动开的用序号
+>    （"终端 1"、"终端 2"）。参照 subagent tab 的动态 label 逻辑
+>
+> TerminalPanel 本身只管单个 session 的 xterm 渲染，不涉及 tab 切换逻辑。
+> `terminal:spawn` IPC 返回 sessionId 后，renderer 调 `addTab("terminal")`
+> 并在新 tab 的 `sessionId` 上绑定该 session。
 
 基于 `@xterm/xterm` + `@xterm/addon-fit`：
 - 通过 IPC 双向绑定 TerminalService
@@ -912,8 +942,28 @@ const api: MarlouesAPI = {
 >    `{ type: "browser", label: "浏览器", icon: Globe }`（lucide 图标）
 > 3. `panels/index.ts`：barrel export 追加 `export { BrowserPanel } from "./BrowserPanel"`
 > 4. `AuxiliarySidebar.tsx`：import BrowserPanel，渲染分支追加
->    `tab.type === "browser" ? <BrowserPanel /> :`
+>    `tab.type === "browser" ? <BrowserPanel pageId={tab.pageId} /> :`
 >
+> **v6 补充 — 多 tab 走辅助侧边栏 tab 体系**：
+> 与终端同理，浏览器面板支持开多个 tab（多个 page），复用辅助侧边栏
+> tab 管理。需要改 4 处（与终端共用，不重复列）：
+> 1. **`TabState`** 追加 `pageId?: string` 字段——每个浏览器 tab 关联一个 page
+> 2. **`addTab`** browser 类型每次新建（同 terminal）
+> 3. **`availableViews`** browser 类型不受过滤（同 terminal）
+> 4. **`tabLabel`** 浏览器 tab 显示页面 hostname 或标题：
+>    模型 navigate 后 `browser:url-changed` 推送 URL，提取 hostname
+>    做标签（如 "example.com"），默认 "浏览器"。参照 Chrome tab 标签逻辑
+>
+> BrowserPanel 本身只管单个 page 的 WebContentsView 渲染和 URL 同步，
+> 不涉及 tab 切换逻辑。`browser:navigate` IPC 返回 pageId 后，renderer
+> 调 `addTab("browser")` 并在新 tab 的 `pageId` 上绑定该 page。
+>
+> Step 10 的 IPC 通道需对应补齐：新增 `browser:new_page`（renderer→main,
+> 用户手动开浏览器 tab）和 `browser:close_page`（renderer→main, 关闭 page），
+> 返回/传入 pageId。`browser:list_pages`（renderer→main, 列出活跃 page，
+> renderer reload 后恢复）。preload 的 `browser` 命名空间对应追加
+> `newPage` / `closePage` / `listPages` 方法。
+
 > **v6 补充 — WebContentsView 管理**：方案 B 的用户浏览器视图
 > （Electron `WebContentsView`）是主进程组件，不在 renderer 里。
 > 新建 `browser-view-manager.ts` 管理其生命周期（创建、attach 到
@@ -1007,6 +1057,7 @@ private resolveShell() {
 - 浏览器懒启动测试（首次 navigate 无 browserId → 调 launch() 并缓存 → 二次 navigate 不再 launch）
 - framenavigated securityRules getter 测试（注入的 getter 返回实时 AgentSettings.securityRules；运行时修改 allowedDomains 后新导航立即受新规则约束）
 - permit authorize→consume 完整链路测试（canUseTool allow 分支调 permitManager.authorize → handler 内 consumePermit 成功取值）
+- 辅助侧边栏多 tab 测试（addTab 同类型可多次创建；availableViews 对 terminal/browser 不隐藏；tabLabel 显示会话标识/页面 hostname）
 
 #### Step 16: 暴露矩阵验证
 
@@ -1036,6 +1087,8 @@ private resolveShell() {
 - 终端面板能执行命令并显示输出（Claude Runtime 下 terminal.exec）
 - 终端面板能显示 Codex Bash 输出（Binary Runtime 下事件拦截）
 - 终端面板 renderer reload 后能恢复（terminal:list + terminal:history）
+- 终端多 tab：用户开两个终端 tab，各自独立执行命令，切换不丢输出
+- 浏览器多 tab：用户开两个浏览器 tab，各自导航不同 URL，切换不丢页面
 - 浏览器面板能加载页面并截图
 - browser.navigate 后 UI 收到 url-changed 推送
 - Runtime 切换后终端/浏览器面板仍正常工作
