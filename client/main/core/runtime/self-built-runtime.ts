@@ -34,6 +34,8 @@ import {
   runGuardianReview,
 } from "../security/guardian-reviewer";
 import { validatePathBoundary } from "../permissions/path-boundary-validator";
+import { terminalService } from "../../services/terminal-service";
+import { browserService } from "../../services/browser-service";
 
 function genId(): string {
   return crypto.randomUUID();
@@ -464,7 +466,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
   }
 
   private registerBuiltinTools(): void {
-    if (this.tools.has("memory.echo")) return;
+    if (this.tools.has("terminal.exec")) return;
     this.registerTool(
       {
         name: "memory.echo",
@@ -474,6 +476,122 @@ export class SelfBuiltRuntime implements AgentRuntime {
           type: "object",
           properties: {
             text: { type: "string" },
+          },
+        },
+      },
+      async (args) => args,
+    );
+    // Terminal tools (metadata for listTools; execution is inline in executePlan)
+    this.registerTool(
+      {
+        name: "terminal.exec",
+        description:
+          "Start an interactive PTY session and run a command. Returns sessionId and initial output.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            command: { type: "string" },
+            cwd: { type: "string" },
+          },
+          required: ["command"],
+        },
+      },
+      async (args) => args,
+    );
+    this.registerTool(
+      {
+        name: "terminal.write",
+        description: "Write data to an active PTY session's stdin.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            sessionId: { type: "string" },
+            data: { type: "string" },
+          },
+          required: ["sessionId", "data"],
+        },
+      },
+      async (args) => args,
+    );
+    this.registerTool(
+      {
+        name: "terminal.read",
+        description: "Read incremental output from an active PTY session.",
+        inputSchema: {
+          type: "object",
+          properties: { sessionId: { type: "string" } },
+          required: ["sessionId"],
+        },
+      },
+      async (args) => args,
+    );
+    // Browser tools
+    this.registerTool(
+      {
+        name: "browser.navigate",
+        description: "Navigate to a URL in the browser.",
+        inputSchema: {
+          type: "object",
+          properties: { url: { type: "string" } },
+          required: ["url"],
+        },
+      },
+      async (args) => args,
+    );
+    this.registerTool(
+      {
+        name: "browser.screenshot",
+        description: "Take a screenshot of the current browser page.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            pageId: { type: "string" },
+            fullPage: { type: "boolean" },
+          },
+        },
+      },
+      async (args) => args,
+    );
+    this.registerTool(
+      {
+        name: "browser.click",
+        description: "Click an element matching the given CSS selector.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            selector: { type: "string" },
+            pageId: { type: "string" },
+          },
+          required: ["selector"],
+        },
+      },
+      async (args) => args,
+    );
+    this.registerTool(
+      {
+        name: "browser.fill",
+        description: "Fill an input element with a value.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            selector: { type: "string" },
+            value: { type: "string" },
+            pageId: { type: "string" },
+          },
+          required: ["selector", "value"],
+        },
+      },
+      async (args) => args,
+    );
+    this.registerTool(
+      {
+        name: "browser.get_text",
+        description: "Get the text content of the current page.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            selector: { type: "string" },
+            pageId: { type: "string" },
           },
         },
       },
@@ -504,6 +622,14 @@ export class SelfBuiltRuntime implements AgentRuntime {
     }
     if (/^\/undo\b/i.test(trimmed)) {
       return { intent: "undo" };
+    }
+    if (/^\/term(?:\s+|$)/i.test(trimmed)) {
+      const command = trimmed.replace(/^\/term\s*/i, "").trim();
+      return { intent: "terminal", command };
+    }
+    if (/^\/browse(?:\s+|$)/i.test(trimmed)) {
+      const url = trimmed.replace(/^\/browse\s*/i, "").trim();
+      return { intent: "browser", url };
     }
     return { intent: "respond" };
   }
@@ -749,6 +875,127 @@ export class SelfBuiltRuntime implements AgentRuntime {
         );
         return { done: true, result: "success", assistantText };
       }
+      if (plan.intent === "terminal") {
+        const toolId = `tool-${turnId}-terminal`;
+        const toolName = "terminal.exec";
+        const input = { command: plan.command };
+        const decision = this.evaluateSecurity({
+          toolName,
+          input,
+          cwd,
+          threadId: opts.threadId,
+          turnId,
+        });
+        const authorization = yield* this.authorizeDecision(
+          turnId,
+          toolName,
+          decision,
+          { action: "terminal", command: plan.command },
+          opts.content,
+        );
+        if (!authorization.allowed) {
+          const message = authorization.reason;
+          yield {
+            kind: "error",
+            payload: {
+              code: "TOOL_PERMISSION_DENIED",
+              message,
+              recoverable: true,
+            },
+          };
+          return {
+            done: true,
+            result: "error",
+            error: message,
+            assistantText: message,
+          };
+        }
+        const assistantText = yield* this.runToolAsText(
+          turnId,
+          toolId,
+          toolName,
+          input,
+          async () => {
+            const sessionId = terminalService.spawn(cwd, {
+              threadId: opts.threadId,
+            });
+            terminalService.write(sessionId, plan.command + "\n");
+            const result = await terminalService.readUntilStable(sessionId);
+            return JSON.stringify({
+              sessionId,
+              output: result.data,
+              stable: result.stable,
+              exitCode: result.exitCode,
+            });
+          },
+        );
+        return { done: true, result: "success", assistantText };
+      }
+      if (plan.intent === "browser") {
+        const toolId = `tool-${turnId}-browser`;
+        const toolName = "browser.navigate";
+        const input = { url: plan.url };
+        const decision = this.evaluateSecurity({
+          toolName,
+          input,
+          cwd,
+          threadId: opts.threadId,
+          turnId,
+        });
+        const authorization = yield* this.authorizeDecision(
+          turnId,
+          toolName,
+          decision,
+          { action: "browser", url: plan.url },
+          opts.content,
+        );
+        if (!authorization.allowed) {
+          const message = authorization.reason;
+          yield {
+            kind: "error",
+            payload: {
+              code: "TOOL_PERMISSION_DENIED",
+              message,
+              recoverable: true,
+            },
+          };
+          return {
+            done: true,
+            result: "error",
+            error: message,
+            assistantText: message,
+          };
+        }
+        const assistantText = yield* this.runToolAsText(
+          turnId,
+          toolId,
+          toolName,
+          input,
+          async () => {
+            let browserId = browserService.getBrowserId(opts.threadId);
+            if (!browserId) {
+              browserId = await browserService.launch({
+                threadId: opts.threadId,
+                headless: true,
+              });
+              browserService.setBrowserId(opts.threadId, browserId);
+            }
+            let pageId = browserService.getActivePageId(opts.threadId);
+            if (!pageId) {
+              pageId = await browserService.newPage(
+                browserId,
+                plan.url,
+                opts.threadId,
+              );
+            } else {
+              await browserService.navigate(pageId, plan.url);
+            }
+            browserService.setActivePageId(opts.threadId, pageId);
+            return JSON.stringify({ pageId, url: plan.url });
+          },
+        );
+        return { done: true, result: "success", assistantText };
+      }
     } catch (error) {
       return {
         done: true,
@@ -777,7 +1024,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
       "Received task:",
       content.trim() || "(empty)",
       "",
-      "Self-built commands available: /list <dir>, /read <file>, /patch <file>\\n<content>, /undo.",
+      "Self-built commands available: /list <dir>, /read <file>, /patch <file>\\n<content>, /undo, /term <command>, /browse <url>",
     ].join("\n");
   }
 
@@ -786,7 +1033,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
     toolId: string,
     toolName: string,
     input: unknown,
-    execute: () => string,
+    execute: () => string | Promise<string>,
   ): AsyncGenerator<RuntimeEvent, string> {
     const storm = this.checkToolStorm(turnId, toolName, input);
     if (storm.action === "deny") {
@@ -827,7 +1074,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
       };
       return "Tool execution cancelled.";
     }
-    const output = execute();
+    const output = await execute();
     yield {
       kind: "tool-progress",
       payload: {
@@ -1120,7 +1367,9 @@ type SelfBuiltPlan =
   | { intent: "list"; targetPath: string }
   | { intent: "read"; targetPath: string }
   | { intent: "patch"; targetPath: string; content: string }
-  | { intent: "undo" };
+  | { intent: "undo" }
+  | { intent: "terminal"; command: string }
+  | { intent: "browser"; url: string };
 
 interface SelfBuiltLoopResult {
   done: boolean;
