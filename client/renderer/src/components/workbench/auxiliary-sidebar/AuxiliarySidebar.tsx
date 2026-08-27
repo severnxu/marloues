@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { FileExplorer, MemoryPanel, OutputsPanel, ReviewPanel } from "./panels";
+import { TerminalPanel } from "./panels/TerminalPanel";
 import { workflowItemsToTimeline } from "./panels/workflow-items-to-timeline";
 import { SubagentWorkspace } from "@/components/workflow-chat";
 import type { TimelineItem } from "@shared/types";
@@ -46,6 +47,8 @@ interface TabState {
   type: AuxiliaryStaticViewType | "subagent";
   subagentId?: string;
   reviewTarget?: ReviewTarget;
+  sessionId?: string;
+  pageId?: string;
 }
 
 interface SessionAuxiliaryState {
@@ -291,6 +294,46 @@ export function AuxiliarySidebar({
     },
     [setActiveTabId, setTabs, tabs],
   );
+  // Terminal and browser tabs always create a new tab (not singleton).
+  // The session/page is spawned via IPC first, then the tab is added.
+  const handleOpenView = useCallback(
+    (type: AuxiliaryStaticViewType) => {
+      if (type === "terminal") {
+        const id = makeTabId();
+        setTabs((prev) => [...prev, { id, type }]);
+        setActiveTabId(id);
+        void window.marloues.terminal
+          ?.spawn(workspace?.path ?? "")
+          .then((sessionId) => {
+            setTabs((prev) =>
+              prev.map((tab) => (tab.id === id ? { ...tab, sessionId } : tab)),
+            );
+          })
+          .catch(() => {
+            setTabs((prev) => prev.filter((tab) => tab.id !== id));
+          });
+        return;
+      }
+      if (type === "browser") {
+        const id = makeTabId();
+        setTabs((prev) => [...prev, { id, type }]);
+        setActiveTabId(id);
+        void window.marloues.browser
+          ?.newPage("about:blank")
+          .then((pageId) => {
+            setTabs((prev) =>
+              prev.map((tab) => (tab.id === id ? { ...tab, pageId } : tab)),
+            );
+          })
+          .catch(() => {
+            setTabs((prev) => prev.filter((tab) => tab.id !== id));
+          });
+        return;
+      }
+      addTab(type);
+    },
+    [addTab, setActiveTabId, setTabs, workspace?.path],
+  );
 
   const focusTabAfterUpdate = useCallback((id: string | null) => {
     window.setTimeout(() => {
@@ -304,6 +347,13 @@ export function AuxiliarySidebar({
       const tab = tabs.find((item) => item.id === id);
       if (tab?.type === "subagent" && tab.subagentId) {
         setClosedSubagentTabs((prev) => new Set(prev).add(tab.subagentId!));
+      }
+      // Clean up terminal/browser sessions when tab is closed
+      if (tab?.type === "terminal" && tab.sessionId) {
+        void window.marloues.terminal?.kill(tab.sessionId);
+      }
+      if (tab?.type === "browser" && tab.pageId) {
+        void window.marloues.browser?.closePage(tab.pageId);
       }
       setTabs((prev) => {
         const idx = prev.findIndex((tab) => tab.id === id);
@@ -377,6 +427,31 @@ export function AuxiliarySidebar({
     [activeSessionId, selectExecutionSubagent, setActiveTabId, tabs],
   );
 
+  // Reload recovery: restore terminal tabs from active PTY sessions
+  const recoveryDoneRef = useRef(false);
+  useEffect(() => {
+    if (recoveryDoneRef.current) return;
+    recoveryDoneRef.current = true;
+    void window.marloues.terminal?.list().then((sessions) => {
+      if (!sessions || sessions.length === 0) return;
+      setTabs((prev) => {
+        const existing = new Set(
+          prev
+            .filter((t) => t.type === "terminal" && t.sessionId)
+            .map((t) => t.sessionId),
+        );
+        const restored = sessions
+          .filter((session) => !existing.has(session.sessionId))
+          .map((session) => ({
+            id: makeTabId(),
+            type: "terminal" as const,
+            sessionId: session.sessionId,
+          }));
+        return restored.length > 0 ? [...prev, ...restored] : prev;
+      });
+    });
+  }, [setTabs]);
+
   const tabLabel = useCallback(
     (tab: TabState): string => {
       if (tab.type !== "subagent") return AUXILIARY_VIEW_LABELS[tab.type];
@@ -405,10 +480,14 @@ export function AuxiliarySidebar({
     [activeTabId, tabLabel, tabs],
   );
 
+  // Terminal and browser tabs are always available (multi-tab), others are singleton
   const availableViews = useMemo(
     () =>
       AUXILIARY_VIEW_OPTIONS.filter(
-        (option) => !tabs.some((tab) => tab.type === option.type),
+        (option) =>
+          option.type === "terminal" ||
+          option.type === "browser" ||
+          !tabs.some((tab) => tab.type === option.type),
       ),
     [tabs],
   );
@@ -423,7 +502,7 @@ export function AuxiliarySidebar({
         onActivate={activateTab}
         onCloseTab={removeTab}
         onMoveTab={moveTab}
-        onOpenView={addTab}
+        onOpenView={handleOpenView}
         onTogglePrimary={onTogglePrimary}
       />
 
@@ -432,7 +511,7 @@ export function AuxiliarySidebar({
           <AuxiliaryEmptyLauncher
             options={AUXILIARY_VIEW_OPTIONS}
             firstActionRef={launcherFirstActionRef}
-            onOpenView={addTab}
+            onOpenView={handleOpenView}
           />
         ) : null}
         {tabs.map((tab) => (
@@ -459,6 +538,8 @@ export function AuxiliarySidebar({
                 reviewTarget={tab.reviewTarget ?? null}
                 timeline={sessionTimeline}
               />
+            ) : tab.type === "terminal" ? (
+              <TerminalPanel sessionId={tab.sessionId} />
             ) : null}
           </AuxiliaryViewPanel>
         ))}

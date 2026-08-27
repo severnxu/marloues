@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 
-export type AuxiliaryStaticViewType = "outputs" | "files" | "memory" | "review";
+export type AuxiliaryStaticViewType =
+  "outputs" | "files" | "memory" | "review" | "terminal" | "browser";
 
 export interface AuxiliaryViewOption {
   type: AuxiliaryStaticViewType;
