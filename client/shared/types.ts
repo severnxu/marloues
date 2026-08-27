@@ -1181,6 +1181,54 @@ export interface MarlouesAPI {
       reason?: string,
     ): void;
   };
+  terminal: {
+    spawn(cwd: string): Promise<string>;
+    write(sessionId: string, data: string): Promise<void>;
+    resize(sessionId: string, cols: number, rows: number): Promise<void>;
+    onData(callback: (sessionId: string, data: string) => void): () => void;
+    onExit(callback: (sessionId: string, exitCode: number) => void): () => void;
+    list(): Promise<
+      Array<{
+        sessionId: string;
+        threadId?: string;
+        pid: number;
+        process: string;
+        cwd: string;
+        createdAt: number;
+        lastOutputAt: number;
+        rendererAttached: boolean;
+      }>
+    >;
+    history(sessionId: string): Promise<string>;
+    kill(sessionId: string): Promise<void>;
+  };
+  browser: {
+    viewNavigate(pageId: string, url: string): Promise<void>;
+    newPage(url: string): Promise<string>;
+    closePage(pageId: string): Promise<void>;
+    listPages(): Promise<
+      Array<{
+        pageId: string;
+        threadId?: string;
+        browserId: string;
+        url: string;
+        title: string;
+        createdAt: number;
+        lastActivityAt: number;
+      }>
+    >;
+    screenshot(): Promise<string>;
+    setViewBounds(
+      pageId: string,
+      bounds: { x: number; y: number; width: number; height: number },
+    ): Promise<void>;
+    onUrlChanged(
+      callback: (threadId: string, pageId: string, url: string) => void,
+    ): () => void;
+    onNavigationBlocked(
+      callback: (pageId: string, url: string, host: string) => void,
+    ): () => void;
+  };
 }
 
 export const IPC = {
@@ -1280,4 +1328,20 @@ export const IPC = {
   CHAT_ITEM_EVENT: "chat:item-event",
   CHAT_PERMISSION_REQUEST: "chat:permission-request",
   CHAT_PERMISSION_RESPONSE: "chat:permission-response",
+  TERMINAL_SPAWN: "terminal:spawn",
+  TERMINAL_DATA: "terminal:data",
+  TERMINAL_WRITE: "terminal:write",
+  TERMINAL_RESIZE: "terminal:resize",
+  TERMINAL_KILL: "terminal:kill",
+  TERMINAL_LIST: "terminal:list",
+  TERMINAL_HISTORY: "terminal:history",
+  TERMINAL_EXIT: "terminal:exit",
+  BROWSER_VIEW_NAVIGATE: "browser:view-navigate",
+  BROWSER_NEW_PAGE: "browser:new-page",
+  BROWSER_CLOSE_PAGE: "browser:close-page",
+  BROWSER_VIEW_BOUNDS: "browser:view-bounds",
+  BROWSER_LIST_PAGES: "browser:list-pages",
+  BROWSER_SCREENSHOT: "browser:screenshot",
+  BROWSER_URL_CHANGED: "browser:url-changed",
+  BROWSER_NAVIGATION_BLOCKED: "browser:navigation-blocked",
 } as const;

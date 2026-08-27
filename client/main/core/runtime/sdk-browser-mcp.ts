@@ -137,11 +137,8 @@ export function createSdkBrowserServer(
             content: [
               {
                 type: "image" as const,
-                source: {
-                  type: "base64" as const,
-                  media_type: "image/png",
-                  data,
-                },
+                data,
+                mimeType: "image/png",
               },
             ],
           };

@@ -332,6 +332,69 @@ const api: MarlouesAPI = {
       return () => ipcRenderer.off(IPC.SCHEDULE_CHANGED, listener);
     },
   },
+  terminal: {
+    spawn: (cwd: string) => ipcRenderer.invoke(IPC.TERMINAL_SPAWN, cwd),
+    write: (sessionId: string, data: string) =>
+      ipcRenderer.invoke(IPC.TERMINAL_WRITE, sessionId, data),
+    resize: (sessionId: string, cols: number, rows: number) =>
+      ipcRenderer.invoke(IPC.TERMINAL_RESIZE, sessionId, cols, rows),
+    onData: (callback) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        sessionId: string,
+        data: string,
+      ) => callback(sessionId, data);
+      ipcRenderer.on(IPC.TERMINAL_DATA, listener);
+      return () => ipcRenderer.off(IPC.TERMINAL_DATA, listener);
+    },
+    onExit: (callback) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        sessionId: string,
+        exitCode: number,
+      ) => callback(sessionId, exitCode);
+      ipcRenderer.on(IPC.TERMINAL_EXIT, listener);
+      return () => ipcRenderer.off(IPC.TERMINAL_EXIT, listener);
+    },
+    list: () => ipcRenderer.invoke(IPC.TERMINAL_LIST),
+    history: (sessionId: string) =>
+      ipcRenderer.invoke(IPC.TERMINAL_HISTORY, sessionId),
+    kill: (sessionId: string) =>
+      ipcRenderer.invoke(IPC.TERMINAL_KILL, sessionId),
+  },
+  browser: {
+    viewNavigate: (pageId: string, url: string) =>
+      ipcRenderer.invoke(IPC.BROWSER_VIEW_NAVIGATE, pageId, url),
+    newPage: (url: string) => ipcRenderer.invoke(IPC.BROWSER_NEW_PAGE, url),
+    closePage: (pageId: string) =>
+      ipcRenderer.invoke(IPC.BROWSER_CLOSE_PAGE, pageId),
+    listPages: () => ipcRenderer.invoke(IPC.BROWSER_LIST_PAGES),
+    screenshot: () => ipcRenderer.invoke(IPC.BROWSER_SCREENSHOT),
+    setViewBounds: (
+      pageId: string,
+      bounds: { x: number; y: number; width: number; height: number },
+    ) => ipcRenderer.invoke(IPC.BROWSER_VIEW_BOUNDS, pageId, bounds),
+    onUrlChanged: (callback) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        threadId: string,
+        pageId: string,
+        url: string,
+      ) => callback(threadId, pageId, url);
+      ipcRenderer.on(IPC.BROWSER_URL_CHANGED, listener);
+      return () => ipcRenderer.off(IPC.BROWSER_URL_CHANGED, listener);
+    },
+    onNavigationBlocked: (callback) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        pageId: string,
+        url: string,
+        host: string,
+      ) => callback(pageId, url, host);
+      ipcRenderer.on(IPC.BROWSER_NAVIGATION_BLOCKED, listener);
+      return () => ipcRenderer.off(IPC.BROWSER_NAVIGATION_BLOCKED, listener);
+    },
+  },
 };
 
 contextBridge.exposeInMainWorld("marloues", api);

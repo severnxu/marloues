@@ -15,6 +15,8 @@ import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import * as QRCode from "qrcode";
 import { IPC } from "./channels";
+import { terminalService } from "../services/terminal-service";
+import { browserService } from "../services/browser-service";
 import { logInfo } from "../core/logging/app-logger";
 import { IM_IPC } from "@shared/im/im-ipc";
 import type {
@@ -2448,10 +2450,49 @@ function startSchedulePoller(): void {
   void pollDueScheduledTasks();
 }
 
+let terminalBrowserBroadcastRegistered = false;
+
+/**
+ * Forwards TerminalService and BrowserService events to the renderer so the
+ * terminal (xterm) and browser panels can display live output.
+ */
+function registerTerminalBrowserBroadcast(): void {
+  if (terminalBrowserBroadcastRegistered) return;
+  terminalBrowserBroadcastRegistered = true;
+
+  terminalService.on("data", (sessionId: string, data: string) => {
+    const win = getMainWindow();
+    if (!win || win.isDestroyed()) return;
+    win.webContents.send(IPC.TERMINAL_DATA, sessionId, data);
+  });
+  terminalService.on("exit", (sessionId: string, exitCode: number) => {
+    const win = getMainWindow();
+    if (!win || win.isDestroyed()) return;
+    win.webContents.send(IPC.TERMINAL_EXIT, sessionId, exitCode);
+  });
+  browserService.on(
+    "url-changed",
+    (threadId: string | undefined, pageId: string, url: string) => {
+      const win = getMainWindow();
+      if (!win || win.isDestroyed()) return;
+      win.webContents.send(IPC.BROWSER_URL_CHANGED, threadId, pageId, url);
+    },
+  );
+  browserService.on(
+    "navigation-blocked",
+    (pageId: string, url: string, host: string) => {
+      const win = getMainWindow();
+      if (!win || win.isDestroyed()) return;
+      win.webContents.send(IPC.BROWSER_NAVIGATION_BLOCKED, pageId, url, host);
+    },
+  );
+}
+
 export function registerHandlers(): void {
   registerReadThreadBroadcast();
   registerPendingStateBroadcast();
   registerImHandlers();
+  registerTerminalBrowserBroadcast();
   imRuntimeBridge.start();
   startSchedulePoller();
   // ---------- App ----------
@@ -3398,5 +3439,66 @@ export function registerHandlers(): void {
   ipcMain.handle(
     IPC.SKILL_MARKETPLACE_INSTALL,
     async (_e, _slug?: string, _version?: string) => installMarketplaceSkill(),
+  );
+
+  // ---------- Terminal ----------
+
+  ipcMain.handle(IPC.TERMINAL_SPAWN, (_event, cwd: string) => {
+    const sessionId = terminalService.spawn(cwd ?? process.cwd());
+    terminalService.setRendererAttached(sessionId, true);
+    return sessionId;
+  });
+  ipcMain.handle(
+    IPC.TERMINAL_WRITE,
+    (_event, sessionId: string, data: string) => {
+      terminalService.write(sessionId, data);
+    },
+  );
+  ipcMain.handle(
+    IPC.TERMINAL_RESIZE,
+    (_event, sessionId: string, cols: number, rows: number) => {
+      terminalService.resize(sessionId, cols, rows);
+    },
+  );
+  ipcMain.handle(IPC.TERMINAL_KILL, (_event, sessionId: string) => {
+    terminalService.setRendererAttached(sessionId, false);
+    terminalService.kill(sessionId);
+  });
+  ipcMain.handle(IPC.TERMINAL_LIST, () => terminalService.listSessions());
+  ipcMain.handle(IPC.TERMINAL_HISTORY, (_event, sessionId: string) =>
+    terminalService.getHistory(sessionId),
+  );
+
+  // ---------- Browser ----------
+
+  ipcMain.handle(IPC.BROWSER_NEW_PAGE, async (_event, url: string) => {
+    const browserId = await browserService.launch({ headless: true });
+    const pageId = await browserService.newPage(
+      browserId,
+      url ?? "about:blank",
+    );
+    return pageId;
+  });
+  ipcMain.handle(IPC.BROWSER_CLOSE_PAGE, async (_event, pageId: string) => {
+    await browserService.closePage(pageId);
+  });
+  ipcMain.handle(IPC.BROWSER_LIST_PAGES, () => browserService.listPages());
+  ipcMain.handle(IPC.BROWSER_SCREENSHOT, async () => {
+    const pages = browserService.listPages();
+    if (pages.length === 0) return "";
+    return browserService.screenshot(pages[0].pageId);
+  });
+  // WebContentsView management — completed in Step 12 (browser-view-manager.ts)
+  ipcMain.handle(
+    IPC.BROWSER_VIEW_NAVIGATE,
+    async (_event, _pageId: string, _url: string) => {
+      // Step 12: browser-view-manager.ts will handle WebContentsView navigation
+    },
+  );
+  ipcMain.handle(
+    IPC.BROWSER_VIEW_BOUNDS,
+    async (_event, _pageId: string, _bounds: unknown) => {
+      // Step 12: browser-view-manager.ts will handle WebContentsView bounds
+    },
   );
 }

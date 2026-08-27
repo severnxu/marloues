@@ -36,7 +36,7 @@ interface PageState {
 const MAX_BROWSERS = 4;
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 
-type SecurityRulesGetter = () => AgentSettings["securityRules"];
+type SecurityRulesGetter = () => AgentSettings["securityRules"] | undefined;
 
 /**
  * Main-process singleton managing Playwright browser instances.
@@ -113,7 +113,7 @@ class BrowserServiceImpl extends EventEmitter {
     const browser = (
       state as unknown as { _browser: { newPage: () => Promise<unknown> } }
     )._browser;
-    const page = await browser.newPage();
+    const page = (await browser.newPage()) as PageHandle;
     const pageId = crypto.randomUUID();
     const pageState: PageState = {
       pageId,
@@ -197,6 +197,25 @@ class BrowserServiceImpl extends EventEmitter {
     return this.closeInternal(browserId, "user-requested");
   }
 
+  async closePage(pageId: string): Promise<void> {
+    const state = this.pages.get(pageId);
+    if (!state) return;
+    const browserState = this.browsers.get(state.browserId);
+    browserState?.pages.delete(pageId);
+    try {
+      const page = await this.getPageHandle(pageId);
+      await page?.close();
+    } catch {
+      // best-effort
+    }
+    this.pages.delete(pageId);
+    // Clean up active page mapping if this was the active page
+    for (const [tid, pid] of this.activePageByThread) {
+      if (pid === pageId) this.activePageByThread.delete(tid);
+    }
+    logInfo("browser.closePage", { pageId, browserId: state.browserId });
+  }
+
   getActivePageId(threadId: string): string | undefined {
     return this.activePageByThread.get(threadId);
   }
@@ -258,7 +277,8 @@ class BrowserServiceImpl extends EventEmitter {
     const pageObj = page as PageHandle;
     if (!pageObj || typeof pageObj.on !== "function") return;
 
-    pageObj.on("framenavigated", async (frame: { url: () => string }) => {
+    pageObj.on("framenavigated", async (...args: unknown[]) => {
+      const frame = args[0] as { url: () => string };
       const url = frame.url();
       if (!url || url === "about:blank") return;
       const host = this.safeHostname(url);
@@ -287,7 +307,8 @@ class BrowserServiceImpl extends EventEmitter {
     });
 
     // Update URL state on navigation
-    pageObj.on("framenavigated", (frame: { url: () => string }) => {
+    pageObj.on("framenavigated", (...args: unknown[]) => {
+      const frame = args[0] as { url: () => string };
       const url = frame.url();
       if (url && url !== "about:blank") {
         pageState.url = url;
@@ -379,5 +400,6 @@ interface PageHandle {
   fill(selector: string, value: string, opts?: unknown): Promise<void>;
   content(): Promise<string>;
   url(): string;
+  close(): Promise<void>;
 }
 export const browserService = new BrowserServiceImpl();
