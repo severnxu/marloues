@@ -873,7 +873,21 @@ const api: MarlouesAPI = {
 
 #### Step 11: TerminalPanel 组件
 
-**文件**: `client/renderer/src/components/TerminalPanel.tsx`
+**文件**: `client/renderer/src/components/workbench/auxiliary-sidebar/panels/TerminalPanel.tsx` +
+`client/renderer/src/components/workbench/auxiliary-sidebar/types.ts` (修改) +
+`client/renderer/src/components/workbench/auxiliary-sidebar/catalog.ts` (修改) +
+`client/renderer/src/components/workbench/auxiliary-sidebar/panels/index.ts` (修改) +
+`client/renderer/src/components/workbench/auxiliary-sidebar/AuxiliarySidebar.tsx` (修改)
+
+> **v6 补充 — 面板注册**：TerminalPanel 不是独立组件，需接入辅助侧边栏的
+> 面板注册体系（参照现有 OutputsPanel / FileExplorer / MemoryPanel / ReviewPanel）：
+> 1. `types.ts`：`AuxiliaryStaticViewType` 联合类型追加 `"terminal"`
+> 2. `catalog.ts`：`AUXILIARY_VIEW_OPTIONS` 追加
+>    `{ type: "terminal", label: "终端", icon: TerminalSquare }`（lucide 图标）
+> 3. `panels/index.ts`：barrel export 追加 `export { TerminalPanel } from "./TerminalPanel"`
+> 4. `AuxiliarySidebar.tsx`：import TerminalPanel，渲染分支追加
+>    `tab.type === "terminal" ? <TerminalPanel /> :`（现有 if/else 链在
+>    `tabs.map` 内，参照 files/outputs/memory/review 分支写法）
 
 基于 `@xterm/xterm` + `@xterm/addon-fit`：
 - 通过 IPC 双向绑定 TerminalService
@@ -885,7 +899,27 @@ const api: MarlouesAPI = {
 
 #### Step 12: BrowserPanel 组件
 
-**文件**: `client/renderer/src/components/BrowserPanel.tsx` + main 进程 WebContentsView
+**文件**: `client/renderer/src/components/workbench/auxiliary-sidebar/panels/BrowserPanel.tsx` +
+`client/renderer/src/components/workbench/auxiliary-sidebar/types.ts` (修改) +
+`client/renderer/src/components/workbench/auxiliary-sidebar/catalog.ts` (修改) +
+`client/renderer/src/components/workbench/auxiliary-sidebar/panels/index.ts` (修改) +
+`client/renderer/src/components/workbench/auxiliary-sidebar/AuxiliarySidebar.tsx` (修改) +
+`client/main/services/browser-view-manager.ts` (新建, 方案 B 的 WebContentsView 管理)
+
+> **v6 补充 — 面板注册**：与 TerminalPanel 同理，接入辅助侧边栏注册体系：
+> 1. `types.ts`：`AuxiliaryStaticViewType` 追加 `"browser"`
+> 2. `catalog.ts`：`AUXILIARY_VIEW_OPTIONS` 追加
+>    `{ type: "browser", label: "浏览器", icon: Globe }`（lucide 图标）
+> 3. `panels/index.ts`：barrel export 追加 `export { BrowserPanel } from "./BrowserPanel"`
+> 4. `AuxiliarySidebar.tsx`：import BrowserPanel，渲染分支追加
+>    `tab.type === "browser" ? <BrowserPanel /> :`
+>
+> **v6 补充 — WebContentsView 管理**：方案 B 的用户浏览器视图
+> （Electron `WebContentsView`）是主进程组件，不在 renderer 里。
+> 新建 `browser-view-manager.ts` 管理其生命周期（创建、attach 到
+> BaseWindow、URL 同步、销毁），与 BrowserService（Playwright 管模型浏览器）
+> 分工明确：BrowserService 管模型的工作浏览器，BrowserViewManager 管用户
+> 看的浏览器面板。
 
 > **决策分叉点**：Playwright 启动的 Chromium（模型操作）和
 > Electron WebContentsView（用户看）是两个独立浏览器内核实例，状态会分叉。
