@@ -1,4 +1,7 @@
 import { EventEmitter } from "node:events";
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import { app } from "electron";
 import type { AgentSettings } from "@shared/types";
 import { logInfo, logWarn } from "../core/logging/app-logger";
 
@@ -403,3 +406,61 @@ interface PageHandle {
   close(): Promise<void>;
 }
 export const browserService = new BrowserServiceImpl();
+
+/**
+ * Resolves the Playwright Chromium executable path for packaged apps.
+ *
+ * In development, Playwright auto-discovers browsers from its cache directory
+ * (~/.cache/ms-playwright or ~/Library/Caches/ms-playwright). In a packaged
+ * Electron app, those caches don't exist, so the browser binary must be
+ * bundled via electron-builder's `extraResources` and resolved here.
+ *
+ * Expected layout after bundling:
+ *   <resourcesPath>/playwright-browsers/chromium-XXXX/chrome-mac/Chromium.app/Contents/MacOS/Chromium
+ *   <resourcesPath>/playwright-browsers/chromium-XXXX/chrome-win/chrome.exe
+ *   <resourcesPath>/playwright-browsers/chromium-XXXX/chrome-linux/chrome
+ */
+export function resolveChromiumPath(): string | undefined {
+  if (!app?.isPackaged || !process.resourcesPath) return undefined;
+  const browsersRoot = join(process.resourcesPath, "playwright-browsers");
+  if (!existsSync(browsersRoot)) {
+    logWarn("chromium.browsersPath.missing", { browsersRoot });
+    return undefined;
+  }
+
+  // Find the chromium-XXXX directory
+  let chromiumDir: string | undefined;
+  try {
+    chromiumDir = readdirSync(browsersRoot).find((entry) =>
+      entry.startsWith("chromium-"),
+    );
+  } catch {
+    logWarn("chromium.browsersPath.readError", { browsersRoot });
+    return undefined;
+  }
+  if (!chromiumDir) {
+    logWarn("chromium.directory.notFound", { browsersRoot });
+    return undefined;
+  }
+
+  const basePath = join(browsersRoot, chromiumDir);
+  let binaryPath: string;
+  if (process.platform === "win32") {
+    binaryPath = join(basePath, "chrome-win", "chrome.exe");
+  } else if (process.platform === "darwin") {
+    binaryPath = join(
+      basePath,
+      "chrome-mac",
+      "Chromium.app",
+      "Contents",
+      "MacOS",
+      "Chromium",
+    );
+  } else {
+    binaryPath = join(basePath, "chrome-linux", "chrome");
+  }
+
+  if (existsSync(binaryPath)) return binaryPath;
+  logWarn("chromium.binary.notFound", { binaryPath });
+  return undefined;
+}

@@ -1,0 +1,93 @@
+/* Auxiliary terminal and browser panels. */
+
+.terminal-panel-container {
+  padding: 4px 6px;
+  background: var(--surface-workspace, #1e1e1e);
+}
+
+.terminal-panel-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  color: var(--text-3, #888);
+  font-size: 12px;
+}
+
+.browser-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--surface-workspace, #1e1e1e);
+}
+
+.browser-panel-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--shell-divider, rgba(255, 255, 255, 0.08));
+}
+
+.browser-panel-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--control-radius, 4px);
+  background: transparent;
+  color: var(--text-2, #ccc);
+  cursor: pointer;
+}
+
+.browser-panel-btn:hover:not(:disabled) {
+  background: var(--raised-2, rgba(255, 255, 255, 0.08));
+  color: var(--text-1, #fff);
+}
+
+.browser-panel-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.browser-panel-url-input {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  border: 1px solid var(--shell-divider, rgba(255, 255, 255, 0.1));
+  border-radius: var(--control-radius, 4px);
+  background: var(--raised-1, rgba(0, 0, 0, 0.2));
+  padding: 0 8px;
+  color: var(--text-1, #eee);
+  font-size: 12px;
+  font-family: var(--font-mono, Menlo, monospace);
+  outline: none;
+}
+
+.browser-panel-url-input:focus {
+  border-color: var(--accent, #4a9eff);
+}
+
+.browser-panel-container {
+  flex: 1;
+  min-height: 0;
+  background: #fff;
+}
+
+.browser-panel-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  color: var(--text-3, #888);
+  font-size: 12px;
+}

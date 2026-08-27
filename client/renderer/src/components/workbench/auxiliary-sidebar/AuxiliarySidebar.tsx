@@ -18,6 +18,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { FileExplorer, MemoryPanel, OutputsPanel, ReviewPanel } from "./panels";
 import { TerminalPanel } from "./panels/TerminalPanel";
+import { BrowserPanel } from "./panels/BrowserPanel";
 import { workflowItemsToTimeline } from "./panels/workflow-items-to-timeline";
 import { SubagentWorkspace } from "@/components/workflow-chat";
 import type { TimelineItem } from "@shared/types";
@@ -428,10 +429,10 @@ export function AuxiliarySidebar({
   );
 
   // Reload recovery: restore terminal tabs from active PTY sessions
-  const recoveryDoneRef = useRef(false);
+  const terminalRecoveryRef = useRef(false);
   useEffect(() => {
-    if (recoveryDoneRef.current) return;
-    recoveryDoneRef.current = true;
+    if (terminalRecoveryRef.current) return;
+    terminalRecoveryRef.current = true;
     void window.marloues.terminal?.list().then((sessions) => {
       if (!sessions || sessions.length === 0) return;
       setTabs((prev) => {
@@ -451,6 +452,38 @@ export function AuxiliarySidebar({
       });
     });
   }, [setTabs]);
+
+  // Reload recovery: restore browser tabs from active WebContentsViews
+  const browserRecoveryRef = useRef(false);
+  useEffect(() => {
+    if (browserRecoveryRef.current) return;
+    browserRecoveryRef.current = true;
+    void window.marloues.browser?.listPages().then((pages) => {
+      if (!pages || pages.length === 0) return;
+      setTabs((prev) => {
+        const existing = new Set(
+          prev
+            .filter((t) => t.type === "browser" && t.pageId)
+            .map((t) => t.pageId),
+        );
+        const restored = pages
+          .filter((page) => !existing.has(page.pageId))
+          .map((page) => ({
+            id: makeTabId(),
+            type: "browser" as const,
+            pageId: page.pageId,
+          }));
+        return restored.length > 0 ? [...prev, ...restored] : prev;
+      });
+    });
+  }, [setTabs]);
+
+  // Auto-activate first tab if none is active (e.g., after reload recovery restores tabs)
+  useEffect(() => {
+    if (!activeTabId && tabs.length > 0) {
+      setActiveTabId(tabs[0]!.id);
+    }
+  }, [activeTabId, tabs, setActiveTabId]);
 
   const tabLabel = useCallback(
     (tab: TabState): string => {
@@ -540,6 +573,8 @@ export function AuxiliarySidebar({
               />
             ) : tab.type === "terminal" ? (
               <TerminalPanel sessionId={tab.sessionId} />
+            ) : tab.type === "browser" ? (
+              <BrowserPanel pageId={tab.pageId} />
             ) : null}
           </AuxiliaryViewPanel>
         ))}

@@ -17,6 +17,7 @@ import * as QRCode from "qrcode";
 import { IPC } from "./channels";
 import { terminalService } from "../services/terminal-service";
 import { browserService } from "../services/browser-service";
+import { browserViewManager } from "../services/browser-view-manager";
 import { logInfo } from "../core/logging/app-logger";
 import { IM_IPC } from "@shared/im/im-ipc";
 import type {
@@ -3472,33 +3473,37 @@ export function registerHandlers(): void {
   // ---------- Browser ----------
 
   ipcMain.handle(IPC.BROWSER_NEW_PAGE, async (_event, url: string) => {
-    const browserId = await browserService.launch({ headless: true });
-    const pageId = await browserService.newPage(
-      browserId,
-      url ?? "about:blank",
-    );
+    const pageId = crypto.randomUUID();
+    browserViewManager.createView(pageId, url ?? "about:blank", {
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+    });
     return pageId;
   });
   ipcMain.handle(IPC.BROWSER_CLOSE_PAGE, async (_event, pageId: string) => {
-    await browserService.closePage(pageId);
+    browserViewManager.destroyView(pageId);
   });
-  ipcMain.handle(IPC.BROWSER_LIST_PAGES, () => browserService.listPages());
+  ipcMain.handle(IPC.BROWSER_LIST_PAGES, () => browserViewManager.listViews());
   ipcMain.handle(IPC.BROWSER_SCREENSHOT, async () => {
-    const pages = browserService.listPages();
-    if (pages.length === 0) return "";
-    return browserService.screenshot(pages[0].pageId);
+    return browserViewManager.capturePage();
   });
-  // WebContentsView management — completed in Step 12 (browser-view-manager.ts)
   ipcMain.handle(
     IPC.BROWSER_VIEW_NAVIGATE,
-    async (_event, _pageId: string, _url: string) => {
-      // Step 12: browser-view-manager.ts will handle WebContentsView navigation
+    async (_event, pageId: string, url: string) => {
+      browserViewManager.navigate(pageId, url);
     },
   );
   ipcMain.handle(
     IPC.BROWSER_VIEW_BOUNDS,
-    async (_event, _pageId: string, _bounds: unknown) => {
-      // Step 12: browser-view-manager.ts will handle WebContentsView bounds
+    async (
+      _event,
+      pageId: string,
+      bounds: { x: number; y: number; width: number; height: number },
+    ) => {
+      browserViewManager.setBounds(pageId, bounds);
+      browserViewManager.setActivePage(pageId);
     },
   );
 }

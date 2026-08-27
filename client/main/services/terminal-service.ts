@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import { execSync } from "node:child_process";
 import { spawn as ptySpawn, type IPty } from "node-pty";
 import { logInfo, logWarn } from "../core/logging/app-logger";
 
@@ -304,9 +305,10 @@ class TerminalServiceImpl extends EventEmitter {
 
   private resolveShell(): { executable: string; args: string[] } {
     if (process.platform === "win32") {
-      // Prefer PowerShell 7+, fall back to Windows PowerShell
+      // Detect pwsh.exe (PowerShell 7+) via `where`, fall back to powershell.exe
+      const detected = this.detectWindowsShell();
       return {
-        executable: "powershell.exe",
+        executable: detected,
         args: ["-NoLogo", "-NoProfile"],
       };
     }
@@ -314,6 +316,21 @@ class TerminalServiceImpl extends EventEmitter {
       executable: process.env.SHELL || "/bin/zsh",
       args: ["-l"],
     };
+  }
+
+  private detectWindowsShell(): string {
+    for (const cmd of ["pwsh.exe", "powershell.exe"]) {
+      try {
+        const path = execSync(`where ${cmd}`, { encoding: "utf-8" })
+          .trim()
+          .split("\n")[0]
+          .trim();
+        if (path) return path;
+      } catch {
+        // not found, try next
+      }
+    }
+    return "powershell.exe";
   }
 }
 

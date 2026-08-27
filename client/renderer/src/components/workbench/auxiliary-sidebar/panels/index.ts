@@ -3,3 +3,4 @@ export { ReviewPanel } from "./ReviewPanel";
 export { FileExplorer } from "./FileExplorer";
 export { MemoryPanel } from "./MemoryPanel";
 export { TerminalPanel } from "./TerminalPanel";
+export { BrowserPanel } from "./BrowserPanel";

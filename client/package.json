@@ -28,6 +28,7 @@
     "verify:hot": "node scripts/verify-hot-update.mjs",
     "start": "electron-vite preview --config electron.vite.config.ts",
     "rebuild:native": "electron-rebuild -f -w better-sqlite3 -w node-pty",
+    "install:playwright-browsers": "PLAYWRIGHT_BROWSERS_PATH=./resources/playwright-browsers npx playwright install chromium",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
@@ -146,6 +147,13 @@
       {
         "from": "resources/tray-icon.png",
         "to": "tray-icon.png"
+      },
+      {
+        "from": "resources/playwright-browsers",
+        "to": "playwright-browsers",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "asar": true,
