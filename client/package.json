@@ -27,7 +27,7 @@
     "prepare:hot-pages": "node scripts/prepare-hot-update-pages.mjs",
     "verify:hot": "node scripts/verify-hot-update.mjs",
     "start": "electron-vite preview --config electron.vite.config.ts",
-    "rebuild:native": "electron-rebuild -f -w better-sqlite3",
+    "rebuild:native": "electron-rebuild -f -w better-sqlite3 -w node-pty",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
@@ -45,6 +45,8 @@
     "test:smoke:electron-live-ui": "tsx --tsconfig tsconfig.node.json ../tests/smoke/electron-live-ui.smoke.ts",
     "test:smoke:electron-binary-live-ui": "tsx --tsconfig tsconfig.node.json ../tests/smoke/electron-live-ui.smoke.ts --binary",
     "test:smoke:packaged": "node ../tests/smoke/packaged.smoke.mjs",
+    "test:smoke:terminal-browser": "tsx --tsconfig tsconfig.node.json ../tests/smoke/terminal-browser.smoke.ts",
+    "test:contract:terminal-browser": "tsx --tsconfig tsconfig.node.json ../tests/contract/terminal-browser.contract.ts",
     "test:visual": "node ../tests/visual/workflow-suite.visual.mjs",
     "changeset": "changeset",
     "version": "changeset version",
@@ -78,6 +80,8 @@
     "hast-util-to-text": "^4.0.2",
     "highlight.js": "^11.11.1",
     "loge": "^1.0.5",
+    "node-pty": "^1.1.0",
+    "playwright": "^1.62.1",
     "lowlight": "^3.3.0",
     "lucide-react": "^0.468.0",
     "marked": "^17.0.6",
@@ -93,6 +97,8 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.6.0",
     "unist-util-visit": "^5.1.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
     "zod": "^4.4.3",
     "zustand": "^5.0.3"
   },
@@ -145,7 +151,8 @@
     "asar": true,
     "asarUnpack": [
       "node_modules/@anthropic-ai/claude-agent-sdk-*/**",
-      "node_modules/@openai/codex-*/**"
+      "node_modules/@openai/codex-*/**",
+      "node_modules/node-pty/**"
     ],
     "publish": [
       {
