@@ -1,4 +1,18 @@
-# Marloues 终端与浏览器集成方案 (v6)
+# Marloues 终端与浏览器集成方案 (v7)
+
+> v7 修订（UI 层复核）：TerminalSquare 改为 SquareTerminal（前者是弃用别名
+> 虽存在但不规范）；补 browser:view-bounds IPC 通道（WebContentsView 布局
+> 同步）+ view 可见性/z-order 机制；补 tab 重建语义（SessionAuxiliaryState 是
+> 纯内存态 useState，reload 后 tabs 全丢，需从 list 结果重建）；拆分
+> browser:navigate 语义歧义（用户 view 导航 vs 模型工具调用）；types.ts 修改
+> 统一到 Step 10（Step 11/12 不再重复列出）；多 tab 测试从 unit/ 归位到
+> component test。
+>
+> Step 0 补 4 个打包细节（asarUnpack 加 node-pty、rebuild:native 脚本扩展、
+> Playwright Chromium 打包后路径解析参照 resolveClaudeExecutablePath 模式、
+> files 白名单与 package:smoke 验证）——这些决定"开发能跑"和"打包后能跑"
+> 的差别。
+
 > v6 修订：修复 v5 复核遗留的实现级陷阱——framenavigated 拦截代码中
 > securityRules 来源未定义（改为注入 getter 获取实时 AgentSettings）；
 > EMPTY_SECURITY_RULES 未导出（注明需从 security-host.ts 导出或在
@@ -397,6 +411,46 @@ SDK 内置 Bash → toolAliases: { Bash: SDK_SANDBOX_TOOL_NAME }
   （约 +150MB，需明确取舍）
 - `@playwright/test` (devDependencies, E2E 用) 与 `playwright` (运行时依赖)
   分开管理
+
+> **v7 补充 — 打包细节（动工前必须补，否则"开发能跑"但"打包后报错"）**：
+>
+> **1. node-pty 需要 asarUnpack**：`package.json:147` 现有 `asarUnpack` 只包含
+> 两个 SDK（`@anthropic-ai/claude-agent-sdk-*` 和 `@openai/codex-*`）。node-pty
+> 是原生模块，`.node` 文件在 asar 内无法被 `dlopen` 加载，必须加入：
+> ```
+> "asarUnpack": [
+>   "node_modules/@anthropic-ai/claude-agent-sdk-*/**",
+>   "node_modules/@openai/codex-*/**",
+>   "node_modules/node-pty/**"
+> ]
+> ```
+> 注意：`better-sqlite3` 也没在 `asarUnpack` 里，可能是走了 electron-builder
+> 的原生模块自动检测。实现时先确认 `better-sqlite3` 的现有处理方式，照同一
+> 套做最稳——如果自动检测覆盖了，node-pty 也可能被自动处理；但如果不确定，
+> 显式列出是安全的做法。
+>
+> **2. `rebuild:native` 脚本要加 node-pty**：现状
+> `"rebuild:native": "electron-rebuild -f -w better-sqlite3"`（package.json:31）
+> 只 rebuild 一个模块。需改为 `-w better-sqlite3 -w node-pty`，否则 node-pty 用
+> 系统 Node 的 ABI 编译，Electron 加载时报 `NODE_MODULE_VERSION` 不匹配。
+>
+> **3. Playwright 打包后的浏览器路径**：文档说 Chromium 通过 `extraResources`
+> 打入包，但没说运行时怎么找到它。Playwright 默认查用户缓存目录
+> （`~/Library/Caches/ms-playwright`），打包后那里没有。需要二选一：
+> - 设 `PLAYWRIGHT_BROWSERS_PATH` 指向 `process.resourcesPath`，或
+> - `launch({ executablePath: <resourcesPath 下的实际路径> })`
+>
+> 这跟 `options-builder.ts:82` 的 `resolveClaudeExecutablePath()` 是同一类问题
+> （该函数注释详细记录了 asar 虚拟路径的坑：`fs.existsSync` 在 asar 内返回
+> true 但 `child_process.spawn` 需要真实文件），直接照那个模式写一个
+> `resolveChromiumPath()`。
+>
+> **4. `files` 字段**：`package.json:136` 是 `["out/**/*", "package.json"]`
+> 白名单模式——`node_modules` 不在列表里，electron-builder 靠依赖分析自动
+> 包含生产依赖。node-pty 作为 `dependencies` 应该会被带上，但 Playwright 的
+> 浏览器二进制不在 `node_modules` 里（在缓存目录），所以 #3 必须解决。
+> 建议打包后用 `npm run package:smoke` 验证两个模块都能加载——项目已有此脚本
+> （`package:dir && test:smoke:packaged`）。
 
 > **打包说明**：走 in-process 路线后不需要外部 `node` 命令（SDK MCP 在主进程
 > 内运行）。但若 Binary Runtime 未来需要 stdio MCP server，必须用
@@ -846,12 +900,28 @@ MCP，子进程里没有 TerminalService 单例，且需要额外的"子进程�
 - `terminal:kill` (renderer→main, 终止会话)
 - `terminal:list` (renderer→main, 列出活跃会话，renderer reload 后恢复)
 - `terminal:history` (renderer→main, 获取全量输出回放)
-- `browser:navigate` (renderer→main)
+- `browser:view-navigate` (renderer→main, 用户在地址栏输入 URL 导航用户 view)
 - `browser:new_page` (renderer→main, 用户手动开浏览器 tab)
 - `browser:close_page` (renderer→main, 关闭 page)
+- `browser:view-bounds` (renderer→main, BrowserPanel 容器几何信息, 窗口 resize/侧边栏变化时推送)
 - `browser:list_pages` (renderer→main, 列出活跃 page, renderer reload 后恢复)
 - `browser:screenshot` (main→renderer)
 - `browser:url-changed` (main→renderer, 模型 navigate 后推送 URL 到 UI)
+
+> **v7 补充 — browser:navigate 语义拆分**：方案 B 下模型用 Playwright 和
+> 用户用 WebContentsView 是两个独立浏览器内核。`browser:navigate` 同时
+> 作为模型工具和 renderer→main IPC 会产生歧义。拆分为：
+> - 模型侧：`browser.navigate` 工具（走 SDK MCP，操作 Playwright page）
+> - 用户侧：`browser:view-navigate` IPC（renderer→main，操作 WebContentsView）
+> 两者各自维护自己的 URL 状态，仅通过 `browser:url-changed` 做单向同步
+> （模型 navigate → 推送到 UI；用户导航不回传模型）。
+
+> **v7 补充 — browser:view-bounds**：WebContentsView 是主进程组件，不在
+> renderer DOM 里。窗口 resize、侧边栏折叠/展开、tab 切换时，renderer
+> 必须把 BrowserPanel 容器的屏幕坐标和尺寸发给主进程做 `setBounds`。
+> 不通知会导致 view 悬浮在错误位置或盖住其他 UI。此外多 view 的
+> 可见性/z-order 由 activeTabId 驱动——非 active tab 的 view 要 hide
+> 或移出可视区。
 
 `preload/index.ts` 新增 `terminal` 和 `browser` API 命名空间：
 
@@ -866,14 +936,15 @@ const api: MarlouesAPI = {
     history: (sessionId) => ipcRenderer.invoke(IPC.TERMINAL_HISTORY, sessionId),
     kill: (sessionId) => ipcRenderer.invoke(IPC.TERMINAL_KILL, sessionId),
   },
-  browser: {
-    navigate: (url) => ipcRenderer.invoke(IPC.BROWSER_NAVIGATE, url),
+ browser: {
+    viewNavigate: (pageId, url) => ipcRenderer.invoke(IPC.BROWSER_VIEW_NAVIGATE, pageId, url),
     newPage: (url) => ipcRenderer.invoke(IPC.BROWSER_NEW_PAGE, url),
     closePage: (pageId) => ipcRenderer.invoke(IPC.BROWSER_CLOSE_PAGE, pageId),
     listPages: () => ipcRenderer.invoke(IPC.BROWSER_LIST_PAGES),
     onUrlChanged: (callback) => { /* ipcRenderer.on(IPC.BROWSER_URL_CHANGED, ...) */ },
     screenshot: () => ipcRenderer.invoke(IPC.BROWSER_SCREENSHOT),
-  },
+    setViewBounds: (pageId, bounds) => ipcRenderer.invoke(IPC.BROWSER_VIEW_BOUNDS, pageId, bounds),
+ },
 };
 ```
 
@@ -884,13 +955,16 @@ const api: MarlouesAPI = {
 `client/renderer/src/components/workbench/auxiliary-sidebar/catalog.ts` (修改) +
 `client/renderer/src/components/workbench/auxiliary-sidebar/panels/index.ts` (修改) +
 `client/renderer/src/components/workbench/auxiliary-sidebar/AuxiliarySidebar.tsx` (修改) +
-`client/shared/types.ts` (修改, MarlouesAPI.terminal 新增 spawn 返回值类型)
+`client/shared/types.ts` (修改, MarlouesAPI.terminal/browser 新增类型 — 实际修改在 Step 10 统一完成)
 
 > **v6 补充 — 面板注册**：TerminalPanel 不是独立组件，需接入辅助侧边栏的
 > 面板注册体系（参照现有 OutputsPanel / FileExplorer / MemoryPanel / ReviewPanel）：
 > 1. `types.ts`：`AuxiliaryStaticViewType` 联合类型追加 `"terminal"`
 > 2. `catalog.ts`：`AUXILIARY_VIEW_OPTIONS` 追加
->    `{ type: "terminal", label: "终端", icon: TerminalSquare }`（lucide 图标）
+>    `{ type: "terminal", label: "终端", icon: SquareTerminal }`（lucide 图标）
+>    **v7 修正**：`TerminalSquare` 是 `SquareTerminal` 的弃用别名（lucide 2023
+>    重命名 XxxSquare → SquareXxx）。当前版本 0.468.0 两者都导出，但
+>    使用 canonical 新名更规范，避免未来版本移除别名后报错。
 > 3. `panels/index.ts`：barrel export 追加 `export { TerminalPanel } from "./TerminalPanel"`
 > 4. `AuxiliarySidebar.tsx`：import TerminalPanel，渲染分支追加
 >    `tab.type === "terminal" ? <TerminalPanel sessionId={tab.sessionId} /> :`
@@ -925,6 +999,10 @@ const api: MarlouesAPI = {
 - xterm.onData -> IPC terminal:write
 - IPC terminal:data -> term.write
 - renderer reload 后通过 `terminal:list` + `terminal:history` 恢复 xterm buffer
+- renderer reload 后 tab 态重建：`SessionAuxiliaryState` 是纯内存态（React
+  `useState`，非 zustand、不持久化），reload 后 tabs 全丢。恢复流程：先调
+  `terminal:list` 拿 session 列表，用结果重建 tabs（每个 session 对应一个
+  terminal tab），再调 `terminal:history` 填充 xterm buffer
 - 兼容 Binary Runtime 的 Codex Bash 事件输出
 
 #### Step 12: BrowserPanel 组件
@@ -955,21 +1033,30 @@ const api: MarlouesAPI = {
 >    做标签（如 "example.com"），默认 "浏览器"。参照 Chrome tab 标签逻辑
 >
 > BrowserPanel 本身只管单个 page 的 WebContentsView 渲染和 URL 同步，
-> 不涉及 tab 切换逻辑。`browser:navigate` IPC 返回 pageId 后，renderer
-> 调 `addTab("browser")` 并在新 tab 的 `pageId` 上绑定该 page。
->
-> Step 10 的 IPC 通道需对应补齐：新增 `browser:new_page`（renderer→main,
-> 用户手动开浏览器 tab）和 `browser:close_page`（renderer→main, 关闭 page），
-> 返回/传入 pageId。`browser:list_pages`（renderer→main, 列出活跃 page，
-> renderer reload 后恢复）。preload 的 `browser` 命名空间对应追加
-> `newPage` / `closePage` / `listPages` 方法。
+> 不涉及 tab 切换逻辑。`browser:new_page` IPC 返回 pageId 后，renderer
+> 调 `addTab("browser")` 并在新 tab 的 `pageId` 上绑定该 page；
+> `browser:view-navigate` 仅导航当前 tab 的 view，不新建 tab。
+> 
+> Step 10 的 IPC 通道已包含 browser 侧全部通道（`browser:view-navigate`、
+> `browser:new_page`、`browser:close_page`、`browser:view-bounds`、
+> `browser:list_pages` 等），preload 的 `browser` 命名空间也已统一定义。
+> Step 12 不再重复列出，参照 Step 10 的 IPC 清单和 preload 代码。
 
 > **v6 补充 — WebContentsView 管理**：方案 B 的用户浏览器视图
 > （Electron `WebContentsView`）是主进程组件，不在 renderer 里。
 > 新建 `browser-view-manager.ts` 管理其生命周期（创建、attach 到
-> BaseWindow、URL 同步、销毁），与 BrowserService（Playwright 管模型浏览器）
-> 分工明确：BrowserService 管模型的工作浏览器，BrowserViewManager 管用户
-> 看的浏览器面板。
+> BaseWindow、URL 同步、`setBounds` 布局更新、view 可见性/z-order 管理、
+> 销毁），与 BrowserService（Playwright 管模型浏览器）分工明确：
+> BrowserService 管模型的工作浏览器，BrowserViewManager 管用户看的
+> 浏览器面板。
+>
+> **v7 补充 — view 布局与可见性**：BrowserViewManager 的 `setBounds` 由
+> `browser:view-bounds` IPC 驱动——renderer 在 BrowserPanel 容器的
+> `ResizeObserver` / 窗口 resize / 侧边栏折叠事件中推送几何信息到主进程。
+> 多 view 的可见性由 `activeTabId` 驱动：非 active tab 对应的 view 调
+> `view.setBounds({width:0, height:0})` 隐藏（或从 BaseWindow 移除），
+> active tab 的 view 恢复正确 bounds。tab 切换时 renderer 推送新的
+> bounds 并附带 `pageId` 标识哪个 view 应显示。
 
 > **决策分叉点**：Playwright 启动的 Chromium（模型操作）和
 > Electron WebContentsView（用户看）是两个独立浏览器内核实例，状态会分叉。
@@ -1057,7 +1144,20 @@ private resolveShell() {
 - 浏览器懒启动测试（首次 navigate 无 browserId → 调 launch() 并缓存 → 二次 navigate 不再 launch）
 - framenavigated securityRules getter 测试（注入的 getter 返回实时 AgentSettings.securityRules；运行时修改 allowedDomains 后新导航立即受新规则约束）
 - permit authorize→consume 完整链路测试（canUseTool allow 分支调 permitManager.authorize → handler 内 consumePermit 成功取值）
-- 辅助侧边栏多 tab 测试（addTab 同类型可多次创建；availableViews 对 terminal/browser 不隐藏；tabLabel 显示会话标识/页面 hostname）
+- 辅助侧边栏多 tab 测试见下方 component test（AuxiliarySidebar 是 React 组件，不适合放 unit/）
+
+**目录**: `tests/component/`
+
+- 辅助侧边栏多 tab 测试：addTab 同类型可多次创建（terminal/browser 每次新建，
+  其余类型保持单例）；availableViews 对 terminal/browser 不隐藏；tabLabel
+  显示会话标识/页面 hostname；tab 切换不丢输出/页面
+- tab 重建测试：renderer reload 后 SessionAuxiliaryState 清空，
+  terminal:list 返回 session 列表 → 重建 tabs → terminal:history 填充 buffer
+- browser:view-bounds 推送测试：窗口 resize / 侧边栏折叠 / tab 切换时
+  BrowserPanel 容器几何信息正确推送到主进程，WebContentsView setBounds 生效
+
+> **v7 补充**：AuxiliarySidebar 是 React 组件，多 tab 交互测试放 component
+> test 而非 unit test。参照项目实际 component 测试惯例归位。
 
 #### Step 16: 暴露矩阵验证
 
@@ -1086,11 +1186,13 @@ private resolveShell() {
 扩展 Playwright Electron 冒烟用例：
 - 终端面板能执行命令并显示输出（Claude Runtime 下 terminal.exec）
 - 终端面板能显示 Codex Bash 输出（Binary Runtime 下事件拦截）
-- 终端面板 renderer reload 后能恢复（terminal:list + terminal:history）
+- 终端面板 renderer reload 后能恢复（terminal:list 重建 tabs + terminal:history 填充 buffer）
 - 终端多 tab：用户开两个终端 tab，各自独立执行命令，切换不丢输出
 - 浏览器多 tab：用户开两个浏览器 tab，各自导航不同 URL，切换不丢页面
 - 浏览器面板能加载页面并截图
 - browser.navigate 后 UI 收到 url-changed 推送
+- 窗口 resize 后 WebContentsView 正确跟随 BrowserPanel 容器尺寸（view-bounds 推送生效）
+- tab 切换后非 active 浏览器 view 隐藏，active view 正确显示
 - Runtime 切换后终端/浏览器面板仍正常工作
 
 ## 决策分叉点

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monkey Icon Preview</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    gap: 48px;
+  }
+  h1 { font-size: 20px; font-weight: 600; color: #ccc; }
+  .section { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .section-label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
+
+  /* Mock macOS dock */
+  .dock-mock {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 20px;
+    padding: 8px 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+  }
+  .dock-mock .dock-item {
+    width: 64px; height: 64px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; font-weight: 700; color: white;
+    border-radius: 14px;
+  }
+  .dock-mock .dock-item img { width: 100%; height: 100%; object-fit: contain; border-radius: 14px; }
+
+  /* Size comparison */
+  .sizes { display: flex; align-items: flex-end; gap: 40px; }
+  .size-item { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .size-item img { image-rendering: -webkit-optimize-contrast; }
+  .size-label { font-size: 11px; color: #666; }
+
+  /* On dark dock background */
+  .dock-bg {
+    background: rgba(40, 40, 50, 0.8);
+    border-radius: 16px;
+    padding: 20px;
+  }
+</style>
+</head>
+<body>
+  <h1>Monkey Dock Icon — Fluent Emoji Style</h1>
+
+  <!-- Mock dock -->
+  <div class="section">
+    <div class="section-label">In macOS Dock Context</div>
+    <div class="dock-mock">
+      <div class="dock-item" style="background: linear-gradient(135deg, #1d9bf0, #0d6ebd);">X</div>
+      <div class="dock-item"><img src="resources/dock-icon.png" alt="Marloues"></div>
+      <div class="dock-item" style="background: #5865f2;">D</div>
+      <div class="dock-item" style="background: #1db954;">S</div>
+      <div class="dock-item" style="background: #ff7f50;">F</div>
+    </div>
+  </div>
+
+  <!-- Size comparison -->
+  <div class="section">
+    <div class="section-label">Size Comparison</div>
+    <div class="sizes">
+      <div class="size-item">
+        <img src="resources/dock-icon.png" width="128" height="128" alt="128px">
+        <span class="size-label">128px</span>
+      </div>
+      <div class="size-item">
+        <img src="resources/dock-icon.png" width="64" height="64" alt="64px">
+        <span class="size-label">64px (dock)</span>
+      </div>
+      <div class="size-item">
+        <img src="resources/dock-icon.png" width="32" height="32" alt="32px">
+        <span class="size-label">32px</span>
+      </div>
+      <div class="size-item">
+        <img src="resources/dock-icon.png" width="16" height="16" alt="16px">
+        <span class="size-label">16px</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full size -->
+  <div class="section">
+    <div class="section-label">Full Resolution (256px)</div>
+    <img src="resources/dock-icon.png" width="256" height="256" alt="Full icon" style="border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
+  </div>
+</body>
+</html>

@@ -16,6 +16,7 @@
   "scripts": {
     "dev": "electron-vite dev --config electron.vite.config.ts",
     "build": "electron-vite build --config electron.vite.config.ts",
+    "postinstall": "node scripts/patch-electron-identity.mjs",
     "package:dir": "npm run build && electron-builder --dir --publish=never",
     "package:smoke": "npm run package:dir && npm run test:smoke:packaged",
     "package:mac": "npm run build && electron-builder --mac --publish=never",
@@ -140,6 +141,14 @@
       {
         "from": "resources/tray-icon.png",
         "to": "tray-icon.png"
+      },
+      {
+        "from": "resources/tray-icon-template.png",
+        "to": "tray-icon-template.png"
+      },
+      {
+        "from": "resources/tray-icon-template@2x.png",
+        "to": "tray-icon-template@2x.png"
       }
     ],
     "asar": true,
@@ -175,6 +184,7 @@
           ]
         }
       ],
+      "icon": "build/icon.png",
       "artifactName": "Marloues-${version}-${arch}.${ext}"
     },
     "win": {

@@ -18,7 +18,8 @@ import { useUnifiedChatStore } from "@/stores/unified-chat-store";
 import type { ThemeMode } from "@/stores/theme-store";
 import type { AuxiliaryMode } from "./layout-model";
 import type { Page } from "./types";
-import { PRODUCT_MARK, PRODUCT_NAME } from "@/lib/product-brand";
+import { PRODUCT_NAME } from "@/lib/product-brand";
+import { MonkeyMark } from "@/components/brand/MonkeyMark";
 
 export function WindowChrome({
   sidebarOpen,
@@ -136,7 +137,9 @@ export function WindowChrome({
               className="title-product-lockup window-product-lockup"
               aria-hidden="true"
             >
-              <span className="title-product-mark">{PRODUCT_MARK}</span>
+              <span className="title-product-mark">
+                <MonkeyMark size={18} />
+              </span>
               <span className="title-product-name">{PRODUCT_NAME}</span>
             </span>
             <button

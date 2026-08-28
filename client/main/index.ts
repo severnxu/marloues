@@ -98,6 +98,17 @@ function createAppIcon(): Electron.NativeImage {
   return nativeImage.createFromPath(iconPath);
 }
 
+function getTrayIconCandidates(): string[] {
+  // On macOS use the monochrome template image (black + alpha, with face cutout)
+  // so macOS adapts the color to light/dark mode automatically.
+  const fileName = isMacOS ? "tray-icon-template.png" : "tray-icon.png";
+  return [
+    join(process.resourcesPath, fileName),
+    join(app.getAppPath(), "resources", fileName),
+    join(__dirname, "../../resources", fileName),
+  ];
+}
+
 function createWindow(): void {
   const applicationUrl = getRendererApplicationUrl();
   const appIcon = createAppIcon();
@@ -224,13 +235,30 @@ function ensureTray(): void {
       },
     ]),
   );
-  tray.on("click", showMainWindow);
-  tray.on("double-click", showMainWindow);
+  // macOS menu bar: click shows the context menu (set via setContextMenu).
+  // Dock icon: handled by the "activate" event → showMainWindow.
+  // Windows/Linux: click toggles window visibility (standard tray UX).
+  if (!isMacOS) {
+    tray.on("click", toggleMainWindow);
+    tray.on("double-click", toggleMainWindow);
+  }
   logInfo("tray.created", {});
 }
 
 function createTrayIcon(): Electron.NativeImage {
-  return createAppIcon().resize({ width: 16, height: 16 });
+  const candidates = getTrayIconCandidates();
+  const iconPath = candidates.find((c) => existsSync(c));
+  // macOS menu bar: 18px content with ~3px padding (menu bar is ~24px tall).
+  // Apple HIG recommends status bar icons stay within 18x18pt.
+  const size = isMacOS ? 18 : 16;
+  const icon = iconPath
+    ? nativeImage.createFromPath(iconPath)
+    : createAppIcon();
+  const resized = icon.resize({ width: size, height: size });
+  // setTemplateImage must be called AFTER resize — resize returns a new
+  // NativeImage that does not carry over the template flag.
+  if (isMacOS) resized.setTemplateImage(true);
+  return resized;
 }
 
 function destroyTray(): void {
@@ -254,10 +282,106 @@ function showMainWindow(): void {
   mainWindow.show();
   mainWindow.focus();
 }
+function toggleMainWindow(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createWindow();
+    return;
+  }
+  if (mainWindow.isVisible() && mainWindow.isFocused()) {
+    mainWindow.hide();
+    return;
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+function buildAppMenu(): Menu {
+  const template: Electron.MenuItemConstructorOptions[] = [
+    {
+      role: "appMenu",
+      submenu: [
+        { role: "about" },
+        { type: "separator" },
+        { role: "services" },
+        { type: "separator" },
+        { role: "hide" },
+        { role: "hideOthers" },
+        { role: "unhide" },
+        { type: "separator" },
+        { role: "quit" },
+      ],
+    },
+    {
+      role: "editMenu",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectAll" },
+      ],
+    },
+    {
+      label: "View",
+      submenu: [
+        ...(isDev
+          ? ([
+              { role: "reload" },
+              { role: "forceReload" },
+              { role: "toggleDevTools" },
+              { type: "separator" },
+            ] as Electron.MenuItemConstructorOptions[])
+          : []),
+        { role: "resetZoom" },
+        { role: "zoomIn" },
+        { role: "zoomOut" },
+        { type: "separator" },
+        { role: "togglefullscreen" },
+      ],
+    },
+    {
+      role: "windowMenu",
+      submenu: [
+        { role: "minimize" },
+        { role: "zoom" },
+        { type: "separator" },
+        { role: "front" },
+      ],
+    },
+  ];
+  return Menu.buildFromTemplate(template);
+}
 
 app.whenReady().then(async () => {
   if (!gotSingleInstanceLock) return;
-  if (!isMacOS) ensureTray();
+  // Set the macOS application menu so the menu-bar app name comes from
+  // app.name ("Marloues Dev" in dev, "Marloues" in production) instead of
+  // the Electron bundle default.
+  Menu.setApplicationMenu(buildAppMenu());
+  const aboutIconPath = join(__dirname, "../../resources/dock-icon.png");
+  app.setAboutPanelOptions({
+    applicationName: app.getName(),
+    applicationVersion: app.getVersion(),
+    version: app.getVersion(),
+    credits: "Marloues",
+    iconPath: existsSync(aboutIconPath) ? aboutIconPath : undefined,
+  });
+  ensureTray();
+  if (isMacOS && isDev) {
+    const dockIconPath = join(__dirname, "../../resources/dock-icon.png");
+    if (existsSync(dockIconPath)) {
+      logInfo("app.dock.icon", {
+        path: dockIconPath,
+        size: nativeImage.createFromPath(dockIconPath).getSize(),
+      });
+      app.dock?.setIcon(nativeImage.createFromPath(dockIconPath));
+    } else {
+      logError("app.dock.icon.missing", { path: dockIconPath });
+    }
+  }
   try {
     await initRuntime();
     logInfo("runtime.initialized", {});
@@ -303,12 +427,11 @@ app.on("second-instance", () => showMainWindow());
 app.on("before-quit", () => {
   isQuitting = true;
   void stopImBridge();
+  void destroyRuntime();
   destroyTray();
 });
 
 app.on("window-all-closed", () => {
-  void stopImBridge();
-  void destroyRuntime();
   if (!isMacOS && isQuitting) quitApplication();
 });
 

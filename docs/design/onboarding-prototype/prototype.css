@@ -59,11 +59,11 @@ html[data-platform="windows"] .windows-caption-controls { display: flex; }
 .windows-caption-controls button.is-close:hover { background: var(--window-close); color: var(--attachment-remove-fg); }
 .windows-caption-controls svg { width: 11px; height: 11px; }
 
-/* ── Onboarding overlay (full-screen modal over dimmed workbench) ── */
-.onboarding-view { position: absolute; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: var(--space-6); background: var(--overlay); }
+/* ── Onboarding view (full-screen, replaces workbench — no dimmed layer behind) ── */
+.onboarding-view { position: absolute; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: var(--space-6); background: var(--surface-workspace); }
 
 /* ── Onboarding card ── */
-.onboarding-view-card { position: relative; z-index: 1; display: flex; flex-direction: column; width: 560px; max-width: calc(100vw - var(--space-10) - var(--space-2)); max-height: calc(100% - var(--space-6) - var(--space-4)); overflow-y: auto; scrollbar-gutter: stable; border: 1px solid var(--border); border-radius: var(--card-radius); background: var(--surface-workspace); box-shadow: var(--presentation-window-shadow); padding: var(--space-8); }
+.onboarding-view-card { position: relative; z-index: 1; display: flex; flex-direction: column; width: 560px; max-width: calc(100vw - var(--space-10) - var(--space-2)); max-height: calc(100% - var(--space-6) - var(--space-4)); overflow-y: auto; scrollbar-gutter: stable; border: 1px solid var(--border); border-radius: var(--card-radius); background: var(--surface-navigation); box-shadow: var(--shadow-lg); padding: var(--space-8); }
 
 /* ── Onboarding head ── */
 .onboarding-head { text-align: center; margin-bottom: var(--space-6); }
