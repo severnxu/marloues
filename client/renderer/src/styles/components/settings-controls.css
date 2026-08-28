@@ -1,615 +1,580 @@
 /* settings-controls component styles. Theme values come from ../tokens.css. */
 
-@layer marloues-components.cascade-0154 {
-  .settings-stat-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .settings-stat-card {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-height: 64px;
-    overflow: hidden;
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--control-radius);
-    background: var(--raised-1);
-
-    color: var(--text-1);
-    padding: 12px 14px;
-    text-align: left;
-
-    transition:
-      border-color var(--settings-transition),
-      background var(--settings-transition),
-      color var(--settings-transition);
-  }
-
-  .settings-stat-card:hover {
-  }
-
-  .settings-stat-card {
-    display: grid;
-    gap: 3px;
-  }
-
-  .settings-stat-card strong {
-    color: var(--text-1);
-    font-size: 20px;
-    font-weight: 650;
-    line-height: 1.2;
-  }
-
-  .settings-stat-card small {
-    color: var(--text-2);
-    font-size: 11px;
-  }
-
-  .settings-card {
-    display: grid;
-    gap: 0;
-    border: 1px solid var(--border);
-    border-radius: var(--card-radius);
-    background: var(--raised-1);
-
-    padding: 20px;
-  }
-
-  .settings-card-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 16px;
-  }
-
-  .settings-card-title {
-    display: flex;
-    min-width: 0;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .settings-card-action {
-    display: flex;
-    flex-shrink: 0;
-    align-items: center;
-  }
-
-  .settings-card-action button {
-    display: inline-flex;
-    min-height: 34px;
-    align-items: center;
-    gap: 7px;
-
-    border-radius: 8px;
-
-    color: var(--text-1);
-    padding: 7px 11px;
-    font-size: 12px;
-    font-weight: 650;
-  }
-
-  .settings-card-action button:hover {
-  }
-
-  .settings-card-icon {
-    display: flex;
-    width: 28px;
-    height: 28px;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--border);
-    border-radius: var(--control-radius);
-    background: var(--raised-1);
-
-    color: var(--text-2);
-  }
-
-  .settings-row-inline {
-    display: flex;
-    min-width: 0;
-    min-height: 40px;
-    align-items: center;
-    gap: 12px;
-
-    padding: 8px 0;
-  }
-
-  .settings-card-head + .settings-fields .settings-row-inline:first-child {
-    padding-top: 0;
-  }
-
-  .settings-row-inline:first-child {
-    padding-top: 0;
-  }
-
-  .settings-row-inline:last-child {
-    padding-bottom: 0;
-  }
-
-  .settings-row-icon {
-    display: flex;
-    width: 24px;
-    height: 24px;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-sm);
-    background: var(--raised-1);
-
-    color: var(--text-3);
-  }
-
-  .settings-row-copy {
-    display: grid;
-    min-width: 0;
-    flex: 1;
-    gap: 3px;
-  }
-
-  .settings-row-copy strong {
-    overflow: hidden;
-    color: var(--text-1);
-    font-size: 13px;
-    font-weight: 650;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .settings-row-copy small {
-    overflow: hidden;
-    color: var(--text-2);
-    font-size: 11px;
-    line-height: 1.45;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .settings-row-trailing {
-    display: flex;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: flex-end;
-  }
-
-  .settings-version-value {
-    color: var(--text-2);
-    font-family: var(--mono);
-    font-size: 12px;
-    font-variant-numeric: tabular-nums;
-    font-weight: 560;
-  }
-
-  .settings-switch {
-    position: relative;
-    display: inline-flex;
-    width: 38px;
-    height: 22px;
-    border: 0;
-    border-radius: 999px;
-    background: var(--raised-3);
-
-    padding: 0;
-    transition: background var(--settings-transition);
-  }
-
-  .settings-switch span {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 18px;
-    height: 18px;
-    border-radius: 999px;
-    background: var(--text-1);
-    box-shadow: 0 1px 2px hsl(0 0% 0% / 0.3);
-
-    transition:
-      transform var(--settings-transition),
-      background var(--settings-transition);
-  }
-
-  .settings-switch.active {
-    background: var(--accent);
-  }
-
-  .settings-switch.active span {
-    transform: translateX(16px);
-    background: hsl(0 0% 100%);
-  }
+.settings-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 
-@layer marloues-components.cascade-0156 {
-  .settings-card h2 {
-    margin: 0;
-    color: var(--text-1);
-    font-size: 13px;
-    font-weight: 650;
-    line-height: 1.35;
-  }
+.settings-stat-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--control-radius);
+  background: var(--raised-1);
 
-  .settings-card p {
-    margin: 3px 0 0;
-    color: var(--text-2);
-    font-size: 11px;
-    line-height: 1.55;
-  }
+  color: var(--text-1);
+  padding: 12px 14px;
+  text-align: left;
+
+  transition:
+    border-color var(--settings-transition),
+    background var(--settings-transition),
+    color var(--settings-transition);
 }
 
-@layer marloues-components.cascade-0160 {
-  .settings-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .settings-row-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .settings-toolbar {
-    justify-content: flex-end;
-  }
+.settings-stat-card:hover {
 }
 
-@layer marloues-components.cascade-0162 {
+.settings-stat-card {
+  display: grid;
+  gap: 3px;
+}
+
+.settings-stat-card strong {
+  color: var(--text-1);
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.settings-stat-card small {
+  color: var(--text-2);
+  font-size: 11px;
+}
+
+.settings-card {
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  background: var(--raised-1);
+
+  padding: 20px;
+}
+
+.settings-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.settings-card-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-card-action {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.settings-card-action button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 7px;
+
+  border-radius: 8px;
+
+  color: var(--text-1);
+  padding: 7px 11px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.settings-card-action button:hover {
+}
+
+.settings-card-icon {
+  display: flex;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  background: var(--raised-1);
+
+  color: var(--text-2);
+}
+
+.settings-row-inline {
+  display: flex;
+  min-width: 0;
+  min-height: 40px;
+  align-items: center;
+  gap: 12px;
+
+  padding: 8px 0;
+}
+
+.settings-card-head + .settings-fields .settings-row-inline:first-child {
+  padding-top: 0;
+}
+
+.settings-row-inline:first-child {
+  padding-top: 0;
+}
+
+.settings-row-inline:last-child {
+  padding-bottom: 0;
+}
+
+.settings-row-icon {
+  display: flex;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--raised-1);
+
+  color: var(--text-3);
+}
+
+.settings-row-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 3px;
+}
+
+.settings-row-copy strong {
+  overflow: hidden;
+  color: var(--text-1);
+  font-size: 13px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-row-copy small {
+  overflow: hidden;
+  color: var(--text-2);
+  font-size: 11px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-row-trailing {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.settings-version-value {
+  color: var(--text-2);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 560;
+}
+
+.settings-switch {
+  position: relative;
+  display: inline-flex;
+  width: 38px;
+  height: 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--raised-3);
+
+  padding: 0;
+  transition: background var(--settings-transition);
+}
+
+.settings-switch span {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--text-1);
+  box-shadow: 0 1px 2px hsl(0 0% 0% / 0.3);
+
+  transition:
+    transform var(--settings-transition),
+    background var(--settings-transition);
+}
+
+.settings-switch.active {
+  background: var(--accent);
+}
+
+.settings-switch.active span {
+  transform: translateX(16px);
+  background: hsl(0 0% 100%);
+}
+
+.settings-card h2 {
+  margin: 0;
+  color: var(--text-1);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.settings-card p {
+  margin: 3px 0 0;
+  color: var(--text-2);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.settings-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-toolbar {
+  justify-content: flex-end;
+}
+
+.settings-segmented-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.settings-segmented-options button {
+  display: grid;
+  min-height: 78px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 5px 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--control-radius);
+  background: var(--raised-1);
+  color: var(--text-2);
+
+  padding: 13px 14px;
+  text-align: left;
+  transition:
+    border-color var(--settings-transition),
+    background var(--settings-transition),
+    color var(--settings-transition);
+}
+
+.settings-segmented-options button:hover {
+  border-color: var(--border);
+  background: var(--raised-2);
+  color: var(--text-1);
+}
+
+.settings-segmented-options button.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text-1);
+}
+
+.settings-segmented-options button > span {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  grid-row: span 2;
+  place-items: center;
+  margin-top: 1px;
+
+  border-radius: 999px;
+}
+
+.settings-segmented-options button.active > span {
+}
+
+.settings-segmented-options strong {
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.settings-segmented-options small {
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.settings-toolbar button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+
+  color: var(--text-1);
+  padding: 7px 11px;
+  font-size: 11px;
+  font-weight: 650;
+  transition:
+    border-color var(--settings-transition),
+    background var(--settings-transition),
+    color var(--settings-transition);
+}
+
+.settings-row-actions button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+
+  border-radius: 8px;
+
+  padding: 7px 11px;
+  font-size: 11px;
+  font-weight: 650;
+  transition:
+    border-color var(--settings-transition),
+    background var(--settings-transition),
+    color var(--settings-transition);
+}
+
+.settings-toolbar button:hover {
+}
+
+.settings-row-actions button:hover {
+}
+
+.settings-toolbar button:disabled {
+  cursor: not-allowed;
+}
+
+.settings-row-actions button:disabled {
+  cursor: not-allowed;
+}
+
+.settings-row-actions .icon-button {
+  width: 32px;
+  padding-right: 0;
+  padding-left: 0;
+}
+
+@media (max-width: 860px) {
   .settings-segmented-options {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 12px;
-  }
-
-  .settings-segmented-options button {
-    display: grid;
-    min-height: 78px;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: start;
-    gap: 5px 9px;
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--control-radius);
-    background: var(--raised-1);
-    color: var(--text-2);
-
-    padding: 13px 14px;
-    text-align: left;
-    transition:
-      border-color var(--settings-transition),
-      background var(--settings-transition),
-      color var(--settings-transition);
-  }
-
-  .settings-segmented-options button:hover {
-    border-color: var(--border);
-    background: var(--raised-2);
-    color: var(--text-1);
-  }
-
-  .settings-segmented-options button.active {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-    color: var(--text-1);
-  }
-
-  .settings-segmented-options button > span {
-    display: grid;
-    width: 16px;
-    height: 16px;
-    grid-row: span 2;
-    place-items: center;
-    margin-top: 1px;
-
-    border-radius: 999px;
-  }
-
-  .settings-segmented-options button.active > span {
-  }
-
-  .settings-segmented-options strong {
-    font-size: 13px;
-    font-weight: 650;
-    line-height: 1.35;
-  }
-
-  .settings-segmented-options small {
-    font-size: 11px;
-    line-height: 1.55;
+    grid-template-columns: 1fr;
   }
 }
 
-@layer marloues-components.cascade-0164 {
-  .settings-toolbar button {
-    display: inline-flex;
-    min-height: 32px;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-
-    color: var(--text-1);
-    padding: 7px 11px;
-    font-size: 11px;
-    font-weight: 650;
-    transition:
-      border-color var(--settings-transition),
-      background var(--settings-transition),
-      color var(--settings-transition);
-  }
-
-  .settings-row-actions button {
-    display: inline-flex;
-    min-height: 32px;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-
-    border-radius: 8px;
-
-    padding: 7px 11px;
-    font-size: 11px;
-    font-weight: 650;
-    transition:
-      border-color var(--settings-transition),
-      background var(--settings-transition),
-      color var(--settings-transition);
-  }
-
-  .settings-toolbar button:hover {
-  }
-
-  .settings-row-actions button:hover {
-  }
-
-  .settings-toolbar button:disabled {
-    cursor: not-allowed;
-  }
-
-  .settings-row-actions button:disabled {
-    cursor: not-allowed;
+@media (max-width: 860px) {
+  .mcp-add-footer .settings-row-actions {
+    width: 100%;
   }
 }
 
-@layer marloues-components.cascade-0171 {
-  .settings-row-actions .icon-button {
-    width: 32px;
-    padding-right: 0;
-    padding-left: 0;
+@media (max-width: 860px) {
+  .mcp-add-footer .settings-row-actions button {
+    width: 100%;
   }
 }
 
-@layer marloues-components.cascade-0172 {
-  @media (max-width: 860px) {
-    .settings-segmented-options {
-      grid-template-columns: 1fr;
-    }
+.mcp-server-summary .settings-chip-row {
+  flex: 1 1 220px;
+}
+
+.mcp-server-summary .settings-chip-row {
+  overflow: auto;
+  max-height: 64px;
+  padding-right: 2px;
+}
+
+.mcp-provider-row .settings-status {
+  flex-shrink: 0;
+  min-height: 20px;
+  align-items: center;
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 720;
+}
+
+.mcp-provider-row .settings-status.untested {
+  color: var(--warning);
+}
+
+.mcp-provider-row .settings-status.running {
+  color: hsl(var(--tw-accent-strong));
+}
+
+.mcp-provider-row .settings-status.disconnected {
+  color: hsl(32 88% 66%);
+}
+
+.mcp-provider-tools .settings-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.mcp-tool-list .settings-chip {
+  max-width: 100%;
+}
+
+.mcp-tool-list .settings-chip {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mcp-inspector-actions .settings-switch {
+  min-height: auto;
+  width: 38px;
+  height: 22px;
+
+  padding: 0;
+}
+
+.mcp-inspector-actions .settings-switch:hover {
+  transform: none;
+}
+
+.mcp-inspector-actions .settings-switch.active {
+}
+
+.mcp-inspector-actions .settings-switch span {
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+}
+
+.mcp-inspector-actions .settings-switch.active span {
+  transform: translateX(16px);
+}
+
+.mcp-inspector-v2 .settings-status {
+  min-height: 24px;
+  align-items: center;
+
+  color: var(--mcp-warn);
+  font-weight: 730;
+}
+
+.mcp-inspector-v2 .settings-status.ok {
+  color: var(--mcp-accent);
+}
+
+.mcp-inspector-v2 .settings-status.error {
+  color: var(--danger);
+}
+
+.settings-row-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid hsl(225 15% 16% / 0.72);
+  border-radius: var(--settings-card-radius);
+
+  padding: 12px;
+  transition:
+    border-color var(--settings-transition),
+    background var(--settings-transition);
+}
+
+.settings-row-card:hover {
+}
+
+.settings-row-card.disabled {
+}
+
+.settings-row-card.disabled .skill-card-head strong {
+  color: hsl(220 10% 66%);
+}
+
+.settings-row-card.disabled .skill-row-title strong {
+  color: hsl(220 10% 66%);
+}
+
+.settings-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.settings-chip {
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+
+  color: var(--text-3);
+  padding: 3px 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 560;
+  line-height: 1.1;
+}
+
+.settings-chip.ok {
+  border-color: var(--success-soft);
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.settings-chip.error {
+  border-color: var(--danger-soft);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.settings-row-card p {
+  margin: 0;
+  color: hsl(220 12% 72%);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.settings-status {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+
+  color: var(--text-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 560;
+  line-height: 1.15;
+}
+
+.settings-status.ok {
+  color: var(--success);
+}
+
+.settings-status.error {
+  color: var(--danger);
+}
+
+@media (max-width: 720px) {
+  .settings-card {
+    padding: 16px;
   }
 }
 
-@layer marloues-components.cascade-0176 {
-  @media (max-width: 860px) {
-    .mcp-add-footer .settings-row-actions {
-      width: 100%;
-    }
-  }
-
-  @media (max-width: 860px) {
-    .mcp-add-footer .settings-row-actions button {
-      width: 100%;
-    }
-  }
-}
-
-@layer marloues-components.cascade-0210 {
-  .mcp-server-summary .settings-chip-row {
-    flex: 1 1 220px;
-  }
-
-  .mcp-server-summary .settings-chip-row {
-    overflow: auto;
-    max-height: 64px;
-    padding-right: 2px;
-  }
-}
-
-@layer marloues-components.cascade-0256 {
-  .mcp-provider-row .settings-status {
-    flex-shrink: 0;
-    min-height: 20px;
-    align-items: center;
-    padding: 3px 7px;
-    font-size: 10px;
-    font-weight: 720;
-  }
-
-  .mcp-provider-row .settings-status.untested {
-    color: var(--warning);
-  }
-
-  .mcp-provider-row .settings-status.running {
-    color: hsl(var(--tw-accent-strong));
-  }
-
-  .mcp-provider-row .settings-status.disconnected {
-    color: hsl(32 88% 66%);
-  }
-}
-
-@layer marloues-components.cascade-0265 {
-  .mcp-provider-tools .settings-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-  }
-}
-
-@layer marloues-components.cascade-0267 {
-  .mcp-tool-list .settings-chip {
-    max-width: 100%;
-  }
-
-  .mcp-tool-list .settings-chip {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-}
-
-@layer marloues-components.cascade-0291 {
-  .mcp-inspector-actions .settings-switch {
-    min-height: auto;
-    width: 38px;
-    height: 22px;
-
-    padding: 0;
-  }
-
-  .mcp-inspector-actions .settings-switch:hover {
-    transform: none;
-  }
-
-  .mcp-inspector-actions .settings-switch.active {
-  }
-
-  .mcp-inspector-actions .settings-switch span {
-    top: 3px;
-    left: 3px;
-    width: 16px;
-    height: 16px;
-  }
-
-  .mcp-inspector-actions .settings-switch.active span {
-    transform: translateX(16px);
-  }
-}
-
-@layer marloues-components.cascade-0296 {
-  .mcp-inspector-v2 .settings-status {
-    min-height: 24px;
-    align-items: center;
-
-    color: var(--mcp-warn);
-    font-weight: 730;
-  }
-
-  .mcp-inspector-v2 .settings-status.ok {
-    color: var(--mcp-accent);
-  }
-
-  .mcp-inspector-v2 .settings-status.error {
-    color: var(--danger);
-  }
-
-  .settings-row-card {
-    display: grid;
-    gap: 12px;
-    min-width: 0;
-    border: 1px solid hsl(225 15% 16% / 0.72);
-    border-radius: var(--settings-card-radius);
-
-    padding: 12px;
-    transition:
-      border-color var(--settings-transition),
-      background var(--settings-transition);
-  }
-}
-
-@layer marloues-components.cascade-0298 {
-  .settings-row-card:hover {
-  }
-
-  .settings-row-card.disabled {
-  }
-
-  .settings-row-card.disabled .skill-card-head strong {
-    color: hsl(220 10% 66%);
-  }
-
-  .settings-row-card.disabled .skill-row-title strong {
-    color: hsl(220 10% 66%);
-  }
-}
-
-@layer marloues-components.cascade-0303 {
-  .settings-chip-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .settings-chip {
-    max-width: 100%;
-    overflow: hidden;
-    border: 1px solid var(--border-subtle);
-    border-radius: 999px;
-
-    color: var(--text-3);
-    padding: 3px 8px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 10px;
-    font-weight: 560;
-    line-height: 1.1;
-  }
-
-  .settings-chip.ok {
-    border-color: var(--success-soft);
-    background: var(--success-soft);
-    color: var(--success);
-  }
-
-  .settings-chip.error {
-    border-color: var(--danger-soft);
-    background: var(--danger-soft);
-    color: var(--danger);
-  }
-}
-
-@layer marloues-components.cascade-0307 {
-  .settings-row-card p {
-    margin: 0;
-    color: hsl(220 12% 72%);
-    font-size: 12px;
-    line-height: 1.65;
-  }
-
-  .settings-status {
-    display: inline-flex;
-    width: fit-content;
-    max-width: 100%;
-    overflow: hidden;
-
-    color: var(--text-3);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 11px;
-    font-weight: 560;
-    line-height: 1.15;
-  }
-
-  .settings-status.ok {
-    color: var(--success);
-  }
-
-  .settings-status.error {
-    color: var(--danger);
-  }
-}
-
-@layer marloues-components.cascade-0314 {
-  @media (max-width: 720px) {
-    .settings-card {
-      padding: 16px;
-    }
-  }
-}
 /* Theme token bindings. The dark theme falls back to the component layer. */
 
 .settings-stat-card {

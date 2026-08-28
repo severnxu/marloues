@@ -1,8 +1,6 @@
 /* settings-security component styles. Theme values come from ../tokens.css. */
 
-@layer marloues-components.cascade-0140 {
-  .security-settings {
-    display: grid;
-    gap: 16px;
-  }
+.security-settings {
+  display: grid;
+  gap: 16px;
 }
