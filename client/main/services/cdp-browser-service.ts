@@ -1041,6 +1041,11 @@ class CdpBrowserServiceImpl extends EventEmitter {
       await wc.debugger.sendCommand("Page.addScriptToEvaluateOnNewDocument", {
         source: EMBEDDED_COMMENT_BRIDGE_SCRIPT,
       });
+      // Also inject into the current page — addScriptToEvaluateOnNewDocument
+      // only fires on future navigations, not the already-loaded document
+      await wc.debugger.sendCommand("Runtime.evaluate", {
+        expression: EMBEDDED_COMMENT_BRIDGE_SCRIPT,
+      });
       await wc.debugger.sendCommand("Page.enable");
       state.commentBridgeInstalled = true;
       logInfo("cdpBrowser.commentBridge.installed", { pageId });
@@ -1066,7 +1071,6 @@ class CdpBrowserServiceImpl extends EventEmitter {
     try {
       await wc.debugger.sendCommand("Runtime.evaluate", {
         expression: script,
-        contextId: EMBEDDED_COMMENT_WORLD_ID,
       });
     } catch {
       // bridge may not be ready yet
