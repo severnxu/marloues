@@ -74,6 +74,12 @@ configureDevelopmentIdentity();
 
 if (!isDev && isWindows) app.setAppUserModelId("com.marloues.desktop");
 
+// Enable CDP remote debugging for e2e testing (port 9223)
+if (isDev) {
+  app.commandLine.appendSwitch("remote-debugging-port", "9223");
+  app.commandLine.appendSwitch("remote-allow-origins", "*");
+}
+
 const gotSingleInstanceLock = isTest || app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   app.quit();

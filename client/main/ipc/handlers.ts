@@ -3488,16 +3488,12 @@ export function registerHandlers(): void {
   // ---------- Browser ----------
 
   ipcMain.handle(IPC.BROWSER_NEW_PAGE, async (_event, url: string) => {
-    const pageId = crypto.randomUUID();
-    browserViewManager.createView(pageId, url ?? "about:blank", {
-      x: 0,
-      y: 0,
-      width: 0,
-      height: 0,
-    });
-    return pageId;
+    // Delegate to cdpBrowserService so the PageCdpState (required by
+    // setCommentMode / getCommentEvents) is created alongside the view.
+    return cdpBrowserService.newPage(url ?? "about:blank");
   });
   ipcMain.handle(IPC.BROWSER_CLOSE_PAGE, async (_event, pageId: string) => {
+    await cdpBrowserService.closePage(pageId);
     browserViewManager.destroyView(pageId);
   });
   ipcMain.handle(IPC.BROWSER_LIST_PAGES, () => browserViewManager.listViews());
