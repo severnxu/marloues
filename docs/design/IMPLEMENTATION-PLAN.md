@@ -1,12 +1,44 @@
 # 设计稿落地实施计划
 
-> 版本：v0.3 · 待审核（已根据第二轮复核修订）  
-> 范围：设置页 + 引导页  
+> 版本：v0.5 · 待审核（已根据第四轮复核修订）
+> 范围：设置页 + 引导页
 > 日期：2026-08-28
 
 ---
 
-## 〇、v0.2 → v0.3 修订摘要
+## 〇、修订历史
+
+### v0.4 → v0.5
+
+根据第四轮独立复核（验证 per-file 1a/1b/1c 交叉分布、令牌集不重叠性）修正一处执行约束 + 三处可选优化：
+
+| # | 改动 | 类型 |
+|---|---|---|
+| 1 | **并行建议补串行约束**：1a/1b/1c 令牌集虽不重叠，但 27/16/97 处均落在 `settings-controls.css` 同一文件，三 PR 同时改会 git 冲突。涉及该文件的部分建议串行合并（1c 先走），其余文件可并行 | 执行约束 |
+| 2 | 修订历史三张表占前 50 行，两个 `## 〇、` 编号重复 → 重构为 `## 〇、修订历史` 下设 `###` 子标题，按版本倒序排列 | 可选优化 |
+| 3 | 1c 全域失效令牌总量（86 unique / 102 refs）在文档中未出现过，补一行说明避免核总数对不上 | 可选优化 |
+| 4 | 节奏表 1c 描述补"脚本验证 + 视觉验收"，避免误以为只能靠肉眼 | 可选优化 |
+
+---
+
+### v0.3 → v0.4
+
+根据第三轮独立复核（脚本精算失效令牌分布、验证跨文件依赖性质）修正六处：
+
+| # | 问题 | 修正 |
+|---|---|---|
+| 1 | 3c 跨文件依赖令牌 `eee1328` 被当作迁移依赖，产生 3a→3c PR 排序约束 | 实测该令牌**本身无定义**（Phase 1c 范围），opacity 声明已失效。取消 3a→3c 顺序约束，3a/3b/3c 可自由排序 |
+| 2 | auth onboarding 4 处失效令牌被划入 1c，但 Phase 5 已统一处理 onboarding 令牌 | 4 处 runtime-card 失效令牌归 Phase 5，1c 收敛为 settings 范围 98 处 / 2 文件（controls 97 + providers 1） |
+| 3 | 1c 验证仅写"逐处验收视觉变化"，无法机械检出遗漏 | 新增可执行验证脚本（消费端失效引用归零检查） |
+| 4 | 1c 分布表偏高且漏项：row 20→14、card-action 19→11，漏 settings-card 8、row-inline 6 | 按脚本精算重排分布表，合计 98 |
+| 5 | 五.3 残留"200 条"、四.3 残留"56%"，与 1b 正文 165 / 57% 不一致 | 订正为 165 / 57% |
+| 6 | 1c 描述"跨 7 文件"给人工作量大的错觉 | 标注 97/98 集中在 `settings-controls.css`，1c 实为单文件 PR，风险更可控 |
+
+---
+
+---
+
+### v0.2 → v0.3
 
 根据第二轮独立复核（脚本交叉验证 `legacy-tokens.css` 定义与消费端引用）修正六处，并新增一类风险阶段：
 
@@ -19,11 +51,13 @@
 | 5 | 1b、五.4 写"login 44 条"与 Phase 5 的 37 自相矛盾 | 统一为 37（login 37 + auth-loading-screen 7 分列） |
 | 6 | **新发现**：104 处 legacy 引用指向全仓无定义令牌（~87 unique），样式当前失效 | 新增 **Phase 1c**（高风险，独立 PR）；Phase 3a 定性"对齐"→"重建" |
 
-> 复核依据：全仓 `--component-*` 令牌仅在 `legacy-tokens.css` 有定义（1004 个），别处无任何定义；104 处引用的令牌无一例外均无 fallback 值，故当前声明按 invalid at computed-value time 回退到初始值。
+> 复核依据：全仓 `--component-*` 令牌仅在 `legacy-tokens.css` 有定义（1004 个），别处无任何定义；98 处引用（settings 范围）的令牌无一例外均无 fallback 值，故当前声明按 invalid at computed-value time 回退到初始值。
 
 ---
 
-## v0.1 → v0.2 修订摘要（历史）
+---
+
+### v0.1 → v0.2（历史）
 
 根据复核反馈修正五处问题：
 
@@ -69,7 +103,7 @@
 
 ### 1.3 核心差距
 
-1. **设置页全局 CSS（4136 行 / 381 个 legacy 引用）**：最大的迁移量。六个文件用 legacy 哈希令牌做中间层别名，且 CSS 规则本身与原型有视觉差异。另有 ~87 个唯一令牌 / 104 处引用指向**全仓无定义**的令牌，样式当前失效（见 Phase 1c）。
+1. **设置页全局 CSS（4136 行 / 381 个 legacy 引用）**：最大的迁移量。六个文件用 legacy 哈希令牌做中间层别名，且 CSS 规则本身与原型有视觉差异。另有 ~82 个唯一令牌 / 98 处引用指向**全仓无定义**的令牌，样式当前失效（见 Phase 1c）。
 2. **设置页共享组件**（`shared.tsx`，299 行）：已有 `SettingsCard` / `SettingRow` / `ToggleSwitch` / `SegmentedOptions` / `SettingsSelect` / `SettingsTextField` / `SettingsTextarea`。**缺 `Radio` 和 `Checkbox` 组件**。`SegmentedOptions` 选中态用勾（✓）（`shared.tsx:113`），原型已改为圆点（●）。
 3. **原生 input 散落**：17 处 `type="radio"` / `type="checkbox"` 分布在 6 个 TSX 文件，横跨 P0 模型和 P3 运行时/IM 渠道分区。
 4. **引导页**：样式寄生在 `auth.css` 全局文件中（与登录页共用），用 legacy 哈希令牌。原型设计了居中卡片 + 步骤卡片 + 模型选择，真实代码结构需对齐。
@@ -126,23 +160,33 @@ auth-login-page-background-807c610  = radial-gradient(circle at 20% 18%, color-m
 
 ### Phase 1c — 失效令牌补写（高风险，独立 PR）
 
-**目标**：处理指向**全仓无定义**令牌的 legacy 引用（约 87 个唯一令牌 / 104 处引用），照原型补写这些声明该是什么。
+**目标**：处理指向**全仓无定义**令牌的 legacy 引用（约 82 个唯一令牌 / 98 处引用），照原型补写这些声明该是什么。
 
-**背景**：这 104 处 `var(--component-*)` 引用的令牌在 `legacy-tokens.css` 及全仓任何地方**都没有定义**，且**无一例外均无 fallback 值**。CSS 中 `var()` 指向未定义变量且无 fallback 时，该声明按 invalid at computed-value time 处理，属性回退到继承值或初始值——**这些样式现在就是不生效的**。
+**背景**：这 98 处 `var(--component-*)` 引用的令牌在 `legacy-tokens.css` 及全仓任何地方**都没有定义**，且**无一例外均无 fallback 值**。CSS 中 `var()` 指向未定义变量且无 fallback 时，该声明按 invalid at computed-value time 处理，属性回退到继承值或初始值——**这些样式现在就是不生效的**。
 
-**集中分布**（settings 范围 98 处 + auth onboarding 约 6 处）：
+**集中分布**（settings 范围 98 处：`settings-controls.css` 97 + `settings-providers.css` 1）：
 
 | 组件前缀 | 失效引用 |
 |---|---|
-| `settings-row`（card / actions） | 20 |
-| `settings-card-action` | 19 |
 | `settings-segmented-options` | 17 |
 | `mcp-inspector`（actions / v2） | 12 |
+| `settings-card-action` | 11 |
+| `settings-row-card` | 7 |
+| `settings-row-actions` | 7 |
+| `settings-row-inline` | 6 |
 | `mcp-provider-row` | 6 |
+| `settings-card` | 8 |
 | `settings-stat-card` / `settings-chip` / `settings-status` | 各 5 |
 | `settings-toolbar` / `settings-switch` | 各 4 |
+| `settings-row-icon` | 1 |
+
+> 实测 97/98 集中在 `settings-controls.css` 单文件，1c 实为单文件 PR，风险可控。`settings-shell.css` / `settings-appearance.css` / `settings-security.css` / `update.css` 各为 0。
 
 **处理策略**：这类**没有值可追溯**，不属于迁移而是补写样式——逐处对照原型 `prototype.css` 确定该声明该是什么值（语义令牌或字面值），写入对应 CSS 规则，并从消费端删除失效的 `var(--component-*)` 引用。
+
+> **auth onboarding 归属说明**：引导页的 4 处失效令牌（`runtime-card` 的 background × 2 + border-color × 2）不在 1c 范围，归 Phase 5 统一处理——它们和引导页样式重建绑在一起，单独在 1c 里补写没有意义。
+
+> **全域失效令牌总量**：1c 范围 82 unique / 98 refs（settings）+ Phase 5 范围 4 unique / 4 refs（auth onboarding）= 合计 **86 unique / 102 refs**。按阶段拆分后此总数无执行意义，仅供交叉核对。
 
 **为什么必须独立 PR**：
 - Phase 1a 声称"纯机械替换不改视觉"，1c **必然改视觉**（从"无样式"到"有样式"）。混进 1a 会让"不改视觉"的承诺作废。
@@ -150,7 +194,22 @@ auth-login-page-background-807c610  = radial-gradient(circle at 20% 18%, color-m
 
 > 与 3a 的关系：1c 照原型补写时已采用原型目标值，因此分段选项等组件的"对齐"工作部分被 1c 吸收；3a 只需处理其余（值有效但与原型不符）的声明。
 
-**验证**：逐处验收视觉变化，重点查分段选项、mcp 行、卡片选中态、开关。
+**验证**（可执行脚本 + 视觉验收双保险）：
+
+```bash
+# 1c 完成后，消费端不应再有指向无定义令牌的引用
+python3 - <<'EOF'
+import re
+lt = open('client/renderer/src/styles/legacy-tokens.css').read()
+defined = set(re.findall(r'(--component-[a-zA-Z0-9-]+)\s*:', lt))
+for f in ['settings-controls.css','settings-providers.css']:
+    src = ' '.join(open(f'client/renderer/src/styles/components/{f}').read().split())
+    miss = [m for m in re.findall(r'var\(\s*(--component-[a-zA-Z0-9-]+)', src) if m not in defined]
+    print(f'{f}: 失效引用残留 {len(miss)}')
+EOF
+```
+
+视觉验收重点：分段选项、mcp 行、卡片选中态、开关。
 
 ---
 
@@ -224,7 +283,7 @@ auth-login-page-background-807c610  = radial-gradient(circle at 20% 18%, color-m
 4. 模型池：复选框、视觉/推理复选框位置
 5. 取色器：吸管图标
 
-> ⚠️ **跨文件依赖**：`settings-providers.css` 引用了 `--component-settings-controls-settings-row-actions-opacity-eee1328`（属于 controls 命名空间）。3a 和 3c 拆独立 PR 时，删除这条会打断另一个。建议 3a 先合并，3c 在 3a 之后处理此依赖。
+> **跨文件依赖已改判**：`settings-providers.css` 引用的 `--component-settings-controls-settings-row-actions-opacity-eee1328` 本身是**无定义令牌**（见 Phase 1c），当前 opacity 声明已失效。3a 和 3c 之间**不存在 PR 排序约束**，可自由排序。1c 只需覆盖到 `settings-providers.css` 这 1 处即可。
 
 #### 3d. `settings-appearance.css`（232 行）+ `settings-security.css`（238 行）+ `update.css`（502 行）
 
@@ -272,6 +331,8 @@ auth-login-page-background-807c610  = radial-gradient(circle at 20% 18%, color-m
 
 **⚠️ 范围限定**：`auth.css` 是引导页和登录页**共用**的文件。Phase 5 **只处理 onboarding 相关的 39 条 legacy 令牌和对应 CSS 规则**，不触碰 login（37 条）/ auth-loading-screen（7 条）令牌。
 
+> 其中 4 条 runtime-card 令牌（background × 2 + border-color × 2）是**全仓无定义**的失效令牌（从 Phase 1c 划入此处统一处理）。引导页运行时卡片的边框和文字色当前生效，但背景和 hover/选中态边框色失效——正好落在工作区选择步骤的对齐范围内。
+
 **文件变更**：
 - 新建 `client/renderer/src/components/onboarding/OnboardingView.module.css`
 - `OnboardingView.tsx`：class 名从全局 `onboarding-*` 改为 CSS Module 引用
@@ -309,9 +370,9 @@ auth-login-page-background-807c610  = radial-gradient(circle at 20% 18%, color-m
 |---|---|---|
 | Phase 1a | ✅ | 一个 PR，纯令牌机械替换 |
 | Phase 1b | ✅ | 一个或多个 PR，按文件拆分，每条需设计确认 |
-| Phase 1c | ✅ | 一个 PR，失效令牌补写，必然改视觉，需逐处验收 |
+| Phase 1c | ✅ | 一个 PR，失效令牌补写，必然改视觉，脚本验证 + 视觉验收 |
 | Phase 2 | ✅ | 一个 PR，仅新增组件 + 样式，不触碰分区组件 |
-| Phase 3a/3b/3c | ✅ 各自独立 | 三个 PR，按文件拆分（3a → 3c 有依赖） |
+| Phase 3a/3b/3c | ✅ 各自独立 | 三个 PR，按文件拆分，顺序自由 |
 | Phase 3d | 随 Phase 4 | 不单独 PR，并入对应分区 PR |
 | Phase 4 | ✅ 按分区 | 多个 PR，按优先级 P0→P3，含原生 input 替换 |
 | Phase 5 | ✅ | 一个 PR，仅 onboarding 部分 |
@@ -319,16 +380,26 @@ auth-login-page-background-807c610  = radial-gradient(circle at 20% 18%, color-m
 
 **并行建议**：Phase 1a 与 Phase 2 互不冲突，可并行。Phase 1c 与 1a / 1b 不冲突（不同令牌集），可并行但须独立 PR。Phase 1b 需在 Phase 3 之前完成（否则 3 的视觉对齐会碰到未清理的 legacy 令牌）。Phase 1c 建议在 3a 之前合并（3a 对分段选项是重建，依赖 1c 补写的声明）。
 
+> ⚠️ **1a / 1b / 1c 串行合并提醒**：三者的令牌集虽不重叠，但 `settings-controls.css` 一文件内同时有 1a（27 处）/ 1b（16 处）/ 1c（97 处）共 140 处引用，且都落在 prettier 折行的 `var()` 区域——三 PR 同时改该文件会产生 git 冲突。建议涉及 `settings-controls.css` 的部分串行合并（1c 先走，改动量最大且是补写），其余文件可放心并行。
+
+| 文件 | 1a | 1b | 1c | 可并行? |
+|---|---|---|---|---|
+| `settings-controls.css` | 27 | 16 | 97 | ❌ 串行（1c → 1a → 1b） |
+| `settings-shell.css` | 32 | 55 | 0 | ✅ 1a/1b 可并行 |
+| `settings-providers.css` | 20 | 36 | 1 | ⚠️ 1c 仅 1 处，冲突低 |
+| `settings-appearance/security/update.css` | 各有 | 各有 | 0 | ✅ 1a/1b 可并行 |
+| `auth.css`（onboarding） | 21 | 14 | 0(归P5) | ✅ Phase 5 独立 |
+
 ---
 
 ## 四、风险与注意事项
 
 1. **不改变 DOM 结构**：用户多次强调"不要改我的结构"。Phase 3-4 只改 CSS 规则和 class 名，不重构 TSX 组件层级，除非原型明确要求（如弹框化展开内容）。
 2. **全局 CSS 影响面**：`settings-controls.css` 等全局文件被所有分区引用，改动需全局回归。
-3. **legacy 令牌值差异**：56% 的 legacy 令牌含硬编码 hsl / 渐变值，统一到语义令牌后是**可见视觉变化**，不是微小差异。Phase 1b 逐条需验收。
+3. **legacy 令牌值差异**：57% 的 legacy 令牌含硬编码 hsl / 渐变值，统一到语义令牌后是**可见视觉变化**，不是微小差异。Phase 1b 逐条需验收。
 4. **prettier 折行**：legacy 令牌的 `var()` 被折成多行，逐行 sed/grep 会漏算，必须用跨行正则。
 5. **auth.css 共用**：引导页和登录页共用 `auth.css`，Phase 5 只删 onboarding 部分（39 令牌 / 75 规则行），保留 login 部分。
-6. **跨文件令牌依赖**：`settings-providers.css` 引用了 controls 命名空间的令牌，3a 和 3c 拆 PR 时需注意顺序。
+6. **跨文件令牌依赖已改判**：`settings-providers.css` 引用的 controls 命名空间令牌（`eee1328`）实测为**无定义令牌**（Phase 1c 范围）。3a 和 3c 之间无 PR 排序约束。
 7. **`ui/` 组件不迁移**：Tailwind 体系的 `ui/` 组件不在本次范围。
 8. **全仓 legacy 总量**：1177 个引用，设置+引导占 ~420（约 36%），其余在 mcp / skills / global-search 等模块，不在本次范围。
 
@@ -338,5 +409,5 @@ auth-login-page-background-807c610  = radial-gradient(circle at 20% 18%, color-m
 
 1. **Phase 2 控件 API**：`Radio` / `Checkbox` 做成受控组件（`checked` + `onChange`），与现有 `ToggleSwitch` 一致？✅ 已在 v0.2 确认为受控。
 2. **Phase 4 P0 模型分区**：`AddEndpointDialog.tsx`（886 行）已有弹框实现——先对齐样式保留逻辑，还是重构？建议先对齐样式。
-3. **Phase 1b 处理策略**：含字面值的 200 条令牌，优先用 (A) 抽语义令牌还是 (B) 内联字面值？建议按 case-by-case，能复用的抽令牌，一次性的内联。
+3. **Phase 1b 处理策略**：含字面值的 165 条令牌，优先用 (A) 抽语义令牌还是 (B) 内联字面值？建议按 case-by-case，能复用的抽令牌，一次性的内联。
 4. **Phase 1b 中 login 令牌范围**：`auth.css` 的 login 部分（37 条令牌）不在本次范围。是否需要后续单独开阶段处理登录页？

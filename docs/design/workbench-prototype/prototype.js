@@ -15,7 +15,6 @@
   const windowsAuxiliaryPrimaryAction = titleTrailing.querySelector(
     '[data-role="windows-auxiliary-primary-action"]',
   );
-  const runtimeStatus = document.getElementById("runtime-status");
   const primarySidebar = document.getElementById("primary-sidebar");
   const mainWorkspace = document.getElementById("main-workspace");
   const auxiliarySidebar = document.getElementById("auxiliary-sidebar");
@@ -32,6 +31,7 @@
     "input-interaction-stack",
   );
   const taskResultSummary = document.getElementById("task-result-summary");
+  const threadSummaryPanel = document.getElementById("thread-summary-panel");
   const steerQueue = document.getElementById("steer-queue");
   const steerQueueSummary = document.getElementById("steer-queue-summary");
   const steerList = document.getElementById("steer-list");
@@ -55,6 +55,21 @@
     { id: "sample-file", kind: "file", name: ".env.example", meta: "EXAMPLE" },
   ];
 
+  const AUXILIARY_VIEWS = [
+    { type: "outputs", label: "产出", iconId: "i-file-text" },
+    { type: "files", label: "文件", iconId: "i-list-tree" },
+    { type: "memory", label: "记忆", iconId: "i-brain" },
+    { type: "review", label: "审核", iconId: "i-shield-check" },
+  ];
+
+  const auxTabList = document.getElementById("auxiliary-tablist");
+  const auxTabstrip = document.getElementById("auxiliary-tabstrip");
+  const auxAddButton = document.getElementById("auxiliary-add-view");
+  const auxEmpty = document.getElementById("auxiliary-empty");
+  const auxViewPicker = document.getElementById("auxiliary-view-picker");
+  const auxPickerOverlay = document.getElementById("auxiliary-picker-overlay");
+  let auxTabSeq = 0;
+
   const defaults = {
     platform: initialQuery.get("platform") === "windows" ? "windows" : "macos",
     theme: initialQuery.get("theme") === "light" ? "light" : "dark",
@@ -71,8 +86,11 @@
     maximized: initialQuery.get("window") === "maximized",
     permissionPending: false,
     resultSummaryVisible: true,
+    threadSummaryOpen: initialQuery.get("summary") === "1",
     attachments: sampleAttachments.map((item) => ({ ...item })),
     steerItems: [],
+    auxiliaryTabs: [{ id: "tab-files", type: "files" }],
+    activeAuxTabId: "tab-files",
   };
 
   const state = { ...defaults };
@@ -207,14 +225,7 @@
     root.dataset.platform = state.platform;
     root.dataset.theme = state.theme;
     root.dataset.reviewMode = state.reviewMode;
-    if (state.platform === "windows") {
-      titleTrailing.insertBefore(runtimeStatus, windowsAuxiliaryPrimaryAction);
-    } else {
-      workspaceHeader.append(runtimeStatus);
-    }
-    runtimeStatus.hidden = state.auxiliaryPrimary;
-    runtimeStatus.setAttribute("aria-hidden", String(state.auxiliaryPrimary));
-    appWindow.style.setProperty(
+   appWindow.style.setProperty(
       "--primary-sidebar-width",
       `${state.primaryWidth}px`,
     );
@@ -240,8 +251,20 @@
         button.classList.toggle("is-active", state.resultSummaryVisible);
         button.setAttribute("aria-pressed", String(state.resultSummaryVisible));
       });
+    threadSummaryPanel.hidden = !state.threadSummaryOpen;
+    document
+      .querySelectorAll('[data-action="toggle-thread-summary"]')
+      .forEach((button) => {
+        button.classList.toggle("is-active", state.threadSummaryOpen);
+        button.setAttribute("aria-pressed", String(state.threadSummaryOpen));
+        button.setAttribute(
+          "aria-label",
+          state.threadSummaryOpen ? "隐藏固定摘要" : "显示固定摘要",
+        );
+      });
     renderAttachments();
     renderSteerQueue();
+    renderAuxiliaryTabs();
 
     document
       .querySelectorAll('[data-action="toggle-auxiliary"]')
@@ -464,24 +487,158 @@
     });
   }
 
-  function setAuxiliaryTab(tab) {
-    document.querySelectorAll("[data-aux-tab]").forEach((button) => {
-      button.classList.toggle("is-active", button.dataset.auxTab === tab);
-      button.setAttribute(
+  function renderAuxiliaryTabs() {
+    auxTabList.replaceChildren();
+
+    state.auxiliaryTabs.forEach((tab) => {
+      const view = AUXILIARY_VIEWS.find((v) => v.type === tab.type);
+      if (!view) return;
+
+      const item = document.createElement("button");
+      item.className = "inspector-tab";
+      item.type = "button";
+      item.dataset.auxTab = tab.id;
+      item.setAttribute("role", "tab");
+      item.setAttribute(
         "aria-selected",
-        String(button.dataset.auxTab === tab),
+        String(tab.id === state.activeAuxTabId),
       );
+      if (tab.id === state.activeAuxTabId) item.classList.add("active");
+
+      const main = document.createElement("span");
+      main.className = "inspector-tab-main";
+      const icon = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "svg",
+      );
+      const use = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "use",
+      );
+      use.setAttribute("href", `#${view.iconId}`);
+      icon.appendChild(use);
+      const label = document.createElement("span");
+      label.className = "inspector-tab-label";
+      label.textContent = view.label;
+      main.append(icon, label);
+
+      const close = document.createElement("span");
+      close.className = "inspector-tab-close";
+      close.setAttribute("role", "button");
+      close.setAttribute("aria-label", `关闭 ${view.label}`);
+      const closeIcon = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "svg",
+      );
+      const closeUse = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "use",
+      );
+      closeUse.setAttribute("href", "#i-close");
+      closeIcon.appendChild(closeUse);
+      close.appendChild(closeIcon);
+
+      item.append(main, close);
+      auxTabList.appendChild(item);
     });
+
+    // Hide tabstrip + show empty launcher when no tabs
+    const hasTabs = state.auxiliaryTabs.length > 0;
+    auxTabstrip.hidden = !hasTabs;
+    auxEmpty.hidden = hasTabs;
+
+    // Add button disabled when all views are open
+    auxAddButton.disabled = state.auxiliaryTabs.length >= AUXILIARY_VIEWS.length;
+
+    // Show/hide view panels
+    const activeTab = state.auxiliaryTabs.find(
+      (t) => t.id === state.activeAuxTabId,
+    );
+    const activeType = activeTab ? activeTab.type : null;
     document.querySelectorAll("[data-aux-panel]").forEach((panel) => {
-      panel.classList.toggle("is-hidden", panel.dataset.auxPanel !== tab);
+      panel.hidden = panel.dataset.auxPanel !== activeType;
     });
+  }
+
+  function addAuxiliaryTab(type) {
+    if (state.auxiliaryTabs.some((t) => t.type === type)) {
+      const existing = state.auxiliaryTabs.find((t) => t.type === type);
+      state.activeAuxTabId = existing.id;
+    } else {
+      const id = `tab-${type}-${auxTabSeq++}`;
+      state.auxiliaryTabs.push({ id, type });
+      state.activeAuxTabId = id;
+    }
+    if (!state.auxiliaryOpen) state.auxiliaryOpen = true;
+    closeAuxPicker();
+    renderAuxiliaryTabs();
+  }
+
+  function removeAuxiliaryTab(id) {
+    const idx = state.auxiliaryTabs.findIndex((t) => t.id === id);
+    if (idx < 0) return;
+    state.auxiliaryTabs.splice(idx, 1);
+    if (state.activeAuxTabId === id) {
+      const neighbor =
+        state.auxiliaryTabs[idx] ?? state.auxiliaryTabs[idx - 1] ?? null;
+      state.activeAuxTabId = neighbor ? neighbor.id : null;
+    }
+    renderAuxiliaryTabs();
+  }
+
+  function activateAuxiliaryTab(id) {
+    state.activeAuxTabId = id;
+    renderAuxiliaryTabs();
+  }
+
+  function openAuxPicker() {
+    const open = new Set(state.auxiliaryTabs.map((t) => t.type));
+    const available = AUXILIARY_VIEWS.filter((v) => !open.has(v.type));
+    auxViewPicker.replaceChildren();
+    available.forEach((view) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.setAttribute("role", "menuitem");
+      item.dataset.auxOpen = view.type;
+      const icon = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "svg",
+      );
+      const use = document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "use",
+      );
+      use.setAttribute("href", `#${view.iconId}`);
+      icon.appendChild(use);
+      const label = document.createElement("span");
+      label.textContent = view.label;
+      item.append(icon, label);
+      auxViewPicker.appendChild(item);
+    });
+    auxViewPicker.hidden = false;
+    auxPickerOverlay.hidden = false;
+    const btnRect = auxAddButton.getBoundingClientRect();
+    const left = Math.max(8, btnRect.right - auxViewPicker.offsetWidth);
+    const top = btnRect.bottom + 4;
+    auxViewPicker.style.left = `${left}px`;
+    auxViewPicker.style.top = `${top}px`;
+  }
+
+  function closeAuxPicker() {
+    auxViewPicker.hidden = true;
+    auxPickerOverlay.hidden = true;
+  }
+
+  function toggleAuxPicker() {
+    if (auxViewPicker.hidden) openAuxPicker();
+    else closeAuxPicker();
   }
 
   function reviewFile() {
     state.auxiliaryOpen = true;
     render();
-    setAuxiliaryTab("changes");
-    showToast("已在右侧辅助区打开文件变更");
+    addAuxiliaryTab("outputs");
+    showToast("已在右侧辅助区打开产出");
   }
 
   function resetLayout() {
@@ -492,7 +649,8 @@
     Object.assign(state, defaults);
     state.steerItems = [];
     state.attachments = sampleAttachments.map((item) => ({ ...item }));
-    setAuxiliaryTab("files");
+    state.auxiliaryTabs = [{ id: "tab-files", type: "files" }];
+    state.activeAuxTabId = "tab-files";
     closeSearch();
     render();
     showToast("布局与平台状态已重置");
@@ -522,6 +680,13 @@
         state.resultSummaryVisible
           ? "已显示任务结果摘要"
           : "已隐藏任务结果摘要",
+      );
+    }
+    if (action === "toggle-thread-summary") {
+      state.threadSummaryOpen = !state.threadSummaryOpen;
+      render();
+      showToast(
+        state.threadSummaryOpen ? "已显示固定摘要" : "已隐藏固定摘要",
       );
     }
     if (action === "toggle-sample-attachments") {
@@ -646,7 +811,57 @@
 
     const auxTab = event.target.closest("[data-aux-tab]");
     if (auxTab) {
-      setAuxiliaryTab(auxTab.dataset.auxTab);
+      if (event.target.closest(".inspector-tab-close")) {
+        removeAuxiliaryTab(auxTab.dataset.auxTab);
+      } else {
+        activateAuxiliaryTab(auxTab.dataset.auxTab);
+      }
+      return;
+    }
+
+    if (event.target.closest("#auxiliary-add-view")) {
+      toggleAuxPicker();
+      return;
+    }
+
+    if (event.target.closest("#auxiliary-picker-overlay")) {
+      closeAuxPicker();
+      return;
+    }
+
+    const auxOpen = event.target.closest("[data-aux-open]");
+    if (auxOpen) {
+      addAuxiliaryTab(auxOpen.dataset.auxOpen);
+      return;
+    }
+
+    const outputsToggle = event.target.closest("[data-outputs-toggle]");
+    if (outputsToggle) {
+      outputsToggle.closest(".outputs-item").classList.toggle("is-expanded");
+      const chevron = outputsToggle.querySelector(".outputs-chevron");
+      if (chevron) chevron.classList.toggle("is-open");
+      return;
+    }
+
+    const summarySectionToggle = event.target.closest(
+      ".thread-summary-section-toggle",
+    );
+    if (summarySectionToggle) {
+      const expanded = summarySectionToggle.getAttribute("aria-expanded") === "true";
+      summarySectionToggle.setAttribute("aria-expanded", String(!expanded));
+      const section = summarySectionToggle.closest(".thread-summary-section");
+      const content = section?.querySelector(".thread-summary-section-content");
+      if (content) content.hidden = expanded;
+      return;
+    }
+
+    if (
+      state.threadSummaryOpen &&
+      !event.target.closest("#thread-summary-panel") &&
+      !event.target.closest('[data-action="toggle-thread-summary"]')
+    ) {
+      state.threadSummaryOpen = false;
+      render();
       return;
     }
 
