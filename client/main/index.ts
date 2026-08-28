@@ -10,10 +10,6 @@ import {
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { registerHandlers, stopImBridge } from "./ipc/handlers";
-import {
-  browserService,
-  resolveChromiumPath,
-} from "./services/browser-service";
 import { initRuntime, destroyRuntime } from "./core/runtime/manager";
 import {
   disableConsoleEcho,
@@ -280,12 +276,6 @@ app.whenReady().then(async () => {
     settingsPath: getSettingsPath(),
   });
   logInitialConfig();
-  // Resolve Playwright Chromium path for packaged app (dev mode auto-discovers)
-  const chromiumPath = resolveChromiumPath();
-  if (chromiumPath) {
-    browserService.setChromiumExecutablePath(chromiumPath);
-    logInfo("app.chromium.resolved", { path: chromiumPath });
-  }
   registerHandlers();
   // Sync macOS native appearance with the persisted app theme so unfocused
   // traffic-light buttons stay visible (light theme → dark lights, dark theme

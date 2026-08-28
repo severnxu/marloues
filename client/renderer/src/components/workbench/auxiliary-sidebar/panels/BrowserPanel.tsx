@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, RotateCw, Globe } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  RotateCw,
+  Globe,
+  Send,
+  MessageSquarePlus,
+} from "lucide-react";
 
 /**
  * Renders a user-facing browser panel backed by an Electron WebContentsView.
@@ -13,6 +20,9 @@ import { ArrowLeft, ArrowRight, RotateCw, Globe } from "lucide-react";
 export function BrowserPanel({ pageId }: { pageId?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [urlInput, setUrlInput] = useState("");
+  const [lastEvent, setLastEvent] = useState<string | null>(null);
+  const [commentMode, setCommentMode] = useState(false);
+  const [commentBadge, setCommentBadge] = useState(0);
 
   const pushBounds = useCallback(() => {
     if (!pageId || !containerRef.current) return;
@@ -48,6 +58,46 @@ export function BrowserPanel({ pageId }: { pageId?: string }) {
     return () => off?.();
   }, [pageId]);
 
+  // Listen for browser events (agent interactions, navigation, etc.)
+  useEffect(() => {
+    if (!pageId) return;
+    const off = window.marloues.browser?.onBrowserEvent(
+      (changedPageId, type, data) => {
+        if (changedPageId === pageId) {
+          const detail =
+            typeof data === "object" && data
+              ? JSON.stringify(data)
+              : String(data ?? "");
+          setLastEvent(`${type}: ${detail}`);
+          setTimeout(() => setLastEvent(null), 5000);
+        }
+      },
+    );
+    return () => off?.();
+  }, [pageId]);
+
+  // Listen for comment/annotation events from the bridge
+  useEffect(() => {
+    if (!pageId) return;
+    const off = window.marloues.browser?.onCommentEvent(
+      (changedPageId, event) => {
+        if (changedPageId !== pageId) return;
+        const entry = event as { type?: string; payload?: unknown };
+        if (entry?.type === "comment-added") {
+          setCommentBadge((n) => n + 1);
+          setTimeout(() => setCommentBadge((n) => Math.max(0, n - 1)), 3000);
+          // Dispatch comment to agent input as a send-to-agent event
+          window.dispatchEvent(
+            new CustomEvent("browser:send-to-agent", {
+              detail: { pageId, type: "comment", payload: entry.payload },
+            }),
+          );
+        }
+      },
+    );
+    return () => off?.();
+  }, [pageId]);
+
   const handleNavigate = useCallback(
     (url: string) => {
       if (!pageId || !url.trim()) return;
@@ -68,6 +118,27 @@ export function BrowserPanel({ pageId }: { pageId?: string }) {
       urlInput || "about:blank",
     );
   }, [pageId, urlInput]);
+
+  const handleSendToAgent = useCallback(() => {
+    if (!pageId || !urlInput) return;
+    // Dispatch a custom event that the chat input can intercept
+    window.dispatchEvent(
+      new CustomEvent("browser:send-to-agent", {
+        detail: { pageId, url: urlInput },
+      }),
+    );
+  }, [pageId, urlInput]);
+
+  const handleToggleComment = useCallback(() => {
+    if (!pageId) return;
+    const next = !commentMode;
+    setCommentMode(next);
+    void window.marloues.browser?.setCommentMode(pageId, next, {
+      selectionMode: "dom_node",
+      theme: "system",
+    });
+    if (!next) setCommentBadge(0);
+  }, [pageId, commentMode]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -101,6 +172,24 @@ export function BrowserPanel({ pageId }: { pageId?: string }) {
         >
           <RotateCw size={16} />
         </button>
+        <button
+          className="browser-panel-btn"
+          onClick={handleSendToAgent}
+          title="发送给 Agent"
+          disabled={!urlInput}
+        >
+          <Send size={16} />
+        </button>
+        <button
+          className={`browser-panel-btn ${commentMode ? "browser-panel-btn-active" : ""}`}
+          onClick={handleToggleComment}
+          title={commentMode ? "退出标注模式" : "进入标注模式"}
+        >
+          <MessageSquarePlus size={16} />
+          {commentBadge > 0 && (
+            <span className="browser-panel-badge">{commentBadge}</span>
+          )}
+        </button>
         <input
           className="browser-panel-url-input"
           type="text"
@@ -111,6 +200,7 @@ export function BrowserPanel({ pageId }: { pageId?: string }) {
           spellCheck={false}
         />
       </div>
+      {lastEvent && <div className="browser-panel-event-bar">{lastEvent}</div>}
       <div
         ref={containerRef}
         className="browser-panel-container"

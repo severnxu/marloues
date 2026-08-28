@@ -3,6 +3,21 @@
 .terminal-panel-container {
   padding: 4px 6px;
   background: var(--surface-workspace, #1e1e1e);
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* xterm element should fill the terminal container width. */
+.terminal-panel-container .xterm {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+.terminal-panel-container .xterm-viewport {
+  width: 100% !important;
 }
 
 .terminal-panel-empty {
@@ -25,6 +40,22 @@
   background: var(--surface-workspace, #1e1e1e);
 }
 
+/* Browser and terminal panels use canvas-based rendering (WebContentsView,
+   xterm) that handles its own scrolling, so suppress the panel's scroll
+   container to avoid clipping or offset issues. */
+.auxiliary-view-panel:has(.browser-panel),
+.auxiliary-view-panel:has(.terminal-panel-container) {
+  overflow: hidden;
+}
+
+/* In primary-overlay mode, remove the 900px max-width constraint for
+   browser and terminal panels so they fill the full window width. */
+.auxiliary-sidebar.is-primary-overlay .auxiliary-view-panel:has(.browser-panel),
+.auxiliary-sidebar.is-primary-overlay
+  .auxiliary-view-panel:has(.terminal-panel-container) {
+  max-width: none;
+}
+
 .browser-panel-toolbar {
   display: flex;
   align-items: center;
@@ -39,6 +70,7 @@
   justify-content: center;
   width: 26px;
   height: 26px;
+  position: relative;
   border: 0;
   border-radius: var(--control-radius, 4px);
   background: transparent;
@@ -54,6 +86,31 @@
 .browser-panel-btn:disabled {
   opacity: 0.3;
   cursor: default;
+}
+
+.browser-panel-btn-active {
+  background: var(--accent-soft, rgba(74, 158, 255, 0.18));
+  color: var(--accent, #4a9eff);
+}
+
+.browser-panel-btn-active:hover {
+  background: var(--accent-soft, rgba(74, 158, 255, 0.25));
+}
+
+.browser-panel-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--accent, #4a9eff);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 14px;
+  text-align: center;
+  padding: 0 3px;
 }
 
 .browser-panel-url-input {
@@ -78,6 +135,21 @@
   flex: 1;
   min-height: 0;
   background: #fff;
+}
+
+.browser-panel-event-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--shell-divider, rgba(255, 255, 255, 0.08));
+  background: var(--raised-1, rgba(0, 0, 0, 0.2));
+  color: var(--text-2, #aaa);
+  font-size: 11px;
+  font-family: var(--font-mono, Menlo, monospace);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .browser-panel-empty {

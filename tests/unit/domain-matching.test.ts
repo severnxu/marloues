@@ -105,7 +105,7 @@ describe("EMPTY_SECURITY_RULES", () => {
 });
 
 describe("browser navigation policy semantics", () => {
-  // Simulates the framenavigated interception logic in browser-service.ts
+  // Simulates the framenavigated interception logic in cdp-browser-service.ts
   function shouldBlock(
     host: string,
     rules: {

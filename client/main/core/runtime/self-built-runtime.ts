@@ -35,7 +35,7 @@ import {
 } from "../security/guardian-reviewer";
 import { validatePathBoundary } from "../permissions/path-boundary-validator";
 import { terminalService } from "../../services/terminal-service";
-import { browserService } from "../../services/browser-service";
+import { cdpBrowserService } from "../../services/cdp-browser-service";
 
 function genId(): string {
   return crypto.randomUUID();
@@ -546,7 +546,6 @@ export class SelfBuiltRuntime implements AgentRuntime {
           type: "object",
           properties: {
             pageId: { type: "string" },
-            fullPage: { type: "boolean" },
           },
         },
       },
@@ -555,14 +554,15 @@ export class SelfBuiltRuntime implements AgentRuntime {
     this.registerTool(
       {
         name: "browser.click",
-        description: "Click an element matching the given CSS selector.",
+        description:
+          "Click an interactive element by its index from get_state.",
         inputSchema: {
           type: "object",
           properties: {
-            selector: { type: "string" },
+            index: { type: "number" },
             pageId: { type: "string" },
           },
-          required: ["selector"],
+          required: ["index"],
         },
       },
       async (args) => args,
@@ -570,27 +570,58 @@ export class SelfBuiltRuntime implements AgentRuntime {
     this.registerTool(
       {
         name: "browser.fill",
-        description: "Fill an input element with a value.",
+        description: "Fill text into an element by its index from get_state.",
         inputSchema: {
           type: "object",
           properties: {
-            selector: { type: "string" },
+            index: { type: "number" },
             value: { type: "string" },
             pageId: { type: "string" },
           },
-          required: ["selector", "value"],
+          required: ["index", "value"],
         },
       },
       async (args) => args,
     );
     this.registerTool(
       {
-        name: "browser.get_text",
-        description: "Get the text content of the current page.",
+        name: "browser.get_state",
+        description:
+          "Get the accessibility tree of the current page as indexed text.",
         inputSchema: {
           type: "object",
           properties: {
-            selector: { type: "string" },
+            pageId: { type: "string" },
+          },
+        },
+      },
+      async (args) => args,
+    );
+    this.registerTool(
+      {
+        name: "browser.scroll",
+        description: "Scroll the page in a direction (up, down, left, right).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            direction: { type: "string" },
+            pages: { type: "number" },
+            pageId: { type: "string" },
+          },
+          required: ["direction"],
+        },
+      },
+      async (args) => args,
+    );
+    this.registerTool(
+      {
+        name: "browser.poll_events",
+        description: "Poll for browser events since a sequence cursor.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            afterSequence: { type: "number" },
+            limit: { type: "number" },
             pageId: { type: "string" },
           },
         },
@@ -972,25 +1003,13 @@ export class SelfBuiltRuntime implements AgentRuntime {
           toolName,
           input,
           async () => {
-            let browserId = browserService.getBrowserId(opts.threadId);
-            if (!browserId) {
-              browserId = await browserService.launch({
-                threadId: opts.threadId,
-                headless: true,
-              });
-              browserService.setBrowserId(opts.threadId, browserId);
-            }
-            let pageId = browserService.getActivePageId(opts.threadId);
+            let pageId = cdpBrowserService.getActivePageId(opts.threadId);
             if (!pageId) {
-              pageId = await browserService.newPage(
-                browserId,
-                plan.url,
-                opts.threadId,
-              );
+              pageId = await cdpBrowserService.newPage(plan.url, opts.threadId);
             } else {
-              await browserService.navigate(pageId, plan.url);
+              await cdpBrowserService.navigate(pageId, plan.url);
             }
-            browserService.setActivePageId(opts.threadId, pageId);
+            cdpBrowserService.setActivePageId(opts.threadId, pageId);
             return JSON.stringify({ pageId, url: plan.url });
           },
         );

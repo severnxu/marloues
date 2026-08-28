@@ -1,6 +1,6 @@
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
-import { browserService } from "../../services/browser-service";
+import { cdpBrowserService } from "../../services/cdp-browser-service";
 import type { SessionApprovalTracker } from "../security/session-approval-tracker";
 import type { SecurityPermit } from "../security/sandbox-broker";
 
@@ -9,7 +9,9 @@ export const SDK_BROWSER_TOOL_NAVIGATE = `mcp__${SDK_BROWSER_SERVER_NAME}__navig
 export const SDK_BROWSER_TOOL_SCREENSHOT = `mcp__${SDK_BROWSER_SERVER_NAME}__screenshot`;
 export const SDK_BROWSER_TOOL_CLICK = `mcp__${SDK_BROWSER_SERVER_NAME}__click`;
 export const SDK_BROWSER_TOOL_FILL = `mcp__${SDK_BROWSER_SERVER_NAME}__fill`;
-export const SDK_BROWSER_TOOL_GET_TEXT = `mcp__${SDK_BROWSER_SERVER_NAME}__get_text`;
+export const SDK_BROWSER_TOOL_GET_STATE = `mcp__${SDK_BROWSER_SERVER_NAME}__get_state`;
+export const SDK_BROWSER_TOOL_SCROLL = `mcp__${SDK_BROWSER_SERVER_NAME}__scroll`;
+export const SDK_BROWSER_TOOL_POLL_EVENTS = `mcp__${SDK_BROWSER_SERVER_NAME}__poll_events`;
 
 /** Maps full MCP tool names to canonical short names for SecurityHost matching. */
 export function canonicalBrowserToolName(toolName: string): string {
@@ -18,7 +20,9 @@ export function canonicalBrowserToolName(toolName: string): string {
     [SDK_BROWSER_TOOL_SCREENSHOT]: "browser.screenshot",
     [SDK_BROWSER_TOOL_CLICK]: "browser.click",
     [SDK_BROWSER_TOOL_FILL]: "browser.fill",
-    [SDK_BROWSER_TOOL_GET_TEXT]: "browser.get_text",
+    [SDK_BROWSER_TOOL_GET_STATE]: "browser.get_state",
+    [SDK_BROWSER_TOOL_SCROLL]: "browser.scroll",
+    [SDK_BROWSER_TOOL_POLL_EVENTS]: "browser.poll_events",
   };
   return map[toolName] ?? toolName;
 }
@@ -30,9 +34,10 @@ export interface SdkBrowserServer {
 }
 
 /**
- * Creates an in-process SDK MCP server exposing browser tools.
- * The approvalTracker is a per-thread instance (survives across turns).
- * The permit queue is per-turn (cleared when the turn ends).
+ * Creates an in-process SDK MCP server exposing CDP-based browser tools.
+ * All tools operate on the same WebContentsView the user sees -- no separate
+ * headless browser. The agent uses accessibility-tree indices (not CSS
+ * selectors) to interact with elements.
  */
 export function createSdkBrowserServer(
   approvalTracker: SessionApprovalTracker,
@@ -51,12 +56,12 @@ export function createSdkBrowserServer(
     name: SDK_BROWSER_SERVER_NAME,
     version: "1.0.0",
     instructions:
-      "Browser automation via Playwright. Use navigate to open pages, screenshot to capture, click/fill to interact, get_text to read content.",
+      "Browser automation via CDP accessibility tree. Use navigate to open pages, get_state for the indexed accessibility tree, screenshot to capture, click/fill to interact by index, scroll, and poll_events for browser events.",
     alwaysLoad: true,
     tools: [
       tool(
         "navigate",
-        "Open or navigate to a URL in the headless browser. Returns pageId.",
+        "Open or navigate to a URL in the browser. Returns pageId and side effects.",
         {
           url: z.string().url(),
         },
@@ -73,32 +78,20 @@ export function createSdkBrowserServer(
               isError: true,
             };
           }
-          // Lazy-launch browser for this thread
-          let browserId = browserService.getBrowserId(threadId);
-          if (!browserId) {
-            browserId = await browserService.launch({
-              threadId,
-              headless: true,
-            });
-            browserService.setBrowserId(threadId, browserId);
-          }
-          let pageId = browserService.getActivePageId(threadId);
+          let pageId = cdpBrowserService.getActivePageId(threadId);
           if (!pageId) {
-            pageId = await browserService.newPage(
-              browserId,
-              input.url,
-              threadId,
-            );
+            pageId = await cdpBrowserService.newPage(input.url, threadId);
           } else {
-            await browserService.navigate(pageId, input.url);
+            await cdpBrowserService.navigate(pageId, input.url);
           }
-          browserService.setActivePageId(threadId, pageId);
+          cdpBrowserService.setActivePageId(threadId, pageId);
           approvalTracker.markPageApproved(pageId);
+          const sideEffects = cdpBrowserService.consumeSideEffects(pageId);
           return {
             content: [
               {
                 type: "text" as const,
-                text: JSON.stringify({ pageId, url: input.url }),
+                text: JSON.stringify({ pageId, url: input.url, sideEffects }),
               },
             ],
           };
@@ -117,11 +110,10 @@ export function createSdkBrowserServer(
         "Take a screenshot of the current or specified page. Returns base64 image.",
         {
           pageId: z.string().optional(),
-          fullPage: z.boolean().optional(),
         },
         async (input) => {
           const pageId =
-            input.pageId ?? browserService.getActivePageId(threadId);
+            input.pageId ?? cdpBrowserService.getActivePageId(threadId);
           if (!pageId) {
             return {
               content: [
@@ -130,9 +122,7 @@ export function createSdkBrowserServer(
               isError: true,
             };
           }
-          const data = await browserService.screenshot(pageId, {
-            fullPage: input.fullPage,
-          });
+          const data = await cdpBrowserService.screenshot(pageId);
           return {
             content: [
               {
@@ -154,14 +144,14 @@ export function createSdkBrowserServer(
       ),
       tool(
         "click",
-        "Click an element matching the given CSS selector on the current page.",
+        "Click an interactive element by its index from get_state.",
         {
-          selector: z.string().min(1),
+          index: z.number().int().nonnegative(),
           pageId: z.string().optional(),
         },
         async (input) => {
           const pageId =
-            input.pageId ?? browserService.getActivePageId(threadId);
+            input.pageId ?? cdpBrowserService.getActivePageId(threadId);
           if (!pageId) {
             return {
               content: [
@@ -170,8 +160,16 @@ export function createSdkBrowserServer(
               isError: true,
             };
           }
-          await browserService.click(pageId, input.selector);
-          return { content: [{ type: "text" as const, text: "ok" }] };
+          await cdpBrowserService.clickByIndex(pageId, input.index);
+          const sideEffects = cdpBrowserService.consumeSideEffects(pageId);
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify({ ok: true, sideEffects }),
+              },
+            ],
+          };
         },
         {
           annotations: {
@@ -184,15 +182,15 @@ export function createSdkBrowserServer(
       ),
       tool(
         "fill",
-        "Fill an input element matching the given CSS selector with a value.",
+        "Fill text into an element by its index from get_state.",
         {
-          selector: z.string().min(1),
+          index: z.number().int().nonnegative(),
           value: z.string(),
           pageId: z.string().optional(),
         },
         async (input) => {
           const pageId =
-            input.pageId ?? browserService.getActivePageId(threadId);
+            input.pageId ?? cdpBrowserService.getActivePageId(threadId);
           if (!pageId) {
             return {
               content: [
@@ -201,8 +199,16 @@ export function createSdkBrowserServer(
               isError: true,
             };
           }
-          await browserService.fill(pageId, input.selector, input.value);
-          return { content: [{ type: "text" as const, text: "ok" }] };
+          await cdpBrowserService.fillByIndex(pageId, input.index, input.value);
+          const sideEffects = cdpBrowserService.consumeSideEffects(pageId);
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify({ ok: true, sideEffects }),
+              },
+            ],
+          };
         },
         {
           annotations: {
@@ -214,15 +220,14 @@ export function createSdkBrowserServer(
         },
       ),
       tool(
-        "get_text",
-        "Get the text content of the current page or a specific element.",
+        "get_state",
+        "Get the accessibility tree of the current page as indexed text. Each interactive element has a [N] index for use with click/fill. Call this before interacting with the page.",
         {
-          selector: z.string().optional(),
           pageId: z.string().optional(),
         },
         async (input) => {
           const pageId =
-            input.pageId ?? browserService.getActivePageId(threadId);
+            input.pageId ?? cdpBrowserService.getActivePageId(threadId);
           if (!pageId) {
             return {
               content: [
@@ -231,8 +236,93 @@ export function createSdkBrowserServer(
               isError: true,
             };
           }
-          const content = await browserService.getContent(pageId);
-          return { content: [{ type: "text" as const, text: content }] };
+          const axTree = await cdpBrowserService.getAXTree(pageId);
+          const sideEffects = cdpBrowserService.consumeSideEffects(pageId);
+          const text =
+            sideEffects.length > 0
+              ? axTree + "\n\nSide effects:\n" + sideEffects.join("\n")
+              : axTree;
+          return { content: [{ type: "text" as const, text }] };
+        },
+        {
+          annotations: {
+            destructiveHint: false,
+            openWorldHint: false,
+            readOnlyHint: true,
+          },
+          alwaysLoad: true,
+        },
+      ),
+      tool(
+        "scroll",
+        "Scroll the page in a direction (up, down, left, right).",
+        {
+          direction: z.enum(["up", "down", "left", "right"]),
+          pages: z.number().int().positive().optional(),
+          pageId: z.string().optional(),
+        },
+        async (input) => {
+          const pageId =
+            input.pageId ?? cdpBrowserService.getActivePageId(threadId);
+          if (!pageId) {
+            return {
+              content: [
+                { type: "text" as const, text: "No active browser page." },
+              ],
+              isError: true,
+            };
+          }
+          await cdpBrowserService.scroll(
+            pageId,
+            input.direction,
+            input.pages ?? 1,
+          );
+          const sideEffects = cdpBrowserService.consumeSideEffects(pageId);
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify({ ok: true, sideEffects }),
+              },
+            ],
+          };
+        },
+        {
+          annotations: {
+            destructiveHint: false,
+            openWorldHint: true,
+            readOnlyHint: false,
+          },
+          alwaysLoad: true,
+        },
+      ),
+      tool(
+        "poll_events",
+        "Poll for browser events since a sequence cursor. Returns events array and next cursor.",
+        {
+          afterSequence: z.number().int().nonnegative().optional(),
+          limit: z.number().int().positive().optional(),
+          pageId: z.string().optional(),
+        },
+        async (input) => {
+          const pageId =
+            input.pageId ?? cdpBrowserService.getActivePageId(threadId);
+          if (!pageId) {
+            return {
+              content: [
+                { type: "text" as const, text: "No active browser page." },
+              ],
+              isError: true,
+            };
+          }
+          const result = await cdpBrowserService.pollEvents(
+            pageId,
+            input.afterSequence,
+            input.limit ?? 50,
+          );
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify(result) }],
+          };
         },
         {
           annotations: {

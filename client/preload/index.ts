@@ -394,6 +394,42 @@ const api: MarlouesAPI = {
       ipcRenderer.on(IPC.BROWSER_NAVIGATION_BLOCKED, listener);
       return () => ipcRenderer.off(IPC.BROWSER_NAVIGATION_BLOCKED, listener);
     },
+    onBrowserEvent: (callback) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        pageId: string,
+        type: string,
+        data: unknown,
+      ) => callback(pageId, type, data);
+      ipcRenderer.on(IPC.BROWSER_EVENT, listener);
+      return () => ipcRenderer.off(IPC.BROWSER_EVENT, listener);
+    },
+    setCommentMode: (pageId, enabled, options) =>
+      ipcRenderer.invoke(
+        IPC.BROWSER_SET_COMMENT_MODE,
+        pageId,
+        enabled,
+        options,
+      ),
+    getCommentEvents: (pageId, afterEventId) =>
+      ipcRenderer.invoke(IPC.BROWSER_GET_COMMENT_EVENTS, pageId, afterEventId),
+    ackCommentEvents: (pageId, throughEventId) =>
+      ipcRenderer.invoke(
+        IPC.BROWSER_ACK_COMMENT_EVENTS,
+        pageId,
+        throughEventId,
+      ),
+    clearComments: (pageId) =>
+      ipcRenderer.invoke(IPC.BROWSER_CLEAR_COMMENTS, pageId),
+    onCommentEvent: (callback) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        pageId: string,
+        commentEvent: unknown,
+      ) => callback(pageId, commentEvent);
+      ipcRenderer.on(IPC.BROWSER_COMMENT_EVENT, listener);
+      return () => ipcRenderer.off(IPC.BROWSER_COMMENT_EVENT, listener);
+    },
   },
 };
 

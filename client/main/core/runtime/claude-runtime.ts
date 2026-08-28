@@ -77,7 +77,7 @@ import {
 } from "./sdk-browser-mcp";
 import { SessionApprovalTracker } from "../security/session-approval-tracker";
 import { terminalService } from "../../services/terminal-service";
-import { browserService } from "../../services/browser-service";
+import { cdpBrowserService } from "../../services/cdp-browser-service";
 import {
   RuntimeEventQueue,
   createTurnLifetime,
@@ -1033,7 +1033,7 @@ export class ClaudeRuntime implements AgentRuntime {
 
   async initialize(): Promise<void> {
     recoverApplyingOutbox();
-    browserService.setSecurityRulesGetter(
+    cdpBrowserService.setSecurityRulesGetter(
       () => getAgentSettings().securityRules,
     );
     try {
@@ -1102,7 +1102,7 @@ export class ClaudeRuntime implements AgentRuntime {
     workflowThreadStore.deleteThread(threadId);
     this.approvalTracker.clear();
     terminalService.killByThread(threadId);
-    void browserService.closeByThread(threadId);
+    void cdpBrowserService.closeByThread(threadId);
   }
 
   async clearThread(threadId: string): Promise<void> {
@@ -1347,7 +1347,7 @@ export class ClaudeRuntime implements AgentRuntime {
         ) {
           const pageId =
             (typeof input.pageId === "string" ? input.pageId : undefined) ??
-            browserService.getActivePageId(opts.threadId);
+            cdpBrowserService.getActivePageId(opts.threadId);
           if (pageId && this.approvalTracker.isPageApproved(pageId)) {
             return {
               behavior: "allow",

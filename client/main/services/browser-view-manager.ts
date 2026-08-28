@@ -163,6 +163,11 @@ class BrowserViewManagerImpl {
     return this.views.get(pageId)?.url;
   }
 
+  /** Exposes the underlying WebContents for CDP attachment by CdpBrowserService. */
+  getWebContents(pageId: string): import("electron").WebContents | undefined {
+    return this.views.get(pageId)?.view.webContents;
+  }
+
   destroyAll(): void {
     for (const pageId of Array.from(this.views.keys())) {
       this.destroyView(pageId);

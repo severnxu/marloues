@@ -16,7 +16,8 @@ import { resolve } from "node:path";
 import * as QRCode from "qrcode";
 import { IPC } from "./channels";
 import { terminalService } from "../services/terminal-service";
-import { browserService } from "../services/browser-service";
+import { cdpBrowserService } from "../services/cdp-browser-service";
+import type { CommentModeOptions } from "../services/cdp-browser-service";
 import { browserViewManager } from "../services/browser-view-manager";
 import { logInfo } from "../core/logging/app-logger";
 import { IM_IPC } from "@shared/im/im-ipc";
@@ -2471,7 +2472,7 @@ function registerTerminalBrowserBroadcast(): void {
     if (!win || win.isDestroyed()) return;
     win.webContents.send(IPC.TERMINAL_EXIT, sessionId, exitCode);
   });
-  browserService.on(
+  cdpBrowserService.on(
     "url-changed",
     (threadId: string | undefined, pageId: string, url: string) => {
       const win = getMainWindow();
@@ -2479,7 +2480,7 @@ function registerTerminalBrowserBroadcast(): void {
       win.webContents.send(IPC.BROWSER_URL_CHANGED, threadId, pageId, url);
     },
   );
-  browserService.on(
+  cdpBrowserService.on(
     "navigation-blocked",
     (pageId: string, url: string, host: string) => {
       const win = getMainWindow();
@@ -2487,6 +2488,20 @@ function registerTerminalBrowserBroadcast(): void {
       win.webContents.send(IPC.BROWSER_NAVIGATION_BLOCKED, pageId, url, host);
     },
   );
+  cdpBrowserService.on(
+    "browser-event",
+    (pageId: string, type: string, data: unknown) => {
+      const win = getMainWindow();
+      if (!win || win.isDestroyed()) return;
+      win.webContents.send(IPC.BROWSER_EVENT, pageId, type, data);
+    },
+  );
+
+  cdpBrowserService.on("comment-event", (pageId: string, event: unknown) => {
+    const win = getMainWindow();
+    if (!win || win.isDestroyed()) return;
+    win.webContents.send(IPC.BROWSER_COMMENT_EVENT, pageId, event);
+  });
 }
 
 export function registerHandlers(): void {
@@ -3506,4 +3521,32 @@ export function registerHandlers(): void {
       browserViewManager.setActivePage(pageId);
     },
   );
+
+  // ---------- Browser: Comment / Annotation ----------
+
+  ipcMain.handle(
+    IPC.BROWSER_SET_COMMENT_MODE,
+    async (_event, pageId: string, enabled: boolean, options?: unknown) => {
+      return cdpBrowserService.setCommentMode(
+        pageId,
+        enabled,
+        options as CommentModeOptions | undefined,
+      );
+    },
+  );
+  ipcMain.handle(
+    IPC.BROWSER_GET_COMMENT_EVENTS,
+    async (_event, pageId: string, afterEventId: number) => {
+      return cdpBrowserService.getCommentEvents(pageId, afterEventId);
+    },
+  );
+  ipcMain.handle(
+    IPC.BROWSER_ACK_COMMENT_EVENTS,
+    async (_event, pageId: string, throughEventId: number) => {
+      return cdpBrowserService.ackCommentEvents(pageId, throughEventId);
+    },
+  );
+  ipcMain.handle(IPC.BROWSER_CLEAR_COMMENTS, async (_event, pageId: string) => {
+    return cdpBrowserService.clearComments(pageId);
+  });
 }

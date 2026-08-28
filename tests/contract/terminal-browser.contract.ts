@@ -18,7 +18,9 @@ import {
   SDK_BROWSER_TOOL_SCREENSHOT,
   SDK_BROWSER_TOOL_CLICK,
   SDK_BROWSER_TOOL_FILL,
-  SDK_BROWSER_TOOL_GET_TEXT,
+  SDK_BROWSER_TOOL_GET_STATE,
+  SDK_BROWSER_TOOL_SCROLL,
+  SDK_BROWSER_TOOL_POLL_EVENTS,
   canonicalBrowserToolName,
 } from "../../client/main/core/runtime/sdk-browser-mcp";
 import {
@@ -87,8 +89,16 @@ async function main(): Promise<void> {
     SDK_BROWSER_TOOL_FILL === "mcp__marloues_browser__fill",
   );
   assert(
-    "get_text full name = mcp__marloues_browser__get_text",
-    SDK_BROWSER_TOOL_GET_TEXT === "mcp__marloues_browser__get_text",
+    "get_state full name = mcp__marloues_browser__get_state",
+    SDK_BROWSER_TOOL_GET_STATE === "mcp__marloues_browser__get_state",
+  );
+  assert(
+    "scroll full name = mcp__marloues_browser__scroll",
+    SDK_BROWSER_TOOL_SCROLL === "mcp__marloues_browser__scroll",
+  );
+  assert(
+    "poll_events full name = mcp__marloues_browser__poll_events",
+    SDK_BROWSER_TOOL_POLL_EVENTS === "mcp__marloues_browser__poll_events",
   );
 
   // --- Canonical Name Mapping (disallowedTools compatibility) ---

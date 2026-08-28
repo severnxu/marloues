@@ -1228,6 +1228,48 @@ export interface MarlouesAPI {
     onNavigationBlocked(
       callback: (pageId: string, url: string, host: string) => void,
     ): () => void;
+    onBrowserEvent(
+      callback: (pageId: string, type: string, data: unknown) => void,
+    ): () => void;
+    setCommentMode(
+      pageId: string,
+      enabled: boolean,
+      options?: {
+        selectionMode?: string;
+        theme?: string;
+        palette?: string;
+        placeholder?: string;
+        clearComments?: boolean;
+      },
+    ): Promise<{
+      success: boolean;
+      pageId: string;
+      annotationEnabled: boolean;
+    }>;
+    getCommentEvents(
+      pageId: string,
+      afterEventId: number,
+    ): Promise<{
+      commentEvents: Array<{
+        eventId: number;
+        type: string;
+        pageId: string;
+        commentId?: number;
+        pageUrl?: string;
+        payload?: unknown;
+        ts: number;
+      }>;
+      maxCommentEventId: number;
+      annotationEnabled: boolean;
+    }>;
+    ackCommentEvents(
+      pageId: string,
+      throughEventId: number,
+    ): Promise<{ success: boolean }>;
+    clearComments(pageId: string): Promise<{ success: boolean }>;
+    onCommentEvent(
+      callback: (pageId: string, event: unknown) => void,
+    ): () => void;
   };
 }
 
@@ -1344,4 +1386,10 @@ export const IPC = {
   BROWSER_SCREENSHOT: "browser:screenshot",
   BROWSER_URL_CHANGED: "browser:url-changed",
   BROWSER_NAVIGATION_BLOCKED: "browser:navigation-blocked",
+  BROWSER_EVENT: "browser:event",
+  BROWSER_SET_COMMENT_MODE: "browser:set-comment-mode",
+  BROWSER_GET_COMMENT_EVENTS: "browser:get-comment-events",
+  BROWSER_ACK_COMMENT_EVENTS: "browser:ack-comment-events",
+  BROWSER_CLEAR_COMMENTS: "browser:clear-comments",
+  BROWSER_COMMENT_EVENT: "browser:comment-event",
 } as const;

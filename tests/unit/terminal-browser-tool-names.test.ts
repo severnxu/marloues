@@ -12,7 +12,9 @@ import {
   SDK_BROWSER_TOOL_SCREENSHOT,
   SDK_BROWSER_TOOL_CLICK,
   SDK_BROWSER_TOOL_FILL,
-  SDK_BROWSER_TOOL_GET_TEXT,
+  SDK_BROWSER_TOOL_GET_STATE,
+  SDK_BROWSER_TOOL_SCROLL,
+  SDK_BROWSER_TOOL_POLL_EVENTS,
 } from "../../client/main/core/runtime/sdk-browser-mcp";
 
 describe("canonicalTerminalToolName", () => {
@@ -74,9 +76,21 @@ describe("canonicalBrowserToolName", () => {
     );
   });
 
-  it("maps full MCP get_text name to canonical short name", () => {
-    expect(canonicalBrowserToolName(SDK_BROWSER_TOOL_GET_TEXT)).toBe(
-      "browser.get_text",
+  it("maps full MCP get_state name to canonical short name", () => {
+    expect(canonicalBrowserToolName(SDK_BROWSER_TOOL_GET_STATE)).toBe(
+      "browser.get_state",
+    );
+  });
+
+  it("maps full MCP scroll name to canonical short name", () => {
+    expect(canonicalBrowserToolName(SDK_BROWSER_TOOL_SCROLL)).toBe(
+      "browser.scroll",
+    );
+  });
+
+  it("maps full MCP poll_events name to canonical short name", () => {
+    expect(canonicalBrowserToolName(SDK_BROWSER_TOOL_POLL_EVENTS)).toBe(
+      "browser.poll_events",
     );
   });
 
