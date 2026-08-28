@@ -17,10 +17,10 @@
   max-height: calc(100vh - 48px);
   overflow: hidden;
   gap: 0;
-  border: 1px solid var(--border-strong);
-  border-radius: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
   background: var(--surface-popover);
-  box-shadow: 0 24px 64px -12px hsl(0 0% 0% / 0.6);
+  box-shadow: var(--shadow-popover);
   animation: ae-rise 160ms var(--ease);
 }
 
@@ -128,9 +128,9 @@
 }
 
 .kindSwitch .kindActive {
-  background: var(--surface-workspace);
-  color: var(--text-1);
-  box-shadow: var(--shadow-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: none;
 }
 
 .fieldGrid {
@@ -188,8 +188,10 @@
 .endpointRow {
   display: grid;
   gap: var(--space-2);
-  border-top: 1px solid var(--border-subtle);
-  padding-top: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--control-radius);
+  background: var(--raised-1);
+  padding: var(--space-3);
 }
 
 .endpointRowHead {
@@ -201,12 +203,9 @@
 
 .endpointGrid {
   display: grid;
-  grid-template-columns: minmax(150px, 0.7fr) minmax(80px, 0.3fr);
+  grid-template-columns: auto minmax(72px, 88px) minmax(0, 1fr);
   gap: var(--space-2);
-}
-
-.endpointUrl {
-  grid-column: 1 / -1;
+  align-items: end;
 }
 
 .field {
@@ -226,8 +225,8 @@
   min-width: 0;
   min-height: 32px;
   border: 1px solid var(--border);
-  border-radius: var(--select-control-radius);
-  background: var(--surface-workspace);
+  border-radius: var(--control-radius);
+  background: var(--raised-1);
   color: var(--text-1);
   padding: 6px var(--space-2);
   font-size: var(--text-sm);
@@ -246,7 +245,7 @@
 
 .field input:focus {
   border-color: var(--accent);
-  background: var(--surface-workspace);
+  background: var(--raised-2);
   box-shadow: 0 0 0 3px var(--accent-soft);
   outline: none;
 }
@@ -258,8 +257,8 @@
 .field :global(.settings-select-trigger) {
   min-height: 32px;
   border: 1px solid var(--border);
-  border-radius: var(--select-control-radius);
-  background: var(--surface-workspace);
+  border-radius: var(--control-radius);
+  background: var(--raised-1);
   color: var(--text-1);
   padding: 6px var(--space-2);
   font-size: var(--text-sm);
@@ -419,8 +418,8 @@
   min-width: 0;
   min-height: 32px;
   border: 1px solid var(--border);
-  border-radius: var(--select-control-radius);
-  background: var(--surface-workspace);
+  border-radius: var(--control-radius);
+  background: var(--raised-1);
   color: var(--text-1);
   padding: 6px var(--space-2);
   font-size: var(--text-sm);
@@ -454,8 +453,8 @@
   flex-direction: column;
   gap: var(--space-2);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--settings-control-radius);
-  background: var(--surface-workspace);
+  border-radius: var(--control-radius);
+  background: var(--raised-1);
   padding: var(--space-2) var(--space-3);
 }
 
@@ -492,7 +491,7 @@
   align-items: center;
   gap: var(--space-2);
   min-height: 28px;
-  border-radius: var(--settings-control-radius);
+  border-radius: var(--control-radius);
   padding: 0 4px;
   color: var(--text-2);
   font-size: var(--text-sm);
@@ -503,7 +502,7 @@
 }
 
 .importItem:hover {
-  background: var(--raised-1);
+  background: var(--raised-2);
 }
 
 .importItem input {
@@ -524,8 +523,8 @@
   display: grid;
   gap: var(--space-2);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  background: var(--surface-workspace);
+  border-radius: var(--control-radius);
+  background: var(--raised-1);
   padding: var(--space-2) var(--space-3);
 }
 
@@ -599,8 +598,8 @@
   min-width: 0;
   min-height: 32px;
   border: 1px solid var(--border);
-  border-radius: var(--select-control-radius);
-  background: var(--surface-workspace);
+  border-radius: var(--control-radius);
+  background: var(--raised-1);
   color: var(--text-1);
   padding: 6px var(--space-2);
   font-size: var(--text-sm);

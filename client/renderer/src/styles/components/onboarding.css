@@ -1,0 +1,273 @@
+/* onboarding component styles. Theme values come from ../tokens.css. */
+
+.onboarding-view {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background: var(--surface-workspace);
+  z-index: 1;
+}
+
+.onboarding-view-card {
+  width: 560px;
+  max-width: calc(100vw - var(--space-10) - var(--space-2));
+  max-height: calc(100vh - var(--space-10) - var(--space-6));
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  background: var(--surface-navigation);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-8);
+}
+
+.onboarding-head {
+  text-align: center;
+  margin-bottom: var(--space-6);
+}
+
+.onboarding-brand {
+  display: inline-block;
+  margin-bottom: var(--space-3);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  color: var(--text-2);
+  font: 600 var(--text-xs) var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+}
+
+.onboarding-head h1 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-2xl);
+  font-weight: 620;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  color: var(--text-1);
+}
+
+.onboarding-head p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--text-md);
+  line-height: 1.55;
+}
+
+.onboarding-step {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--card-radius);
+  background: var(--raised-1);
+  padding: var(--space-5);
+  margin-bottom: var(--space-4);
+  transition:
+    border-color var(--motion-fast) var(--ease),
+    background var(--motion-fast) var(--ease);
+}
+
+.onboarding-step.done {
+  border-color: var(--success-soft);
+  background: var(--success-soft);
+}
+
+.onboarding-step-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.onboarding-step-head h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 620;
+  color: var(--text-1);
+}
+
+.onboarding-step-head h2 svg {
+  width: 14px;
+  height: 14px;
+  color: var(--text-3);
+}
+
+.onboarding-step-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-6);
+  height: var(--space-6);
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--raised-3);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.onboarding-step.done .onboarding-step-index {
+  background: var(--success);
+  color: var(--attachment-remove-fg);
+}
+
+.onboarding-step-index svg {
+  width: 14px;
+  height: 14px;
+  color: var(--attachment-remove-fg);
+}
+
+.onboarding-models-hint {
+  margin: 0 0 var(--space-3);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+.onboarding-workspace-path {
+  margin: 0 0 var(--space-3);
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  word-break: break-all;
+}
+
+.onboarding-step-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.onboarding-skip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 34px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--control-radius);
+  background: transparent;
+  color: var(--text-2);
+  padding: 0 var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 560;
+  cursor: pointer;
+  transition:
+    border-color var(--motion-fast) var(--ease),
+    color var(--motion-fast) var(--ease),
+    background var(--motion-fast) var(--ease);
+}
+
+.onboarding-skip:hover {
+  border-color: var(--border);
+  background: var(--raised-2);
+  color: var(--text-1);
+}
+
+.onboarding-action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  background: var(--raised-2);
+  color: var(--text-1);
+  padding: 0 var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 560;
+  cursor: pointer;
+  transition:
+    border-color var(--motion-fast) var(--ease),
+    background var(--motion-fast) var(--ease);
+}
+
+.onboarding-action:hover {
+  border-color: var(--border-strong);
+  background: var(--raised-3);
+}
+
+.onboarding-action svg {
+  width: 14px;
+  height: 14px;
+  color: var(--text-2);
+}
+
+.onboarding-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  padding: 1px var(--space-1);
+  margin-left: var(--space-1);
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm);
+  opacity: 0.5;
+  font: 500 10.5px var(--font-mono);
+  line-height: 1;
+}
+
+.onboarding-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.onboarding-footer small {
+  color: var(--text-3);
+  font-size: var(--text-sm);
+}
+
+.onboarding-start {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  border: 0;
+  border-radius: var(--control-radius);
+  background: var(--primary-fill);
+  color: var(--primary-ink);
+  padding: 0 var(--space-5);
+  font-size: var(--text-md);
+  font-weight: 650;
+  cursor: pointer;
+  transition: opacity var(--motion-fast) var(--ease);
+}
+
+.onboarding-start:hover {
+  opacity: 0.86;
+}
+
+.onboarding-start:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.onboarding-start svg {
+  width: 14px;
+  height: 14px;
+}
+
+.onboarding-skip:focus-visible,
+.onboarding-action:focus-visible,
+.onboarding-start:focus-visible {
+  outline: 1px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-step,
+  .onboarding-skip,
+  .onboarding-action,
+  .onboarding-start {
+    transition: none;
+  }
+}

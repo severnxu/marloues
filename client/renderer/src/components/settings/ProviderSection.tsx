@@ -4,6 +4,7 @@ import type { AgentSettings } from "@shared/types";
 import { EmptySettingsState, SettingsCard, SettingsStat } from "./shared";
 import { ProviderRow } from "./ProviderRow";
 import { AddEndpointDialog } from "./AddEndpointDialog";
+import { ProviderDetailDialog } from "./ProviderDetailDialog";
 import type { ProviderManagement } from "./use-provider-management";
 
 export function ProviderSection({
@@ -75,7 +76,6 @@ export function ProviderSection({
                 provider={provider}
                 pm={pm}
                 canEdit={canEdit}
-                defaultModel={draft.defaultModel}
               />
             ))}
           </div>
@@ -92,6 +92,20 @@ export function ProviderSection({
           onStatus={pm.setStatus}
         />
       ) : null}
+      {(() => {
+        const detailProvider = draft.providers.find((item) =>
+          pm.expandedProviderIds.has(item.id),
+        );
+        return detailProvider ? (
+          <ProviderDetailDialog
+            provider={detailProvider}
+            pm={pm}
+            canEdit={canEdit}
+            defaultModel={draft.defaultModel}
+            onClose={() => pm.closeProviderDetail(detailProvider.id)}
+          />
+        ) : null;
+      })()}
     </>
   );
 }

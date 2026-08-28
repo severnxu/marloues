@@ -12,7 +12,6 @@
   marloues-components.cascade-0100,
   marloues-components.cascade-0104,
   marloues-components.cascade-0112,
-  marloues-components.cascade-0139,
   marloues-components.cascade-0140,
   marloues-components.cascade-0141,
   marloues-components.cascade-0142,
@@ -180,6 +179,7 @@
 @import "./base.css";
 @import "./shared-ui.css";
 @import "./auth.css";
+@import "./onboarding.css";
 @import "./workspace-shell.css";
 @import "./title-bar.css";
 @import "./global-search.css";

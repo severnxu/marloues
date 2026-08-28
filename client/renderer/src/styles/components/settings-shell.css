@@ -10,15 +10,11 @@
 
 @layer marloues-components.cascade-0112 {
   .settings-page input:focus {
-    border-color: var(
-      --component-settings-shell-settings-page-border-color-8b492a7
-    );
+    border-color: hsl(var(--accent) / 0.72);
   }
 
   .settings-page select:focus {
-    border-color: var(
-      --component-settings-shell-settings-page-border-color-7b95ea2
-    );
+    border-color: hsl(var(--accent) / 0.72);
   }
 }
 
@@ -27,23 +23,17 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    border: var(
-      --component-settings-shell-settings-action-button-border-a4a72ac
-    );
+    border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    background: var(
-      --component-settings-shell-settings-action-button-background-0f0c70b
-    );
-    color: var(--component-settings-shell-settings-action-button-color-fb89878);
+    background: var(--accent-soft);
+    color: var(--text-1);
     padding: 7px 14px;
     font-size: 12px;
     cursor: pointer;
   }
 
   .settings-action-button:hover {
-    border-color: var(
-      --component-settings-shell-settings-action-button-border-color-f7e6422
-    );
+    border-color: var(--accent);
   }
 }
 
@@ -52,11 +42,9 @@
     height: 100%;
     overflow-y: auto;
     scrollbar-gutter: stable;
-    border: var(--component-settings-shell-settings-page-border-fd9f3cd);
+    border: 0;
     border-radius: 0;
-    background: var(
-      --component-settings-shell-settings-page-background-4673e5a
-    );
+    background: transparent;
     padding: 0;
   }
 
@@ -138,7 +126,7 @@
   .settings-page label {
     display: grid;
     gap: 6px;
-    color: var(--component-settings-shell-settings-page-color-f19501b);
+    color: var(--text-2);
     font-size: 11px;
     font-weight: 600;
     line-height: 1.35;
@@ -146,13 +134,11 @@
 
   .settings-page input {
     min-width: 0;
-    border: var(--component-settings-shell-settings-page-border-54a2ddd);
+    border: 1px solid var(--border);
     border-radius: var(--settings-control-radius);
-    outline: var(--component-settings-shell-settings-page-outline-23d2d67);
-    background: var(
-      --component-settings-shell-settings-page-background-6835961
-    );
-    color: var(--component-settings-shell-settings-page-color-df98b06);
+    outline: none;
+    background: var(--surface-workspace);
+    color: var(--text-1);
     padding: 8px 10px;
     font-size: 12px;
     line-height: 1.45;
@@ -164,13 +150,11 @@
 
   .settings-page select {
     min-width: 0;
-    border: var(--component-settings-shell-settings-page-border-0942e64);
+    border: 1px solid var(--border);
     border-radius: var(--settings-control-radius);
-    outline: var(--component-settings-shell-settings-page-outline-1254abd);
-    background: var(
-      --component-settings-shell-settings-page-background-88316fa
-    );
-    color: var(--component-settings-shell-settings-page-color-ba45781);
+    outline: none;
+    background: var(--surface-workspace);
+    color: var(--text-1);
     padding: 8px 10px;
     font-size: 12px;
     line-height: 1.45;
@@ -182,13 +166,11 @@
 
   .settings-page textarea {
     min-width: 0;
-    border: var(--component-settings-shell-settings-page-border-0cd3b6c);
+    border: 1px solid var(--border);
     border-radius: var(--settings-control-radius);
-    outline: var(--component-settings-shell-settings-page-outline-b895739);
-    background: var(
-      --component-settings-shell-settings-page-background-161a1fe
-    );
-    color: var(--component-settings-shell-settings-page-color-7ab8d70);
+    outline: none;
+    background: var(--surface-workspace);
+    color: var(--text-1);
     padding: 8px 10px;
     font-size: 12px;
     line-height: 1.45;
@@ -199,65 +181,47 @@
   }
 
   .settings-page input::placeholder {
-    color: var(--component-settings-shell-settings-page-color-8986f03);
+    color: hsl(220 10% 44%);
   }
 
   .settings-page textarea::placeholder {
-    color: var(--component-settings-shell-settings-page-color-a921d10);
+    color: hsl(220 10% 44%);
   }
 
   .settings-page input:focus {
-    border-color: var(
-      --component-settings-shell-settings-page-border-color-8b492a7
-    );
-    background: var(
-      --component-settings-shell-settings-page-background-6d8cc2f
-    );
-    box-shadow: var(
-      --component-settings-shell-settings-page-box-shadow-d3858d1
-    );
+    border-color: hsl(var(--accent) / 0.72);
+    background: hsl(225 24% 7% / 0.95);
+    box-shadow: 0 0 0 3px var(--settings-field-focus);
   }
 
   .settings-page select:focus {
-    border-color: var(
-      --component-settings-shell-settings-page-border-color-7b95ea2
-    );
-    background: var(
-      --component-settings-shell-settings-page-background-5ca6023
-    );
-    box-shadow: var(
-      --component-settings-shell-settings-page-box-shadow-607a041
-    );
+    border-color: hsl(var(--accent) / 0.72);
+    background: hsl(225 24% 7% / 0.95);
+    box-shadow: 0 0 0 3px var(--settings-field-focus);
   }
 
   .settings-page textarea:focus {
-    border-color: var(
-      --component-settings-shell-settings-page-border-color-9e5cca8
-    );
-    background: var(
-      --component-settings-shell-settings-page-background-40f774d
-    );
-    box-shadow: var(
-      --component-settings-shell-settings-page-box-shadow-a03d109
-    );
+    border-color: hsl(var(--accent) / 0.72);
+    background: hsl(225 24% 7% / 0.95);
+    box-shadow: 0 0 0 3px var(--settings-field-focus);
   }
 
   .settings-page input:disabled {
     cursor: not-allowed;
-    color: var(--component-settings-shell-settings-page-color-4181e33);
-    opacity: var(--component-settings-shell-settings-page-opacity-29abf94);
+    color: hsl(220 10% 50%);
+    opacity: 0.68;
   }
 
   .settings-page select:disabled {
     cursor: not-allowed;
-    color: var(--component-settings-shell-settings-page-color-2419244);
-    opacity: var(--component-settings-shell-settings-page-opacity-1c30eff);
+    color: hsl(220 10% 50%);
+    opacity: 0.68;
   }
 
   .settings-page textarea:disabled {
     cursor: not-allowed;
-    color: var(--component-settings-shell-settings-page-color-c1f43f5);
-    opacity: var(--component-settings-shell-settings-page-opacity-886682d);
+    color: hsl(220 10% 50%);
+    opacity: 0.68;
   }
 
   .settings-page textarea {
@@ -283,17 +247,15 @@
     min-width: 0;
     align-items: center;
     justify-content: space-between;
-    gap: var(--select-control-gap);
-    border: var(--component-settings-shell-settings-page-border-0942e64);
-    border-radius: var(--select-control-radius);
-    outline: var(--component-settings-shell-settings-page-outline-1254abd);
-    background: var(
-      --component-settings-shell-settings-page-background-88316fa
-    );
-    color: var(--component-settings-shell-settings-page-color-ba45781);
-    padding: 8px 10px;
+    gap: var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--control-radius);
+    outline: none;
+    background: var(--raised-1);
+    color: var(--text-1);
+    padding: 7px 10px;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 560;
     line-height: 1.45;
     transition:
       border-color var(--settings-transition),
@@ -302,27 +264,22 @@
   }
 
   .settings-select-trigger:hover {
-    border-color: var(--settings-control-border-hover);
+    border-color: var(--border-strong);
+    background: var(--raised-2);
   }
 
   .settings-select-trigger:focus-visible,
   .settings-select[data-open] .settings-select-trigger {
-    border-color: var(
-      --component-settings-shell-settings-page-border-color-7b95ea2
-    );
-    background: var(
-      --component-settings-shell-settings-page-background-5ca6023
-    );
-    box-shadow: var(
-      --component-settings-shell-settings-page-box-shadow-607a041
-    );
+    border-color: var(--accent);
+    background: var(--raised-2);
+    box-shadow: 0 0 0 3px var(--accent-soft);
   }
 
   .settings-select-trigger svg {
     width: var(--select-control-icon-size);
     height: var(--select-control-icon-size);
     flex-shrink: 0;
-    color: var(--component-settings-shell-settings-page-color-a921d10);
+    color: var(--text-3);
     transition: transform var(--settings-transition);
   }
 
@@ -350,10 +307,10 @@
     display: grid;
     max-height: 240px;
     overflow-y: auto;
-    border: 1px solid var(--settings-border);
-    border-radius: 8px;
-    background: var(--settings-surface-raised);
-    box-shadow: var(--settings-shadow);
+    border: 1px solid var(--border);
+    border-radius: var(--control-radius);
+    background: var(--surface-popover);
+    box-shadow: var(--shadow-popover);
     padding: 4px;
   }
 
@@ -369,11 +326,11 @@
     min-width: 0;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: var(--space-2);
     border: 0;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     background: transparent;
-    color: var(--component-settings-shell-settings-page-color-ba45781);
+    color: var(--text-2);
     padding: 6px 8px;
     font-size: 12px;
     line-height: 1.35;
@@ -383,12 +340,13 @@
   .settings-select-menu button:hover,
   .settings-select-menu button:focus-visible {
     outline: none;
-    background: var(--settings-control-surface-hover);
+    background: var(--raised-2);
+    color: var(--text-1);
   }
 
   .settings-select-menu button[aria-selected="true"] {
-    background: var(--settings-field-focus);
-    color: var(--component-settings-shell-settings-page-color-df98b06);
+    background: var(--accent-soft);
+    color: var(--text-1);
   }
 
   .settings-select-menu span {
@@ -400,7 +358,7 @@
 
   .settings-select-menu svg {
     flex-shrink: 0;
-    color: var(--component-settings-shell-settings-toggle-accent-color-6808469);
+    color: var(--accent);
   }
 
   .settings-toggle {
@@ -409,23 +367,17 @@
     align-items: center;
     gap: 10px !important;
     width: fit-content;
-    border: var(--component-settings-shell-settings-toggle-border-7468466);
+    border: 1px solid var(--border);
     border-radius: 8px;
-    background: var(
-      --component-settings-shell-settings-toggle-background-c8e4ce8
-    );
+    background: transparent;
     padding: 9px 11px;
-    color: var(
-      --component-settings-shell-settings-toggle-color-242550c
-    ) !important;
+    color: var(--text-1) !important;
   }
 
   .settings-toggle input {
     width: 16px;
     height: 16px;
-    accent-color: var(
-      --component-settings-shell-settings-toggle-accent-color-6808469
-    );
+    accent-color: var(--accent);
   }
 
   .settings-actions {
@@ -434,13 +386,9 @@
     flex-wrap: wrap;
     gap: 12px;
     margin-top: 2px;
-    border-top: var(
-      --component-settings-shell-settings-actions-border-top-6e0cf37
-    );
-    background: var(
-      --component-settings-shell-settings-actions-background-457ef7e
-    );
-    color: var(--component-settings-shell-settings-actions-color-2f4dde1);
+    border-top: 1px solid hsl(225 15% 16% / 0.72);
+    background: transparent;
+    color: var(--text-2);
     padding: 16px 0 0;
     font-size: 12px;
   }
@@ -448,36 +396,24 @@
   .settings-action-status {
     max-width: min(720px, 100%);
     overflow: hidden;
-    border: var(
-      --component-settings-shell-settings-action-status-border-af5fb27
-    );
+    border: 1px solid var(--border);
     border-radius: 8px;
-    background: var(
-      --component-settings-shell-settings-action-status-background-7235667
-    );
+    background: transparent;
     padding: 8px 10px;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .settings-action-status.ok {
-    border-color: var(
-      --component-settings-shell-settings-action-status-border-color-ee085a9
-    );
-    background: var(
-      --component-settings-shell-settings-action-status-background-16615cf
-    );
-    color: var(--component-settings-shell-settings-action-status-color-050c9df);
+    border-color: hsl(160 84% 53% / 0.28);
+    background: var(--settings-success-soft);
+    color: var(--accent);
   }
 
   .settings-action-status.error {
-    border-color: var(
-      --component-settings-shell-settings-action-status-border-color-fa6982d
-    );
-    background: var(
-      --component-settings-shell-settings-action-status-background-f0e14a0
-    );
-    color: var(--component-settings-shell-settings-action-status-color-bbd9cc7);
+    border-color: hsl(0 72% 51% / 0.32);
+    background: var(--settings-danger-soft);
+    color: var(--danger);
   }
 }
 
@@ -488,16 +424,12 @@
     align-items: center;
     gap: 8px !important;
     width: fit-content;
-    color: var(
-      --component-settings-shell-settings-inline-check-color-daa3012
-    ) !important;
+    color: var(--text-2) !important;
   }
 
   .settings-inline-check input {
     width: auto;
-    accent-color: var(
-      --component-settings-shell-settings-inline-check-accent-color-fa12c36
-    );
+    accent-color: var(--accent);
   }
 
   .settings-page .settings-check {
@@ -506,20 +438,16 @@
     gap: 8px;
     min-width: 0;
     min-height: 42px;
-    border: var(--component-settings-shell-settings-page-border-bed6bad);
+    border: 1px solid var(--border);
     border-radius: 8px;
-    background: var(
-      --component-settings-shell-settings-page-background-c614887
-    );
+    background: transparent;
     padding: 8px 10px;
-    color: var(--component-settings-shell-settings-page-color-387c98e);
+    color: var(--text-1);
   }
 
   .settings-page .settings-check input {
     width: auto;
-    accent-color: var(
-      --component-settings-shell-settings-page-accent-color-1ff8e28
-    );
+    accent-color: var(--accent);
   }
 }
 
@@ -544,7 +472,7 @@
   }
 
   .settings-page .settings-check span {
-    color: var(--component-settings-shell-settings-page-color-e4efdb7);
+    color: hsl(220 10% 58%);
     font-size: 11px;
   }
 }
@@ -563,16 +491,10 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    border: var(
-      --component-settings-shell-settings-summary-action-border-ee933bb
-    );
+    border: 1px solid hsl(225 15% 16% / 0.72);
     border-radius: 8px;
-    background: var(
-      --component-settings-shell-settings-summary-action-background-ee429bc
-    );
-    color: var(
-      --component-settings-shell-settings-summary-action-color-b3925f8
-    );
+    background: hsl(225 18% 8% / 0.42);
+    color: var(--text-1);
     padding: 0 15px;
     font-size: 12px;
     font-weight: 720;
@@ -584,19 +506,13 @@
   }
 
   .settings-summary-action:hover:not(:disabled) {
-    border-color: var(
-      --component-settings-shell-settings-summary-action-border-color-aa90e62
-    );
-    background: var(
-      --component-settings-shell-settings-summary-action-background-9dc08c6
-    );
+    border-color: hsl(var(--accent) / 0.38);
+    background: hsl(var(--accent) / 0.1);
   }
 
   .settings-summary-action:disabled {
     cursor: not-allowed;
-    opacity: var(
-      --component-settings-shell-settings-summary-action-opacity-acc36a7
-    );
+    opacity: 0.62;
   }
 }
 
@@ -604,23 +520,21 @@
   .settings-empty-state {
     display: grid;
     gap: 6px;
-    border: var(--component-settings-shell-settings-empty-state-border-ddd61fb);
+    border: 1px dashed hsl(225 15% 22%);
     border-radius: 8px;
-    background: var(
-      --component-settings-shell-settings-empty-state-background-7f0b1c3
-    );
+    background: transparent;
     padding: 22px 16px;
     text-align: center;
   }
 
   .settings-empty-state strong {
-    color: var(--component-settings-shell-settings-empty-state-color-8af9640);
+    color: var(--text-1);
     font-size: 13px;
   }
 
   .settings-empty-state p {
     margin: 0;
-    color: var(--component-settings-shell-settings-empty-state-color-92be0d5);
+    color: hsl(220 10% 62%);
     font-size: 12px;
     line-height: 1.6;
   }
@@ -630,29 +544,23 @@
     grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.2fr);
     align-items: center;
     gap: 10px;
-    border: var(
-      --component-settings-shell-settings-runtime-panel-border-0195822
-    );
+    border: 1px solid hsl(225 15% 16% / 0.72);
     border-radius: 8px;
-    background: var(
-      --component-settings-shell-settings-runtime-panel-background-1f4733f
-    );
-    box-shadow: var(
-      --component-settings-shell-settings-runtime-panel-box-shadow-f4df715
-    );
+    background: var(--settings-surface-raised);
+    box-shadow: var(--settings-shadow);
     padding: 12px;
   }
 
   .settings-runtime-panel strong {
     display: block;
-    color: var(--component-settings-shell-settings-runtime-panel-color-f6f952a);
+    color: var(--text-1);
     font-size: 13px;
   }
 
   .settings-runtime-panel small {
     display: block;
     margin-top: 3px;
-    color: var(--component-settings-shell-settings-runtime-panel-color-6229835);
+    color: var(--text-2);
     font-size: 11px;
     line-height: 1.55;
   }
@@ -660,7 +568,7 @@
 
 @layer marloues-components.cascade-0305 {
   .settings-muted {
-    color: var(--component-settings-shell-settings-muted-color-80b1c10);
+    color: hsl(220 10% 62%);
     font-size: 12px;
     line-height: 1.5;
   }
@@ -684,167 +592,71 @@
 /* Theme token bindings. The dark theme falls back to the component layer. */
 
 .settings-runtime-panel {
-  border-color: var(
-    --theme-settings-shell-settings-runtime-panel-border-color-c657707,
-    revert-layer
-  );
-  background: var(
-    --theme-settings-shell-settings-runtime-panel-background-d283f27,
-    revert-layer
-  );
-  box-shadow: var(
-    --theme-settings-shell-settings-runtime-panel-box-shadow-d5177b4,
-    revert-layer
-  );
-  color: var(
-    --theme-settings-shell-settings-runtime-panel-color-5d84042,
-    revert-layer
-  );
+  border-color: var(--border-subtle);
+  background: var(--accent-soft);
+  box-shadow: none;
+  color: var(--text-1);
 }
 
 .settings-action-status {
-  border-color: var(
-    --theme-settings-shell-settings-action-status-border-color-278789c,
-    revert-layer
-  );
-  background: var(
-    --theme-settings-shell-settings-action-status-background-806cbb9,
-    revert-layer
-  );
-  box-shadow: var(
-    --theme-settings-shell-settings-action-status-box-shadow-d42a9af,
-    revert-layer
-  );
-  color: var(
-    --theme-settings-shell-settings-action-status-color-55f136c,
-    revert-layer
-  );
+  border-color: var(--settings-border);
+  background: var(--surface-navigation);
+  box-shadow: var(--settings-shadow);
+  color: var(--text-1);
 }
 
 .settings-actions {
-  border-color: var(
-    --theme-settings-shell-settings-actions-border-color-2eea2fa,
-    revert-layer
-  );
-  background: var(
-    --theme-settings-shell-settings-actions-background-a269196,
-    revert-layer
-  );
-  box-shadow: var(
-    --theme-settings-shell-settings-actions-box-shadow-aad8996,
-    revert-layer
-  );
-  color: var(
-    --theme-settings-shell-settings-actions-color-545c876,
-    revert-layer
-  );
+  border-color: var(--settings-border);
+  background: var(--surface-navigation);
+  box-shadow: var(--settings-shadow);
+  color: var(--text-1);
 }
 
 .settings-page input {
-  background: var(
-    --theme-settings-shell-settings-page-background-c923237,
-    revert-layer
-  );
-  border-color: var(
-    --theme-settings-shell-settings-page-border-color-e922451,
-    revert-layer
-  );
-  color: var(--theme-settings-shell-settings-page-color-803ad76, revert-layer);
+  background: var(--raised-1);
+  border-color: var(--border);
+  color: var(--text-1);
 }
 
 .settings-page select {
-  background: var(
-    --theme-settings-shell-settings-page-background-b39b62b,
-    revert-layer
-  );
-  border-color: var(
-    --theme-settings-shell-settings-page-border-color-b346a89,
-    revert-layer
-  );
-  color: var(--theme-settings-shell-settings-page-color-674c797, revert-layer);
+  background: var(--raised-1);
+  border-color: var(--border);
+  color: var(--text-1);
 }
 
 .settings-select-trigger {
-  background: var(
-    --theme-settings-shell-settings-page-background-b39b62b,
-    revert-layer
-  );
-  border-color: var(
-    --theme-settings-shell-settings-page-border-color-b346a89,
-    revert-layer
-  );
-  color: var(--theme-settings-shell-settings-page-color-674c797, revert-layer);
+  background: var(--raised-1);
+  border-color: var(--border);
+  color: var(--text-1);
 }
 
 .settings-page textarea {
-  background: var(
-    --theme-settings-shell-settings-page-background-83ea52c,
-    revert-layer
-  );
-  border-color: var(
-    --theme-settings-shell-settings-page-border-color-9a18449,
-    revert-layer
-  );
-  color: var(--theme-settings-shell-settings-page-color-346f4c7, revert-layer);
+  background: var(--raised-1);
+  border-color: var(--border);
+  color: var(--text-1);
 }
 
 .settings-page input:focus {
-  background: var(
-    --theme-settings-shell-settings-page-background-4584d14,
-    revert-layer
-  );
-  border-color: var(
-    --theme-settings-shell-settings-page-border-color-0f0f3f6,
-    revert-layer
-  );
-  box-shadow: var(
-    --theme-settings-shell-settings-page-box-shadow-0875485,
-    revert-layer
-  );
+  background: var(--raised-2);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .settings-page select:focus {
-  background: var(
-    --theme-settings-shell-settings-page-background-34fc46a,
-    revert-layer
-  );
-  border-color: var(
-    --theme-settings-shell-settings-page-border-color-db0c63b,
-    revert-layer
-  );
-  box-shadow: var(
-    --theme-settings-shell-settings-page-box-shadow-b6e0f5a,
-    revert-layer
-  );
+  background: var(--raised-2);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .settings-select-trigger:focus-visible,
 .settings-select[data-open] .settings-select-trigger {
-  background: var(
-    --theme-settings-shell-settings-page-background-34fc46a,
-    revert-layer
-  );
-  border-color: var(
-    --theme-settings-shell-settings-page-border-color-db0c63b,
-    revert-layer
-  );
-  box-shadow: var(
-    --theme-settings-shell-settings-page-box-shadow-b6e0f5a,
-    revert-layer
-  );
+  background: var(--raised-2);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .settings-page textarea:focus {
-  background: var(
-    --theme-settings-shell-settings-page-background-49bddc9,
-    revert-layer
-  );
-  border-color: var(
-    --theme-settings-shell-settings-page-border-color-1e66fdd,
-    revert-layer
-  );
-  box-shadow: var(
-    --theme-settings-shell-settings-page-box-shadow-d9e11df,
-    revert-layer
-  );
+  background: var(--raised-2);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }

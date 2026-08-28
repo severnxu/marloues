@@ -202,8 +202,8 @@ export function SecuritySettings({
           description="白名单只降低审批频率；内置敏感目录始终优先保护。"
           icon={<FileLock2 size={16} />}
         >
-          <label>
-            自动放行路径（每行一项）
+          <label className="settings-field settings-field--textarea">
+            <span>自动放行路径（每行一项）</span>
             <textarea
               rows={3}
               placeholder="例如：C:\\workspace\\shared-cache"
@@ -213,8 +213,8 @@ export function SecuritySettings({
               }
             />
           </label>
-          <label>
-            强制审批路径（每行一项）
+          <label className="settings-field settings-field--textarea">
+            <span>强制审批路径（每行一项）</span>
             <textarea
               rows={3}
               placeholder="例如：C:\\Users\\me\\Documents"
@@ -239,8 +239,8 @@ export function SecuritySettings({
           description="按命令前缀匹配；强制审批规则优先于自动放行。"
           icon={<SquareTerminal size={16} />}
         >
-          <label>
-            放行命令（每行一项）
+          <label className="settings-field settings-field--textarea">
+            <span>放行命令（每行一项）</span>
             <textarea
               rows={3}
               placeholder="例如：git status"
@@ -252,8 +252,8 @@ export function SecuritySettings({
               }
             />
           </label>
-          <label>
-            询问命令（每行一项）
+          <label className="settings-field settings-field--textarea">
+            <span>询问命令（每行一项）</span>
             <textarea
               rows={3}
               placeholder="例如：git push"
@@ -294,8 +294,8 @@ export function SecuritySettings({
               </div>
             }
           />
-          <label>
-            允许域名（每行一项）
+          <label className="settings-field settings-field--textarea">
+            <span>允许域名（每行一项）</span>
             <textarea
               rows={3}
               placeholder="api.example.com"
@@ -305,8 +305,8 @@ export function SecuritySettings({
               }
             />
           </label>
-          <label>
-            拒绝域名（每行一项）
+          <label className="settings-field settings-field--textarea">
+            <span>拒绝域名（每行一项）</span>
             <textarea
               rows={3}
               placeholder="tracking.example.com"

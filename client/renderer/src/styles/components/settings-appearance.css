@@ -18,13 +18,9 @@
     min-width: 0;
     align-items: center;
     gap: 12px;
-    border: var(
-      --component-settings-appearance-appearance-accent-current-border-9f10939
-    );
-    border-radius: 8px;
-    background: var(
-      --component-settings-appearance-appearance-accent-current-background-56db32b
-    );
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--control-radius);
+    background: var(--raised-1);
     padding: 10px 12px;
   }
 
@@ -32,9 +28,7 @@
     width: 16px;
     height: 16px;
     flex-shrink: 0;
-    border: var(
-      --component-settings-appearance-appearance-accent-swatch-border-75d8d53
-    );
+    border: 1px solid var(--border);
     border-radius: 999px;
   }
 
@@ -46,33 +40,23 @@
   }
 
   .appearance-accent-current strong {
-    color: var(
-      --component-settings-appearance-appearance-accent-current-color-d7a65bc
-    );
+    color: var(--text-1);
     font-size: 12px;
-    font-weight: 650;
+    font-weight: 600;
   }
 
   .appearance-accent-current small {
-    color: var(
-      --component-settings-appearance-appearance-accent-current-color-eba618d
-    );
+    color: var(--text-3);
     font-size: 11px;
   }
 
   .appearance-accent-current button {
     min-height: 30px;
     flex-shrink: 0;
-    border: var(
-      --component-settings-appearance-appearance-accent-current-border-b3c4a0e
-    );
+    border: 1px solid var(--border);
     border-radius: 6px;
-    background: var(
-      --component-settings-appearance-appearance-accent-current-background-46d584e
-    );
-    color: var(
-      --component-settings-appearance-appearance-accent-current-color-9e9e3e0
-    );
+    background: transparent;
+    color: var(--muted);
     padding: 0 10px;
     font-size: 11px;
     font-weight: 650;
@@ -83,15 +67,9 @@
   }
 
   .appearance-accent-current button:hover {
-    border-color: var(
-      --component-settings-appearance-appearance-accent-current-border-color-e7c6348
-    );
-    background: var(
-      --component-settings-appearance-appearance-accent-current-background-df9e68b
-    );
-    color: var(
-      --component-settings-appearance-appearance-accent-current-color-53f4912
-    );
+    border-color: hsl(var(--accent) / 0.3);
+    background: var(--accent-soft);
+    color: var(--text);
   }
 
   .appearance-accent-current .appearance-accent-reset {
@@ -118,16 +96,10 @@
     width: 64px;
     height: 36px;
     place-items: center;
-    border: var(
-      --component-settings-appearance-appearance-color-picker-border-c889dbd
-    );
+    border: 1px solid var(--border);
     border-radius: 7px;
-    background: var(
-      --component-settings-appearance-appearance-color-picker-background-3848a37
-    );
-    color: var(
-      --component-settings-appearance-appearance-color-picker-color-4c8fd6e
-    ) !important;
+    background: var(--bg);
+    color: var(--muted) !important;
     cursor: pointer;
     transition:
       border-color var(--settings-transition),
@@ -136,12 +108,8 @@
   }
 
   .appearance-color-picker:hover {
-    border-color: var(
-      --component-settings-appearance-appearance-color-picker-border-color-6de5972
-    );
-    color: var(
-      --component-settings-appearance-appearance-color-picker-color-5b13953
-    ) !important;
+    border-color: hsl(var(--accent) / 0.38);
+    color: var(--text) !important;
   }
 
   .appearance-color-picker input {
@@ -150,9 +118,7 @@
     width: 100%;
     height: 100%;
     cursor: pointer;
-    opacity: var(
-      --component-settings-appearance-appearance-color-picker-opacity-b8710ed
-    );
+    opacity: 0;
   }
 
   @media (max-width: 860px) {
@@ -164,69 +130,27 @@
 /* Theme token bindings. The dark theme falls back to the component layer. */
 
 .appearance-accent-current {
-  border-color: var(
-    --theme-settings-appearance-appearance-accent-current-border-color-5761d64,
-    revert-layer
-  );
-  background: var(
-    --theme-settings-appearance-appearance-accent-current-background-7a39a7a,
-    revert-layer
-  );
-  box-shadow: var(
-    --theme-settings-appearance-appearance-accent-current-box-shadow-0900bc7,
-    revert-layer
-  );
-  color: var(
-    --theme-settings-appearance-appearance-accent-current-color-4a1da62,
-    revert-layer
-  );
+  border-color: var(--border-subtle);
+  background: var(--raised-1);
+  box-shadow: none;
+  color: var(--text-1);
 }
 
 .appearance-color-picker {
-  background: var(
-    --theme-settings-appearance-appearance-color-picker-background-0684515,
-    revert-layer
-  );
-  border-color: var(
-    --theme-settings-appearance-appearance-color-picker-border-color-ed81bbe,
-    revert-layer
-  );
-  color: var(
-    --theme-settings-appearance-appearance-color-picker-color-52a0662,
-    revert-layer
-  );
+  background: var(--raised-1);
+  border-color: var(--border-subtle);
+  color: var(--text-1);
 }
 
 .appearance-accent-current button:hover {
-  border-color: var(
-    --theme-settings-appearance-appearance-accent-current-border-color-c91662a,
-    revert-layer
-  );
-  background: var(
-    --theme-settings-appearance-appearance-accent-current-background-1f056ef,
-    revert-layer
-  );
-  color: var(
-    --theme-settings-appearance-appearance-accent-current-color-96f62ec,
-    revert-layer
-  );
-  box-shadow: var(
-    --theme-settings-appearance-appearance-accent-current-box-shadow-6375451,
-    revert-layer
-  );
+  border-color: var(--border-strong);
+  background: var(--raised-2);
+  color: var(--text-1);
+  box-shadow: none;
 }
 
 .appearance-accent-current button {
-  border-color: var(
-    --theme-settings-appearance-appearance-accent-current-border-color-eb051e6,
-    revert-layer
-  );
-  background: var(
-    --theme-settings-appearance-appearance-accent-current-background-1527c88,
-    revert-layer
-  );
-  color: var(
-    --theme-settings-appearance-appearance-accent-current-color-59f5884,
-    revert-layer
-  );
+  border-color: var(--border-subtle);
+  background: transparent;
+  color: var(--text-2);
 }
