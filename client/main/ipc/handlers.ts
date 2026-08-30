@@ -1229,9 +1229,7 @@ function truncateText(text: string, limit: number): string {
 function sessionRecordFromStoredSession(
   session: StoredSession,
 ): ChatSessionRecord {
-  const workspace = getWorkspaceSettings().workspaces.find(
-    (item) => item.path === session.cwd,
-  );
+  const workspace = findWorkspaceByPath(session.cwd);
   return {
     id: session.id,
     title: session.title,
@@ -1271,6 +1269,7 @@ function storedSessionFromRecord(
 
 function sessionRecordFromThread(thread: Thread): ChatSessionRecord {
   const saved = store.getSession(thread.id);
+  const workspace = findWorkspaceByPath(saved?.cwd);
   const messages = thread.messages.map(chatMessageFromRuntimeMessage);
   return {
     id: thread.id,
@@ -1281,7 +1280,16 @@ function sessionRecordFromThread(thread: Thread): ChatSessionRecord {
     messages,
     kernelSessionId: saved?.runtimeThreadId ?? thread.id,
     runtimeThreadIds: saved?.runtimeThreadIds,
+    workspacePath: saved?.cwd,
+    workspaceName: workspace?.name,
   };
+}
+
+function findWorkspaceByPath(path?: string): WorkspaceInfo | undefined {
+  if (!path) return undefined;
+  return getWorkspaceSettings().workspaces.find((item) =>
+    workspacePathsEqual(item.path, path),
+  );
 }
 
 function persistSessionRecord(record: ChatSessionRecord): void {
