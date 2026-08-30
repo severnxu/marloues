@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { ArrowRight, Check, FolderOpen, Settings } from "lucide-react";
 import { useOnboardingStore } from "@/stores/onboarding-store";
-import { useSettingsStore } from "@/stores/settings-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useSettingsPageStore } from "@/stores/settings-page-store";
 
@@ -20,25 +19,36 @@ export function OnboardingView() {
   const markStep = useOnboardingStore((state) => state.markStep);
   const complete = useOnboardingStore((state) => state.complete);
 
-  const listModels = useSettingsStore((state) => state.listModels);
-  const models = useSettingsStore((state) => state.models);
-
   const workspace = useWorkspaceStore((state) => state.current);
   const selectWorkspace = useWorkspaceStore((state) => state.select);
 
   const openSettingsSection = useSettingsPageStore(
     (state) => state.openSection,
   );
-
-  useEffect(() => {
-    void listModels();
-  }, [listModels]);
+  const settingsOpen = useSettingsPageStore((state) => state.open);
 
   // Reflect runtime workspace state into the onboarding store so the "开始使用"
   // button enables/disables automatically.
   useEffect(() => {
     markStep("selectedWorkspace", Boolean(workspace?.path));
   }, [workspace?.path, markStep]);
+
+  useEffect(() => {
+    if (settingsOpen) return undefined;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() === "o" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        void selectWorkspace().catch(() => undefined);
+        return;
+      }
+      if (event.key === "Enter" && selectedWorkspace) {
+        event.preventDefault();
+        complete();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [complete, selectWorkspace, selectedWorkspace, settingsOpen]);
 
   if (completed && workspace) return null;
 
@@ -51,6 +61,7 @@ export function OnboardingView() {
   };
 
   const handleOpenSettings = () => {
+    markStep("configuredModel", true);
     openSettingsSection("providers");
   };
 
@@ -64,6 +75,8 @@ export function OnboardingView() {
   };
 
   const canStart = selectedWorkspace;
+  const workspaceShortcut =
+    window.marloues.app.platform === "darwin" ? "⌘O" : "Ctrl+O";
 
   return (
     <div
@@ -112,7 +125,7 @@ export function OnboardingView() {
             >
               {selectedWorkspace ? "更换文件夹" : "打开文件夹"}
               <kbd className="onboarding-kbd" aria-hidden="true">
-                ⌘O
+                {workspaceShortcut}
               </kbd>
             </button>
           </div>
@@ -129,15 +142,11 @@ export function OnboardingView() {
             </span>
             <h2 id="onboarding-step-model">配置模型端点</h2>
           </div>
-          {models.length > 0 ? (
-            <p className="onboarding-models-hint">
-              当前可用模型：{models.map((model) => model.id).join("、")}
-            </p>
-          ) : (
-            <p className="onboarding-models-hint">
-              尚未配置模型端点，可在「设置 → 模型端点」中完成。
-            </p>
-          )}
+          <p className="onboarding-models-hint">
+            {configuredModel
+              ? "模型端点已配置，随时可在设置中调整。"
+              : "尚未配置模型端点，可在「设置 → 模型端点」中完成。"}
+          </p>
           <div className="onboarding-step-actions">
             <button
               type="button"

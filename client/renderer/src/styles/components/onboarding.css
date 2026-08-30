@@ -1,21 +1,26 @@
 /* onboarding component styles. Theme values come from ../tokens.css. */
 
 .onboarding-view {
-  position: fixed;
+  position: absolute;
   inset: 0;
+  z-index: 40;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-6);
   background: var(--surface-workspace);
-  z-index: 1;
 }
 
 .onboarding-view-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
   width: 560px;
   max-width: calc(100vw - var(--space-10) - var(--space-2));
-  max-height: calc(100vh - var(--space-10) - var(--space-6));
+  max-height: calc(100% - var(--space-6) - var(--space-4));
   overflow-y: auto;
+  scrollbar-gutter: stable;
   border: 1px solid var(--border);
   border-radius: var(--card-radius);
   background: var(--surface-navigation);
@@ -26,6 +31,8 @@
 .onboarding-head {
   text-align: center;
   margin-bottom: var(--space-6);
+  font-size: var(--text-base);
+  line-height: normal;
 }
 
 .onboarding-brand {
@@ -183,7 +190,8 @@
   cursor: pointer;
   transition:
     border-color var(--motion-fast) var(--ease),
-    background var(--motion-fast) var(--ease);
+    background var(--motion-fast) var(--ease),
+    opacity var(--motion-fast) var(--ease);
 }
 
 .onboarding-action:hover {
@@ -254,6 +262,13 @@
 .onboarding-start svg {
   width: 14px;
   height: 14px;
+}
+
+@media (max-width: 640px) {
+  .onboarding-view-card {
+    width: 100%;
+    padding: var(--space-6);
+  }
 }
 
 .onboarding-skip:focus-visible,
