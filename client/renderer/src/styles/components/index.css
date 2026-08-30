@@ -213,6 +213,7 @@
 @import "./settings-appearance.css";
 @import "./settings-providers.css";
 @import "./settings-security.css";
+@import "./settings-update.css";
 @import "./runtimes.css";
 @import "./skills-shell.css";
 @import "./skills-market.css";

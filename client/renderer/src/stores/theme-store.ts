@@ -22,11 +22,11 @@ interface ThemeStore {
 const MODE_STORAGE_KEY = "marloues.theme";
 const ACCENT_STORAGE_KEY = "marloues.accent";
 const THEME_TRANSITION_CLASS = "theme-transitioning";
-export const DEFAULT_ACCENT_COLOR = "#3B82F6";
+export const DEFAULT_ACCENT_COLOR = "#3D9BFF";
 const FALLBACK_THEMES: ThemeDefinition[] = [
   { mode: "dark", label: "深色主题", colorScheme: "dark" },
   { mode: "light", label: "浅色主题", colorScheme: "light" },
-  { mode: "warm", label: "暖色主题", colorScheme: "dark" },
+  { mode: "warm", label: "羊皮纸", colorScheme: "light" },
 ];
 let themeTransitionTimer: number | null = null;
 
@@ -77,16 +77,23 @@ function saveMode(mode: ThemeMode): void {
   }
 }
 
-function readInitialAccent(): string | null {
+export function getThemeAccentStorageKey(mode: ThemeMode): string {
+  return `${ACCENT_STORAGE_KEY}.${resolvedThemeMode(mode)}`;
+}
+
+function readInitialAccent(mode: ThemeMode): string | null {
   if (typeof window === "undefined") return null;
-  const storedAccent = window.localStorage.getItem(ACCENT_STORAGE_KEY);
+  const storedAccent = window.localStorage.getItem(
+    getThemeAccentStorageKey(mode),
+  );
   return isHexColor(storedAccent) ? storedAccent : null;
 }
 
-function saveAccent(color: string | null): void {
+function saveAccent(mode: ThemeMode, color: string | null): void {
   try {
-    if (color) window.localStorage.setItem(ACCENT_STORAGE_KEY, color);
-    else window.localStorage.removeItem(ACCENT_STORAGE_KEY);
+    const storageKey = getThemeAccentStorageKey(mode);
+    if (color) window.localStorage.setItem(storageKey, color);
+    else window.localStorage.removeItem(storageKey);
   } catch {
     // localStorage may be unavailable
   }
@@ -113,7 +120,9 @@ function hexToHsl(hex: string): string | null {
   else if (max === g) hue = 60 * ((b - r) / delta + 2);
   else hue = 60 * ((r - g) / delta + 4);
   if (hue < 0) hue += 360;
-  return `${Math.round(hue)} ${Math.round(saturation * 100)}% ${Math.round(lightness * 100)}%`;
+  return `${Math.round(hue)} ${Math.round(saturation * 100)}% ${Math.round(
+    lightness * 100,
+  )}%`;
 }
 
 export function hslToHex(value: string): string | null {
@@ -139,16 +148,24 @@ function applyAccentToDOM(accentColor: string | null): void {
   if (!accentColor) {
     root.style.removeProperty("--accent");
     root.style.removeProperty("--accent-soft");
+    root.style.removeProperty("--focus-ring");
     root.style.removeProperty("--gradient-primary");
     root.style.removeProperty("--settings-border-strong");
     root.style.removeProperty("--settings-field-focus");
     root.style.removeProperty("--shadow-glow");
+    root.style.removeProperty("--tw-ring");
+    root.style.removeProperty("--tw-primary-glow");
+    root.style.removeProperty("--tw-accent");
+    root.style.removeProperty("--tw-accent-glow");
+    root.style.removeProperty("--tw-accent-strong");
+    root.style.removeProperty("--tw-sidebar-active");
     return;
   }
   const value = hexToHsl(accentColor);
   if (!value) return;
   root.style.setProperty("--accent", `hsl(${value})`);
   root.style.setProperty("--accent-soft", `hsl(${value} / 0.12)`);
+  root.style.setProperty("--focus-ring", `hsl(${value} / 0.4)`);
   root.style.setProperty(
     "--gradient-primary",
     `linear-gradient(135deg, hsl(${value}), hsl(${value}))`,
@@ -159,6 +176,12 @@ function applyAccentToDOM(accentColor: string | null): void {
     "--shadow-glow",
     `0 0 0 1px hsl(${value} / 0.24), 0 0 22px -8px hsl(${value} / 0.32)`,
   );
+  root.style.setProperty("--tw-ring", value);
+  root.style.setProperty("--tw-primary-glow", value);
+  root.style.setProperty("--tw-accent", value);
+  root.style.setProperty("--tw-accent-glow", value);
+  root.style.setProperty("--tw-accent-strong", value);
+  root.style.setProperty("--tw-sidebar-active", value);
 }
 
 function resolvedThemeMode(mode: ThemeMode): string {
@@ -260,7 +283,7 @@ function syncNativeTheme(mode: ThemeMode): void {
 }
 
 const initialMode = readInitialMode();
-const initialAccent = readInitialAccent();
+const initialAccent = readInitialAccent(initialMode);
 applyThemeToDOM(initialMode, initialAccent);
 
 export const useThemeStore = create<ThemeStore>((set) => ({
@@ -275,37 +298,40 @@ export const useThemeStore = create<ThemeStore>((set) => ({
       ];
       const currentIndex = cycle.indexOf(state.mode);
       const mode = cycle[(currentIndex + 1) % cycle.length] ?? "system";
+      const accentColor = readInitialAccent(mode);
       saveMode(mode);
-      applyThemeToDOM(mode, state.accentColor, true);
-      return { isDark: resolvedIsDark(mode), mode };
+      applyThemeToDOM(mode, accentColor, true);
+      return { accentColor, isDark: resolvedIsDark(mode), mode };
     }),
   setDark: (dark) => {
     const mode: ThemeMode = dark ? "dark" : "light";
+    const accentColor = readInitialAccent(mode);
     saveMode(mode);
-    set((state) => {
-      applyThemeToDOM(mode, state.accentColor, true);
-      return { isDark: dark, mode };
+    set(() => {
+      applyThemeToDOM(mode, accentColor, true);
+      return { accentColor, isDark: dark, mode };
     });
   },
   setMode: (mode) => {
+    const accentColor = readInitialAccent(mode);
     saveMode(mode);
-    set((state) => {
-      applyThemeToDOM(mode, state.accentColor, true);
-      return { isDark: resolvedIsDark(mode), mode };
+    set(() => {
+      applyThemeToDOM(mode, accentColor, true);
+      return { accentColor, isDark: resolvedIsDark(mode), mode };
     });
   },
   setAccentColor: (color) => {
     const normalized = color.trim();
     if (!isHexColor(normalized)) return;
-    saveAccent(normalized);
     set((state) => {
+      saveAccent(state.mode, normalized);
       applyThemeToDOM(state.mode, normalized);
       return { accentColor: normalized };
     });
   },
   resetAccentColor: () => {
-    saveAccent(null);
     set((state) => {
+      saveAccent(state.mode, null);
       applyThemeToDOM(state.mode, null);
       return { accentColor: null };
     });
@@ -313,13 +339,14 @@ export const useThemeStore = create<ThemeStore>((set) => ({
 }));
 
 export function applyStoredTheme(): void {
-  applyThemeToDOM(readInitialMode(), readInitialAccent());
+  const mode = readInitialMode();
+  applyThemeToDOM(mode, readInitialAccent(mode));
 }
 
 export function applySystemThemePreference(): void {
   const mode = useThemeStore.getState().mode;
   if (mode !== "system") return;
-  const accentColor = useThemeStore.getState().accentColor;
+  const accentColor = readInitialAccent(mode);
   applyThemeToDOM(mode, accentColor, true);
-  useThemeStore.setState({ isDark: resolvedIsDark(mode) });
+  useThemeStore.setState({ accentColor, isDark: resolvedIsDark(mode) });
 }

@@ -6,14 +6,6 @@
   }
 }
 
-.settings-page input:focus {
-  border-color: hsl(var(--accent) / 0.72);
-}
-
-.settings-page select:focus {
-  border-color: hsl(var(--accent) / 0.72);
-}
-
 .settings-action-button {
   display: inline-flex;
   align-items: center;
@@ -97,10 +89,10 @@
 
 .settings-large-textarea {
   min-height: 128px !important;
-  resize: none !important;
+  resize: vertical !important;
   font-family: inherit !important;
   font-size: var(--text-sm) !important;
-  line-height: 18px !important;
+  line-height: 1.6 !important;
 }
 
 .settings-fields {
@@ -117,10 +109,11 @@
   line-height: 1.35;
 }
 
-.settings-page input {
+.settings-page
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]) {
   min-width: 0;
   border: 1px solid var(--border);
-  border-radius: var(--settings-control-radius);
+  border-radius: var(--control-radius);
   outline: none;
   background: var(--surface-workspace);
   color: var(--text-1);
@@ -128,15 +121,15 @@
   font-size: 12px;
   line-height: 1.45;
   transition:
-    border-color var(--settings-transition),
-    background var(--settings-transition),
-    box-shadow var(--settings-transition);
+    border-color var(--motion-fast) var(--ease),
+    background var(--motion-fast) var(--ease),
+    box-shadow var(--motion-fast) var(--ease);
 }
 
 .settings-page select {
   min-width: 0;
   border: 1px solid var(--border);
-  border-radius: var(--settings-control-radius);
+  border-radius: var(--control-radius);
   outline: none;
   background: var(--surface-workspace);
   color: var(--text-1);
@@ -144,15 +137,15 @@
   font-size: 12px;
   line-height: 1.45;
   transition:
-    border-color var(--settings-transition),
-    background var(--settings-transition),
-    box-shadow var(--settings-transition);
+    border-color var(--motion-fast) var(--ease),
+    background var(--motion-fast) var(--ease),
+    box-shadow var(--motion-fast) var(--ease);
 }
 
 .settings-page textarea {
   min-width: 0;
   border: 1px solid var(--border);
-  border-radius: var(--settings-control-radius);
+  border-radius: var(--control-radius);
   outline: none;
   background: var(--surface-workspace);
   color: var(--text-1);
@@ -160,38 +153,42 @@
   font-size: 12px;
   line-height: 1.45;
   transition:
-    border-color var(--settings-transition),
-    background var(--settings-transition),
-    box-shadow var(--settings-transition);
+    border-color var(--motion-fast) var(--ease),
+    background var(--motion-fast) var(--ease),
+    box-shadow var(--motion-fast) var(--ease);
 }
 
 .settings-page input::placeholder {
-  color: hsl(220 10% 44%);
+  color: var(--text-3);
 }
 
 .settings-page textarea::placeholder {
-  color: hsl(220 10% 44%);
+  color: var(--text-3);
 }
 
-.settings-page input:focus {
-  border-color: hsl(var(--accent) / 0.72);
-  background: hsl(225 24% 7% / 0.95);
-  box-shadow: 0 0 0 3px var(--settings-field-focus);
+.settings-page
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):focus {
+  border-color: color-mix(in srgb, var(--accent) 72%, transparent);
+  background: var(--raised-2);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .settings-page select:focus {
-  border-color: hsl(var(--accent) / 0.72);
-  background: hsl(225 24% 7% / 0.95);
-  box-shadow: 0 0 0 3px var(--settings-field-focus);
+  border-color: color-mix(in srgb, var(--accent) 72%, transparent);
+  background: var(--raised-2);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .settings-page textarea:focus {
-  border-color: hsl(var(--accent) / 0.72);
-  background: hsl(225 24% 7% / 0.95);
-  box-shadow: 0 0 0 3px var(--settings-field-focus);
+  border-color: color-mix(in srgb, var(--accent) 72%, transparent);
+  background: var(--raised-2);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-.settings-page input:disabled {
+.settings-page
+  input:not([type="checkbox"]):not([type="radio"]):not(
+    [type="color"]
+  ):disabled {
   cursor: not-allowed;
   color: hsl(220 10% 50%);
   opacity: 0.68;
@@ -243,9 +240,9 @@
   font-weight: 560;
   line-height: 1.45;
   transition:
-    border-color var(--settings-transition),
-    background var(--settings-transition),
-    box-shadow var(--settings-transition);
+    border-color var(--motion-fast) var(--ease),
+    background var(--motion-fast) var(--ease),
+    box-shadow var(--motion-fast) var(--ease);
 }
 
 .settings-select-trigger:hover {
@@ -265,7 +262,7 @@
   height: var(--select-control-icon-size);
   flex-shrink: 0;
   color: var(--text-3);
-  transition: transform var(--settings-transition);
+  transition: transform var(--motion-fast) var(--ease);
 }
 
 .settings-select[data-open] .settings-select-trigger svg {
@@ -346,25 +343,6 @@
   color: var(--accent);
 }
 
-.settings-toggle {
-  display: flex !important;
-  grid-template-columns: none !important;
-  align-items: center;
-  gap: 10px !important;
-  width: fit-content;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: transparent;
-  padding: 9px 11px;
-  color: var(--text-1) !important;
-}
-
-.settings-toggle input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--accent);
-}
-
 .settings-actions {
   display: flex;
   align-items: center;
@@ -391,13 +369,13 @@
 
 .settings-action-status.ok {
   border-color: hsl(160 84% 53% / 0.28);
-  background: var(--settings-success-soft);
+  background: var(--success-soft);
   color: var(--accent);
 }
 
 .settings-action-status.error {
   border-color: hsl(0 72% 51% / 0.32);
-  background: var(--settings-danger-soft);
+  background: var(--danger-soft);
   color: var(--danger);
 }
 
@@ -408,11 +386,6 @@
   gap: 8px !important;
   width: fit-content;
   color: var(--text-2) !important;
-}
-
-.settings-inline-check input {
-  width: auto;
-  accent-color: var(--accent);
 }
 
 .settings-page .settings-check {
@@ -483,8 +456,8 @@
 }
 
 .settings-summary-action:hover:not(:disabled) {
-  border-color: hsl(var(--accent) / 0.38);
-  background: hsl(var(--accent) / 0.1);
+  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .settings-summary-action:disabled {
@@ -521,7 +494,7 @@
   gap: 10px;
   border: 1px solid hsl(225 15% 16% / 0.72);
   border-radius: 8px;
-  background: var(--settings-surface-raised);
+  background: var(--raised-1);
   box-shadow: var(--settings-shadow);
   padding: 12px;
 }
@@ -568,20 +541,21 @@
 }
 
 .settings-action-status {
-  border-color: var(--settings-border);
+  border-color: var(--border);
   background: var(--surface-navigation);
   box-shadow: var(--settings-shadow);
   color: var(--text-1);
 }
 
 .settings-actions {
-  border-color: var(--settings-border);
+  border-color: var(--border);
   background: var(--surface-navigation);
   box-shadow: var(--settings-shadow);
   color: var(--text-1);
 }
 
-.settings-page input {
+.settings-page
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]) {
   background: var(--raised-1);
   border-color: var(--border);
   color: var(--text-1);
@@ -605,7 +579,8 @@
   color: var(--text-1);
 }
 
-.settings-page input:focus {
+.settings-page
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):focus {
   background: var(--raised-2);
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);

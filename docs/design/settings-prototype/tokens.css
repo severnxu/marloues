@@ -22,7 +22,8 @@
   --text-1: hsl(0 0% 100% / 0.92);
   --text-2: hsl(0 0% 100% / 0.68);
   --text-3: hsl(0 0% 100% / 0.47);
-  --accent: hsl(211 100% 62%);
+  --theme-default-accent: hsl(211 100% 62%);
+  --accent: var(--theme-default-accent);
   --accent-soft: hsl(211 100% 62% / 0.14);
   --focus-ring: hsl(211 100% 62% / 0.55);
   --shell-divider: var(--border-subtle);
@@ -104,7 +105,8 @@ html[data-theme="light"] {
   --text-1: hsl(0 0% 0% / 0.88);
   --text-2: hsl(0 0% 0% / 0.62);
   --text-3: hsl(0 0% 0% / 0.42);
-  --accent: hsl(210 90% 42%);
+  --theme-default-accent: hsl(210 90% 42%);
+  --accent: var(--theme-default-accent);
   --accent-soft: hsl(210 90% 42% / 0.11);
   --focus-ring: hsl(210 90% 42% / 0.38);
  --success: hsl(147 90% 28%);
@@ -153,7 +155,8 @@ html[data-theme="warm"] {
   --text-1: hsl(30 28% 14% / 0.92);
   --text-2: hsl(30 28% 14% / 0.66);
   --text-3: hsl(30 28% 14% / 0.46);
-  --accent: hsl(26 72% 46%);
+  --theme-default-accent: hsl(26 72% 46%);
+  --accent: var(--theme-default-accent);
   --accent-soft: hsl(26 72% 46% / 0.12);
   --focus-ring: hsl(26 72% 46% / 0.4);
   --success: hsl(147 80% 28%);
@@ -206,6 +209,10 @@ html[data-theme="warm"] {
   --settings-sidebar-width: 240px;
   --settings-content-max-width: 800px;
   --settings-content-inline-padding: var(--space-8);
+  --settings-section-surface: transparent;
+  --settings-section-border: var(--border-subtle);
+  --settings-choice-control-size: 16px;
+  --settings-row-action-size: 36px;
   --sidebar-row-height: 30px;
   --sidebar-row-gap: 2px;
 }

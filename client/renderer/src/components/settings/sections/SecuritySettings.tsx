@@ -1,11 +1,17 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
+  ChevronDown,
+  ChevronRight,
   FileLock2,
+  FolderOpen,
   Globe2,
+  GlobeLock,
   Hand,
+  Plus,
   ShieldCheck,
   SquareTerminal,
   TriangleAlert,
+  X,
 } from "lucide-react";
 import type { AgentSecurityMode, AgentSettings } from "@shared/types";
 import { applySecurityMode } from "@shared/security-policy";
@@ -28,11 +34,115 @@ const BUILT_IN_PROTECTED_PATHS = [
   ".marloues",
 ];
 
-function splitLines(value: string): string[] {
+function splitRuleEntries(value: string): string[] {
   return value
     .split(/\r?\n|,/)
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function SecurityRuleGroup({
+  icon,
+  items,
+  label,
+  onItemsChange,
+  placeholder,
+}: {
+  icon: ReactNode;
+  items: string[];
+  label: string;
+  onItemsChange: (items: string[]) => void;
+  placeholder: string;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const [input, setInput] = useState("");
+
+  const addItems = () => {
+    const nextItems = splitRuleEntries(input).filter(
+      (item) => !items.includes(item),
+    );
+    if (nextItems.length === 0) return;
+    onItemsChange([...items, ...nextItems]);
+    setInput("");
+  };
+
+  return (
+    <div
+      className={`security-item-group ${expanded ? "" : "collapsed"}`.trim()}
+    >
+      <div className="security-group-head">
+        <button
+          className="security-group-toggle"
+          type="button"
+          aria-label={`${expanded ? "收起" : "展开"}${label}`}
+          aria-expanded={expanded}
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded ? (
+            <ChevronDown size={14} aria-hidden="true" />
+          ) : (
+            <ChevronRight size={14} aria-hidden="true" />
+          )}
+        </button>
+        <span className="security-group-label">{label}</span>
+        <span className="security-group-count">{items.length}</span>
+      </div>
+
+      {expanded ? (
+        <>
+          <div className="security-item-input-row">
+            <input
+              aria-label={`添加${label}`}
+              value={input}
+              placeholder={placeholder}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                addItems();
+              }}
+            />
+            <button
+              className="security-item-add"
+              type="button"
+              disabled={!input.trim()}
+              onClick={addItems}
+            >
+              <Plus size={14} aria-hidden="true" />
+              添加
+            </button>
+          </div>
+          <div className="security-item-list">
+            {items.length === 0 ? (
+              <div className="security-item-empty">
+                暂无规则，在上方输入后点击添加
+              </div>
+            ) : (
+              items.map((item) => (
+                <div className="security-item-row" key={item}>
+                  <code title={item}>
+                    <span className="security-item-icon">{icon}</span>
+                    <span className="security-item-text">{item}</span>
+                  </code>
+                  <button
+                    className="security-item-remove"
+                    type="button"
+                    title={`移除 ${item}`}
+                    aria-label={`移除 ${item}`}
+                    onClick={() =>
+                      onItemsChange(items.filter((value) => value !== item))
+                    }
+                  >
+                    <X size={13} aria-hidden="true" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
 }
 
 export function SecuritySettings({
@@ -79,19 +189,16 @@ export function SecuritySettings({
                 value: "request",
                 title: "请求批准",
                 description: "越过工作区或联网前询问",
-                icon: <Hand size={15} />,
               },
               {
                 value: "auto-review",
                 title: "帮我批准",
                 description: "隔离审查器评估风险请求",
-                icon: <ShieldCheck size={15} />,
               },
               {
                 value: "full-access",
                 title: "完全访问",
                 description: "不受沙箱和审批限制",
-                icon: <TriangleAlert size={15} />,
               },
             ]}
           />
@@ -202,28 +309,20 @@ export function SecuritySettings({
           description="白名单只降低审批频率；内置敏感目录始终优先保护。"
           icon={<FileLock2 size={16} />}
         >
-          <label className="settings-field settings-field--textarea">
-            <span>自动放行路径（每行一项）</span>
-            <textarea
-              rows={3}
-              placeholder="例如：C:\\workspace\\shared-cache"
-              value={rules.autoAllowPaths.join("\n")}
-              onChange={(event) =>
-                updateRules({ autoAllowPaths: splitLines(event.target.value) })
-              }
-            />
-          </label>
-          <label className="settings-field settings-field--textarea">
-            <span>强制审批路径（每行一项）</span>
-            <textarea
-              rows={3}
-              placeholder="例如：C:\\Users\\me\\Documents"
-              value={rules.protectedPaths.join("\n")}
-              onChange={(event) =>
-                updateRules({ protectedPaths: splitLines(event.target.value) })
-              }
-            />
-          </label>
+          <SecurityRuleGroup
+            icon={<FolderOpen size={14} aria-hidden="true" />}
+            items={rules.autoAllowPaths}
+            label="自动放行路径"
+            placeholder="例如：C:\\workspace\\shared-cache"
+            onItemsChange={(autoAllowPaths) => updateRules({ autoAllowPaths })}
+          />
+          <SecurityRuleGroup
+            icon={<ShieldCheck size={14} aria-hidden="true" />}
+            items={rules.protectedPaths}
+            label="强制审批路径"
+            placeholder="例如：C:\\Users\\me\\Documents"
+            onItemsChange={(protectedPaths) => updateRules({ protectedPaths })}
+          />
           <div className="settings-field security-builtins-field">
             <span>内置保护路径</span>
             <div className="security-builtins" aria-label="内置保护路径">
@@ -239,30 +338,22 @@ export function SecuritySettings({
           description="按命令前缀匹配；强制审批规则优先于自动放行。"
           icon={<SquareTerminal size={16} />}
         >
-          <label className="settings-field settings-field--textarea">
-            <span>放行命令（每行一项）</span>
-            <textarea
-              rows={3}
-              placeholder="例如：git status"
-              value={rules.commandAllowlist.join("\n")}
-              onChange={(event) =>
-                updateRules({
-                  commandAllowlist: splitLines(event.target.value),
-                })
-              }
-            />
-          </label>
-          <label className="settings-field settings-field--textarea">
-            <span>询问命令（每行一项）</span>
-            <textarea
-              rows={3}
-              placeholder="例如：git push"
-              value={rules.commandAsklist.join("\n")}
-              onChange={(event) =>
-                updateRules({ commandAsklist: splitLines(event.target.value) })
-              }
-            />
-          </label>
+          <SecurityRuleGroup
+            icon={<SquareTerminal size={14} aria-hidden="true" />}
+            items={rules.commandAllowlist}
+            label="放行命令"
+            placeholder="例如：git status"
+            onItemsChange={(commandAllowlist) =>
+              updateRules({ commandAllowlist })
+            }
+          />
+          <SecurityRuleGroup
+            icon={<SquareTerminal size={14} aria-hidden="true" />}
+            items={rules.commandAsklist}
+            label="询问命令"
+            placeholder="例如：git push"
+            onItemsChange={(commandAsklist) => updateRules({ commandAsklist })}
+          />
         </SettingsCard>
 
         <SettingsCard
@@ -294,28 +385,20 @@ export function SecuritySettings({
               </div>
             }
           />
-          <label className="settings-field settings-field--textarea">
-            <span>允许域名（每行一项）</span>
-            <textarea
-              rows={3}
-              placeholder="api.example.com"
-              value={rules.allowedDomains.join("\n")}
-              onChange={(event) =>
-                updateRules({ allowedDomains: splitLines(event.target.value) })
-              }
-            />
-          </label>
-          <label className="settings-field settings-field--textarea">
-            <span>拒绝域名（每行一项）</span>
-            <textarea
-              rows={3}
-              placeholder="tracking.example.com"
-              value={rules.deniedDomains.join("\n")}
-              onChange={(event) =>
-                updateRules({ deniedDomains: splitLines(event.target.value) })
-              }
-            />
-          </label>
+          <SecurityRuleGroup
+            icon={<Globe2 size={14} aria-hidden="true" />}
+            items={rules.allowedDomains}
+            label="允许域名"
+            placeholder="api.example.com"
+            onItemsChange={(allowedDomains) => updateRules({ allowedDomains })}
+          />
+          <SecurityRuleGroup
+            icon={<GlobeLock size={14} aria-hidden="true" />}
+            items={rules.deniedDomains}
+            label="拒绝域名"
+            placeholder="tracking.example.com"
+            onItemsChange={(deniedDomains) => updateRules({ deniedDomains })}
+          />
         </SettingsCard>
       </div>
 

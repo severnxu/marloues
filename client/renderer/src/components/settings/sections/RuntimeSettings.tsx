@@ -2,6 +2,7 @@ import { Cpu, Gauge, TerminalSquare } from "lucide-react";
 import {
   SettingRow,
   SettingsCard,
+  SettingsCheckbox,
   SettingsSelect,
   SettingsTextField,
 } from "@/components/settings";
@@ -32,7 +33,9 @@ export function RuntimeSettings({
       .filter((runtime) => runtime.status === "available")
       .map((runtime) => ({
         value: runtime.id,
-        label: `${runtimePresentation(runtime.id).label} · ${runtimePresentation(runtime.id).protocol}`,
+        label: `${runtimePresentation(runtime.id).label} · ${
+          runtimePresentation(runtime.id).protocol
+        }`,
       })) ?? [];
 
   const handleRuntimeChange = async (value: string) => {
@@ -42,7 +45,9 @@ export function RuntimeSettings({
       await switchRuntime(runtimeId);
       notify({
         title: `已切换到 ${runtimePresentation(runtimeId).label}`,
-        description: `模型请求将使用 ${runtimePresentation(runtimeId).protocol} 协议路由。`,
+        description: `模型请求将使用 ${
+          runtimePresentation(runtimeId).protocol
+        } 协议路由。`,
         tone: "success",
       });
     } catch (error) {
@@ -107,8 +112,7 @@ export function RuntimeSettings({
           }
         />
         <label className="settings-toggle">
-          <input
-            type="checkbox"
+          <SettingsCheckbox
             checked={draft.thinkingEnabled}
             onChange={(event) =>
               onCommitDraft({ ...draft, thinkingEnabled: event.target.checked })

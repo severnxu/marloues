@@ -11,6 +11,7 @@ import {
 import { useState } from "react";
 import {
   SettingRow,
+  SettingsCheckbox,
   SettingsSelect,
   ToggleSwitch,
 } from "@/components/settings";
@@ -102,8 +103,7 @@ export function ImChannelsBotPanel({
             className="settings-inline-check im-bot-enable-check"
             title={bot.enabled ? "停用机器人" : "启用机器人"}
           >
-            <input
-              type="checkbox"
+            <SettingsCheckbox
               checked={bot.enabled}
               onChange={() => onPatch({ enabled: !bot.enabled })}
             />

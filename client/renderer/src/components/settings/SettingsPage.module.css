@@ -1,7 +1,7 @@
 .surface {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  z-index: 220;
+  z-index: 40;
   display: grid;
   grid-template-columns: var(--settings-sidebar-width) minmax(0, 1fr);
   overflow: hidden;
@@ -27,24 +27,27 @@
 
 .sidebarHeader {
   flex: 0 0 auto;
-  padding: calc(var(--titlebar-height) + var(--space-1)) var(--space-3)
+  padding: calc(var(--titlebar-height) + var(--space-1)) var(--space-2)
     var(--space-5);
 }
 
 .returnButton {
-  display: inline-flex;
-  min-height: 30px;
+  display: flex;
+  width: 100%;
+  min-height: var(--sidebar-row-height);
   align-items: center;
   gap: var(--space-2);
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--control-radius);
   background: transparent;
   color: var(--text-2);
-  padding: 0 var(--space-2);
-  font-size: var(--text-sm);
+  padding: 0 10px;
+  font-size: var(--text-base);
   font-weight: 560;
-  line-height: 18px;
+  line-height: 20px;
+  text-align: left;
   -webkit-app-region: no-drag;
+  cursor: pointer;
   transition:
     background var(--motion-fast) var(--ease),
     color var(--motion-fast) var(--ease);
@@ -134,7 +137,11 @@
   width: 15px;
   height: 15px;
   flex: 0 0 15px;
-  color: inherit;
+  color: var(--text-3);
+}
+
+.navItemActive .navIcon {
+  color: var(--accent);
 }
 
 .navLabel {
@@ -153,6 +160,10 @@
   overflow: hidden;
   background: var(--surface-workspace);
   padding-top: var(--titlebar-height);
+}
+
+:global(.platform-macos) .content {
+  padding-top: calc(var(--titlebar-height) - var(--space-4));
 }
 
 .contentScroll {
@@ -180,7 +191,9 @@
 }
 
 .contentHeader {
-  padding: var(--space-4) 0 var(--space-6);
+  display: grid;
+  gap: 6px;
+  padding: var(--space-5) 0;
 }
 
 .contentHeader h1 {
@@ -193,10 +206,10 @@
 }
 
 .contentHeader p {
-  margin: var(--space-1) 0 0;
-  color: var(--text-3);
+  margin: 0;
+  color: var(--text-2);
   font-size: var(--text-sm);
-  line-height: 18px;
+  line-height: 1.5;
 }
 
 .workbench {
@@ -222,7 +235,7 @@
   width: 100%;
   min-height: 0;
   align-content: start;
-  gap: var(--space-6);
+  gap: var(--space-4);
   overflow: visible;
   padding: 0;
 }
@@ -234,193 +247,7 @@
 .workbench :global(.provider-settings),
 .workbench :global(.security-settings) {
   display: grid;
-  gap: var(--space-8);
-}
-
-.workbench :global(.settings-card) {
-  display: grid;
-  gap: var(--space-3);
-  overflow: visible;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  padding: 0;
-  box-shadow: none;
-}
-
-.workbench :global(.settings-card-head) {
-  align-items: flex-start;
-  gap: var(--space-3);
-  margin: 0;
-  border: 0;
-  padding: 0;
-}
-
-.workbench :global(.settings-card-title) {
-  gap: 0;
-}
-
-.workbench :global(.settings-card-icon),
-.workbench :global(.settings-row-icon) {
-  display: none;
-}
-
-.workbench :global(.settings-card h2) {
-  margin: 0;
-  color: var(--text-1);
-  font-size: var(--text-base);
-  font-weight: 620;
-  letter-spacing: 0;
-  line-height: 20px;
-}
-
-.workbench :global(.settings-card p) {
-  margin: var(--space-1) 0 0;
-  color: var(--text-3);
-  font-size: var(--text-sm);
-  line-height: 18px;
-}
-
-.workbench :global(.settings-card-action) {
-  min-height: 30px;
-  align-self: center;
-}
-
-.workbench :global(.settings-fields) {
-  display: grid;
-  gap: 0;
-  overflow: hidden;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--card-radius);
-  background: var(--surface-elevated);
-  padding: 0 var(--space-4);
-}
-
-.workbench :global(.settings-card:has(.settings-select) .settings-fields) {
-  overflow: visible;
-}
-
-.workbench :global(.settings-card--plain .settings-fields) {
-  overflow: visible;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  padding: 0;
-}
-
-.workbench :global(.settings-row-inline) {
-  min-height: 60px;
-  gap: 0;
-  border-top: 1px solid var(--border-subtle);
-  padding: var(--space-3) 0;
-}
-
-.workbench
-  :global(
-    .settings-card-head + .settings-fields .settings-row-inline:first-child
-  ),
-.workbench :global(.settings-fields .settings-row-inline:first-child) {
-  border-top: 0;
-  padding-top: var(--space-3);
-}
-
-.workbench :global(.settings-fields .settings-row-inline:last-child) {
-  padding-bottom: var(--space-3);
-}
-
-.workbench :global(.settings-row-copy) {
-  gap: 2px;
-}
-
-.workbench :global(.settings-row-copy strong) {
-  color: var(--text-1);
-  font-size: var(--text-sm);
-  font-weight: 560;
-  line-height: 18px;
-}
-
-.workbench :global(.settings-row-copy small) {
-  color: var(--text-3);
-  font-size: var(--text-xs);
-  line-height: 16px;
-  white-space: normal;
-}
-
-.workbench :global(.settings-row-trailing) {
-  margin-left: var(--space-4);
-}
-
-.workbench :global(.security-select-control) {
-  width: 200px;
-  max-width: 100%;
-}
-
-.workbench :global(.security-number-control) {
-  width: 120px;
-  max-width: 100%;
-}
-
-.workbench :global(.security-builtins-field .security-builtins) {
-  grid-column: 2;
-  justify-content: flex-start;
-}
-
-.workbench :global(.settings-fields > label:not(.settings-toggle)),
-.workbench :global(.settings-field) {
-  display: grid;
-  min-height: 60px;
-  grid-template-columns: minmax(0, 1fr) minmax(200px, 272px);
-  align-items: center;
-  gap: var(--space-6);
-  border-top: 1px solid var(--border-subtle);
-  color: var(--text-1);
-  padding: var(--space-3) 0;
-  font-size: var(--text-sm);
-  font-weight: 560;
-  line-height: 18px;
-}
-
-.workbench :global(.settings-fields > label:not(.settings-toggle):first-child),
-.workbench :global(.settings-field:first-child) {
-  border-top: 0;
-}
-
-.workbench :global(.settings-fields > label:not(.settings-toggle) > input),
-.workbench :global(.settings-fields > label:not(.settings-toggle) > select),
-.workbench :global(.settings-fields > label:not(.settings-toggle) > textarea),
-.workbench :global(.settings-field > input) {
-  grid-column: 2;
-}
-
-.workbench :global(.settings-field > span) {
-  color: var(--text-1);
-  font-size: var(--text-sm);
-  font-weight: 560;
-  line-height: 18px;
-}
-
-.workbench
-  :global(
-    .settings-page
-      input:not([type="checkbox"]):not([type="color"]):not([type="radio"])
-  ),
-.workbench :global(.settings-page select),
-.workbench :global(.settings-page textarea) {
-  min-width: 0;
-  min-height: 32px;
-  border: 1px solid var(--border);
-  border-radius: var(--select-control-radius);
-  background: var(--surface-workspace);
-  color: var(--text-1);
-  padding: 6px var(--space-2);
-  font-size: var(--text-sm);
-  font-weight: 400;
-  line-height: 18px;
-  box-shadow: none;
-  transition:
-    border-color var(--motion-fast) var(--ease),
-    background var(--motion-fast) var(--ease),
-    box-shadow var(--motion-fast) var(--ease);
+  gap: var(--space-4);
 }
 
 .workbench :global(.settings-select-trigger),
@@ -433,19 +260,6 @@
   font-weight: 400;
   line-height: 18px;
   box-shadow: none;
-}
-
-.workbench
-  :global(
-    .settings-page
-      input:not([type="checkbox"]):not([type="color"]):not([type="radio"]):focus
-  ),
-.workbench :global(.settings-page select:focus),
-.workbench :global(.settings-page textarea:focus) {
-  outline: none;
-  border-color: var(--accent);
-  background: var(--surface-workspace);
-  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .workbench :global(.settings-select-trigger) {
@@ -488,187 +302,6 @@
   border-color: var(--border-subtle);
   background: var(--raised-1);
   color: var(--text-3);
-}
-
-.workbench
-  :global(
-    .settings-page
-      input:not([type="checkbox"]):not([type="color"]):not([type="radio"]):hover
-  ),
-.workbench :global(.settings-page select:hover),
-.workbench :global(.settings-page textarea:hover) {
-  border-color: var(--border-strong);
-}
-
-.workbench
-  :global(
-    .settings-page
-      input:not([type="checkbox"]):not([type="color"]):not([type="radio"]):focus
-  ),
-.workbench :global(.settings-page select:focus),
-.workbench :global(.settings-page textarea:focus) {
-  border-color: var(--accent);
-  background: var(--surface-workspace);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
-
-.workbench
-  :global(
-    .settings-page
-      input:not([type="checkbox"]):not([type="color"]):not(
-        [type="radio"]
-      ):disabled
-  ),
-.workbench :global(.settings-page select:disabled),
-.workbench :global(.settings-page textarea:disabled) {
-  border-color: var(--border-subtle);
-  background: var(--raised-1);
-  color: var(--text-3);
-  opacity: 1;
-}
-
-.workbench :global(.settings-fields > .settings-toggle) {
-  display: flex;
-  width: 100%;
-  min-height: 52px;
-  align-items: center;
-  gap: var(--space-2);
-  border-right: 0;
-  border-bottom: 0;
-  border-left: 0;
-  border-radius: 0;
-  background: transparent;
-  border-top: 1px solid var(--border-subtle);
-  color: var(--text-1);
-  padding: var(--space-3) 0;
-  font-size: var(--text-sm);
-  font-weight: 560;
-  line-height: 18px;
-}
-
-.workbench :global(.settings-fields > .settings-toggle:first-child) {
-  border-top: 0;
-}
-
-.workbench :global(.settings-fields > .settings-toggle:last-child) {
-  padding-bottom: var(--space-3);
-}
-
-.workbench :global(.settings-fields > .settings-toggle input) {
-  width: 15px;
-  min-height: 15px;
-  accent-color: var(--accent);
-}
-
-.workbench :global(.settings-page input[type="checkbox"]),
-.workbench :global(.settings-page input[type="radio"]) {
-  width: 15px;
-  height: 15px;
-  font-size: var(--text-sm);
-  font-weight: 560;
-  line-height: 18px;
-  accent-color: var(--accent);
-}
-
-.workbench :global(.settings-large-textarea) {
-  min-height: 184px;
-  margin: var(--space-4) 0;
-  resize: vertical;
-}
-
-.workbench :global(.settings-switch) {
-  width: 34px;
-  min-height: 20px;
-  border-color: var(--border);
-  background: var(--raised-2);
-}
-
-.workbench :global(.settings-switch:hover:not(:disabled)) {
-  border-color: var(--border-strong);
-  background: var(--raised-3);
-}
-
-.workbench :global(.settings-switch span) {
-  width: 16px;
-  height: 16px;
-  background: var(--text-2);
-  box-shadow: none;
-}
-
-.workbench :global(.settings-switch.active) {
-  border-color: var(--accent);
-  background: var(--accent);
-}
-
-.workbench :global(.settings-switch.active:hover:not(:disabled)) {
-  border-color: var(--accent);
-  background: var(--accent);
-}
-
-.workbench :global(.settings-switch.active span) {
-  background: var(--primary-ink);
-  transform: translateX(14px);
-}
-
-.workbench :global(.settings-segmented-options) {
-  gap: var(--space-2);
-  padding: var(--space-4) 0;
-}
-
-.workbench :global(.settings-card--plain .settings-segmented-options) {
-  padding: 0;
-}
-
-.workbench :global(.settings-segmented-options button) {
-  min-height: 88px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--surface-workspace);
-  color: var(--text-2);
-  font-size: var(--text-sm);
-  font-weight: 400;
-  line-height: 18px;
-  padding: var(--space-3);
-  box-shadow: none;
-  transition:
-    border-color var(--motion-fast) var(--ease),
-    background var(--motion-fast) var(--ease),
-    color var(--motion-fast) var(--ease);
-}
-
-.workbench :global(.settings-segmented-options button:hover) {
-  border-color: var(--border-strong);
-  background: var(--raised-1);
-  color: var(--text-1);
-}
-
-.workbench :global(.settings-segmented-options button.active) {
-  border-color: color-mix(in srgb, var(--accent) 56%, var(--border));
-  background: var(--raised-1);
-  color: var(--text-1);
-}
-
-.workbench :global(.settings-segmented-options button > span) {
-  background: var(--raised-2);
-  color: var(--text-3);
-}
-
-.workbench :global(.settings-segmented-options button.active > span) {
-  background: var(--accent);
-  color: var(--primary-ink);
-}
-
-.workbench :global(.settings-segmented-options strong) {
-  color: inherit;
-  font-size: var(--text-sm);
-  font-weight: 620;
-  line-height: 18px;
-}
-
-.workbench :global(.settings-segmented-options small) {
-  color: var(--text-3);
-  font-size: var(--text-xs);
-  line-height: 16px;
 }
 
 .workbench :global(.settings-stat-grid) {
@@ -963,27 +596,29 @@
 .workbench :global(.provider-actions) {
   flex-wrap: nowrap;
   justify-content: flex-end;
-  gap: 6px;
+  gap: var(--space-2);
+}
+
+.workbench :global(.provider-actions .icon-button) {
+  width: var(--settings-row-action-size);
+  min-width: var(--settings-row-action-size);
+  height: var(--settings-row-action-size);
+  min-height: var(--settings-row-action-size);
 }
 
 .workbench :global(.provider-enable-check) {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 30px;
+  min-height: var(--settings-row-action-size);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--raised-1);
-  padding: 0 var(--space-2);
+  padding: 0 10px;
   color: var(--text-2);
   font-size: var(--text-sm);
   font-weight: 560;
   line-height: 18px;
-}
-
-.workbench :global(.provider-enable-check input) {
-  margin: 0;
-  accent-color: var(--accent);
 }
 
 .workbench :global(.provider-fields-grid) {
@@ -1293,11 +928,6 @@
   line-height: 18px;
 }
 
-.workbench :global(.provider-model-config-grid .settings-inline-check input) {
-  margin: 0;
-  accent-color: var(--accent);
-}
-
 .workbench :global(.provider-model-actions) {
   display: inline-flex;
   flex-wrap: nowrap;
@@ -1403,68 +1033,6 @@
   padding: var(--space-6) var(--space-4);
 }
 
-.workbench :global(.appearance-accent-panel) {
-  gap: 0;
-  padding: var(--space-2) 0 var(--space-4);
-}
-
-.workbench :global(.appearance-accent-current) {
-  border: 0;
-  border-bottom: 1px solid var(--border-subtle);
-  border-radius: 0;
-  background: transparent;
-  padding: var(--space-3) 0;
-}
-
-.workbench :global(.appearance-accent-controls) {
-  gap: var(--space-3);
-  padding-top: var(--space-4);
-}
-
-.workbench :global(.appearance-accent-controls label) {
-  color: var(--text-2);
-  font-size: var(--text-sm);
-  font-weight: 560;
-  line-height: 18px;
-}
-
-.workbench :global(.appearance-accent-current strong) {
-  font-weight: 620;
-  line-height: 18px;
-}
-
-.workbench :global(.appearance-accent-current small) {
-  line-height: 16px;
-}
-
-.workbench :global(.appearance-accent-current button) {
-  font-size: var(--text-sm);
-  font-weight: 560;
-  line-height: 18px;
-}
-
-.workbench :global(.appearance-color-picker) {
-  min-height: 32px;
-  height: 32px;
-  border-color: var(--border);
-  border-radius: var(--select-control-radius);
-  background: var(--surface-workspace);
-}
-
-.workbench :global(.appearance-color-picker input) {
-  border: 0;
-}
-
-.workbench :global(.im-bind-tile) {
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--surface-workspace);
-  color: var(--text-2);
-  font-size: var(--text-sm);
-  font-weight: 400;
-  line-height: 18px;
-}
-
 .workbench :global(.im-bind-tile:hover),
 .workbench :global(.im-bind-tile:focus-visible),
 .workbench :global(.im-bind-tile:active) {
@@ -1473,7 +1041,6 @@
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-.workbench :global(.im-bind-tile strong),
 .workbench :global(.im-bot-row-title strong) {
   font-size: var(--text-sm);
   font-weight: 620;
@@ -1486,18 +1053,10 @@
   line-height: 20px;
 }
 
-.workbench :global(.im-bind-tile small),
 .workbench :global(.im-bot-row-title small),
 .workbench :global(.im-bot-section p) {
   font-size: var(--text-xs);
   line-height: 16px;
-}
-
-.workbench :global(.im-bind-tile strong),
-.workbench :global(.im-bind-tile small) {
-  overflow: visible;
-  text-overflow: clip;
-  white-space: normal;
 }
 
 .workbench :global(.im-bot-section .settings-empty-state) {
@@ -1609,11 +1168,6 @@
   font-size: var(--text-sm);
   font-weight: 560;
   line-height: 18px;
-}
-
-.workbench :global(.im-bot-enable-check input) {
-  margin: 0;
-  accent-color: var(--accent);
 }
 
 .workbench :global(.im-bot-row-body) {
@@ -1747,86 +1301,6 @@
     padding-right: var(--space-4);
     padding-left: var(--space-4);
   }
-
-  .workbench :global(.settings-fields > label:not(.settings-toggle)),
-  .workbench :global(.settings-field) {
-    min-height: 0;
-    grid-template-columns: 1fr;
-    gap: var(--space-2);
-  }
-
-  .workbench :global(.settings-fields > label:not(.settings-toggle) > input),
-  .workbench :global(.settings-fields > label:not(.settings-toggle) > select),
-  .workbench :global(.settings-fields > label:not(.settings-toggle) > textarea),
-  .workbench :global(.settings-field > input) {
-    grid-column: 1;
-  }
-
-  .workbench :global(.security-builtins-field .security-builtins) {
-    grid-column: 1;
-  }
-
-  .workbench :global(.security-select-control) {
-    width: min(200px, 100%);
-  }
-}
-
-/* Update & hot-update management page */
-.workbench :global(.update-settings) {
-  display: grid;
-  gap: var(--space-8);
-}
-
-.workbench :global(.settings-row-actions) {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.workbench :global(.update-status-panel) {
-  display: grid;
-  gap: var(--space-2);
-  margin: var(--space-3) 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  padding: var(--space-4);
-}
-
-.workbench :global(.update-status-panel strong) {
-  color: var(--text-1);
-  font-size: var(--text-sm);
-  font-weight: 620;
-  line-height: 18px;
-}
-
-.workbench :global(.update-status-panel small),
-.workbench :global(.update-status-panel p) {
-  margin: 0;
-  color: var(--text-3);
-  font-size: var(--text-xs);
-  line-height: 16px;
-}
-
-.workbench :global(.update-status-panel .update-error) {
-  color: var(--danger);
-}
-
-.workbench :global(.update-progress) {
-  position: relative;
-  height: 6px;
-  margin: var(--space-2) 0 var(--space-6);
-  border-radius: 999px;
-  background: var(--raised-2);
-}
-
-.workbench :global(.update-progress > span) {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--accent);
-  transition: width 160ms ease;
 }
 
 .workbench :global(.update-progress > small) {
@@ -1836,4 +1310,33 @@
   color: var(--text-3);
   font-size: var(--text-xs);
   line-height: 16px;
+}
+
+@media (max-width: 900px) {
+  .surface {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .contentHeader,
+  .workbench {
+    width: 100%;
+    max-width: var(--settings-content-max-width);
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  .contentHeader {
+    padding-right: var(--space-4);
+    padding-left: var(--space-4);
+  }
+
+  .workbench,
+  .contentSkills .workbench {
+    padding-right: var(--space-4);
+    padding-left: var(--space-4);
+  }
 }

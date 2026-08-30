@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import type { ModelEndpointProtocol, ModelProviderConfig } from "@shared/types";
 import { builtinProviderMetadata } from "@shared/builtin-provider-metadata";
-import { SettingsSelect } from "./shared";
+import { SettingsCheckbox, SettingsRadio, SettingsSelect } from "./shared";
 import type { ProviderManagement } from "./use-provider-management";
 import styles from "./AddEndpointDialog.module.css";
 
@@ -151,8 +151,7 @@ export function ProviderDetailDialog({
                     <div className={styles.endpointRow} key={endpoint.id}>
                       <div className={styles.endpointRowHead}>
                         <label className={styles.configCheck}>
-                          <input
-                            type="checkbox"
+                          <SettingsCheckbox
                             checked={endpoint.enabled}
                             disabled={provider.locked || !canEdit}
                             onChange={(event) =>
@@ -371,8 +370,7 @@ export function ProviderDetailDialog({
                 <div className={styles.importList}>
                   {modelImportDraft.models.map((model) => (
                     <label className={styles.importItem} key={model.id}>
-                      <input
-                        type="checkbox"
+                      <SettingsCheckbox
                         checked={modelImportDraft.selectedIds.has(model.id)}
                         onChange={() => pm.toggleModelImportSelection(model.id)}
                       />
@@ -394,8 +392,7 @@ export function ProviderDetailDialog({
                     <div className={styles.modelRow} key={model.id}>
                       <div className={styles.modelRowHead}>
                         <label className={styles.modelDefault}>
-                          <input
-                            type="radio"
+                          <SettingsRadio
                             name={`provider-default-${provider.id}`}
                             checked={isDefault}
                             disabled={provider.locked || !canEdit}
@@ -414,11 +411,10 @@ export function ProviderDetailDialog({
                         </label>
                         <div className={styles.modelRowState}>
                           <label className={styles.configCheck}>
-                            <input
-                              type="checkbox"
+                            <SettingsCheckbox
                               checked={model.enabled}
                               disabled={provider.locked || !canEdit}
-                              onChange={(event) =>
+                              onChange={() =>
                                 void pm.toggleModelEnabled(
                                   provider.id,
                                   model.id,
@@ -510,8 +506,7 @@ export function ProviderDetailDialog({
                           />
                         </label>
                         <label className={styles.configCheck}>
-                          <input
-                            type="checkbox"
+                          <SettingsCheckbox
                             disabled={provider.locked || !canEdit}
                             checked={Boolean(model.supportsVision)}
                             onChange={(event) =>
@@ -527,8 +522,7 @@ export function ProviderDetailDialog({
                           视觉
                         </label>
                         <label className={styles.configCheck}>
-                          <input
-                            type="checkbox"
+                          <SettingsCheckbox
                             disabled={provider.locked || !canEdit}
                             checked={Boolean(model.supportsThinking)}
                             onChange={(event) =>

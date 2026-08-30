@@ -2293,7 +2293,7 @@
    const customInput = document.querySelector("[data-accent-custom]");
    const swatch = document.querySelector(".appearance-accent-swatch");
    const hexSmall = document.querySelector(".appearance-accent-current small");
-   const accent = getComputedStyle(root).getPropertyValue("--accent").trim() || "#3b9bff";
+   const accent = getComputedStyle(root).getPropertyValue("--accent").trim() || "#3d9bff";
    const hex = cssColorToHex(accent);
    if (colorInput) colorInput.value = hex;
    if (customInput) customInput.value = "";
@@ -2307,7 +2307,7 @@
    const colorInput = document.querySelector("[data-accent-color]");
    const swatch = document.querySelector(".appearance-accent-swatch");
    const hexSmall = document.querySelector(".appearance-accent-current small");
-   const accent = getComputedStyle(root).getPropertyValue("--accent").trim() || "#3b9bff";
+   const accent = getComputedStyle(root).getPropertyValue("--accent").trim() || "#3d9bff";
    const hex = cssColorToHex(accent);
    if (colorInput) colorInput.value = hex;
    if (swatch) swatch.style.background = accent;

@@ -10,6 +10,7 @@ import type { ImChannelKind } from "@shared/types";
 import { ImChannelIcon } from "./ImChannelIcon";
 import styles from "./ImChannelsBindingDialog.module.css";
 import { ImQrPreview } from "./ImQrPreview";
+import { SettingsRadio } from "@/components/settings/shared";
 
 const FEISHU_FALLBACK_QR_TTL_SECONDS = 600;
 const WECOM_SCAN_WAIT_TIMEOUT_SECONDS = 600;
@@ -344,8 +345,7 @@ export function ImChannelsBindingDialog({
 
         <div className={styles.modeRow} role="radiogroup" aria-label="绑定方式">
           <label className={styles.modeOption}>
-            <input
-              type="radio"
+            <SettingsRadio
               checked={mode === "quick"}
               disabled={isBindingSaving || isBindingSuccess}
               onChange={() => setMode("quick")}
@@ -353,8 +353,7 @@ export function ImChannelsBindingDialog({
             <span>快捷绑定（推荐）</span>
           </label>
           <label className={styles.modeOption}>
-            <input
-              type="radio"
+            <SettingsRadio
               checked={mode === "manual"}
               disabled={isBindingSaving || isBindingSuccess}
               onChange={() => setMode("manual")}

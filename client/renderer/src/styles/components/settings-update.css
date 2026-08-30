@@ -1,0 +1,50 @@
+/* Update settings own their layout; colors and rhythm come from shared tokens. */
+
+.update-settings {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.update-status-panel {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--control-radius);
+  background: var(--raised-1);
+  padding: var(--space-3) var(--space-4);
+}
+
+.update-status-panel strong {
+  color: var(--text-1);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: normal;
+}
+
+.update-status-panel small,
+.update-status-panel p {
+  margin: 0;
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  line-height: normal;
+}
+
+.update-status-panel .update-error {
+  color: var(--danger);
+}
+
+.update-progress {
+  position: relative;
+  height: 6px;
+  margin: var(--space-2) 0 var(--space-6);
+  border-radius: 999px;
+  background: var(--raised-2);
+}
+
+.update-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width var(--motion-fast) var(--ease);
+}

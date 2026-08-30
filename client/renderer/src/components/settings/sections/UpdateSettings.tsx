@@ -159,19 +159,16 @@ export function UpdateSettings() {
               value: "stable",
               title: "稳定版",
               description: "经过验证的正式版本",
-              icon: <ShieldCheck size={15} />,
             },
             {
               value: "beta",
               title: "测试版",
               description: "提前体验即将发布的功能",
-              icon: <Rocket size={15} />,
             },
             {
               value: "nightly",
               title: "每夜版",
               description: "跟随最新开发进度",
-              icon: <RefreshCw size={15} />,
             },
           ]}
         />
@@ -251,7 +248,9 @@ export function UpdateSettings() {
           }
           trailing={
             <span
-              className={`settings-chip ${versionInfo?.hotUpdateConfigured ? "ok" : ""}`}
+              className={`settings-chip ${
+                versionInfo?.hotUpdateConfigured ? "ok" : ""
+              }`}
             >
               {versionInfo?.hotUpdateConfigured ? "已启用" : "未配置"}
             </span>

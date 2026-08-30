@@ -505,11 +505,6 @@
   background: var(--raised-2);
 }
 
-.importItem input {
-  margin: 0;
-  accent-color: var(--accent);
-}
-
 .modelList {
   display: grid;
   gap: var(--space-2);
@@ -546,8 +541,6 @@
 }
 
 .modelDefault input {
-  margin: 0;
-  accent-color: var(--accent);
   flex-shrink: 0;
 }
 
@@ -630,11 +623,6 @@
   font-weight: 560;
   line-height: 18px;
   white-space: nowrap;
-}
-
-.configCheck input {
-  margin: 0;
-  accent-color: var(--accent);
 }
 
 .emptyHint {

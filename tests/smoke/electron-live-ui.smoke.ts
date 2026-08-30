@@ -299,14 +299,15 @@ async function verifySecurityCenter(window: ElectronPage): Promise<void> {
   await networkPolicy.click();
   await window.getByRole("option", { name: "按请求审批" }).click();
   await expectSecurityRule(window, "networkAccess", "ask");
-  const allowedDomains = window.getByLabel("允许域名（每行一项）");
+  const allowedDomains = window.getByLabel("添加允许域名");
   await allowedDomains.fill("api.example.com");
+  await allowedDomains.press("Enter");
   await expectSecurityRule(window, "allowedDomains", ["api.example.com"]);
   await window.screenshot({
     path: join(artifactsDir, "04-security-center.png"),
     fullPage: true,
   });
-  await allowedDomains.fill("");
+  await window.getByRole("button", { name: "移除 api.example.com" }).click();
   await window.getByRole("button", { name: "返回工作区" }).click();
   await expect(window.locator(".app-shell")).toBeVisible();
 }

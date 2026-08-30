@@ -2,6 +2,7 @@ import { PlugZap, RefreshCcw, Trash2 } from "lucide-react";
 import type { ModelProviderConfig } from "@shared/types";
 import { STRINGS } from "@shared/strings.zh";
 import type { ProviderManagement } from "./use-provider-management";
+import { SettingsCheckbox } from "./shared";
 
 export function ProviderRow({
   provider,
@@ -36,7 +37,11 @@ export function ProviderRow({
           <small>
             {provider.kind === "builtin"
               ? `内置供应商 · 自动适配运行时 · ${provider.models.length} 个模型`
-              : `${provider.endpoints.length} 个端点 · ${provider.models.length} 个模型（已启用 ${provider.models.filter((model) => model.enabled).length} 个）`}
+              : `${provider.endpoints.length} 个端点 · ${
+                  provider.models.length
+                } 个模型（已启用 ${
+                  provider.models.filter((model) => model.enabled).length
+                } 个）`}
           </small>
         </div>
         <div
@@ -51,8 +56,7 @@ export function ProviderRow({
                 : STRINGS.model.providerDisabledTitle
             }
           >
-            <input
-              type="checkbox"
+            <SettingsCheckbox
               checked={provider.enabled}
               disabled={provider.locked || !canEdit}
               onChange={(event) =>
