@@ -54,6 +54,10 @@
     right: -1px;
   }
 
+  .auxiliary-sidebar:not(.is-primary-overlay) .inspector-tabs {
+    width: calc(100% - var(--shell-divider-width));
+  }
+
   .auxiliary-sidebar.closed .auxiliary-size-lock,
   .inspector-region.closed .inspector-size-lock {
     transform: translateX(100%);
@@ -298,16 +302,6 @@
 
   .inspector-head-action {
     color: var(--text-3);
-  }
-
-  .titlebar-context-actions .inspector-fixed-actions {
-    margin-left: 0;
-  }
-
-  .titlebar-context-actions .inspector-head-action {
-    width: 28px;
-    height: 28px;
-    flex-basis: 28px;
   }
 
   .platform-windows.auxiliary-primary-overlay

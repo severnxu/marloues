@@ -285,9 +285,23 @@
     position: static;
   }
 
-  .auxiliary-primary-titlebar-slot,
   .thread-summary-titlebar-slot {
     display: contents;
+  }
+
+  .windows-auxiliary-primary-action {
+    width: 26px;
+    height: 26px;
+    flex-basis: 26px;
+  }
+
+  .platform-windows .titlebar-context-actions {
+    right: calc(var(--windows-caption-controls-width) + var(--space-2));
+    gap: var(--space-3);
+  }
+
+  .auxiliary-primary-overlay .thread-summary-titlebar-slot {
+    display: none;
   }
 
   .platform-macos .titlebar-context-actions {

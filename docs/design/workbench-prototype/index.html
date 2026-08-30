@@ -773,14 +773,14 @@
   const { primaryOpen, auxiliaryOpen } = useShellStore();
 + const { theme } = useThemeStore();
   return (
-    <div className={cx("workbench", ...)}>
-+     <ThemeProvider>
-      <PrimarySidebar ... />
-      <main className="workspace" ...>
+    &lt;div className={cx("workbench", ...)}&gt;
++     &lt;ThemeProvider&gt;
+      &lt;PrimarySidebar ... /&gt;
+      &lt;main className="workspace" ...&gt;
         ...
-      </main>
-+     </ThemeProvider>
-    </div>
+      &lt;/main&gt;
++     &lt;/ThemeProvider&gt;
+    &lt;/div&gt;
   );
 }</pre>
                       <button

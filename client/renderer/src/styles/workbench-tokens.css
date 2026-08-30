@@ -19,7 +19,9 @@
   --workbench-windows-caption-width: 138px;
   --workbench-windows-auxiliary-control-width: 38px;
   --workbench-windows-auxiliary-primary-leading-safe-area: 84px;
-  --workbench-windows-auxiliary-primary-trailing-safe-area: 320px;
+  --workbench-windows-auxiliary-primary-trailing-safe-area: var(
+    --windows-auxiliary-primary-trailing-safe-area
+  );
   --workbench-windows-collapsed-header-safe-area: calc(
     var(--workbench-windows-caption-width) +
       var(--workbench-windows-auxiliary-control-width) +

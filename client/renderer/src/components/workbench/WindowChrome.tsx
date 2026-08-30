@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import {
   ArrowLeft,
   Columns2,
+  Minimize2,
   Minus,
   PanelLeft,
   PanelRight,
@@ -82,6 +83,11 @@ export function WindowChrome({
     !titleExtrasHidden && (sidebarOpen || sidebarPeeking);
   const auxiliaryPrimary = auxiliaryMode === "primary-overlay";
   const showReturnToMain = auxiliaryPrimary && !sidebarOpen && onReturnToMain;
+  const auxiliaryToggleLabel = auxiliaryPrimary
+    ? "关闭辅助区并返回主视图"
+    : auxiliaryOpen
+      ? "收起右侧辅助区"
+      : "展开右侧辅助区";
 
   return (
     <header
@@ -186,10 +192,19 @@ export function WindowChrome({
       )}
       {page === "chat" ? (
         <div className="titlebar-context-actions">
-          <div
-            id="auxiliary-primary-titlebar-slot"
-            className="auxiliary-primary-titlebar-slot"
-          />
+          {!isMacOS && auxiliaryPrimary && onReturnToMain ? (
+            <button
+              className="windows-auxiliary-primary-action window-chrome-control"
+              type="button"
+              onClick={onReturnToMain}
+              disabled={auxiliarySwitching}
+              title="收回辅助区至右栏"
+              aria-label="收回辅助区至右栏"
+              aria-pressed="true"
+            >
+              <Minimize2 size={15} />
+            </button>
+          ) : null}
           <div
             id="thread-summary-titlebar-slot"
             className="thread-summary-titlebar-slot"
@@ -199,8 +214,8 @@ export function WindowChrome({
             type="button"
             onClick={onToggleAuxiliary}
             disabled={auxiliarySwitching}
-            title={auxiliaryOpen ? "收起侧栏" : "展开侧栏"}
-            aria-label={auxiliaryOpen ? "收起侧栏" : "展开侧栏"}
+            title={auxiliaryToggleLabel}
+            aria-label={auxiliaryToggleLabel}
             aria-pressed={auxiliaryOpen}
           >
             {auxiliaryOpen ? <Columns2 size={15} /> : <PanelRight size={15} />}
