@@ -1054,6 +1054,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
               await cdpBrowserService.navigate(pageId, plan.url);
             }
             cdpBrowserService.setActivePageId(opts.threadId, pageId);
+            cdpBrowserService.requestPageReveal(opts.threadId, pageId);
             return JSON.stringify({ pageId, url: plan.url });
           },
         );

@@ -331,6 +331,7 @@ export function WorkbenchRoot({
             width={state.auxiliaryWidth}
             busy={auxiliarySwitching}
             onTogglePrimary={toggleAuxiliaryPrimary}
+            onEnsureOpen={() => setAuxiliaryOpen(true)}
             onStartResize={startResize}
             regionRef={(node) => {
               layout.auxiliaryRef.current = node;

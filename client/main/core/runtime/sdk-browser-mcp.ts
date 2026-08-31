@@ -33,6 +33,10 @@ export interface SdkBrowserServer {
   clear(): void;
 }
 
+export function normalizeMcpImageData(data: string): string {
+  return data.replace(/^data:image\/[a-z0-9.+-]+;base64,/i, "");
+}
+
 /**
  * Creates an in-process SDK MCP server exposing CDP-based browser tools.
  * All tools operate on the same WebContentsView the user sees -- no separate
@@ -56,7 +60,7 @@ export function createSdkBrowserServer(
     name: SDK_BROWSER_SERVER_NAME,
     version: "1.0.0",
     instructions:
-      "Browser automation via CDP accessibility tree. Use navigate to open pages, get_state for the indexed accessibility tree, screenshot to capture, click/fill to interact by index, scroll, and poll_events for browser events.",
+      "Browser automation via CDP accessibility tree. Every user request to open, reopen, or navigate a page requires a navigate call in that same turn, even when the URL is unchanged or was opened previously. Never report a browser action as completed from an earlier turn's tool result. Use get_state for the indexed accessibility tree, screenshot to capture, click/fill to interact by index, scroll, and poll_events for browser events.",
     alwaysLoad: true,
     tools: [
       tool(
@@ -85,6 +89,7 @@ export function createSdkBrowserServer(
             await cdpBrowserService.navigate(pageId, input.url);
           }
           cdpBrowserService.setActivePageId(threadId, pageId);
+          cdpBrowserService.requestPageReveal(threadId, pageId);
           approvalTracker.markPageApproved(pageId);
           const sideEffects = cdpBrowserService.consumeSideEffects(pageId);
           return {
@@ -122,7 +127,9 @@ export function createSdkBrowserServer(
               isError: true,
             };
           }
-          const data = await cdpBrowserService.screenshot(pageId);
+          const data = normalizeMcpImageData(
+            await cdpBrowserService.screenshot(pageId),
+          );
           return {
             content: [
               {

@@ -228,7 +228,23 @@ class CdpBrowserServiceImpl extends EventEmitter {
   }
 
   setActivePageId(threadId: string, pageId: string): void {
+    const state = this.states.get(pageId);
+    if (state) state.threadId = threadId;
     this.activePageByThread.set(threadId, pageId);
+  }
+
+  requestPageReveal(threadId: string, pageId: string): void {
+    const state = this.states.get(pageId);
+    if (!state) throw new Error(`Page ${pageId} not found.`);
+    state.threadId = threadId;
+    this.activePageByThread.set(threadId, pageId);
+    this.emit(
+      "page-reveal-requested",
+      threadId,
+      pageId,
+      state.url,
+      state.title,
+    );
   }
 
   listPages(threadId?: string): Array<{

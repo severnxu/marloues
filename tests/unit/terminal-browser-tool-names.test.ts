@@ -15,6 +15,7 @@ import {
   SDK_BROWSER_TOOL_GET_STATE,
   SDK_BROWSER_TOOL_SCROLL,
   SDK_BROWSER_TOOL_POLL_EVENTS,
+  normalizeMcpImageData,
 } from "../../client/main/core/runtime/sdk-browser-mcp";
 
 describe("canonicalTerminalToolName", () => {
@@ -102,6 +103,18 @@ describe("canonicalBrowserToolName", () => {
     expect(canonicalBrowserToolName("browser.navigate")).toBe(
       "browser.navigate",
     );
+  });
+});
+
+describe("normalizeMcpImageData", () => {
+  it("strips a data URL prefix before returning MCP image content", () => {
+    expect(normalizeMcpImageData("data:image/png;base64,YWJjZA==")).toBe(
+      "YWJjZA==",
+    );
+  });
+
+  it("preserves an already-normalized base64 payload", () => {
+    expect(normalizeMcpImageData("YWJjZA==")).toBe("YWJjZA==");
   });
 });
 

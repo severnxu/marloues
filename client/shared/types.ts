@@ -1212,13 +1212,12 @@ export interface MarlouesAPI {
       canGoForward: boolean;
       isLoading: boolean;
     }>;
-    newPage(url: string): Promise<string>;
+    newPage(url: string, threadId?: string): Promise<string>;
     closePage(pageId: string): Promise<void>;
-    listPages(): Promise<
+    listPages(threadId?: string): Promise<
       Array<{
         pageId: string;
         threadId?: string;
-        browserId: string;
         url: string;
         title: string;
         createdAt: number;
@@ -1232,6 +1231,14 @@ export interface MarlouesAPI {
     ): Promise<void>;
     onUrlChanged(
       callback: (threadId: string, pageId: string, url: string) => void,
+    ): () => void;
+    onPageRevealRequested(
+      callback: (
+        threadId: string,
+        pageId: string,
+        url: string,
+        title: string,
+      ) => void,
     ): () => void;
     onTitleChanged(
       callback: (pageId: string, title: string) => void,
@@ -1421,6 +1428,7 @@ export const IPC = {
   BROWSER_LIST_PAGES: "browser:list-pages",
   BROWSER_SCREENSHOT: "browser:screenshot",
   BROWSER_URL_CHANGED: "browser:url-changed",
+  BROWSER_PAGE_REVEAL_REQUESTED: "browser:page-reveal-requested",
   BROWSER_TITLE_CHANGED: "browser:title-changed",
   BROWSER_LOAD_FAILED: "browser:load-failed",
   BROWSER_NAVIGATION_BLOCKED: "browser:navigation-blocked",

@@ -371,10 +371,12 @@ const api: MarlouesAPI = {
     reload: (pageId: string) => ipcRenderer.invoke(IPC.BROWSER_RELOAD, pageId),
     navigationState: (pageId: string) =>
       ipcRenderer.invoke(IPC.BROWSER_NAVIGATION_STATE, pageId),
-    newPage: (url: string) => ipcRenderer.invoke(IPC.BROWSER_NEW_PAGE, url),
+    newPage: (url: string, threadId?: string) =>
+      ipcRenderer.invoke(IPC.BROWSER_NEW_PAGE, url, threadId),
     closePage: (pageId: string) =>
       ipcRenderer.invoke(IPC.BROWSER_CLOSE_PAGE, pageId),
-    listPages: () => ipcRenderer.invoke(IPC.BROWSER_LIST_PAGES),
+    listPages: (threadId?: string) =>
+      ipcRenderer.invoke(IPC.BROWSER_LIST_PAGES, threadId),
     screenshot: () => ipcRenderer.invoke(IPC.BROWSER_SCREENSHOT),
     setViewBounds: (
       pageId: string,
@@ -389,6 +391,17 @@ const api: MarlouesAPI = {
       ) => callback(threadId, pageId, url);
       ipcRenderer.on(IPC.BROWSER_URL_CHANGED, listener);
       return () => ipcRenderer.off(IPC.BROWSER_URL_CHANGED, listener);
+    },
+    onPageRevealRequested: (callback) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        threadId: string,
+        pageId: string,
+        url: string,
+        title: string,
+      ) => callback(threadId, pageId, url, title);
+      ipcRenderer.on(IPC.BROWSER_PAGE_REVEAL_REQUESTED, listener);
+      return () => ipcRenderer.off(IPC.BROWSER_PAGE_REVEAL_REQUESTED, listener);
     },
     onTitleChanged: (callback) => {
       const listener = (

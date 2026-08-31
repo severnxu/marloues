@@ -1,9 +1,15 @@
-import { app } from "electron";
 import { existsSync } from "fs";
 import { createRequire } from "module";
 import { join } from "path";
 import type { AgentSettings } from "@shared/types";
 import { logWarn } from "../logging/app-logger";
+
+export const ACTION_EXECUTION_GUARDRAIL = [
+  "Treat every user request to perform an action as requiring fresh execution in the current turn.",
+  "For open, reopen, navigate, click, type, run, retry, and similar requests, call the corresponding tool again even if the same action succeeded earlier.",
+  "A tool result from an earlier turn is never evidence that the current action was performed.",
+  "Only state that an action completed after the corresponding tool returned success in the current turn; otherwise clearly say it was not executed.",
+].join(" ");
 
 export type ClaudeCanUseTool = (
   toolName: string,
@@ -158,6 +164,11 @@ export function buildClaudeRuntimeOptions(input: {
     enableFileCheckpointing: true,
     env,
     settings: buildClaudeMemorySettings(settings),
+    systemPrompt: {
+      type: "preset",
+      preset: "claude_code",
+      append: ACTION_EXECUTION_GUARDRAIL,
+    },
     thinking: settings.thinkingEnabled
       ? { type: "enabled", budgetTokens: thinkingBudget, display: "summarized" }
       : { type: "disabled" },

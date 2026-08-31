@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { AgentSettings } from "../../client/shared/types";
-import { buildClaudeRuntimeOptions } from "../../client/main/core/config/options-builder";
+import {
+  ACTION_EXECUTION_GUARDRAIL,
+  buildClaudeRuntimeOptions,
+} from "../../client/main/core/config/options-builder";
 
 function settings(): AgentSettings {
   return {
@@ -52,5 +55,22 @@ describe("buildClaudeRuntimeOptions sandbox adapter", () => {
 
     expect(options.permissionMode).toBe("default");
     expect(options.allowDangerouslySkipPermissions).toBe(false);
+  });
+
+  it("requires fresh tool execution before reporting an action complete", () => {
+    const options = buildClaudeRuntimeOptions({
+      settings: settings(),
+      cwd: process.cwd(),
+      env: {},
+      canUseTool: async () => ({ behavior: "allow" }),
+    });
+
+    expect(options.systemPrompt).toEqual({
+      type: "preset",
+      preset: "claude_code",
+      append: ACTION_EXECUTION_GUARDRAIL,
+    });
+    expect(ACTION_EXECUTION_GUARDRAIL).toContain("reopen");
+    expect(ACTION_EXECUTION_GUARDRAIL).toContain("current turn");
   });
 });

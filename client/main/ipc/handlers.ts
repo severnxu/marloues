@@ -2547,6 +2547,20 @@ function registerTerminalBrowserBroadcast(): void {
     },
   );
   cdpBrowserService.on(
+    "page-reveal-requested",
+    (threadId: string, pageId: string, url: string, title: string) => {
+      const win = getMainWindow();
+      if (!win || win.isDestroyed()) return;
+      win.webContents.send(
+        IPC.BROWSER_PAGE_REVEAL_REQUESTED,
+        threadId,
+        pageId,
+        url,
+        title,
+      );
+    },
+  );
+  cdpBrowserService.on(
     "navigation-blocked",
     (pageId: string, url: string, host: string) => {
       const win = getMainWindow();
@@ -3553,16 +3567,21 @@ export function registerHandlers(): void {
 
   // ---------- Browser ----------
 
-  ipcMain.handle(IPC.BROWSER_NEW_PAGE, async (_event, url: string) => {
-    // Delegate to cdpBrowserService so the PageCdpState (required by
-    // setCommentMode / getCommentEvents) is created alongside the view.
-    return cdpBrowserService.newPage(url ?? "about:blank");
-  });
+  ipcMain.handle(
+    IPC.BROWSER_NEW_PAGE,
+    async (_event, url: string, threadId?: string) => {
+      // Delegate to cdpBrowserService so the PageCdpState (required by
+      // setCommentMode / getCommentEvents) is created alongside the view.
+      return cdpBrowserService.newPage(url ?? "about:blank", threadId);
+    },
+  );
   ipcMain.handle(IPC.BROWSER_CLOSE_PAGE, async (_event, pageId: string) => {
     await cdpBrowserService.closePage(pageId);
     browserViewManager.destroyView(pageId);
   });
-  ipcMain.handle(IPC.BROWSER_LIST_PAGES, () => browserViewManager.listViews());
+  ipcMain.handle(IPC.BROWSER_LIST_PAGES, (_event, threadId?: string) =>
+    cdpBrowserService.listPages(threadId),
+  );
   ipcMain.handle(IPC.BROWSER_SCREENSHOT, async () => {
     return browserViewManager.capturePage();
   });

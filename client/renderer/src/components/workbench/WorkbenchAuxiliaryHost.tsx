@@ -12,6 +12,7 @@ export interface WorkbenchAuxiliaryHostProps {
   width: number;
   busy?: boolean;
   onTogglePrimary: () => void;
+  onEnsureOpen: () => void;
   onStartResize: (
     target: ResizeTarget,
     event: ReactPointerEvent<HTMLDivElement>,
@@ -26,6 +27,7 @@ export function WorkbenchAuxiliaryHost({
   width,
   busy = false,
   onTogglePrimary,
+  onEnsureOpen,
   onStartResize,
   regionRef,
   children,
@@ -55,6 +57,7 @@ export function WorkbenchAuxiliaryHost({
             open={mode !== "closed"}
             primary={mode === "primary-overlay"}
             onTogglePrimary={onTogglePrimary}
+            onEnsureOpen={onEnsureOpen}
           />
         )}
       </AuxiliarySidebarShell>

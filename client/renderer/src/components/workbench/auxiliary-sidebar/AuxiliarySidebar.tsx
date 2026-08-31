@@ -86,6 +86,10 @@ function makeTabId(): string {
   return `tab-${++nextTabId}`;
 }
 
+function browserTabId(pageId: string): string {
+  return `browser-tab:${pageId}`;
+}
+
 const REVIEW_TAB_ID = "review-tab";
 
 function subagentTabId(subagentId: string): string {
@@ -102,10 +106,12 @@ export function AuxiliarySidebar({
   open,
   primary,
   onTogglePrimary,
+  onEnsureOpen,
 }: {
   open: boolean;
   primary: boolean;
   onTogglePrimary: () => void;
+  onEnsureOpen: () => void;
 }) {
   const activeSessionId = useUnifiedChatStore((state) => state.activeSessionId);
   const sessionScope = activeSessionId ?? NO_SESSION_SCOPE;
@@ -206,6 +212,40 @@ export function AuxiliarySidebar({
   }, [readThread]);
 
   const reviewTarget = useInspectorStore((state) => state.reviewTarget);
+
+  useEffect(() => {
+    return window.marloues.browser?.onPageRevealRequested?.(
+      (threadId, pageId, _url, title) => {
+        setAuxiliaryStateBySession((current) => {
+          const previous = current[threadId] ?? EMPTY_SESSION_AUXILIARY_STATE;
+          const existing = previous.tabs.find(
+            (tab) => tab.type === "browser" && tab.pageId === pageId,
+          );
+          const id = existing?.id ?? browserTabId(pageId);
+          const tabs = existing
+            ? previous.tabs.map((tab) =>
+                tab.id === id
+                  ? { ...tab, browserTitle: title || tab.browserTitle }
+                  : tab,
+              )
+            : [
+                ...previous.tabs,
+                {
+                  id,
+                  type: "browser" as const,
+                  pageId,
+                  browserTitle: title,
+                },
+              ];
+          return {
+            ...current,
+            [threadId]: { ...previous, tabs, activeTabId: id },
+          };
+        });
+        if (threadId === activeSessionId) onEnsureOpen();
+      },
+    );
+  }, [activeSessionId, onEnsureOpen]);
 
   useEffect(() => {
     setTabs((prev) => {
@@ -321,7 +361,7 @@ export function AuxiliarySidebar({
         setTabs((prev) => [...prev, { id, type }]);
         setActiveTabId(id);
         void window.marloues.browser
-          ?.newPage("about:blank")
+          ?.newPage("about:blank", activeSessionId ?? undefined)
           .then((pageId) => {
             setTabs((prev) =>
               prev.map((tab) => (tab.id === id ? { ...tab, pageId } : tab)),
@@ -334,7 +374,7 @@ export function AuxiliarySidebar({
       }
       addTab(type);
     },
-    [addTab, setActiveTabId, setTabs, workspace?.path],
+    [activeSessionId, addTab, setActiveTabId, setTabs, workspace?.path],
   );
 
   const focusTabAfterUpdate = useCallback((id: string | null) => {
@@ -455,11 +495,12 @@ export function AuxiliarySidebar({
   }, [setTabs]);
 
   // Reload recovery: restore browser tabs from active WebContentsViews
-  const browserRecoveryRef = useRef(false);
+  const browserRecoveryRef = useRef(new Set<string>());
   useEffect(() => {
-    if (browserRecoveryRef.current) return;
-    browserRecoveryRef.current = true;
-    void window.marloues.browser?.listPages().then((pages) => {
+    if (!activeSessionId || browserRecoveryRef.current.has(sessionScope))
+      return;
+    browserRecoveryRef.current.add(sessionScope);
+    void window.marloues.browser?.listPages(activeSessionId).then((pages) => {
       if (!pages || pages.length === 0) return;
       setTabs((prev) => {
         const existing = new Set(
@@ -470,7 +511,7 @@ export function AuxiliarySidebar({
         const restored = pages
           .filter((page) => !existing.has(page.pageId))
           .map((page) => ({
-            id: makeTabId(),
+            id: browserTabId(page.pageId),
             type: "browser" as const,
             pageId: page.pageId,
             browserTitle: page.title,
@@ -478,7 +519,7 @@ export function AuxiliarySidebar({
         return restored.length > 0 ? [...prev, ...restored] : prev;
       });
     });
-  }, [setTabs]);
+  }, [activeSessionId, sessionScope, setTabs]);
 
   // Auto-activate first tab if none is active (e.g., after reload recovery restores tabs)
   useEffect(() => {
