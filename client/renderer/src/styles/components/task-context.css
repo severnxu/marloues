@@ -26,8 +26,13 @@
 
 .thread-summary-panel.is-docked {
   right: 16px;
-  bottom: calc(var(--interaction-dock-safe-area) + 4px);
+  bottom: auto;
+  max-height: calc(100% - 20px);
   box-shadow: var(--shadow-md);
+}
+
+.chat-page.has-inline-header .thread-summary-panel.is-docked {
+  max-height: calc(100% - var(--titlebar-height) - 20px);
 }
 
 .thread-summary-panel.is-floating {

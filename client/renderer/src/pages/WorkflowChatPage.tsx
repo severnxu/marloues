@@ -70,6 +70,7 @@ export function WorkflowChatPage({
   taskPresentation,
   taskContextMode = "hidden",
   taskContextControl,
+  taskContextInWindowTitlebar = true,
   taskContextGitLoading = false,
   onTaskContextRefresh,
   onTaskContextCloseFloating,
@@ -82,6 +83,7 @@ export function WorkflowChatPage({
   taskPresentation: TaskPresentationModel;
   taskContextMode?: TaskContextMode;
   taskContextControl?: WorkflowChatHeaderThreadSummary;
+  taskContextInWindowTitlebar?: boolean;
   taskContextGitLoading?: boolean;
   onTaskContextRefresh: () => void;
   onTaskContextCloseFloating: () => void;
@@ -631,6 +633,7 @@ export function WorkflowChatPage({
         <WorkflowChatHeader
           titleHidden={titleHidden}
           threadSummary={taskContextControl}
+          threadSummaryInWindowTitlebar={taskContextInWindowTitlebar}
         />
       ) : null}
 

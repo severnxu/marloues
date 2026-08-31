@@ -62,6 +62,18 @@ export function deriveAuxiliaryMode(
   return openForActiveSession ? "open" : "closed";
 }
 
+/**
+ * On macOS an open auxiliary column owns the window's trailing titlebar area,
+ * so the conversation summary control stays in the conversation titlebar.
+ * A closed auxiliary column keeps the established window-titlebar placement.
+ */
+export function shouldPlaceThreadSummaryInWindowTitlebar(
+  isMacOS: boolean,
+  auxiliaryOpen: boolean,
+): boolean {
+  return !isMacOS || !auxiliaryOpen;
+}
+
 export interface WorkbenchLayoutState {
   // Primary sidebar
   primaryOpen: boolean;

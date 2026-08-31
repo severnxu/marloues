@@ -27,12 +27,14 @@ export function WorkflowChatHeader({
   icon: HeaderIcon = Folder,
   className = "",
   threadSummary,
+  threadSummaryInWindowTitlebar = true,
 }: {
   titleHidden?: boolean;
   title?: string;
   icon?: LucideIcon;
   className?: string;
   threadSummary?: WorkflowChatHeaderThreadSummary;
+  threadSummaryInWindowTitlebar?: boolean;
 }) {
   const [titlebarSlot, setTitlebarSlot] = useState<HTMLElement | false | null>(
     null,
@@ -55,6 +57,11 @@ export function WorkflowChatHeader({
       className={`thread-summary-toggle${threadSummary.open ? " is-active" : ""}`}
       data-thread-summary-toggle
       data-state={threadSummary.open ? "open" : "closed"}
+      data-placement={
+        threadSummaryInWindowTitlebar
+          ? "window-titlebar"
+          : "conversation-titlebar"
+      }
       aria-label={
         threadSummary.available
           ? threadSummary.open
@@ -89,9 +96,11 @@ export function WorkflowChatHeader({
             ? formatSessionTitle(activeSessionTitle)
             : title}
       </span>
-      {threadSummaryControl && titlebarSlot
+      {threadSummaryControl && threadSummaryInWindowTitlebar && titlebarSlot
         ? createPortal(threadSummaryControl, titlebarSlot)
-        : titlebarSlot === false || typeof document === "undefined"
+        : !threadSummaryInWindowTitlebar ||
+            titlebarSlot === false ||
+            typeof document === "undefined"
           ? threadSummaryControl
           : null}
     </div>
