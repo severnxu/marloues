@@ -1,13 +1,15 @@
 /* Shared controls and Chromium scrollbar behavior. */
 
-::-webkit-scrollbar {
+::-webkit-scrollbar,
+.scrollbar-thin::-webkit-scrollbar {
   -webkit-appearance: none !important;
   width: 8px !important;
   height: 8px !important;
   background: transparent !important;
 }
 
-::-webkit-scrollbar-button {
+::-webkit-scrollbar-button,
+.scrollbar-thin::-webkit-scrollbar-button {
   -webkit-appearance: none !important;
   display: none !important;
   width: 0 !important;
@@ -15,7 +17,8 @@
   background: transparent !important;
 }
 
-::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb,
+.scrollbar-thin::-webkit-scrollbar-thumb {
   -webkit-appearance: none !important;
   min-width: 40px !important;
   min-height: 40px !important;
@@ -27,45 +30,39 @@
   transition: box-shadow var(--motion-fast) ease !important;
 }
 
-::-webkit-scrollbar-thumb:hover {
+::-webkit-scrollbar-thumb:hover,
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
   box-shadow: var(--marloues-scrollbar-thumb-shadow) !important;
 }
 
 ::-webkit-scrollbar-track,
 ::-webkit-scrollbar-track-piece,
-::-webkit-scrollbar-corner {
+::-webkit-scrollbar-corner,
+.scrollbar-thin::-webkit-scrollbar-track,
+.scrollbar-thin::-webkit-scrollbar-track-piece {
   -webkit-appearance: none !important;
   border-radius: 999px !important;
   background: transparent !important;
 }
 
-/* Thin scrollbar variant (matches prototype). */
 .scrollbar-thin {
-  scrollbar-width: thin !important;
-  scrollbar-color: var(--border-strong) transparent !important;
+  scrollbar-color: transparent transparent !important;
+  scrollbar-width: auto !important;
 }
 
-.scrollbar-thin::-webkit-scrollbar {
-  width: 10px !important;
-  height: 10px !important;
+/* Codex contract: a scroll surface reveals its thumb while hovered or moving. */
+.scrollbar-thin:hover,
+.scrollbar-thin:focus-within,
+.marloues-scrolling {
+  --marloues-scrollbar-thumb-shadow: var(
+    --marloues-scrollbar-thumb-shadow-visible
+  );
 }
 
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  border-radius: 999px !important;
-  background: var(--border-strong) !important;
-  border: 2px solid transparent !important;
-  background-clip: padding-box !important;
-  min-height: 36px !important;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: var(--text-3) !important;
-  background-clip: padding-box !important;
-  border: 2px solid transparent !important;
-}
-
-.scrollbar-thin::-webkit-scrollbar-track {
-  background: transparent !important;
+.scrollbar-thin:hover,
+.scrollbar-thin:focus-within {
+  scrollbar-color: color-mix(in srgb, var(--text-2) 36%, transparent)
+    transparent !important;
 }
 
 .marloues-dialog-overlay {
@@ -77,18 +74,17 @@
 }
 
 .icon-button {
-  display: inline-grid;
+  display: grid;
+  width: 30px;
+  height: 28px;
   place-items: center;
-  min-width: 30px;
-  height: 30px;
   border: 0;
-  border-radius: var(--control-radius);
+  border-radius: 7px;
   background: transparent;
   color: var(--text-2);
-  cursor: pointer;
   transition:
-    background var(--motion-fast) var(--ease),
-    color var(--motion-fast) var(--ease);
+    background-color var(--motion-fast) ease,
+    color var(--motion-fast) ease;
 }
 
 .icon-button:hover {
@@ -99,7 +95,7 @@
 .chat-header .icon-button {
   width: 28px;
   height: 28px;
-  border-radius: var(--control-radius);
+  border-radius: 7px;
   color: var(--text-2);
   pointer-events: auto;
 }

@@ -8,21 +8,21 @@
     width: 28px;
     height: 28px;
     border: 0;
-    border-radius: var(--control-radius);
+    border-radius: 8px;
     background: transparent;
     padding: 0;
     cursor: pointer;
     transition: 160ms ease;
-    color: var(--text-2);
+    color: var(--muted);
   }
 
   .sidebar-update-badge-available {
-    color: var(--accent);
+    color: hsl(145 63% 55%);
   }
 
   .sidebar-update-badge-available:hover {
-    background: var(--raised-2);
-    color: var(--accent);
+    background: hsl(145 56% 44% / 0.16);
+    color: hsl(145 72% 64%);
   }
 
   .sidebar-update-badge-ready {
@@ -35,11 +35,11 @@
   }
 
   .sidebar-update-badge-ready:hover {
-    background: var(--raised-2);
+    background: var(--hover);
   }
 
   .sidebar-update-ready-label {
-    font-size: var(--text-xs);
+    font-size: 11px;
     font-weight: 600;
     line-height: 1;
   }
@@ -51,7 +51,7 @@
   }
 
   .sidebar-update-badge-error {
-    color: var(--danger);
+    color: hsl(0 76% 66%);
   }
 
   .sidebar-update-icon-spinning {
@@ -60,7 +60,7 @@
 }
 @layer marloues-components.cascade-0317 {
   .sidebar-update-badge-idle {
-    color: var(--text-2);
+    color: var(--muted);
   }
 
   .sidebar-update-badge-idle:hover {
@@ -68,7 +68,7 @@
   }
 
   .sidebar-update-badge.is-open {
-    background: var(--raised-2);
+    background: hsl(0 0% 0% / 0.12);
   }
 
   .sidebar-update-progress-ring {
@@ -86,12 +86,14 @@
   }
 
   .sidebar-update-popover {
-    background: var(--surface-popover);
+    background: hsl(0 0% 100% / 0.04);
     backdrop-filter: blur(18px);
-    border: 1px solid var(--border);
-    border-radius: var(--card-radius);
+    border: 1px solid hsl(0 0% 100% / 0.08);
+    border-radius: 12px;
     padding: 0;
-    box-shadow: var(--shadow-md);
+    box-shadow:
+      0 8px 32px hsl(0 0% 0% / 0.4),
+      0 0 0 1px hsl(0 0% 100% / 0.04);
     color: inherit;
     display: flex;
     flex-direction: column;
@@ -105,11 +107,11 @@
     justify-content: space-between;
     gap: 12px;
     padding: 12px 16px;
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid hsl(0 0% 100% / 0.06);
   }
 
   .sidebar-update-popover-title {
-    font-size: var(--text-base);
+    font-size: 13px;
     font-weight: 600;
     letter-spacing: 0;
   }
@@ -124,14 +126,14 @@
     flex-direction: column;
     gap: 12px;
     overflow: auto;
-    font-size: var(--text-base);
+    font-size: 13px;
     line-height: 1.55;
   }
 
   .sidebar-update-popover-hint {
     margin: 0;
-    color: var(--text-2);
-    font-size: var(--text-sm);
+    color: var(--muted);
+    font-size: 12px;
   }
 
   .sidebar-update-components {
@@ -144,12 +146,12 @@
     align-items: center;
     justify-content: space-between;
     min-width: 0;
-    font-size: var(--text-sm);
+    font-size: 12px;
     font-variant-numeric: tabular-nums;
   }
 
   .sidebar-update-components small {
-    color: var(--text-2);
+    color: var(--muted);
   }
 
   .sidebar-update-popover-body > button {
@@ -158,17 +160,17 @@
     gap: 6px;
     justify-content: center;
     padding: 8px 12px;
-    border-radius: var(--control-radius);
-    border: 1px solid var(--border);
-    background: transparent;
+    border-radius: 8px;
+    border: 1px solid hsl(0 0% 100% / 0.08);
+    background: hsl(0 0% 100% / 0.04);
     color: inherit;
-    font-size: var(--text-base);
+    font-size: 13px;
     cursor: pointer;
     transition: 160ms ease;
   }
 
   .sidebar-update-popover-body > button:hover {
-    background: var(--raised-2);
+    background: hsl(0 0% 100% / 0.08);
   }
 
   .sidebar-update-popover-body > button.primary {
@@ -178,7 +180,7 @@
   }
 
   .sidebar-update-popover-body > button.primary:hover {
-    background: var(--accent);
+    background: hsl(217 90% 64%);
   }
 
   .sidebar-update-popover-body > button:disabled {
@@ -206,15 +208,15 @@
   }
 
   .sidebar-update-popover-progress-bytes {
-    font-size: var(--text-sm);
-    color: var(--text-2);
+    font-size: 12px;
+    color: var(--muted);
     font-variant-numeric: tabular-nums;
   }
 
   .sidebar-update-popover-progress-bar {
     height: 6px;
     border-radius: 999px;
-    background: var(--raised-3);
+    background: hsl(0 0% 100% / 0.08);
     overflow: hidden;
   }
 
@@ -229,15 +231,15 @@
     align-items: center;
     gap: 8px;
     margin: 0;
-    color: var(--danger);
+    color: hsl(0 76% 70%);
     font-weight: 500;
   }
 
   .sidebar-update-popover-error-detail {
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--control-radius);
+    border: 1px solid hsl(0 0% 100% / 0.08);
+    border-radius: 8px;
     padding: 0;
-    font-size: var(--text-sm);
+    font-size: 12px;
     overflow: hidden;
   }
 
@@ -248,7 +250,7 @@
     align-items: center;
     gap: 6px;
     user-select: none;
-    color: var(--text-2);
+    color: var(--muted);
   }
 
   .sidebar-update-popover-error-detail pre {
@@ -258,18 +260,18 @@
     word-break: break-word;
     max-height: 160px;
     overflow: auto;
-    background: var(--surface-navigation);
+    background: hsl(0 0% 0% / 0.18);
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
-    font-size: var(--text-xs);
+    font-size: 11px;
   }
 
   .sidebar-update-popover-error-detail .sidebar-update-popover-copy-error {
     margin: 6px 10px 8px;
     padding: 4px 8px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-subtle);
-    background: var(--raised-2);
-    font-size: var(--text-xs);
+    border-radius: 6px;
+    border: 1px solid hsl(0 0% 100% / 0.08);
+    background: hsl(0 0% 100% / 0.04);
+    font-size: 11px;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -290,10 +292,10 @@
     justify-content: space-between;
     gap: 12px;
     padding: 8px 16px;
-    font-size: var(--text-xs);
-    color: var(--text-2);
-    border-top: 1px solid var(--border-subtle);
-    background: var(--surface-navigation);
+    font-size: 11px;
+    color: var(--muted);
+    border-top: 1px solid hsl(0 0% 100% / 0.06);
+    background: hsl(0 0% 0% / 0.12);
   }
 
   .sidebar-update-popover-footer code {
@@ -301,9 +303,9 @@
   }
 
   .release-notes {
-    font-size: var(--text-base);
+    font-size: 13px;
     line-height: 1.6;
-    color: var(--text-2);
+    color: var(--muted);
     max-height: 240px;
     overflow: auto;
   }
@@ -313,21 +315,21 @@
   }
 
   .release-notes-h1 {
-    font-size: var(--text-base);
+    font-size: 13px;
     font-weight: 600;
     margin: 8px 0 4px;
     color: inherit;
   }
 
   .release-notes-h2 {
-    font-size: var(--text-base);
+    font-size: 13px;
     font-weight: 600;
     margin: 8px 0 4px;
     color: inherit;
   }
 
   .release-notes-h3 {
-    font-size: var(--text-base);
+    font-size: 13px;
     font-weight: 600;
     margin: 8px 0 4px;
     color: inherit;
@@ -350,10 +352,10 @@
 
   .release-notes-inline-code {
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
-    background: var(--surface-navigation);
+    background: hsl(0 0% 100% / 0.08);
     border-radius: 4px;
     padding: 1px 4px;
-    font-size: var(--text-sm);
+    font-size: 12px;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -375,26 +377,77 @@
     }
   }
 }
+/* light theme overrides migrated from legacy tokens. */
+:root[data-theme="light"] .sidebar-update-badge-idle:hover {
+  background: hsl(217 30% 90%);
+}
 
-@layer marloues-components.cascade-0320 {
-  /* ── Update panel (from prototype) ── */
-  .update-status-panel {
-    display: grid;
-    gap: 4px;
-    padding: var(--space-3) var(--space-4);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--control-radius);
-    background: var(--raised-1);
-  }
+:root[data-theme="light"] .sidebar-update-popover-progress-bar {
+  background: hsl(217 20% 90%);
+}
 
-  .update-status-panel strong {
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--text-1);
-  }
+:root[data-theme="light"] .sidebar-update-popover-error-detail pre {
+  background: hsl(217 20% 96%);
+}
 
-  .update-status-panel small {
-    color: var(--text-3);
-    font-size: var(--text-xs);
-  }
+:root[data-theme="light"] .sidebar-update-popover-error-detail {
+  border-color: hsl(217 20% 86%);
+}
+
+:root[data-theme="light"] .sidebar-update-popover-footer {
+  background: hsl(217 20% 96%);
+  border-top-color: hsl(217 20% 90%);
+}
+
+:root[data-theme="light"] .sidebar-update-popover-body > button:hover {
+  background: hsl(217 30% 94%);
+}
+
+:root[data-theme="light"] .sidebar-update-popover-body > button {
+  background: hsl(0 0% 96%);
+  border-color: hsl(217 20% 86%);
+}
+
+:root[data-theme="light"] .sidebar-update-popover-header {
+  border-bottom-color: hsl(217 20% 90%);
+}
+
+:root[data-theme="light"] .sidebar-update-popover {
+  background: hsl(0 0% 100%);
+  border-color: hsl(217 20% 86%);
+  box-shadow:
+    0 8px 32px hsl(217 30% 20% / 0.18),
+    0 0 0 1px hsl(217 20% 92%);
+}
+
+:root[data-theme="light"] .sidebar-update-badge-available {
+  color: hsl(145 52% 36%);
+}
+
+/* warm theme overrides migrated from legacy tokens. */
+:root[data-theme="warm"] .sidebar-update-popover-footer {
+  background: hsl(28 30% 94%);
+  border-top-color: hsl(28 30% 84%);
+}
+
+:root[data-theme="warm"] .sidebar-update-popover-body > button:hover {
+  background: hsl(28 30% 88%);
+}
+
+:root[data-theme="warm"] .sidebar-update-popover-body > button {
+  background: hsl(28 30% 92%);
+  border-color: hsl(28 30% 80%);
+}
+
+:root[data-theme="warm"] .sidebar-update-popover-header {
+  border-bottom-color: hsl(28 30% 86%);
+}
+
+:root[data-theme="warm"] .sidebar-update-popover {
+  background: hsl(36 30% 96%);
+  border-color: hsl(28 30% 84%);
+}
+
+:root[data-theme="warm"] .sidebar-update-badge-available {
+  color: hsl(145 45% 38%);
 }

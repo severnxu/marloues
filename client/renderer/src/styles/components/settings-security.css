@@ -1,421 +1,262 @@
 /* settings-security component styles. Theme values come from ../tokens.css. */
-@layer marloues-components.cascade-0140 {
-  .security-settings {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
 
-  .security-domain-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .security-domain-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    border: 1px solid var(--border-subtle);
-    border-radius: 999px;
-    background: var(--raised-1);
-    padding: 3px 8px 3px 12px;
-    font-size: var(--text-sm);
-  }
-
-  .security-domain-chip button {
-    border: none;
-    background: transparent;
-    color: var(--text-2);
-    cursor: pointer;
-    padding: 0;
-    display: inline-flex;
-  }
-
-  .security-domain-chip button:hover {
-    color: var(--danger);
-  }
-
-  .security-domain-add {
-    display: flex;
-    gap: 6px;
-    margin-top: 8px;
-  }
-
-  .security-rule-add {
-    display: flex;
-    gap: 6px;
-    margin-top: 8px;
-  }
-
-  .security-domain-add input {
-    flex: 1;
-    min-width: 0;
-    border: 1px solid var(--border);
-    border-radius: var(--control-radius);
-    background: var(--raised-1);
-    color: var(--text-1);
-    padding: 6px 10px;
-    font-size: var(--text-sm);
-  }
-
-  .security-rule-add input {
-    flex: 1;
-    min-width: 0;
-    border: 1px solid var(--border);
-    border-radius: var(--control-radius);
-    background: var(--raised-1);
-    color: var(--text-1);
-    padding: 6px 10px;
-    font-size: var(--text-sm);
-  }
-
-  .security-domain-add input:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-
-  .security-rule-add input:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-
-  .security-domain-add button {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    border: none;
-    border-radius: var(--control-radius);
-    background: var(--accent);
-    color: hsl(0 0% 100%);
-    padding: 6px 12px;
-    font-size: var(--text-sm);
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-
-  .security-rule-add button {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    border: none;
-    border-radius: var(--control-radius);
-    background: var(--accent);
-    color: hsl(0 0% 100%);
-    padding: 6px 12px;
-    font-size: var(--text-sm);
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-
-  .security-domain-add button:hover {
-    opacity: 0.9;
-  }
-
-  .security-rule-add button:hover {
-    opacity: 0.9;
-  }
-
-  .security-rule-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-
-  .security-rule-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--control-radius);
-    background: var(--raised-1);
-    padding: 10px;
-  }
-
-  .security-rule-info {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .security-rule-info strong {
-    font-size: var(--text-sm);
-    color: var(--text-1);
-  }
-
-  .security-rule-info code {
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-    color: var(--accent);
-    word-break: break-all;
-  }
-
-  .security-rule-info small {
-    font-size: 10px;
-    color: var(--text-2);
-  }
-
-  .security-rule-row button {
-    border: none;
-    background: transparent;
-    color: var(--text-2);
-    cursor: pointer;
-    padding: 4px;
-    display: inline-flex;
-    flex-shrink: 0;
-  }
-
-  .security-rule-row button:hover {
-    color: var(--danger);
-  }
-}
-@layer marloues-components.cascade-0142 {
-  .security-domain-block {
-    margin-top: 12px;
-  }
-
-  .security-rule-block {
-    margin-top: 12px;
-  }
-
-  .security-block-label {
-    display: block;
-    font-size: var(--text-sm);
-    font-weight: 500;
-    color: var(--text-1);
-  }
-
-  .security-block-desc {
-    margin: 2px 0 8px;
-    font-size: var(--text-xs);
-    color: var(--text-2);
-  }
+.security-settings {
+  display: grid;
+  gap: 16px;
 }
 
-@layer marloues-components.cascade-0160 {
-  /* ── Security controls (from prototype) ── */
-  .security-select-control {
-    display: inline-flex;
-    min-width: 0;
-  }
+.security-select-control {
+  display: inline-flex;
+  min-width: 0;
+}
 
+.security-select-control .settings-select {
+  width: min(220px, 40vw);
+}
+
+input.security-number-control {
+  width: 80px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  background: var(--raised-1);
+  color: var(--text-1);
+  padding: 7px 10px;
+  font-size: var(--text-sm);
+  font-weight: 560;
+  line-height: normal;
+  transition:
+    border-color var(--motion-fast) var(--ease),
+    background var(--motion-fast) var(--ease),
+    box-shadow var(--motion-fast) var(--ease);
+}
+
+input.security-number-control:focus {
+  border-color: var(--accent);
+  background: var(--raised-2);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.security-builtins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.security-builtins code {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--raised-1);
+  color: var(--text-2);
+  padding: 3px 8px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.security-item-group {
+  display: grid;
+  gap: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--control-radius);
+  background: var(--raised-1);
+  padding: var(--space-2) var(--space-3);
+}
+
+.security-group-head {
+  display: flex;
+  min-height: 28px;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.security-group-toggle {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-3);
+  padding: 0;
+  cursor: pointer;
+}
+
+.security-group-toggle:hover {
+  background: var(--raised-2);
+  color: var(--text-1);
+}
+
+.security-group-label {
+  min-width: 0;
+  flex: 1;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  font-weight: 560;
+}
+
+.security-group-count {
+  color: var(--text-3);
+  font-size: var(--text-xs);
+  font-weight: 560;
+}
+
+.security-item-input-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.security-item-input-row input {
+  min-width: 0;
+  min-height: 30px;
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  background: var(--raised-1);
+  color: var(--text-1);
+  padding: 6px 10px;
+  font-size: var(--text-sm);
+  transition:
+    border-color var(--motion-fast) var(--ease),
+    box-shadow var(--motion-fast) var(--ease);
+}
+
+.security-item-input-row input:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.security-item-add {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  background: transparent;
+  color: var(--text-2);
+  padding: 0 10px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.security-item-add:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--raised-2);
+  color: var(--text-1);
+}
+
+.security-item-add:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.security-item-list {
+  display: grid;
+  gap: 4px;
+}
+
+.security-item-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.security-item-row code {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--raised-1);
+  color: var(--text-2);
+  padding: 5px 10px 5px 8px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  transition:
+    border-color var(--motion-fast) var(--ease),
+    background var(--motion-fast) var(--ease);
+}
+
+.security-item-icon {
+  display: inline-grid;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--text-3);
+}
+
+.security-item-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.security-item-text {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.security-item-row:hover code {
+  border-color: var(--border);
+  background: var(--raised-2);
+}
+
+.security-item-remove {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  min-height: 22px;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--raised-2);
+  color: var(--text-3);
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition:
+    opacity var(--motion-fast) var(--ease),
+    background var(--motion-fast) var(--ease),
+    color var(--motion-fast) var(--ease);
+}
+
+.security-item-row:hover .security-item-remove,
+.security-item-remove:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.security-item-remove:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.security-item-empty {
+  color: var(--text-3);
+  padding: 4px 0;
+  font-size: var(--text-xs);
+}
+
+@media (max-width: 720px) {
   .security-select-control .settings-select {
-    width: min(220px, 40vw);
-  }
-
-  .security-number-control {
-    width: 80px;
-    min-width: 0;
-    border: 1px solid var(--border);
-    border-radius: var(--control-radius);
-    background: var(--raised-1);
-    color: var(--text-1);
-    padding: 7px 10px;
-    font-size: var(--text-sm);
-    font-weight: 560;
-    transition:
-      border-color var(--motion-fast) var(--ease),
-      background var(--motion-fast) var(--ease),
-      box-shadow var(--motion-fast) var(--ease);
-  }
-
-  .security-number-control:focus {
-    border-color: var(--accent);
-    background: var(--raised-2);
-    box-shadow: 0 0 0 3px var(--accent-soft);
-    outline: none;
-  }
-
-  .security-builtins-field {
-  }
-
-  .security-builtins {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .security-builtins code {
-    padding: 3px 8px;
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-sm);
-    background: var(--raised-1);
-    color: var(--text-2);
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-  }
-
-  /* ── Security item groups (from prototype) ── */
-  .security-item-group {
-    display: grid;
-    gap: var(--space-2);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--control-radius);
-    background: var(--raised-1);
-    padding: var(--space-2) var(--space-3);
-  }
-
-  .security-group-head {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    min-height: 28px;
-  }
-
-  .security-group-toggle {
-    display: inline-grid;
-    place-items: center;
-    width: 20px;
-    height: 20px;
-    border: 0;
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--text-3);
-    cursor: pointer;
-  }
-
-  .security-group-toggle:hover {
-    background: var(--raised-2);
-    color: var(--text-1);
-  }
-
-  .security-group-label {
-    flex: 1;
-    min-width: 0;
-    color: var(--text-2);
-    font-size: var(--text-sm);
-    font-weight: 560;
-  }
-
-  .security-group-count {
-    color: var(--text-3);
-    font-size: var(--text-xs);
-    font-weight: 560;
-  }
-
-  .security-item-input-row {
-    display: flex;
-    gap: var(--space-2);
-    align-items: center;
-  }
-
-  .security-item-input-row input {
-    flex: 1;
-    min-width: 0;
-    min-height: 30px;
-    border: 1px solid var(--border);
-    border-radius: var(--control-radius);
-    background: var(--raised-1);
-    color: var(--text-1);
-    padding: 6px 10px;
-    font-size: var(--text-sm);
-    transition:
-      border-color var(--motion-fast) var(--ease),
-      box-shadow var(--motion-fast) var(--ease);
-  }
-
-  .security-item-input-row input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-soft);
-    outline: none;
-  }
-
-  .security-item-input-row .btn {
-    min-height: 30px;
-    padding: 0 10px;
-  }
-
-  .security-item-list {
-    display: grid;
-    gap: 4px;
-  }
-
-  .security-item-row {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    padding: 0;
-    position: relative;
-  }
-
-  .security-item-row code {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    overflow: hidden;
-    padding: 5px 10px 5px 8px;
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-sm);
-    background: var(--raised-1);
-    color: var(--text-2);
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-    line-height: 1.4;
-    transition:
-      border-color var(--motion-fast) var(--ease),
-      background var(--motion-fast) var(--ease);
-  }
-
-  .security-item-row code .security-item-icon {
-    display: inline-grid;
-    place-items: center;
-    flex: 0 0 auto;
-    width: 14px;
-    height: 14px;
-    color: var(--text-3);
-  }
-
-  .security-item-row code .security-item-icon svg {
-    width: 14px;
-    height: 14px;
-  }
-
-  .security-item-row code span.security-item-text {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .security-item-row:hover code {
-    border-color: var(--border);
-    background: var(--raised-2);
-  }
-
-  .security-item-remove {
-    width: 22px;
-    height: 22px;
-    flex: 0 0 auto;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity var(--motion-fast) var(--ease);
-    position: absolute;
-    right: 4px;
-    top: 50%;
-    transform: translateY(-50%);
-    border-radius: var(--radius-sm);
-    background: var(--raised-2);
-  }
-
-  .security-item-row:hover .security-item-remove {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .security-item-remove:hover {
-    background: var(--danger-soft);
-    color: var(--danger);
-  }
-
-  .security-item-empty {
-    color: var(--text-3);
-    font-size: var(--text-xs);
-    padding: 4px 0;
+    width: min(220px, 100%);
   }
 }
