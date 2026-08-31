@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Settings2 } from "lucide-react";
-import { MAX_ATTACHMENTS, skillAttachment } from "./composer-attachments";
+import {
+  browserCommentAttachment,
+  MAX_ATTACHMENTS,
+  skillAttachment,
+} from "./composer-attachments";
 import type { SlashCommandItem } from "../../../types";
 import { WorkflowImageLightbox, type WorkflowImagePreview } from "../";
 import { SlashCommandPopover } from "./SlashCommandPopover";
@@ -33,6 +37,7 @@ const COMPOSER_ICONS = CONVERSATION_ICONS.composer;
 export function WorkflowComposerShell({
   conversationKey,
   input,
+  incomingBrowserComment,
   isGenerating,
   securityMode: controlledSecurityMode,
   selectedProvider,
@@ -98,6 +103,25 @@ export function WorkflowComposerShell({
     setAttachments([]);
     setPreviewImage(null);
   }, [conversationKey, setAttachments]);
+
+  useEffect(() => {
+    if (!incomingBrowserComment) return;
+    setAttachments((previous) => {
+      const duplicate = previous.some(
+        (attachment) =>
+          attachment.kind === "browser-comment" &&
+          attachment.payload.commentId ===
+            incomingBrowserComment.payload.commentId &&
+          attachment.payload.pageUrl === incomingBrowserComment.payload.pageUrl,
+      );
+      if (duplicate || previous.length >= MAX_ATTACHMENTS) return previous;
+      return [
+        ...previous,
+        browserCommentAttachment(incomingBrowserComment.payload),
+      ];
+    });
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }, [incomingBrowserComment, setAttachments]);
   const {
     query: composerQuery,
     items: composerSuggestions,

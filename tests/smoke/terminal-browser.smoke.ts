@@ -1,5 +1,6 @@
 import {
   _electron as electron,
+  chromium,
   expect,
 } from "../../client/node_modules/@playwright/test";
 import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
@@ -518,6 +519,147 @@ async function testTabSwitching(window: ElectronPage): Promise<void> {
   console.info("Test 7: tab switching — ok");
 }
 
+/**
+ * Test 8: Browser annotation → editable composer → structured message.
+ *
+ * The interaction with the local fixture happens through Electron's exposed
+ * CDP endpoint, so the element selection and popup submission run inside the
+ * actual WebContentsView that the user sees.
+ */
+async function testBrowserAnnotationComposer(
+  window: ElectronPage,
+  remoteBrowser: Awaited<ReturnType<typeof chromium.connectOverCDP>>,
+  annotationPageUrl: string,
+): Promise<void> {
+  await switchToTab(window, 2);
+  await window.waitForTimeout(300);
+
+  const browserPages = await listBrowserPages(window);
+  const annotationPageId = browserPages.find((page) =>
+    page.url.includes("page1.html"),
+  )?.pageId;
+  expect(annotationPageId).toBeDefined();
+
+  await window.evaluate(
+    ({ pageId, url }) => window.marloues.browser.viewNavigate(pageId, url),
+    { pageId: annotationPageId!, url: annotationPageUrl },
+  );
+
+  const urlInput = window
+    .locator(
+      "section.auxiliary-view-panel:not([hidden]) .browser-panel-url-input",
+    )
+    .first();
+  await poll(
+    () => urlInput.inputValue(),
+    (value) => value.includes("annotation-page.html"),
+  );
+
+  const annotationPage = (await poll(
+    async () => {
+      const pages = remoteBrowser
+        .contexts()
+        .flatMap((context) => context.pages());
+      return pages.find((page) => page.url() === annotationPageUrl) ?? null;
+    },
+    (page) => page !== null,
+    15_000,
+  ))!;
+
+  const annotationModeButton = window
+    .locator("section.auxiliary-view-panel:not([hidden])")
+    .getByTitle("进入标注模式");
+  await expect(annotationModeButton).toBeVisible();
+  await annotationModeButton.click();
+
+  await annotationPage.locator("#annotation-target").click();
+  await expect(annotationPage.locator(".ec-popup-textarea")).toBeVisible();
+  await annotationPage.locator(".ec-popup-textarea").fill("第一个真实页面注释");
+  await annotationPage.locator(".ec-popup-send").click();
+
+  const composer = window.locator(".composer textarea");
+  await expect(composer).toContainText("页面注释", { timeout: 15_000 });
+  await expect(composer).toContainText("第一个真实页面注释");
+  const firstChip = window
+    .locator(".composer-skill-token")
+    .filter({ hasText: "页面注释" });
+  await expect(firstChip).toHaveCount(1);
+  await expect(firstChip).toContainText("<button>");
+
+  await window.screenshot({
+    path: join(artifactsDir, "09-browser-annotation-composer.png"),
+    fullPage: true,
+  });
+
+  // Removing the metadata chip must leave the user-editable text intact.
+  await firstChip.getByRole("button", { name: "移除页面注释" }).click();
+  await expect(firstChip).toHaveCount(0);
+  await expect(composer).toContainText("第一个真实页面注释");
+
+  // Add a second annotation so the message sent below retains structured
+  // browser metadata after the remove-chip interaction has been verified.
+  await annotationPage.locator("#annotation-target-two").click();
+  await expect(annotationPage.locator(".ec-popup-textarea")).toBeVisible();
+  await annotationPage.locator(".ec-popup-textarea").fill("第二个真实页面注释");
+  await annotationPage.locator(".ec-popup-send").click();
+
+  await expect(firstChip).toHaveCount(1, { timeout: 15_000 });
+  const composedText = await composer.inputValue();
+  await composer.fill(`${composedText}\n\n补充说明：请优先处理这个按钮。`);
+
+  await window.getByRole("button", { name: "发送消息" }).click();
+
+  const persisted = await poll(
+    () =>
+      window.evaluate(async () => {
+        const session = (await window.marloues.chat.listSessions())[0];
+        if (!session) return null;
+        const thread = await window.marloues.chat.readThread(session.id);
+        const userContent =
+          thread?.turns
+            .flatMap((turn) => turn.items)
+            .filter((item) => item.type === "userMessage")
+            .flatMap((item) => item.content) ?? [];
+        return { sessionId: session.id, userContent };
+      }),
+    (value) =>
+      Boolean(
+        value?.userContent.some(
+          (item) =>
+            item.type === "browserComment" &&
+            item.comment === "第二个真实页面注释",
+        ),
+      ),
+    15_000,
+  );
+
+  const textItem = persisted!.userContent.find((item) => item.type === "text");
+  expect(textItem?.type).toBe("text");
+  if (textItem?.type === "text") {
+    expect(textItem.text).toContain("第一个真实页面注释");
+    expect(textItem.text).toContain("补充说明：请优先处理这个按钮。");
+  }
+  const browserComment = persisted!.userContent.find(
+    (item) =>
+      item.type === "browserComment" && item.comment === "第二个真实页面注释",
+  );
+  expect(browserComment?.type).toBe("browserComment");
+  if (browserComment?.type === "browserComment") {
+    expect(browserComment.ref).toContain("annotation-target-two");
+    expect(browserComment.tagName.toLowerCase()).toBe("button");
+    expect(browserComment.pageUrl).toBe(annotationPageUrl);
+  }
+
+  await expect(window.locator(".workflow-user-message").first()).toContainText(
+    "第二个真实页面注释",
+  );
+  await window.screenshot({
+    path: join(artifactsDir, "10-browser-annotation-sent.png"),
+    fullPage: true,
+  });
+  console.info("Test 8: browser annotation composer flow — ok");
+}
+
 // ---------------------------------------------------------------------------
 // Settings helpers
 // ---------------------------------------------------------------------------
@@ -620,6 +762,7 @@ async function main(): Promise<void> {
   // Local HTML test pages for browser testing (no network dependency)
   const page1Path = join(workspace, "page1.html");
   const page2Path = join(workspace, "page2.html");
+  const annotationPagePath = join(workspace, "annotation-page.html");
   writeFileSync(
     page1Path,
     "<!DOCTYPE html><html><head><title>Page One</title></head>" +
@@ -632,8 +775,15 @@ async function main(): Promise<void> {
       '<body><h1 id="marker">PAGE_TWO_MARKER</h1></body></html>',
     "utf-8",
   );
+  writeFileSync(
+    annotationPagePath,
+    "<!DOCTYPE html><html><head><title>Annotation Page</title></head>" +
+      '<body><main><h1>ANNOTATION_PAGE_MARKER</h1><button id="annotation-target">ANNOTATION_TARGET_ONE</button><button id="annotation-target-two">ANNOTATION_TARGET_TWO</button></main></body></html>',
+    "utf-8",
+  );
   const page1Url = pathToFileURL(page1Path).href;
   const page2Url = pathToFileURL(page2Path).href;
+  const annotationPageUrl = pathToFileURL(annotationPagePath).href;
 
   console.info("=== Marloues terminal-browser smoke ===");
   console.info(`Home: ${liveHome}`);
@@ -647,6 +797,11 @@ async function main(): Promise<void> {
       MARLOUES_HOME: liveHome,
     },
   });
+  const remoteBrowser = (await poll(
+    () => chromium.connectOverCDP("http://127.0.0.1:9223").catch(() => null),
+    (browser) => browser !== null,
+    15_000,
+  ))!;
 
   try {
     const window = await app.firstWindow();
@@ -661,7 +816,7 @@ async function main(): Promise<void> {
       fullPage: true,
     });
 
-    // Run all 7 test cases
+    // Run all 8 test cases
     const firstSessionId = await testTerminalExecute(window);
     await testTerminalMultiTab(window, firstSessionId);
     await testTerminalReloadRecovery(window);
@@ -669,6 +824,11 @@ async function main(): Promise<void> {
     await testBrowserNavigate(window, page1Url);
     await testBrowserResize(window);
     await testTabSwitching(window);
+    await testBrowserAnnotationComposer(
+      window,
+      remoteBrowser,
+      annotationPageUrl,
+    );
 
     console.info("terminal-browser smoke ok");
     console.info(`Evidence: ${artifactsDir}`);
@@ -684,6 +844,7 @@ async function main(): Promise<void> {
     }
     throw error;
   } finally {
+    await remoteBrowser.close().catch(() => undefined);
     await app.close();
   }
 }

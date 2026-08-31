@@ -82,14 +82,36 @@ export function BrowserPanel({ pageId }: { pageId?: string }) {
     const off = window.marloues.browser?.onCommentEvent(
       (changedPageId, event) => {
         if (changedPageId !== pageId) return;
-        const entry = event as { type?: string; payload?: unknown };
+        const entry = event as {
+          type?: string;
+          pageUrl?: unknown;
+          screenshotDataUrl?: unknown;
+          payload?: unknown;
+        };
         if (entry?.type === "comment-added") {
           setCommentBadge((n) => n + 1);
           setTimeout(() => setCommentBadge((n) => Math.max(0, n - 1)), 3000);
           // Dispatch comment to agent input as a send-to-agent event
           window.dispatchEvent(
             new CustomEvent("browser:send-to-agent", {
-              detail: { pageId, type: "comment", payload: entry.payload },
+              detail: {
+                pageId,
+                type: "comment",
+                payload:
+                  entry.payload && typeof entry.payload === "object"
+                    ? {
+                        ...(entry.payload as Record<string, unknown>),
+                        pageUrl:
+                          typeof entry.pageUrl === "string"
+                            ? entry.pageUrl
+                            : undefined,
+                        screenshotDataUrl:
+                          typeof entry.screenshotDataUrl === "string"
+                            ? entry.screenshotDataUrl
+                            : undefined,
+                      }
+                    : entry.payload,
+              },
             }),
           );
         }

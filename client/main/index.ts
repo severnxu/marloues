@@ -74,8 +74,10 @@ configureDevelopmentIdentity();
 
 if (!isDev && isWindows) app.setAppUserModelId("com.marloues.desktop");
 
-// Enable CDP remote debugging for e2e testing (port 9223)
-if (isDev) {
+// Enable CDP remote debugging for local development and real Electron E2E
+// testing. The smoke test drives the embedded WebContentsView through this
+// port, rather than faking browser events in the renderer.
+if (isDev || isTest) {
   app.commandLine.appendSwitch("remote-debugging-port", "9223");
   app.commandLine.appendSwitch("remote-allow-origins", "*");
 }

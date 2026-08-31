@@ -36,6 +36,7 @@ import {
 import { validatePathBoundary } from "../permissions/path-boundary-validator";
 import { terminalService } from "../../services/terminal-service";
 import { cdpBrowserService } from "../../services/cdp-browser-service";
+import { workflowThreadStore } from "./workflow-thread-store";
 
 function genId(): string {
   return crypto.randomUUID();
@@ -132,17 +133,20 @@ export class SelfBuiltRuntime implements AgentRuntime {
       updatedAt: now(),
     };
     threads.set(thread.id, thread);
+    workflowThreadStore.ensureThread(thread.id, { title: thread.title });
     return thread;
   }
 
   async deleteThread(threadId: string): Promise<void> {
     threads.delete(threadId);
+    workflowThreadStore.deleteThread(threadId);
   }
 
   async clearThread(threadId: string): Promise<void> {
     const thread = ensureThread(threadId);
     thread.messages = [];
     thread.updatedAt = now();
+    workflowThreadStore.clearThread(threadId);
   }
 
   async forkThread(threadId: string, upToMessageId?: string): Promise<Thread> {
@@ -162,6 +166,10 @@ export class SelfBuiltRuntime implements AgentRuntime {
       updatedAt: now(),
     };
     threads.set(thread.id, thread);
+    workflowThreadStore.cloneThread(threadId, thread.id, {
+      title: thread.title,
+      upToMessageId,
+    });
     return thread;
   }
 
@@ -177,6 +185,11 @@ export class SelfBuiltRuntime implements AgentRuntime {
     const end = opts.includeMessage ? index + 1 : index;
     thread.messages = thread.messages.slice(0, end);
     thread.updatedAt = now();
+    workflowThreadStore.truncateFromUserMessage(
+      threadId,
+      opts.fromMessageId,
+      opts.includeMessage,
+    );
     return thread;
   }
 
@@ -195,11 +208,24 @@ export class SelfBuiltRuntime implements AgentRuntime {
     this.abortedTurns.delete(turnId);
     this.toolStormBreaker.resetTurn(turnId);
     const displayContent = opts.displayContent ?? opts.content;
+    const userMessageId = opts.messageId ?? genId();
+    const startedAt = now();
     pushMessage(opts.threadId, {
-      id: opts.messageId ?? genId(),
+      id: userMessageId,
       role: "user",
       content: displayContent,
-      timestamp: now(),
+      timestamp: startedAt,
+    });
+    workflowThreadStore.startTurn({
+      threadId: opts.threadId,
+      turnId,
+      content: displayContent,
+      attachments: opts.attachments,
+      userMessageId,
+      startedAt,
+      cwd: opts.cwd ?? null,
+      modelId: this.modelId,
+      modelName: "Local Loop",
     });
 
     const stream = async function* (
@@ -405,7 +431,13 @@ export class SelfBuiltRuntime implements AgentRuntime {
       yield { kind: "turn-complete", payload: { turnId, result: "success" } };
     }.bind(this);
 
-    return stream();
+    const runtimeStream = stream();
+    return (async function* (): AsyncIterable<RuntimeEvent> {
+      for await (const event of runtimeStream) {
+        workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, event);
+        yield event;
+      }
+    })();
   }
 
   async interruptTurn(turnId: string): Promise<void> {
@@ -443,6 +475,18 @@ export class SelfBuiltRuntime implements AgentRuntime {
     return Array.from(byName.values()).sort((a, b) =>
       a.name.localeCompare(b.name),
     );
+  }
+
+  async readThread(
+    input: import("@shared/workflow-thread-data-source").WorkflowReadThreadInput,
+  ) {
+    return workflowThreadStore.readThread(input);
+  }
+
+  subscribeThread(
+    input: import("@shared/workflow-thread-data-source").WorkflowSubscribeThreadInput,
+  ) {
+    return workflowThreadStore.subscribeThread(input);
   }
 
   respondApproval(

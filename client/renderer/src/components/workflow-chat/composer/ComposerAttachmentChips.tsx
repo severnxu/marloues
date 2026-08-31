@@ -1,4 +1,4 @@
-import { FileText, Link, Wrench, X } from "lucide-react";
+import { FileText, Link, MessageSquareText, Wrench, X } from "lucide-react";
 import type { ComposerAttachment } from "./composer-attachments";
 import type { WorkflowImagePreview } from "../";
 
@@ -145,6 +145,33 @@ export function ComposerAttachmentChips({
                 onClick={() => onRemove(attachment.id)}
                 aria-label="移除文件引用"
                 title="移除文件引用"
+              >
+                <X size={12} />
+              </button>
+            </span>
+          );
+        }
+
+        if (attachment.kind === "browser-comment") {
+          const target = attachment.payload.tagName
+            ? `<${attachment.payload.tagName.toLowerCase()}>`
+            : "页面元素";
+          return (
+            <span
+              className="composer-skill-token"
+              key={attachment.id}
+              title={attachment.payload.comment}
+            >
+              <MessageSquareText size={14} aria-hidden="true" />
+              <span className="composer-skill-token-name">
+                页面注释 · {target}
+              </span>
+              <button
+                type="button"
+                className="composer-skill-token-remove"
+                onClick={() => onRemove(attachment.id)}
+                aria-label="移除页面注释"
+                title="移除页面注释"
               >
                 <X size={12} />
               </button>

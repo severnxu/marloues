@@ -11,6 +11,7 @@ import type {
 } from "../../../types";
 import type { AgentSecurityMode, SkillInfo } from "@shared/types";
 import type { ContextUsageRecord, TokenUsage } from "@shared/types";
+import type { WorkflowUserMessageContent } from "@shared/workflow-read-thread-contract";
 
 export const COMPOSER_TEXTAREA_MIN_HEIGHT = 56;
 export const COMPOSER_TEXTAREA_WITH_ATTACHMENTS_MIN_HEIGHT = 59;
@@ -46,6 +47,11 @@ export interface WorkflowComposerShellProps {
   /** Changes whenever the active conversation changes; clears transient attachments. */
   conversationKey?: string;
   input: string;
+  /** Browser annotation to add as a structured composer attachment. */
+  incomingBrowserComment?: {
+    eventId: string;
+    payload: Extract<WorkflowUserMessageContent, { type: "browserComment" }>;
+  };
   isGenerating: boolean;
   securityMode?: AgentSecurityMode;
   selectedProvider: Provider | null;

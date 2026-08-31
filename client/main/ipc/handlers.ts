@@ -1533,6 +1533,47 @@ function userContentFromAttachments(
           ? { type: "skill", name: record.name, path }
           : { type: "mention", name: record.name, path },
       );
+      continue;
+    }
+    if (
+      record.type === "browserComment" &&
+      typeof record.commentId === "number" &&
+      typeof record.ref === "string" &&
+      typeof record.comment === "string"
+    ) {
+      content.push({
+        type: "browserComment",
+        commentId: record.commentId,
+        ref: record.ref,
+        tagName: typeof record.tagName === "string" ? record.tagName : "",
+        text: typeof record.text === "string" ? record.text : "",
+        attributes:
+          record.attributes && typeof record.attributes === "object"
+            ? (record.attributes as Record<string, string>)
+            : {},
+        rect:
+          record.rect && typeof record.rect === "object"
+            ? (record.rect as {
+                x: number;
+                y: number;
+                width: number;
+                height: number;
+              })
+            : { x: 0, y: 0, width: 0, height: 0 },
+        viewport:
+          record.viewport && typeof record.viewport === "object"
+            ? (record.viewport as { width: number; height: number })
+            : { width: 0, height: 0 },
+        scrollX: typeof record.scrollX === "number" ? record.scrollX : 0,
+        scrollY: typeof record.scrollY === "number" ? record.scrollY : 0,
+        comment: record.comment,
+        pageUrl:
+          typeof record.pageUrl === "string" ? record.pageUrl : undefined,
+        screenshotDataUrl:
+          typeof record.screenshotDataUrl === "string"
+            ? record.screenshotDataUrl
+            : undefined,
+      });
     }
   }
   return content;
@@ -1557,11 +1598,10 @@ function appendAttachmentSummaryToPrompt(
   const summaries = attachmentPromptSummaries(attachments);
   if (summaries.length === 0) return text;
   const base = text.trim() ? text : "(No text message.)";
-  const plural = summaries.length === 1 ? "image" : "images";
   return [
     base,
     "",
-    `[User attached ${summaries.length} ${plural}. The current runtime receives this metadata, but not the image pixels.]`,
+    `[User attached ${summaries.length} item${summaries.length === 1 ? "" : "s"}. The current runtime receives this metadata, but not binary image pixels.]`,
     ...summaries,
   ].join("\n");
 }
@@ -1610,6 +1650,24 @@ function attachmentPromptSummaries(
           : "";
       summaries.push(
         `${summaries.length + 1}. ${name} (${mediaType || "image"}${size})`,
+      );
+      continue;
+    }
+    if (
+      type === "browserComment" &&
+      typeof record.comment === "string" &&
+      record.comment.trim()
+    ) {
+      const pageUrl =
+        typeof record.pageUrl === "string" && record.pageUrl.trim()
+          ? record.pageUrl.trim()
+          : "unknown page";
+      const ref =
+        typeof record.ref === "string" ? record.ref : "unknown target";
+      const selectedText =
+        typeof record.text === "string" ? record.text.trim() : "";
+      summaries.push(
+        `${summaries.length + 1}. Browser annotation on ${pageUrl}\n   target: ${ref}${selectedText ? `\n   selected text: ${selectedText}` : ""}\n   comment: ${record.comment.trim()}`,
       );
     }
   }

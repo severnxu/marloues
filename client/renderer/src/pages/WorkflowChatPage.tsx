@@ -32,6 +32,7 @@ import {
 import { OPEN_GLOBAL_SEARCH_EVENT } from "@/components/workbench/events";
 import { WorkflowChatHeader } from "./WorkflowChatHeader";
 import type { UserMessageContent } from "../types";
+import type { WorkflowUserMessageContent } from "@shared/workflow-read-thread-contract";
 import type {
   AgentSecurityMode,
   PermissionDialogRequest,
@@ -63,6 +64,58 @@ import {
   type TaskPresentationModel,
 } from "@/components/workflow-chat/task-context";
 import type { WorkflowChatHeaderThreadSummary } from "./WorkflowChatHeader";
+
+type BrowserCommentPayload = Extract<
+  WorkflowUserMessageContent,
+  { type: "browserComment" }
+>;
+
+function browserCommentFromEvent(value: unknown): BrowserCommentPayload | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  const commentId = Number(raw.commentId);
+  const ref = typeof raw.ref === "string" ? raw.ref.trim() : "";
+  const comment = typeof raw.comment === "string" ? raw.comment.trim() : "";
+  if (!Number.isFinite(commentId) || commentId <= 0 || !ref || !comment) {
+    return null;
+  }
+  const rect = raw.rect as Record<string, unknown> | undefined;
+  const viewport = raw.viewport as Record<string, unknown> | undefined;
+  const attributes =
+    raw.attributes && typeof raw.attributes === "object"
+      ? Object.fromEntries(
+          Object.entries(raw.attributes as Record<string, unknown>).filter(
+            (entry): entry is [string, string] => typeof entry[1] === "string",
+          ),
+        )
+      : {};
+  return {
+    type: "browserComment",
+    commentId,
+    ref,
+    tagName: typeof raw.tagName === "string" ? raw.tagName : "",
+    text: typeof raw.text === "string" ? raw.text : "",
+    attributes,
+    rect: {
+      x: Number(rect?.x) || 0,
+      y: Number(rect?.y) || 0,
+      width: Number(rect?.width) || 0,
+      height: Number(rect?.height) || 0,
+    },
+    viewport: {
+      width: Number(viewport?.width) || 0,
+      height: Number(viewport?.height) || 0,
+    },
+    scrollX: Number(raw.scrollX) || 0,
+    scrollY: Number(raw.scrollY) || 0,
+    comment,
+    pageUrl: typeof raw.pageUrl === "string" ? raw.pageUrl : undefined,
+    screenshotDataUrl:
+      typeof raw.screenshotDataUrl === "string"
+        ? raw.screenshotDataUrl
+        : undefined,
+  };
+}
 
 export function WorkflowChatPage({
   leftCollapsed = false,
@@ -177,9 +230,50 @@ export function WorkflowChatPage({
   // render disables or clears the composer. Without it, each submission gets a
   // fresh steer messageId and is correctly (but unexpectedly) queued by main.
   const sendInFlightRef = useRef(false);
+  const browserCommentKeysRef = useRef(new Set<string>());
+  const inputTextRef = useRef(inputText);
   const [nextWorkModeOverride, setNextWorkModeOverride] = useState<
     "execute" | "plan" | null
   >(null);
+  const [incomingBrowserComment, setIncomingBrowserComment] = useState<{
+    eventId: string;
+    payload: BrowserCommentPayload;
+  } | null>(null);
+
+  useEffect(() => {
+    inputTextRef.current = inputText;
+  }, [inputText]);
+
+  useEffect(() => {
+    const handleBrowserInput = (event: Event) => {
+      const detail = (event as CustomEvent<unknown>).detail;
+      if (!detail || typeof detail !== "object") return;
+      const record = detail as {
+        type?: unknown;
+        pageId?: unknown;
+        payload?: unknown;
+      };
+      if (record.type !== "comment") return;
+      const payload = browserCommentFromEvent(record.payload);
+      if (!payload) return;
+      const pageId = typeof record.pageId === "string" ? record.pageId : "";
+      const eventId = `${pageId}:${payload.commentId}:${payload.ref}`;
+      if (browserCommentKeysRef.current.has(eventId)) return;
+      browserCommentKeysRef.current.add(eventId);
+      const target = payload.tagName
+        ? `<${payload.tagName.toLowerCase()}> ${payload.ref}`
+        : payload.ref;
+      const annotation = `页面注释（${target}）：${payload.comment}`;
+      const current = inputTextRef.current.trim();
+      const nextText = current ? `${current}\n\n${annotation}` : annotation;
+      inputTextRef.current = nextText;
+      setInputText(nextText);
+      setIncomingBrowserComment({ eventId, payload });
+    };
+    window.addEventListener("browser:send-to-agent", handleBrowserInput);
+    return () =>
+      window.removeEventListener("browser:send-to-agent", handleBrowserInput);
+  }, [setInputText]);
 
   const handleSecurityModeChange = useCallback(
     (securityMode: AgentSecurityMode) => {
@@ -732,6 +826,7 @@ export function WorkflowChatPage({
       <ComposerShell
         conversationKey={`${activeSessionId ?? "new-session"}:${composerEpoch}`}
         input={inputText}
+        incomingBrowserComment={incomingBrowserComment ?? undefined}
         isGenerating={activeSessionIsStreaming}
         securityMode={settings?.securityMode ?? "request"}
         permissionPanel={
