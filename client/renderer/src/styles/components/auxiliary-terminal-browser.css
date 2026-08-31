@@ -60,7 +60,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 6px;
+  padding: 3px 6px;
   border-bottom: 1px solid var(--shell-divider, rgba(255, 255, 255, 0.08));
 }
 
@@ -68,10 +68,10 @@
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 4px;
-  padding: 4px 6px;
-  border-bottom: 1px solid rgba(92, 177, 255, 0.24);
-  background: #17334a;
+  gap: 6px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--shell-divider, rgba(255, 255, 255, 0.08));
+  background: var(--surface-workspace, #1e1e1e);
 }
 
 .browser-annotation-title {
@@ -79,26 +79,26 @@
   flex: 1;
   overflow: hidden;
   padding: 0 5px;
-  color: #f2f8ff;
+  color: var(--text-2, #c8c8cc);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .browser-annotation-send {
   display: inline-flex;
-  height: 27px;
+  height: 26px;
   flex: 0 0 auto;
   align-items: center;
   gap: 5px;
   border: 0;
-  border-radius: 4px;
-  padding: 0 9px;
-  background: #2997ff;
+  border-radius: 13px;
+  padding: 0 10px;
+  background: var(--accent, #4a9eff);
   color: #fff;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -178,21 +178,6 @@
   flex: 1;
   min-height: 0;
   background: #fff;
-}
-
-.browser-panel-event-bar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border-bottom: 1px solid var(--shell-divider, rgba(255, 255, 255, 0.08));
-  background: var(--raised-1, rgba(0, 0, 0, 0.2));
-  color: var(--text-2, #aaa);
-  font-size: 11px;
-  font-family: var(--font-mono, Menlo, monospace);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .browser-panel-empty {

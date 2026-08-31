@@ -606,6 +606,7 @@ async function testBrowserAnnotationComposer(
 
   const annotationBar = window.locator(".browser-annotation-bar");
   await expect(annotationBar).toContainText("正在批注");
+  await expect(annotationPage.locator(".ec-interaction-shield")).toBeVisible();
 
   // Annotation mode receives pointer events through the overlay. The local
   // page counters prove that neither hover nor click reaches its own handlers.
@@ -630,9 +631,24 @@ async function testBrowserAnnotationComposer(
   await annotationPage.mouse.click(targetPoint.x, targetPoint.y);
   await expect(annotationPage.locator(".ec-comment-input")).toBeVisible();
   await expect(annotationPage.locator(".ec-selection-outline")).toBeVisible();
+  await expect(annotationPage.locator(".ec-style-editor")).toBeHidden();
+  await expect(
+    annotationPage.getByRole("button", { name: "编辑元素样式" }),
+  ).toHaveAttribute("aria-pressed", "false");
+  await annotationPage.screenshot({
+    path: join(artifactsDir, "09a-browser-annotation-compact.png"),
+  });
+  await annotationPage.getByRole("button", { name: "编辑元素样式" }).click();
   await expect(
     annotationPage.getByRole("textbox", { name: "编辑文本颜色" }),
   ).toBeVisible();
+  await expect(annotationPage.locator(".ec-style-editor")).toBeVisible();
+  await expect(
+    annotationPage.getByRole("button", { name: "编辑元素样式" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await annotationPage.screenshot({
+    path: join(artifactsDir, "09b-browser-annotation-style-editor.png"),
+  });
   await annotationPage
     .getByRole("textbox", { name: "编辑文本颜色" })
     .fill("rgb(255, 0, 0)");
@@ -670,6 +686,7 @@ async function testBrowserAnnotationComposer(
     cancelTargetBox.x + cancelTargetBox.width / 2,
     cancelTargetBox.y + cancelTargetBox.height / 2,
   );
+  await annotationPage.getByRole("button", { name: "编辑元素样式" }).click();
   const backgroundField = annotationPage.getByRole("textbox", {
     name: "编辑背景",
   });

@@ -68,6 +68,7 @@ interface PageCdpState {
   sideEffects: string[];
   idleTimer?: ReturnType<typeof setTimeout>;
   commentModeEnabled?: boolean;
+  commentModeOptions?: CommentModeOptions;
   commentEvents?: CommentEventEntry[];
   nextCommentEventId?: number;
   commentBridgeInstalled?: boolean;
@@ -825,6 +826,14 @@ class CdpBrowserServiceImpl extends EventEmitter {
     if (method.startsWith("Page.")) {
       this.pushEvent(pageId, method, params);
     }
+    if (method === "Page.frameNavigated") {
+      const nav = params as { frame?: { parentId?: string } };
+      // Top-level navigation invalidates the injected bridge script.
+      if (!nav?.frame?.parentId) {
+        const state = this.states.get(pageId);
+        if (state) state.commentBridgeInstalled = false;
+      }
+    }
     if (method === "Runtime.bindingCalled") {
       const p = params as { name?: string; payload?: string };
       if (
@@ -949,8 +958,6 @@ class CdpBrowserServiceImpl extends EventEmitter {
     const wc = this.getWebContents(pageId);
     if (!wc) return { success: false, pageId, annotationEnabled: false };
 
-    state.commentModeEnabled = enabled;
-
     await this.ensureCDPAttached(pageId);
     await this.installCommentBridge(pageId);
 
@@ -959,14 +966,30 @@ class CdpBrowserServiceImpl extends EventEmitter {
       await this.postCommentBridgeMessage(pageId, { type: "clear-comments" });
     }
 
-    await this.postCommentBridgeMessage(pageId, {
-      type: "set-enabled",
-      enabled,
+    const commentOptions = {
       selectionMode: options?.selectionMode ?? "dom_node",
       theme: options?.theme ?? "system",
       ...(options?.palette ? { palette: options.palette } : {}),
       ...(options?.placeholder ? { placeholder: options.placeholder } : {}),
+    };
+    const sent = await this.postCommentBridgeMessage(pageId, {
+      type: "set-enabled",
+      enabled,
+      ...commentOptions,
     });
+    if (!sent) {
+      // Control function not found — the bridge may have been lost on
+      // navigation. Reset the flag, re-install, then retry.
+      state.commentBridgeInstalled = false;
+      await this.installCommentBridge(pageId);
+      await this.postCommentBridgeMessage(pageId, {
+        type: "set-enabled",
+        enabled,
+        ...commentOptions,
+      });
+    }
+    state.commentModeEnabled = enabled;
+    state.commentModeOptions = commentOptions;
 
     return { success: true, pageId, annotationEnabled: enabled };
   }
@@ -1060,20 +1083,23 @@ class CdpBrowserServiceImpl extends EventEmitter {
   private async postCommentBridgeMessage(
     pageId: string,
     message: { type: string; [key: string]: unknown },
-  ): Promise<void> {
+  ): Promise<boolean> {
     const wc = this.getWebContents(pageId);
-    if (!wc || !wc.debugger.isAttached()) return;
+    if (!wc || !wc.debugger.isAttached()) return false;
     const script = `(() => {
       const control = globalThis[${JSON.stringify(EMBEDDED_COMMENT_CONTROL_NAME)}];
       if (typeof control !== "function") return false;
       return control(${JSON.stringify(message)});
     })()`;
     try {
-      await wc.debugger.sendCommand("Runtime.evaluate", {
+      const result = await wc.debugger.sendCommand("Runtime.evaluate", {
         expression: script,
+        returnByValue: true,
       });
+      return result?.result?.value === true;
     } catch {
       // bridge may not be ready yet
+      return false;
     }
   }
 
@@ -1135,7 +1161,10 @@ class CdpBrowserServiceImpl extends EventEmitter {
         void this.postCommentBridgeMessage(pageId, {
           type: "set-enabled",
           enabled: true,
-          selectionMode: "dom_node",
+          ...(state.commentModeOptions ?? {
+            selectionMode: "dom_node",
+            theme: "system",
+          }),
         });
       }
       return;

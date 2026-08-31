@@ -9,6 +9,7 @@ import {
   MessageSquarePlus,
   Trash2,
 } from "lucide-react";
+import { useThemeStore } from "@/stores/theme-store";
 
 type PendingComment = {
   eventId: number;
@@ -27,8 +28,8 @@ type PendingComment = {
 export function BrowserPanel({ pageId }: { pageId?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [urlInput, setUrlInput] = useState("");
-  const [lastEvent, setLastEvent] = useState<string | null>(null);
   const [commentMode, setCommentMode] = useState(false);
+  const isDark = useThemeStore((state) => state.isDark);
   const [pendingComments, setPendingComments] = useState<PendingComment[]>([]);
   const lastCommentEventId = useRef(0);
   const urlInputRef = useRef(urlInput);
@@ -66,24 +67,6 @@ export function BrowserPanel({ pageId }: { pageId?: string }) {
     const off = window.marloues.browser?.onUrlChanged(
       (_threadId, changedPageId, url) => {
         if (changedPageId === pageId) setUrlInput(url);
-      },
-    );
-    return () => off?.();
-  }, [pageId]);
-
-  // Listen for browser events (agent interactions, navigation, etc.)
-  useEffect(() => {
-    if (!pageId) return;
-    const off = window.marloues.browser?.onBrowserEvent(
-      (changedPageId, type, data) => {
-        if (changedPageId === pageId) {
-          const detail =
-            typeof data === "object" && data
-              ? JSON.stringify(data)
-              : String(data ?? "");
-          setLastEvent(`${type}: ${detail}`);
-          setTimeout(() => setLastEvent(null), 5000);
-        }
       },
     );
     return () => off?.();
@@ -208,16 +191,25 @@ export function BrowserPanel({ pageId }: { pageId?: string }) {
     );
   }, [pageId, urlInput]);
 
-  const handleToggleComment = useCallback(() => {
+  const handleToggleComment = useCallback(async () => {
     if (!pageId) return;
     const next = !commentMode;
-    setCommentMode(next);
-    void window.marloues.browser?.setCommentMode(pageId, next, {
+    const result = await window.marloues.browser?.setCommentMode(pageId, next, {
       selectionMode: "dom_node",
-      theme: "system",
+      theme: isDark ? "dark" : "light",
     });
+    if (!result?.success) return;
+    setCommentMode(next);
     if (!next) setPendingComments([]);
-  }, [pageId, commentMode]);
+  }, [pageId, commentMode, isDark]);
+
+  useEffect(() => {
+    if (!pageId || !commentMode) return;
+    void window.marloues.browser?.setCommentMode(pageId, true, {
+      selectionMode: "dom_node",
+      theme: isDark ? "dark" : "light",
+    });
+  }, [pageId, commentMode, isDark]);
 
   const handleClearComments = useCallback(() => {
     if (!pageId) return;
@@ -338,7 +330,6 @@ export function BrowserPanel({ pageId }: { pageId?: string }) {
           />
         </div>
       )}
-      {lastEvent && <div className="browser-panel-event-bar">{lastEvent}</div>}
       <div
         ref={containerRef}
         className="browser-panel-container"
