@@ -30,7 +30,19 @@ process.exit(result.status ?? 1);
 function packagedExecutable(root) {
   if (process.platform === "win32") return join(root, "release", "win-unpacked", "Marloues.exe");
   if (process.platform === "darwin") {
-    return join(root, "release", "mac", "Marloues.app", "Contents", "MacOS", "Marloues");
+    const architectureDirectory = process.arch === "arm64" ? "mac-arm64" : "mac-x64";
+    const architectureBuild = join(
+      root,
+      "release",
+      architectureDirectory,
+      "Marloues.app",
+      "Contents",
+      "MacOS",
+      "Marloues",
+    );
+    return existsSync(architectureBuild)
+      ? architectureBuild
+      : join(root, "release", "mac", "Marloues.app", "Contents", "MacOS", "Marloues");
   }
   return join(root, "release", "linux-unpacked", "marloues");
 }

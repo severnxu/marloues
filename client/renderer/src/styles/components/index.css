@@ -208,6 +208,7 @@
 @import "./auxiliary-files.css";
 @import "./auxiliary-memory.css";
 @import "./auxiliary-outputs.css";
+@import "./auxiliary-terminal-browser.css";
 @import "./settings-shell.css";
 @import "./settings-controls.css";
 @import "./settings-appearance.css";

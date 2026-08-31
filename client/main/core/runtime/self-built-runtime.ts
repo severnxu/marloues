@@ -34,6 +34,9 @@ import {
   runGuardianReview,
 } from "../security/guardian-reviewer";
 import { validatePathBoundary } from "../permissions/path-boundary-validator";
+import { terminalService } from "../../services/terminal-service";
+import { cdpBrowserService } from "../../services/cdp-browser-service";
+import { workflowThreadStore } from "./workflow-thread-store";
 
 function genId(): string {
   return crypto.randomUUID();
@@ -130,17 +133,20 @@ export class SelfBuiltRuntime implements AgentRuntime {
       updatedAt: now(),
     };
     threads.set(thread.id, thread);
+    workflowThreadStore.ensureThread(thread.id, { title: thread.title });
     return thread;
   }
 
   async deleteThread(threadId: string): Promise<void> {
     threads.delete(threadId);
+    workflowThreadStore.deleteThread(threadId);
   }
 
   async clearThread(threadId: string): Promise<void> {
     const thread = ensureThread(threadId);
     thread.messages = [];
     thread.updatedAt = now();
+    workflowThreadStore.clearThread(threadId);
   }
 
   async forkThread(threadId: string, upToMessageId?: string): Promise<Thread> {
@@ -160,6 +166,10 @@ export class SelfBuiltRuntime implements AgentRuntime {
       updatedAt: now(),
     };
     threads.set(thread.id, thread);
+    workflowThreadStore.cloneThread(threadId, thread.id, {
+      title: thread.title,
+      upToMessageId,
+    });
     return thread;
   }
 
@@ -175,6 +185,11 @@ export class SelfBuiltRuntime implements AgentRuntime {
     const end = opts.includeMessage ? index + 1 : index;
     thread.messages = thread.messages.slice(0, end);
     thread.updatedAt = now();
+    workflowThreadStore.truncateFromUserMessage(
+      threadId,
+      opts.fromMessageId,
+      opts.includeMessage,
+    );
     return thread;
   }
 
@@ -193,11 +208,24 @@ export class SelfBuiltRuntime implements AgentRuntime {
     this.abortedTurns.delete(turnId);
     this.toolStormBreaker.resetTurn(turnId);
     const displayContent = opts.displayContent ?? opts.content;
+    const userMessageId = opts.messageId ?? genId();
+    const startedAt = now();
     pushMessage(opts.threadId, {
-      id: opts.messageId ?? genId(),
+      id: userMessageId,
       role: "user",
       content: displayContent,
-      timestamp: now(),
+      timestamp: startedAt,
+    });
+    workflowThreadStore.startTurn({
+      threadId: opts.threadId,
+      turnId,
+      content: displayContent,
+      attachments: opts.attachments,
+      userMessageId,
+      startedAt,
+      cwd: opts.cwd ?? null,
+      modelId: this.modelId,
+      modelName: "Local Loop",
     });
 
     const stream = async function* (
@@ -403,7 +431,13 @@ export class SelfBuiltRuntime implements AgentRuntime {
       yield { kind: "turn-complete", payload: { turnId, result: "success" } };
     }.bind(this);
 
-    return stream();
+    const runtimeStream = stream();
+    return (async function* (): AsyncIterable<RuntimeEvent> {
+      for await (const event of runtimeStream) {
+        workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, event);
+        yield event;
+      }
+    })();
   }
 
   async interruptTurn(turnId: string): Promise<void> {
@@ -443,6 +477,18 @@ export class SelfBuiltRuntime implements AgentRuntime {
     );
   }
 
+  async readThread(
+    input: import("@shared/workflow-thread-data-source").WorkflowReadThreadInput,
+  ) {
+    return workflowThreadStore.readThread(input);
+  }
+
+  subscribeThread(
+    input: import("@shared/workflow-thread-data-source").WorkflowSubscribeThreadInput,
+  ) {
+    return workflowThreadStore.subscribeThread(input);
+  }
+
   respondApproval(
     requestId: string,
     approved: boolean,
@@ -464,7 +510,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
   }
 
   private registerBuiltinTools(): void {
-    if (this.tools.has("memory.echo")) return;
+    if (this.tools.has("terminal.exec")) return;
     this.registerTool(
       {
         name: "memory.echo",
@@ -474,6 +520,153 @@ export class SelfBuiltRuntime implements AgentRuntime {
           type: "object",
           properties: {
             text: { type: "string" },
+          },
+        },
+      },
+      async (args) => args,
+    );
+    // Terminal tools (metadata for listTools; execution is inline in executePlan)
+    this.registerTool(
+      {
+        name: "terminal.exec",
+        description:
+          "Start an interactive PTY session and run a command. Returns sessionId and initial output.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            command: { type: "string" },
+            cwd: { type: "string" },
+          },
+          required: ["command"],
+        },
+      },
+      async (args) => args,
+    );
+    this.registerTool(
+      {
+        name: "terminal.write",
+        description: "Write data to an active PTY session's stdin.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            sessionId: { type: "string" },
+            data: { type: "string" },
+          },
+          required: ["sessionId", "data"],
+        },
+      },
+      async (args) => args,
+    );
+    this.registerTool(
+      {
+        name: "terminal.read",
+        description: "Read incremental output from an active PTY session.",
+        inputSchema: {
+          type: "object",
+          properties: { sessionId: { type: "string" } },
+          required: ["sessionId"],
+        },
+      },
+      async (args) => args,
+    );
+    // Browser tools
+    this.registerTool(
+      {
+        name: "browser.navigate",
+        description: "Navigate to a URL in the browser.",
+        inputSchema: {
+          type: "object",
+          properties: { url: { type: "string" } },
+          required: ["url"],
+        },
+      },
+      async (args) => args,
+    );
+    this.registerTool(
+      {
+        name: "browser.screenshot",
+        description: "Take a screenshot of the current browser page.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            pageId: { type: "string" },
+          },
+        },
+      },
+      async (args) => args,
+    );
+    this.registerTool(
+      {
+        name: "browser.click",
+        description:
+          "Click an interactive element by its index from get_state.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            index: { type: "number" },
+            pageId: { type: "string" },
+          },
+          required: ["index"],
+        },
+      },
+      async (args) => args,
+    );
+    this.registerTool(
+      {
+        name: "browser.fill",
+        description: "Fill text into an element by its index from get_state.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            index: { type: "number" },
+            value: { type: "string" },
+            pageId: { type: "string" },
+          },
+          required: ["index", "value"],
+        },
+      },
+      async (args) => args,
+    );
+    this.registerTool(
+      {
+        name: "browser.get_state",
+        description:
+          "Get the accessibility tree of the current page as indexed text.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            pageId: { type: "string" },
+          },
+        },
+      },
+      async (args) => args,
+    );
+    this.registerTool(
+      {
+        name: "browser.scroll",
+        description: "Scroll the page in a direction (up, down, left, right).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            direction: { type: "string" },
+            pages: { type: "number" },
+            pageId: { type: "string" },
+          },
+          required: ["direction"],
+        },
+      },
+      async (args) => args,
+    );
+    this.registerTool(
+      {
+        name: "browser.poll_events",
+        description: "Poll for browser events since a sequence cursor.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            afterSequence: { type: "number" },
+            limit: { type: "number" },
+            pageId: { type: "string" },
           },
         },
       },
@@ -504,6 +697,14 @@ export class SelfBuiltRuntime implements AgentRuntime {
     }
     if (/^\/undo\b/i.test(trimmed)) {
       return { intent: "undo" };
+    }
+    if (/^\/term(?:\s+|$)/i.test(trimmed)) {
+      const command = trimmed.replace(/^\/term\s*/i, "").trim();
+      return { intent: "terminal", command };
+    }
+    if (/^\/browse(?:\s+|$)/i.test(trimmed)) {
+      const url = trimmed.replace(/^\/browse\s*/i, "").trim();
+      return { intent: "browser", url };
     }
     return { intent: "respond" };
   }
@@ -749,6 +950,115 @@ export class SelfBuiltRuntime implements AgentRuntime {
         );
         return { done: true, result: "success", assistantText };
       }
+      if (plan.intent === "terminal") {
+        const toolId = `tool-${turnId}-terminal`;
+        const toolName = "terminal.exec";
+        const input = { command: plan.command };
+        const decision = this.evaluateSecurity({
+          toolName,
+          input,
+          cwd,
+          threadId: opts.threadId,
+          turnId,
+        });
+        const authorization = yield* this.authorizeDecision(
+          turnId,
+          toolName,
+          decision,
+          { action: "terminal", command: plan.command },
+          opts.content,
+        );
+        if (!authorization.allowed) {
+          const message = authorization.reason;
+          yield {
+            kind: "error",
+            payload: {
+              code: "TOOL_PERMISSION_DENIED",
+              message,
+              recoverable: true,
+            },
+          };
+          return {
+            done: true,
+            result: "error",
+            error: message,
+            assistantText: message,
+          };
+        }
+        const assistantText = yield* this.runToolAsText(
+          turnId,
+          toolId,
+          toolName,
+          input,
+          async () => {
+            const sessionId = terminalService.spawn(cwd, {
+              threadId: opts.threadId,
+            });
+            terminalService.write(sessionId, plan.command + "\n");
+            const result = await terminalService.readUntilStable(sessionId);
+            return JSON.stringify({
+              sessionId,
+              output: result.data,
+              stable: result.stable,
+              exitCode: result.exitCode,
+            });
+          },
+        );
+        return { done: true, result: "success", assistantText };
+      }
+      if (plan.intent === "browser") {
+        const toolId = `tool-${turnId}-browser`;
+        const toolName = "browser.navigate";
+        const input = { url: plan.url };
+        const decision = this.evaluateSecurity({
+          toolName,
+          input,
+          cwd,
+          threadId: opts.threadId,
+          turnId,
+        });
+        const authorization = yield* this.authorizeDecision(
+          turnId,
+          toolName,
+          decision,
+          { action: "browser", url: plan.url },
+          opts.content,
+        );
+        if (!authorization.allowed) {
+          const message = authorization.reason;
+          yield {
+            kind: "error",
+            payload: {
+              code: "TOOL_PERMISSION_DENIED",
+              message,
+              recoverable: true,
+            },
+          };
+          return {
+            done: true,
+            result: "error",
+            error: message,
+            assistantText: message,
+          };
+        }
+        const assistantText = yield* this.runToolAsText(
+          turnId,
+          toolId,
+          toolName,
+          input,
+          async () => {
+            let pageId = cdpBrowserService.getActivePageId(opts.threadId);
+            if (!pageId) {
+              pageId = await cdpBrowserService.newPage(plan.url, opts.threadId);
+            } else {
+              await cdpBrowserService.navigate(pageId, plan.url);
+            }
+            cdpBrowserService.setActivePageId(opts.threadId, pageId);
+            return JSON.stringify({ pageId, url: plan.url });
+          },
+        );
+        return { done: true, result: "success", assistantText };
+      }
     } catch (error) {
       return {
         done: true,
@@ -777,7 +1087,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
       "Received task:",
       content.trim() || "(empty)",
       "",
-      "Self-built commands available: /list <dir>, /read <file>, /patch <file>\\n<content>, /undo.",
+      "Self-built commands available: /list <dir>, /read <file>, /patch <file>\\n<content>, /undo, /term <command>, /browse <url>",
     ].join("\n");
   }
 
@@ -786,7 +1096,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
     toolId: string,
     toolName: string,
     input: unknown,
-    execute: () => string,
+    execute: () => string | Promise<string>,
   ): AsyncGenerator<RuntimeEvent, string> {
     const storm = this.checkToolStorm(turnId, toolName, input);
     if (storm.action === "deny") {
@@ -827,7 +1137,7 @@ export class SelfBuiltRuntime implements AgentRuntime {
       };
       return "Tool execution cancelled.";
     }
-    const output = execute();
+    const output = await execute();
     yield {
       kind: "tool-progress",
       payload: {
@@ -1120,7 +1430,9 @@ type SelfBuiltPlan =
   | { intent: "list"; targetPath: string }
   | { intent: "read"; targetPath: string }
   | { intent: "patch"; targetPath: string; content: string }
-  | { intent: "undo" };
+  | { intent: "undo" }
+  | { intent: "terminal"; command: string }
+  | { intent: "browser"; url: string };
 
 interface SelfBuiltLoopResult {
   done: boolean;

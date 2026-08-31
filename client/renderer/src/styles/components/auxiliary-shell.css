@@ -208,6 +208,12 @@
     color: var(--text-1);
   }
 
+  .auxiliary-sidebar.is-primary-overlay
+    .inspector-tab[data-view-type="browser"] {
+    width: 180px;
+    max-width: 240px;
+  }
+
   .inspector-tab-main {
     display: flex;
     height: 100%;
@@ -375,7 +381,7 @@
     flex: 1 1 0;
     flex-direction: column;
     overflow: auto;
-    padding: 10px var(--auxiliary-content-inline-padding);
+    padding: 0;
   }
 
   .auxiliary-sidebar.is-primary-overlay .auxiliary-view-panel {

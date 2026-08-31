@@ -181,9 +181,8 @@
 
 .user-image-chip {
   display: block;
-  width: 112px;
-  height: 112px;
-  max-width: 208px;
+  width: var(--conversation-image-thumbnail-size);
+  height: var(--conversation-image-thumbnail-size);
   overflow: hidden;
   padding: 0;
   border: 1px solid var(--border);

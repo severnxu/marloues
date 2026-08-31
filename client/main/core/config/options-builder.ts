@@ -1,5 +1,6 @@
 import { app } from "electron";
 import { existsSync } from "fs";
+import { createRequire } from "module";
 import { join } from "path";
 import type { AgentSettings } from "@shared/types";
 import { logWarn } from "../logging/app-logger";
@@ -69,18 +70,18 @@ function isWindowsPackageRunner(command: string): boolean {
 }
 
 /**
- * 解析打包环境下 Claude Code 原生二进制的真实路径。
+ * 解析 Claude Code 原生二进制的真实路径。
  *
  * 背景：@anthropic-ai/claude-agent-sdk 的 platform 包
  * （claude-agent-sdk-win32-x64/claude.exe 等）在 electron-builder 打包时会被
  * 解压到 app.asar.unpacked，但 SDK 自身只按 asar 内虚拟路径探测：
  * Electron 的 asar 虚拟文件系统让 fs.existsSync 返回 true，而
  * child_process.spawn 需要真实文件，导致 "exists but failed to launch"。
- * 因此必须显式传 pathToClaudeCodeExecutable 指向解压后的真实路径。
- * 开发模式（未打包）下 node_modules 是真实目录，SDK 自动发现，无需覆盖。
+ * 因此必须显式传 pathToClaudeCodeExecutable。开发环境不能仅依赖
+ * app.isPackaged：Marloues Dev 使用定制 Electron 应用名时该值也可能为 true。
+ * 统一从当前平台包 resolve；若路径落在 app.asar 中，再映射到 unpacked 目录。
  */
 export function resolveClaudeExecutablePath(): string | undefined {
-  if (!app?.isPackaged || !process.resourcesPath) return undefined;
   const platformPart =
     process.platform === "win32"
       ? "win32"
@@ -88,6 +89,21 @@ export function resolveClaudeExecutablePath(): string | undefined {
         ? "darwin"
         : "linux";
   const executableName = process.platform === "win32" ? "claude.exe" : "claude";
+  const packageName = `@anthropic-ai/claude-agent-sdk-${platformPart}-${process.arch}`;
+  try {
+    const resolved = createRequire(import.meta.url).resolve(
+      `${packageName}/${executableName}`,
+    );
+    const realPath = resolved.replace(
+      /([\\/])app\.asar\1/,
+      "$1app.asar.unpacked$1",
+    );
+    if (existsSync(realPath)) return realPath;
+  } catch {
+    // Fall through to the explicit packaged path for older installations.
+  }
+
+  if (!process.resourcesPath) return undefined;
   const candidate = join(
     process.resourcesPath,
     "app.asar.unpacked",

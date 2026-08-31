@@ -26,6 +26,13 @@ export type WorkflowUserMessageAttachment =
       displayName?: string;
     }
   | { kind: "mention"; name: string; path?: string }
+  | {
+      kind: "browser-comment";
+      ref: string;
+      tagName: string;
+      comment: string;
+      pageUrl?: string;
+    }
   | { kind: "pull-request-merge"; count: number }
   | { kind: "pull-request-checks"; count: number }
   | { kind: "pull-request-conflict"; count: number }
@@ -107,6 +114,16 @@ export function workflowUserMessagePresentation(
         ];
       if (part.type === "mention")
         return [{ kind: "mention", name: part.name, path: part.path }];
+      if (part.type === "browserComment")
+        return [
+          {
+            kind: "browser-comment",
+            ref: part.ref,
+            tagName: part.tagName,
+            comment: part.comment,
+            pageUrl: part.pageUrl,
+          },
+        ];
       return [];
     });
   const envelope = parseUserInputEnvelope(rawText || fallbackText);
@@ -141,6 +158,7 @@ function attachmentVisualRank(
     case "skill":
     case "mention":
     case "application":
+    case "browser-comment":
       return 3;
     case "pull-request-merge":
       return 4;

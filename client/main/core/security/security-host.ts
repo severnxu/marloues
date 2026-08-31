@@ -7,7 +7,7 @@ import { resolveEffectiveSecurityPolicy } from "@shared/security-policy";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { homedir } from "node:os";
 
-const EMPTY_SECURITY_RULES: AgentSettings["securityRules"] = {
+export const EMPTY_SECURITY_RULES: AgentSettings["securityRules"] = {
   autoAllowPaths: [],
   protectedPaths: [],
   commandAllowlist: [],
@@ -558,7 +558,7 @@ function pathMatches(candidate: string, configuredRoot: string): boolean {
   );
 }
 
-function matchesDomainList(host: string, configured: string[]): boolean {
+export function matchesDomainList(host: string, configured: string[]): boolean {
   const normalizedHost = host.toLowerCase().replace(/\.$/u, "");
   return configured.some((entry) => {
     const domain = entry

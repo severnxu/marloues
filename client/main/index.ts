@@ -35,6 +35,7 @@ import {
 import { getAgentSettings } from "./services/config-service";
 import { getWorkspaceSettings } from "./services/workspace-service";
 import { startRuntimePrewarm } from "./services/runtime-prewarm-service";
+import { browserViewManager } from "./services/browser-view-manager";
 import {
   getConfigDir,
   getLogDir,
@@ -73,6 +74,16 @@ function configureDevelopmentIdentity(): void {
 configureDevelopmentIdentity();
 
 if (!isDev && isWindows) app.setAppUserModelId("com.marloues.desktop");
+
+// Enable CDP remote debugging for local development and real Electron E2E
+// testing. The smoke test drives the embedded WebContentsView through this
+// port, rather than faking browser events in the renderer.
+if (isDev || isTest) {
+  const remoteDebuggingPort =
+    process.env.MARLOUES_REMOTE_DEBUGGING_PORT?.trim() || "9223";
+  app.commandLine.appendSwitch("remote-debugging-port", remoteDebuggingPort);
+  app.commandLine.appendSwitch("remote-allow-origins", "*");
+}
 
 const gotSingleInstanceLock = isTest || app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -405,12 +416,15 @@ app.whenReady().then(async () => {
   // traffic-light buttons stay visible (light theme → dark lights, dark theme
   // → light lights). Renderer pushes theme changes via WINDOW_SET_THEME.
   nativeTheme.themeSource = readInitialNativeThemeSource();
-  registerThemeIpc();
+  registerThemeIpc((background) => {
+    browserViewManager.setBackgroundColor(background);
+  });
   nativeTheme.on("updated", () => {
+    const background = getThemeAwareBackgroundColor();
     for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.isDestroyed())
-        win.setBackgroundColor(getThemeAwareBackgroundColor());
+      if (!win.isDestroyed()) win.setBackgroundColor(background);
     }
+    browserViewManager.setBackgroundColor(background);
   });
   createWindow();
   initAutoUpdateService();

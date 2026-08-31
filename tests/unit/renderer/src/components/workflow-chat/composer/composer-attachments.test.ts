@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   MAX_ATTACHMENTS,
   attachmentsToUserContent,
+  browserCommentAttachment,
+  isMatchingBrowserCommentAttachment,
   isTextFile,
   isUrl,
   skillAttachment,
@@ -68,6 +70,45 @@ describe("attachmentsToUserContent — mixed", () => {
     expect(content[0]).toEqual({ type: "url", url: "https://example.com" });
     expect(content[1]).toEqual(
       expect.objectContaining({ type: "skill", name: "imagegen" }),
+    );
+  });
+});
+
+describe("browser comment attachment identity", () => {
+  const payload = {
+    commentId: 2,
+    targetType: "element" as const,
+    ref: "body > main > button",
+    tagName: "BUTTON",
+    text: "提交",
+    attributes: {},
+    rect: { x: 10, y: 20, width: 80, height: 32 },
+    viewport: { width: 1280, height: 720 },
+    scrollX: 0,
+    scrollY: 0,
+    comment: "按钮间距需要调整",
+  };
+
+  it("keeps page identity in the composer but not in sent content", () => {
+    const attachment = browserCommentAttachment(payload, "page-1");
+    expect(attachment).toEqual(
+      expect.objectContaining({ kind: "browser-comment", pageId: "page-1" }),
+    );
+    expect(attachmentsToUserContent([attachment])).toEqual([
+      { type: "browserComment", ...payload },
+    ]);
+  });
+
+  it("matches only the exact page and comment id", () => {
+    const attachment = browserCommentAttachment(payload, "page-1");
+    expect(isMatchingBrowserCommentAttachment(attachment, "page-1", 2)).toBe(
+      true,
+    );
+    expect(isMatchingBrowserCommentAttachment(attachment, "page-2", 2)).toBe(
+      false,
+    );
+    expect(isMatchingBrowserCommentAttachment(attachment, "page-1", 3)).toBe(
+      false,
     );
   });
 });

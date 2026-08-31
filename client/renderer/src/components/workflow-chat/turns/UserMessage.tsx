@@ -285,6 +285,12 @@ function attachmentPresentation(attachment: WorkflowUserMessageAttachment): {
         label: `@${attachment.name}`,
         detail: attachment.path ? basename(attachment.path) : undefined,
       };
+    case "browser-comment":
+      return {
+        icon: <ConversationCommentIcon className={iconClass} />,
+        label: "页面注释",
+        detail: attachment.comment || attachment.ref,
+      };
     case "pull-request-merge":
       return {
         icon: <ConversationFileIcon className={iconClass} />,

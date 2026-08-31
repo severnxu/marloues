@@ -1181,6 +1181,127 @@ export interface MarlouesAPI {
       reason?: string,
     ): void;
   };
+  terminal: {
+    spawn(cwd: string): Promise<string>;
+    write(sessionId: string, data: string): Promise<void>;
+    resize(sessionId: string, cols: number, rows: number): Promise<void>;
+    onData(callback: (sessionId: string, data: string) => void): () => void;
+    onExit(callback: (sessionId: string, exitCode: number) => void): () => void;
+    list(): Promise<
+      Array<{
+        sessionId: string;
+        threadId?: string;
+        pid: number;
+        process: string;
+        cwd: string;
+        createdAt: number;
+        lastOutputAt: number;
+        rendererAttached: boolean;
+      }>
+    >;
+    history(sessionId: string): Promise<string>;
+    kill(sessionId: string): Promise<void>;
+  };
+  browser: {
+    viewNavigate(pageId: string, url: string): Promise<void>;
+    goBack(pageId: string): Promise<void>;
+    goForward(pageId: string): Promise<void>;
+    reload(pageId: string): Promise<void>;
+    navigationState(pageId: string): Promise<{
+      canGoBack: boolean;
+      canGoForward: boolean;
+      isLoading: boolean;
+    }>;
+    newPage(url: string): Promise<string>;
+    closePage(pageId: string): Promise<void>;
+    listPages(): Promise<
+      Array<{
+        pageId: string;
+        threadId?: string;
+        browserId: string;
+        url: string;
+        title: string;
+        createdAt: number;
+        lastActivityAt: number;
+      }>
+    >;
+    screenshot(): Promise<string>;
+    setViewBounds(
+      pageId: string,
+      bounds: { x: number; y: number; width: number; height: number },
+    ): Promise<void>;
+    onUrlChanged(
+      callback: (threadId: string, pageId: string, url: string) => void,
+    ): () => void;
+    onTitleChanged(
+      callback: (pageId: string, title: string) => void,
+    ): () => void;
+    onLoadFailed(
+      callback: (
+        pageId: string,
+        error: { url: string; errorCode: number; errorDescription: string },
+      ) => void,
+    ): () => void;
+    onNavigationStateChanged(
+      callback: (
+        pageId: string,
+        state: {
+          canGoBack: boolean;
+          canGoForward: boolean;
+          isLoading: boolean;
+        },
+      ) => void,
+    ): () => void;
+    onNavigationBlocked(
+      callback: (pageId: string, url: string, host: string) => void,
+    ): () => void;
+    onBrowserEvent(
+      callback: (pageId: string, type: string, data: unknown) => void,
+    ): () => void;
+    setCommentMode(
+      pageId: string,
+      enabled: boolean,
+      options?: {
+        selectionMode?: string;
+        theme?: string;
+        palette?: string;
+        placeholder?: string;
+        clearComments?: boolean;
+      },
+    ): Promise<{
+      success: boolean;
+      pageId: string;
+      annotationEnabled: boolean;
+    }>;
+    getCommentEvents(
+      pageId: string,
+      afterEventId: number,
+    ): Promise<{
+      commentEvents: Array<{
+        eventId: number;
+        type: string;
+        pageId: string;
+        commentId?: number;
+        pageUrl?: string;
+        payload?: unknown;
+        ts: number;
+      }>;
+      maxCommentEventId: number;
+      annotationEnabled: boolean;
+    }>;
+    ackCommentEvents(
+      pageId: string,
+      throughEventId: number,
+    ): Promise<{ success: boolean }>;
+    clearComments(pageId: string): Promise<{ success: boolean }>;
+    removeComment(
+      pageId: string,
+      commentId: number,
+    ): Promise<{ success: boolean }>;
+    onCommentEvent(
+      callback: (pageId: string, event: unknown) => void,
+    ): () => void;
+  };
 }
 
 export const IPC = {
@@ -1280,4 +1401,34 @@ export const IPC = {
   CHAT_ITEM_EVENT: "chat:item-event",
   CHAT_PERMISSION_REQUEST: "chat:permission-request",
   CHAT_PERMISSION_RESPONSE: "chat:permission-response",
+  TERMINAL_SPAWN: "terminal:spawn",
+  TERMINAL_DATA: "terminal:data",
+  TERMINAL_WRITE: "terminal:write",
+  TERMINAL_RESIZE: "terminal:resize",
+  TERMINAL_KILL: "terminal:kill",
+  TERMINAL_LIST: "terminal:list",
+  TERMINAL_HISTORY: "terminal:history",
+  TERMINAL_EXIT: "terminal:exit",
+  BROWSER_VIEW_NAVIGATE: "browser:view-navigate",
+  BROWSER_GO_BACK: "browser:go-back",
+  BROWSER_GO_FORWARD: "browser:go-forward",
+  BROWSER_RELOAD: "browser:reload",
+  BROWSER_NAVIGATION_STATE: "browser:navigation-state",
+  BROWSER_NAVIGATION_STATE_CHANGED: "browser:navigation-state-changed",
+  BROWSER_NEW_PAGE: "browser:new-page",
+  BROWSER_CLOSE_PAGE: "browser:close-page",
+  BROWSER_VIEW_BOUNDS: "browser:view-bounds",
+  BROWSER_LIST_PAGES: "browser:list-pages",
+  BROWSER_SCREENSHOT: "browser:screenshot",
+  BROWSER_URL_CHANGED: "browser:url-changed",
+  BROWSER_TITLE_CHANGED: "browser:title-changed",
+  BROWSER_LOAD_FAILED: "browser:load-failed",
+  BROWSER_NAVIGATION_BLOCKED: "browser:navigation-blocked",
+  BROWSER_EVENT: "browser:event",
+  BROWSER_SET_COMMENT_MODE: "browser:set-comment-mode",
+  BROWSER_GET_COMMENT_EVENTS: "browser:get-comment-events",
+  BROWSER_ACK_COMMENT_EVENTS: "browser:ack-comment-events",
+  BROWSER_CLEAR_COMMENTS: "browser:clear-comments",
+  BROWSER_REMOVE_COMMENT: "browser:remove-comment",
+  BROWSER_COMMENT_EVENT: "browser:comment-event",
 } as const;

@@ -74,6 +74,8 @@ export function composerAttachmentsToContent(
           scope: attachment.skill.scope,
           version: attachment.skill.version,
         };
+      case "browser-comment":
+        return attachment.payload;
     }
   });
 }

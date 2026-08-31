@@ -15,6 +15,10 @@ import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import * as QRCode from "qrcode";
 import { IPC } from "./channels";
+import { terminalService } from "../services/terminal-service";
+import { cdpBrowserService } from "../services/cdp-browser-service";
+import type { CommentModeOptions } from "../services/cdp-browser-service";
+import { browserViewManager } from "../services/browser-view-manager";
 import { logInfo } from "../core/logging/app-logger";
 import { IM_IPC } from "@shared/im/im-ipc";
 import type {
@@ -1537,6 +1541,47 @@ function userContentFromAttachments(
           ? { type: "skill", name: record.name, path }
           : { type: "mention", name: record.name, path },
       );
+      continue;
+    }
+    if (
+      record.type === "browserComment" &&
+      typeof record.commentId === "number" &&
+      typeof record.ref === "string" &&
+      typeof record.comment === "string"
+    ) {
+      content.push({
+        type: "browserComment",
+        commentId: record.commentId,
+        ref: record.ref,
+        tagName: typeof record.tagName === "string" ? record.tagName : "",
+        text: typeof record.text === "string" ? record.text : "",
+        attributes:
+          record.attributes && typeof record.attributes === "object"
+            ? (record.attributes as Record<string, string>)
+            : {},
+        rect:
+          record.rect && typeof record.rect === "object"
+            ? (record.rect as {
+                x: number;
+                y: number;
+                width: number;
+                height: number;
+              })
+            : { x: 0, y: 0, width: 0, height: 0 },
+        viewport:
+          record.viewport && typeof record.viewport === "object"
+            ? (record.viewport as { width: number; height: number })
+            : { width: 0, height: 0 },
+        scrollX: typeof record.scrollX === "number" ? record.scrollX : 0,
+        scrollY: typeof record.scrollY === "number" ? record.scrollY : 0,
+        comment: record.comment,
+        pageUrl:
+          typeof record.pageUrl === "string" ? record.pageUrl : undefined,
+        screenshotDataUrl:
+          typeof record.screenshotDataUrl === "string"
+            ? record.screenshotDataUrl
+            : undefined,
+      });
     }
   }
   return content;
@@ -1561,11 +1606,10 @@ function appendAttachmentSummaryToPrompt(
   const summaries = attachmentPromptSummaries(attachments);
   if (summaries.length === 0) return text;
   const base = text.trim() ? text : "(No text message.)";
-  const plural = summaries.length === 1 ? "image" : "images";
   return [
     base,
     "",
-    `[User attached ${summaries.length} ${plural}. The current runtime receives this metadata, but not the image pixels.]`,
+    `[User attached ${summaries.length} item${summaries.length === 1 ? "" : "s"}. The current runtime receives this metadata, but not binary image pixels.]`,
     ...summaries,
   ].join("\n");
 }
@@ -1614,6 +1658,24 @@ function attachmentPromptSummaries(
           : "";
       summaries.push(
         `${summaries.length + 1}. ${name} (${mediaType || "image"}${size})`,
+      );
+      continue;
+    }
+    if (
+      type === "browserComment" &&
+      typeof record.comment === "string" &&
+      record.comment.trim()
+    ) {
+      const pageUrl =
+        typeof record.pageUrl === "string" && record.pageUrl.trim()
+          ? record.pageUrl.trim()
+          : "unknown page";
+      const ref =
+        typeof record.ref === "string" ? record.ref : "unknown target";
+      const selectedText =
+        typeof record.text === "string" ? record.text.trim() : "";
+      summaries.push(
+        `${summaries.length + 1}. Browser annotation on ${pageUrl}\n   target: ${ref}${selectedText ? `\n   selected text: ${selectedText}` : ""}\n   comment: ${record.comment.trim()}`,
       );
     }
   }
@@ -2456,10 +2518,63 @@ function startSchedulePoller(): void {
   void pollDueScheduledTasks();
 }
 
+let terminalBrowserBroadcastRegistered = false;
+
+/**
+ * Forwards TerminalService and BrowserService events to the renderer so the
+ * terminal (xterm) and browser panels can display live output.
+ */
+function registerTerminalBrowserBroadcast(): void {
+  if (terminalBrowserBroadcastRegistered) return;
+  terminalBrowserBroadcastRegistered = true;
+
+  terminalService.on("data", (sessionId: string, data: string) => {
+    const win = getMainWindow();
+    if (!win || win.isDestroyed()) return;
+    win.webContents.send(IPC.TERMINAL_DATA, sessionId, data);
+  });
+  terminalService.on("exit", (sessionId: string, exitCode: number) => {
+    const win = getMainWindow();
+    if (!win || win.isDestroyed()) return;
+    win.webContents.send(IPC.TERMINAL_EXIT, sessionId, exitCode);
+  });
+  cdpBrowserService.on(
+    "url-changed",
+    (threadId: string | undefined, pageId: string, url: string) => {
+      const win = getMainWindow();
+      if (!win || win.isDestroyed()) return;
+      win.webContents.send(IPC.BROWSER_URL_CHANGED, threadId, pageId, url);
+    },
+  );
+  cdpBrowserService.on(
+    "navigation-blocked",
+    (pageId: string, url: string, host: string) => {
+      const win = getMainWindow();
+      if (!win || win.isDestroyed()) return;
+      win.webContents.send(IPC.BROWSER_NAVIGATION_BLOCKED, pageId, url, host);
+    },
+  );
+  cdpBrowserService.on(
+    "browser-event",
+    (pageId: string, type: string, data: unknown) => {
+      const win = getMainWindow();
+      if (!win || win.isDestroyed()) return;
+      win.webContents.send(IPC.BROWSER_EVENT, pageId, type, data);
+    },
+  );
+
+  cdpBrowserService.on("comment-event", (pageId: string, event: unknown) => {
+    const win = getMainWindow();
+    if (!win || win.isDestroyed()) return;
+    win.webContents.send(IPC.BROWSER_COMMENT_EVENT, pageId, event);
+  });
+}
+
 export function registerHandlers(): void {
   registerReadThreadBroadcast();
   registerPendingStateBroadcast();
   registerImHandlers();
+  registerTerminalBrowserBroadcast();
   imRuntimeBridge.start();
   startSchedulePoller();
   // ---------- App ----------
@@ -3406,5 +3521,112 @@ export function registerHandlers(): void {
   ipcMain.handle(
     IPC.SKILL_MARKETPLACE_INSTALL,
     async (_e, _slug?: string, _version?: string) => installMarketplaceSkill(),
+  );
+
+  // ---------- Terminal ----------
+
+  ipcMain.handle(IPC.TERMINAL_SPAWN, (_event, cwd: string) => {
+    const sessionId = terminalService.spawn(cwd ?? process.cwd());
+    terminalService.setRendererAttached(sessionId, true);
+    return sessionId;
+  });
+  ipcMain.handle(
+    IPC.TERMINAL_WRITE,
+    (_event, sessionId: string, data: string) => {
+      terminalService.write(sessionId, data);
+    },
+  );
+  ipcMain.handle(
+    IPC.TERMINAL_RESIZE,
+    (_event, sessionId: string, cols: number, rows: number) => {
+      terminalService.resize(sessionId, cols, rows);
+    },
+  );
+  ipcMain.handle(IPC.TERMINAL_KILL, (_event, sessionId: string) => {
+    terminalService.setRendererAttached(sessionId, false);
+    terminalService.kill(sessionId);
+  });
+  ipcMain.handle(IPC.TERMINAL_LIST, () => terminalService.listSessions());
+  ipcMain.handle(IPC.TERMINAL_HISTORY, (_event, sessionId: string) =>
+    terminalService.getHistory(sessionId),
+  );
+
+  // ---------- Browser ----------
+
+  ipcMain.handle(IPC.BROWSER_NEW_PAGE, async (_event, url: string) => {
+    // Delegate to cdpBrowserService so the PageCdpState (required by
+    // setCommentMode / getCommentEvents) is created alongside the view.
+    return cdpBrowserService.newPage(url ?? "about:blank");
+  });
+  ipcMain.handle(IPC.BROWSER_CLOSE_PAGE, async (_event, pageId: string) => {
+    await cdpBrowserService.closePage(pageId);
+    browserViewManager.destroyView(pageId);
+  });
+  ipcMain.handle(IPC.BROWSER_LIST_PAGES, () => browserViewManager.listViews());
+  ipcMain.handle(IPC.BROWSER_SCREENSHOT, async () => {
+    return browserViewManager.capturePage();
+  });
+  ipcMain.handle(
+    IPC.BROWSER_VIEW_NAVIGATE,
+    async (_event, pageId: string, url: string) => {
+      browserViewManager.navigate(pageId, url);
+    },
+  );
+  ipcMain.handle(IPC.BROWSER_GO_BACK, (_event, pageId: string) => {
+    browserViewManager.goBack(pageId);
+  });
+  ipcMain.handle(IPC.BROWSER_GO_FORWARD, (_event, pageId: string) => {
+    browserViewManager.goForward(pageId);
+  });
+  ipcMain.handle(IPC.BROWSER_RELOAD, (_event, pageId: string) => {
+    browserViewManager.reload(pageId);
+  });
+  ipcMain.handle(IPC.BROWSER_NAVIGATION_STATE, (_event, pageId: string) => {
+    return browserViewManager.getNavigationState(pageId);
+  });
+  ipcMain.handle(
+    IPC.BROWSER_VIEW_BOUNDS,
+    async (
+      _event,
+      pageId: string,
+      bounds: { x: number; y: number; width: number; height: number },
+    ) => {
+      browserViewManager.setBounds(pageId, bounds);
+      browserViewManager.setActivePage(pageId);
+    },
+  );
+
+  // ---------- Browser: Comment / Annotation ----------
+
+  ipcMain.handle(
+    IPC.BROWSER_SET_COMMENT_MODE,
+    async (_event, pageId: string, enabled: boolean, options?: unknown) => {
+      return cdpBrowserService.setCommentMode(
+        pageId,
+        enabled,
+        options as CommentModeOptions | undefined,
+      );
+    },
+  );
+  ipcMain.handle(
+    IPC.BROWSER_GET_COMMENT_EVENTS,
+    async (_event, pageId: string, afterEventId: number) => {
+      return cdpBrowserService.getCommentEvents(pageId, afterEventId);
+    },
+  );
+  ipcMain.handle(
+    IPC.BROWSER_ACK_COMMENT_EVENTS,
+    async (_event, pageId: string, throughEventId: number) => {
+      return cdpBrowserService.ackCommentEvents(pageId, throughEventId);
+    },
+  );
+  ipcMain.handle(IPC.BROWSER_CLEAR_COMMENTS, async (_event, pageId: string) => {
+    return cdpBrowserService.clearComments(pageId);
+  });
+  ipcMain.handle(
+    IPC.BROWSER_REMOVE_COMMENT,
+    async (_event, pageId: string, commentId: number) => {
+      return cdpBrowserService.removeComment(pageId, commentId);
+    },
   );
 }

@@ -151,7 +151,26 @@ export type WorkflowUserMessageContent =
       version?: string;
       promptLinkLabel?: string;
     }
-  | { type: "mention"; name: string; path?: string };
+  | { type: "mention"; name: string; path?: string }
+  | {
+      /** A page annotation captured from the embedded browser. */
+      type: "browserComment";
+      commentId: number;
+      targetType?: "element" | "region";
+      ref: string;
+      tagName: string;
+      text: string;
+      attributes: Record<string, string>;
+      rect: { x: number; y: number; width: number; height: number };
+      viewport: { width: number; height: number };
+      scrollX: number;
+      scrollY: number;
+      comment: string;
+      /** Direct style changes proposed for a selected DOM element. */
+      styleEdits?: Record<string, string>;
+      pageUrl?: string;
+      screenshotDataUrl?: string;
+    };
 
 export interface WorkflowDelegation {
   sourceThreadId: string;

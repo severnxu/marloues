@@ -42,7 +42,8 @@ export function buildUserContent(
       attachment.type === "file" ||
       attachment.type === "url" ||
       attachment.type === "skill" ||
-      attachment.type === "mention"
+      attachment.type === "mention" ||
+      attachment.type === "browserComment"
     ) {
       content.push(attachment);
     }

@@ -117,6 +117,14 @@ function inferCategory(
   ) {
     return "command_execution";
   }
+  // browser.navigate and similar navigation tools → network_access
+  if (
+    /(\b|[._-])(browse|navigate|web_?fetch|web_?search)(\b|[._-])/i.test(
+      toolName,
+    )
+  ) {
+    return "network_access";
+  }
   if (/^(WebFetch|WebSearch)$/.test(toolName)) return "network_access";
   if (path && (fileAction === "read" || fileAction === "list")) {
     return "file_read";

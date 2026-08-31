@@ -9,6 +9,7 @@
  *           a clear notification; they can be added later via extraction.
  */
 import type { UserMessageContent } from "../../../types";
+import type { WorkflowUserMessageContent } from "@shared/workflow-read-thread-contract";
 import type { SkillInfo } from "@shared/types";
 import { composerAttachmentsToContent } from "./composer-contract";
 
@@ -48,6 +49,12 @@ export type ComposerAttachment =
       id: string;
       name: string;
       path: string;
+    }
+  | {
+      kind: "browser-comment";
+      id: string;
+      pageId?: string;
+      payload: Extract<WorkflowUserMessageContent, { type: "browserComment" }>;
     };
 export const MAX_ATTACHMENTS = 6;
 export const MAX_IMAGE_ATTACHMENT_BYTES = 8 * 1024 * 1024;
@@ -273,6 +280,33 @@ export function mentionAttachment(
   path: string,
 ): ComposerAttachment {
   return { kind: "mention", id: crypto.randomUUID(), name, path };
+}
+
+export function browserCommentAttachment(
+  payload: Omit<
+    Extract<WorkflowUserMessageContent, { type: "browserComment" }>,
+    "type"
+  >,
+  pageId?: string,
+): ComposerAttachment {
+  return {
+    kind: "browser-comment",
+    id: crypto.randomUUID(),
+    pageId,
+    payload: { type: "browserComment", ...payload },
+  };
+}
+
+export function isMatchingBrowserCommentAttachment(
+  attachment: ComposerAttachment,
+  pageId: string,
+  commentId: number,
+): boolean {
+  return (
+    attachment.kind === "browser-comment" &&
+    attachment.pageId === pageId &&
+    attachment.payload.commentId === commentId
+  );
 }
 /** Convert composer attachments to the wire content sent to the store. */
 export function attachmentsToUserContent(

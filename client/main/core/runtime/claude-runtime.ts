@@ -66,6 +66,19 @@ import {
   SdkCommandSandbox,
 } from "./sdk-command-sandbox";
 import {
+  canonicalTerminalToolName,
+  createSdkTerminalServer,
+  SDK_TERMINAL_SERVER_NAME,
+} from "./sdk-terminal-mcp";
+import {
+  canonicalBrowserToolName,
+  createSdkBrowserServer,
+  SDK_BROWSER_SERVER_NAME,
+} from "./sdk-browser-mcp";
+import { SessionApprovalTracker } from "../security/session-approval-tracker";
+import { terminalService } from "../../services/terminal-service";
+import { cdpBrowserService } from "../../services/cdp-browser-service";
+import {
   RuntimeEventQueue,
   createTurnLifetime,
   type ActiveTurn,
@@ -1013,11 +1026,16 @@ export class ClaudeRuntime implements AgentRuntime {
   private permissionModeOverride: PermissionMode | null = null;
   /** threadId → SDK sessionId 映射（forkThread 走 SDK forkSession 用）。 */
   private threadSdkSession = new Map<string, string>();
+  /** Per-thread approval tracker (survives across turns, cleared on thread delete). */
+  private approvalTracker = new SessionApprovalTracker();
 
   // ---------- Session lifecycle ----------
 
   async initialize(): Promise<void> {
     recoverApplyingOutbox();
+    cdpBrowserService.setSecurityRulesGetter(
+      () => getAgentSettings().securityRules,
+    );
     try {
       await import("@anthropic-ai/claude-agent-sdk");
     } catch {
@@ -1082,6 +1100,9 @@ export class ClaudeRuntime implements AgentRuntime {
     }
     threads.delete(threadId);
     workflowThreadStore.deleteThread(threadId);
+    this.approvalTracker.clear();
+    terminalService.killByThread(threadId);
+    void cdpBrowserService.closeByThread(threadId);
   }
 
   async clearThread(threadId: string): Promise<void> {
@@ -1263,6 +1284,11 @@ export class ClaudeRuntime implements AgentRuntime {
     this.activeTurns.set(opts.threadId, entry);
     const queue = entry.eventQueue!;
     const sdkCommandSandbox = new SdkCommandSandbox();
+    const sdkTerminalServer = createSdkTerminalServer(this.approvalTracker);
+    const sdkBrowserServer = createSdkBrowserServer(
+      this.approvalTracker,
+      opts.threadId,
+    );
 
     // Prepare tool permission callbacks for SDK canUseTool.
     const options = buildClaudeRuntimeOptions({
@@ -1271,6 +1297,8 @@ export class ClaudeRuntime implements AgentRuntime {
       env: sdkEnv,
       sdkMcpServers: {
         [SDK_SANDBOX_SERVER_NAME]: sdkCommandSandbox.server,
+        [SDK_TERMINAL_SERVER_NAME]: sdkTerminalServer.server,
+        [SDK_BROWSER_SERVER_NAME]: sdkBrowserServer.server,
       },
       toolAliases: { Bash: SDK_SANDBOX_TOOL_NAME },
       canUseTool: async (
@@ -1278,7 +1306,9 @@ export class ClaudeRuntime implements AgentRuntime {
         input: Record<string, unknown>,
         context: Record<string, unknown>,
       ) => {
-        const securityToolName = canonicalSdkSecurityToolName(toolName);
+        const securityToolName = canonicalTerminalToolName(
+          canonicalBrowserToolName(canonicalSdkSecurityToolName(toolName)),
+        );
         const toolUseId =
           typeof context.toolUseID === "string" ? context.toolUseID : genId();
         const requestId = `sdk-approval-${toolUseId}`;
@@ -1294,6 +1324,37 @@ export class ClaudeRuntime implements AgentRuntime {
             interrupt: false,
             toolUseID: toolUseId,
           };
+        }
+        // ── Terminal/browser short-circuit: approved session/page → allow ──
+        if (
+          securityToolName === "terminal.write" ||
+          securityToolName === "terminal.read" ||
+          securityToolName === "terminal.resize"
+        ) {
+          const sessionId =
+            typeof input.sessionId === "string" ? input.sessionId : "";
+          if (sessionId && this.approvalTracker.isSessionApproved(sessionId)) {
+            return {
+              behavior: "allow",
+              toolUseID: toolUseId,
+              updatedInput: input,
+            };
+          }
+        }
+        if (
+          securityToolName.startsWith("browser.") &&
+          securityToolName !== "browser.navigate"
+        ) {
+          const pageId =
+            (typeof input.pageId === "string" ? input.pageId : undefined) ??
+            cdpBrowserService.getActivePageId(opts.threadId);
+          if (pageId && this.approvalTracker.isPageApproved(pageId)) {
+            return {
+              behavior: "allow",
+              toolUseID: toolUseId,
+              updatedInput: input,
+            };
+          }
         }
         const decision = this.securityHost.evaluate({
           threadId: opts.threadId,
@@ -1324,6 +1385,33 @@ export class ClaudeRuntime implements AgentRuntime {
               };
             }
             sdkCommandSandbox.authorize(command, decision.permit);
+          }
+          if (securityToolName === "terminal.exec") {
+            const command =
+              typeof input.command === "string" ? input.command : "";
+            if (!command || !decision.permit) {
+              return {
+                behavior: "deny",
+                message:
+                  "terminal.exec requires a command and a SecurityHost permit.",
+                interrupt: false,
+                toolUseID: toolUseId,
+              };
+            }
+            sdkTerminalServer.authorize(command, decision.permit);
+          }
+          if (securityToolName === "browser.navigate") {
+            const url = typeof input.url === "string" ? input.url : "";
+            if (!url || !decision.permit) {
+              return {
+                behavior: "deny",
+                message:
+                  "browser.navigate requires a URL and a SecurityHost permit.",
+                interrupt: false,
+                toolUseID: toolUseId,
+              };
+            }
+            sdkBrowserServer.authorize(url, decision.permit);
           }
           return { behavior: "allow", toolUseID: toolUseId };
         }
@@ -1380,6 +1468,45 @@ export class ClaudeRuntime implements AgentRuntime {
               }
               sdkCommandSandbox.authorize(
                 command,
+                this.securityHost.issueApprovedPermit(
+                  decision.operation,
+                  effectiveSettings,
+                  decision.elevationProfile,
+                ),
+              );
+            }
+            if (securityToolName === "terminal.exec") {
+              const command =
+                typeof input.command === "string" ? input.command : "";
+              if (!command) {
+                return {
+                  behavior: "deny",
+                  message: "terminal.exec requires a command.",
+                  interrupt: false,
+                  toolUseID: toolUseId,
+                };
+              }
+              sdkTerminalServer.authorize(
+                command,
+                this.securityHost.issueApprovedPermit(
+                  decision.operation,
+                  effectiveSettings,
+                  decision.elevationProfile,
+                ),
+              );
+            }
+            if (securityToolName === "browser.navigate") {
+              const url = typeof input.url === "string" ? input.url : "";
+              if (!url) {
+                return {
+                  behavior: "deny",
+                  message: "browser.navigate requires a URL.",
+                  interrupt: false,
+                  toolUseID: toolUseId,
+                };
+              }
+              sdkBrowserServer.authorize(
+                url,
                 this.securityHost.issueApprovedPermit(
                   decision.operation,
                   effectiveSettings,
@@ -1456,6 +1583,45 @@ export class ClaudeRuntime implements AgentRuntime {
               ),
             );
           }
+          if (securityToolName === "terminal.exec") {
+            const command =
+              typeof input.command === "string" ? input.command : "";
+            if (!command) {
+              return {
+                behavior: "deny",
+                message: "terminal.exec requires a command.",
+                interrupt: false,
+                toolUseID: toolUseId,
+              };
+            }
+            sdkTerminalServer.authorize(
+              command,
+              this.securityHost.issueApprovedPermit(
+                decision.operation,
+                effectiveSettings,
+                decision.elevationProfile,
+              ),
+            );
+          }
+          if (securityToolName === "browser.navigate") {
+            const url = typeof input.url === "string" ? input.url : "";
+            if (!url) {
+              return {
+                behavior: "deny",
+                message: "browser.navigate requires a URL.",
+                interrupt: false,
+                toolUseID: toolUseId,
+              };
+            }
+            sdkBrowserServer.authorize(
+              url,
+              this.securityHost.issueApprovedPermit(
+                decision.operation,
+                effectiveSettings,
+                decision.elevationProfile,
+              ),
+            );
+          }
           return { behavior: "allow", toolUseID: toolUseId };
         }
         return {
@@ -1490,7 +1656,27 @@ export class ClaudeRuntime implements AgentRuntime {
     try {
       query = await queryClaude(channel.generator, options);
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      // startTurn() has already published an active workflow snapshot. If SDK
+      // startup fails before an event stream exists (for example, a missing
+      // packaged Claude executable), no generator catch block can finalize it.
+      // Explicitly settle the snapshot here so the renderer does not keep the
+      // timer and stop button alive indefinitely.
+      workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, {
+        kind: "error",
+        payload: {
+          code: "SDK_STARTUP_ERROR",
+          message: errorMessage,
+          recoverable: false,
+        },
+      });
+      workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, {
+        kind: "turn-complete",
+        payload: { turnId, result: "error", error: errorMessage },
+      });
       sdkCommandSandbox.clear();
+      sdkTerminalServer.clear();
+      sdkBrowserServer.clear();
       this.activeTurns.delete(opts.threadId);
       entry.finish();
       throw err;
@@ -1502,6 +1688,8 @@ export class ClaudeRuntime implements AgentRuntime {
         /* best-effort */
       }
       sdkCommandSandbox.clear();
+      sdkTerminalServer.clear();
+      sdkBrowserServer.clear();
       this.activeTurns.delete(opts.threadId);
       entry.finish();
       return canceledTurnStream(opts.threadId, turnId);
@@ -1756,6 +1944,8 @@ export class ClaudeRuntime implements AgentRuntime {
         yield completeEvent;
       } finally {
         sdkCommandSandbox.clear();
+        sdkTerminalServer.clear();
+        sdkBrowserServer.clear();
         if (!channel.isClosed()) channel.close();
         try {
           query.close?.();

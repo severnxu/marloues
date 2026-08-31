@@ -32,6 +32,7 @@ import {
 import { OPEN_GLOBAL_SEARCH_EVENT } from "@/components/workbench/events";
 import { WorkflowChatHeader } from "./WorkflowChatHeader";
 import type { UserMessageContent } from "../types";
+import type { WorkflowUserMessageContent } from "@shared/workflow-read-thread-contract";
 import type {
   AgentSecurityMode,
   PermissionDialogRequest,
@@ -62,6 +63,68 @@ import {
   type TaskPresentationModel,
 } from "@/components/workflow-chat/task-context";
 import type { WorkflowChatHeaderThreadSummary } from "./WorkflowChatHeader";
+
+type BrowserCommentPayload = Extract<
+  WorkflowUserMessageContent,
+  { type: "browserComment" }
+>;
+
+function browserCommentFromEvent(value: unknown): BrowserCommentPayload | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  const commentId = Number(raw.commentId);
+  const ref = typeof raw.ref === "string" ? raw.ref.trim() : "";
+  const comment = typeof raw.comment === "string" ? raw.comment.trim() : "";
+  if (!Number.isFinite(commentId) || commentId <= 0 || !ref || !comment) {
+    return null;
+  }
+  const rect = raw.rect as Record<string, unknown> | undefined;
+  const viewport = raw.viewport as Record<string, unknown> | undefined;
+  const attributes =
+    raw.attributes && typeof raw.attributes === "object"
+      ? Object.fromEntries(
+          Object.entries(raw.attributes as Record<string, unknown>).filter(
+            (entry): entry is [string, string] => typeof entry[1] === "string",
+          ),
+        )
+      : {};
+  return {
+    type: "browserComment",
+    commentId,
+    targetType: raw.targetType === "region" ? "region" : "element",
+    ref,
+    tagName: typeof raw.tagName === "string" ? raw.tagName : "",
+    text: typeof raw.text === "string" ? raw.text : "",
+    attributes,
+    rect: {
+      x: Number(rect?.x) || 0,
+      y: Number(rect?.y) || 0,
+      width: Number(rect?.width) || 0,
+      height: Number(rect?.height) || 0,
+    },
+    viewport: {
+      width: Number(viewport?.width) || 0,
+      height: Number(viewport?.height) || 0,
+    },
+    scrollX: Number(raw.scrollX) || 0,
+    scrollY: Number(raw.scrollY) || 0,
+    comment,
+    styleEdits:
+      raw.styleEdits && typeof raw.styleEdits === "object"
+        ? Object.fromEntries(
+            Object.entries(raw.styleEdits as Record<string, unknown>).filter(
+              (entry): entry is [string, string] =>
+                typeof entry[1] === "string",
+            ),
+          )
+        : undefined,
+    pageUrl: typeof raw.pageUrl === "string" ? raw.pageUrl : undefined,
+    screenshotDataUrl:
+      typeof raw.screenshotDataUrl === "string"
+        ? raw.screenshotDataUrl
+        : undefined,
+  };
+}
 
 export function WorkflowChatPage({
   leftCollapsed = false,
@@ -178,9 +241,109 @@ export function WorkflowChatPage({
   // render disables or clears the composer. Without it, each submission gets a
   // fresh steer messageId and is correctly (but unexpectedly) queued by main.
   const sendInFlightRef = useRef(false);
+  const browserCommentKeysRef = useRef(new Set<string>());
+  const inputTextRef = useRef(inputText);
   const [nextWorkModeOverride, setNextWorkModeOverride] = useState<
     "execute" | "plan" | null
   >(null);
+  const [incomingBrowserComment, setIncomingBrowserComment] = useState<{
+    eventId: string;
+    pageId: string;
+    payloads: BrowserCommentPayload[];
+  } | null>(null);
+  const [browserCommentSubmit, setBrowserCommentSubmit] = useState<{
+    eventId: string;
+    pageId: string;
+    payloads: BrowserCommentPayload[];
+  } | null>(null);
+  const [browserCommentRemoval, setBrowserCommentRemoval] = useState<{
+    eventId: string;
+    pageId: string;
+    commentId: number;
+  } | null>(null);
+
+  useEffect(() => {
+    inputTextRef.current = inputText;
+  }, [inputText]);
+
+  useEffect(() => {
+    const handleBrowserInput = (event: Event) => {
+      const detail = (event as CustomEvent<unknown>).detail;
+      if (!detail || typeof detail !== "object") return;
+      const record = detail as {
+        type?: unknown;
+        pageId?: unknown;
+        payload?: unknown;
+        payloads?: unknown;
+      };
+      const values =
+        record.type === "submit-comments" && Array.isArray(record.payloads)
+          ? record.payloads
+          : record.type === "comment"
+            ? [record.payload]
+            : [];
+      const payloads = values
+        .map(browserCommentFromEvent)
+        .filter((payload): payload is BrowserCommentPayload =>
+          Boolean(payload),
+        );
+      if (payloads.length === 0) return;
+      const pageId = typeof record.pageId === "string" ? record.pageId : "";
+      if (record.type === "submit-comments") {
+        setBrowserCommentSubmit({
+          eventId: `${pageId}:${payloads.map((payload) => payload.commentId).join(",")}:${Date.now()}`,
+          pageId,
+          payloads,
+        });
+        return;
+      }
+      const freshPayloads = payloads.filter((payload) => {
+        const key = `${pageId}:${payload.commentId}:${payload.ref}`;
+        if (browserCommentKeysRef.current.has(key)) return false;
+        browserCommentKeysRef.current.add(key);
+        return true;
+      });
+      if (freshPayloads.length === 0) return;
+      setIncomingBrowserComment({
+        eventId: `${pageId}:${freshPayloads.map((payload) => payload.commentId).join(",")}`,
+        pageId,
+        payloads: freshPayloads,
+      });
+    };
+    window.addEventListener("browser:send-to-agent", handleBrowserInput);
+    return () =>
+      window.removeEventListener("browser:send-to-agent", handleBrowserInput);
+  }, [setInputText]);
+
+  useEffect(() => {
+    const handleBrowserCommentRemoval = (event: Event) => {
+      const detail = (event as CustomEvent<unknown>).detail;
+      if (!detail || typeof detail !== "object") return;
+      const record = detail as { pageId?: unknown; commentId?: unknown };
+      const pageId = typeof record.pageId === "string" ? record.pageId : "";
+      const commentId = Number(record.commentId);
+      if (!pageId || !Number.isInteger(commentId) || commentId <= 0) return;
+      const keyPrefix = `${pageId}:${commentId}:`;
+      for (const key of browserCommentKeysRef.current) {
+        if (key.startsWith(keyPrefix))
+          browserCommentKeysRef.current.delete(key);
+      }
+      setBrowserCommentRemoval({
+        eventId: `${pageId}:${commentId}:${Date.now()}`,
+        pageId,
+        commentId,
+      });
+    };
+    window.addEventListener(
+      "browser:comment-removed",
+      handleBrowserCommentRemoval,
+    );
+    return () =>
+      window.removeEventListener(
+        "browser:comment-removed",
+        handleBrowserCommentRemoval,
+      );
+  }, []);
 
   const handleSecurityModeChange = useCallback(
     (securityMode: AgentSecurityMode) => {
@@ -734,6 +897,9 @@ export function WorkflowChatPage({
       <ComposerShell
         conversationKey={`${activeSessionId ?? "new-session"}:${composerEpoch}`}
         input={inputText}
+        incomingBrowserComment={incomingBrowserComment ?? undefined}
+        browserCommentSubmit={browserCommentSubmit ?? undefined}
+        browserCommentRemoval={browserCommentRemoval ?? undefined}
         isGenerating={activeSessionIsStreaming}
         securityMode={settings?.securityMode ?? "request"}
         permissionPanel={

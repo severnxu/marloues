@@ -28,7 +28,8 @@
     "prepare:hot-pages": "node scripts/prepare-hot-update-pages.mjs",
     "verify:hot": "node scripts/verify-hot-update.mjs",
     "start": "electron-vite preview --config electron.vite.config.ts",
-    "rebuild:native": "electron-rebuild -f -w better-sqlite3",
+    "rebuild:native": "electron-rebuild -f -w better-sqlite3 -w node-pty",
+    "install:playwright-browsers": "PLAYWRIGHT_BROWSERS_PATH=./resources/playwright-browsers npx playwright install chromium",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
@@ -46,6 +47,8 @@
     "test:smoke:electron-live-ui": "tsx --tsconfig tsconfig.node.json ../tests/smoke/electron-live-ui.smoke.ts",
     "test:smoke:electron-binary-live-ui": "tsx --tsconfig tsconfig.node.json ../tests/smoke/electron-live-ui.smoke.ts --binary",
     "test:smoke:packaged": "node ../tests/smoke/packaged.smoke.mjs",
+    "test:smoke:terminal-browser": "tsx --tsconfig tsconfig.node.json ../tests/smoke/terminal-browser.smoke.ts",
+    "test:contract:terminal-browser": "tsx --tsconfig tsconfig.node.json ../tests/contract/terminal-browser.contract.ts",
     "test:visual": "node ../tests/visual/workflow-suite.visual.mjs",
     "changeset": "changeset",
     "version": "changeset version",
@@ -67,9 +70,12 @@
     "@larksuiteoapi/node-sdk": "^1.73.0",
     "@lezer/highlight": "^1.2.3",
     "@openai/codex": "0.149.1",
+    "@page-agent/page-controller": "^1.12.2",
     "@pierre/diffs": "^1.2.10",
     "@types/qrcode": "^1.5.6",
     "@wecom/aibot-node-sdk": "^1.0.7",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
     "better-sqlite3": "^13.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -82,6 +88,8 @@
     "lowlight": "^3.3.0",
     "lucide-react": "^0.468.0",
     "marked": "^17.0.6",
+    "node-pty": "^1.1.0",
+    "playwright": "^1.62.1",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-diff-viewer-continued": "^3.4.0",
@@ -143,6 +151,13 @@
         "to": "tray-icon.png"
       },
       {
+        "from": "resources/playwright-browsers",
+        "to": "playwright-browsers",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
         "from": "resources/tray-icon-template.png",
         "to": "tray-icon-template.png"
       },
@@ -154,7 +169,8 @@
     "asar": true,
     "asarUnpack": [
       "node_modules/@anthropic-ai/claude-agent-sdk-*/**",
-      "node_modules/@openai/codex-*/**"
+      "node_modules/@openai/codex-*/**",
+      "node_modules/node-pty/**"
     ],
     "publish": [
       {
@@ -228,5 +244,8 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Marloues"
     }
+  },
+  "optionalDependencies": {
+    "@anthropic-ai/claude-agent-sdk-darwin-arm64": "^0.3.220"
   }
 }

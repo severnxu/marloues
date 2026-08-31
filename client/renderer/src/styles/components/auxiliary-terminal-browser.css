@@ -1,0 +1,508 @@
+/* Auxiliary terminal and browser panels. */
+
+.terminal-panel-container {
+  padding: 4px 6px;
+  background: var(--surface-workspace, #1e1e1e);
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* xterm element should fill the terminal container width. */
+.terminal-panel-container .xterm {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+.terminal-panel-container .xterm-viewport {
+  width: 100% !important;
+}
+
+.terminal-panel-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  color: var(--text-3, #888);
+  font-size: 12px;
+}
+
+.browser-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--surface-workspace, #1e1e1e);
+}
+
+/* Browser and terminal panels use canvas-based rendering (WebContentsView,
+   xterm) that handles its own scrolling, so suppress the panel's scroll
+   container to avoid clipping or offset issues. */
+.auxiliary-view-panel:has(.browser-panel),
+.auxiliary-view-panel:has(.terminal-panel-container) {
+  overflow: hidden;
+}
+
+/* In primary-overlay mode, remove the 900px max-width constraint for
+   browser and terminal panels so they fill the full window width. */
+.auxiliary-sidebar.is-primary-overlay .auxiliary-view-panel:has(.browser-panel),
+.auxiliary-sidebar.is-primary-overlay
+  .auxiliary-view-panel:has(.terminal-panel-container) {
+  max-width: none;
+}
+
+.browser-panel-toolbar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  min-height: 44px;
+  flex: 0 0 44px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--shell-divider, rgba(255, 255, 255, 0.08));
+  background: var(--surface-workspace, #1e1e1e);
+}
+
+.browser-annotation-bar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  flex: 0 0 44px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--shell-divider, rgba(255, 255, 255, 0.08));
+  background: var(--surface-workspace, #1e1e1e);
+}
+
+.browser-annotation-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  padding: 0 5px;
+  color: var(--text-2, #c8c8cc);
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-annotation-send {
+  display: inline-flex;
+  height: 26px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 13px;
+  padding: 0 10px;
+  background: var(--accent, #4a9eff);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.browser-annotation-send:disabled {
+  opacity: 0.48;
+  cursor: default;
+}
+
+.browser-panel-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  position: relative;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-2, #ccc);
+  cursor: pointer;
+}
+
+.browser-panel-btn:hover:not(:disabled) {
+  background: var(--raised-2, rgba(255, 255, 255, 0.08));
+  color: var(--text-1, #fff);
+}
+
+.browser-panel-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.browser-panel-btn .is-loading {
+  animation: browser-panel-spin 0.9s linear infinite;
+}
+
+@keyframes browser-panel-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .browser-panel-btn .is-loading {
+    animation: none;
+  }
+}
+
+.browser-panel-btn-active {
+  background: var(--accent-soft, rgba(74, 158, 255, 0.18));
+  color: var(--accent, #4a9eff);
+}
+
+.browser-panel-btn-active:hover {
+  background: var(--accent-soft, rgba(74, 158, 255, 0.25));
+}
+
+.browser-panel-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--accent, #4a9eff);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 14px;
+  text-align: center;
+  padding: 0 3px;
+}
+
+.browser-panel-address {
+  display: flex;
+  min-width: 0;
+  height: 32px;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 0 7px 0 10px;
+  background: var(--raised-2, rgba(255, 255, 255, 0.08));
+  color: var(--text-2, #ccc);
+}
+
+.browser-panel-address.is-empty {
+  background: transparent;
+}
+
+.browser-panel-address:focus-within {
+  border-color: var(--border-strong, var(--shell-divider));
+  background: var(--raised-2, rgba(255, 255, 255, 0.08));
+}
+
+.browser-panel-address-icon {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  padding: 0;
+  background: transparent;
+  color: var(--text-3, #888);
+  cursor: pointer;
+}
+
+.browser-panel-address-icon:hover,
+.browser-panel-address-icon[aria-expanded="true"] {
+  background: var(--raised-3, rgba(255, 255, 255, 0.1));
+  color: var(--text-1, #eee);
+}
+
+.browser-panel-site-info {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.browser-panel-site-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: -8px;
+  z-index: 30;
+  width: min(340px, calc(100vw - 32px));
+  overflow: hidden;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  border-radius: 12px;
+  background: var(--surface-raised, var(--surface-workspace));
+  box-shadow: var(--shadow-lg, 0 14px 40px rgba(0, 0, 0, 0.3));
+  color: var(--text-1, #eee);
+}
+
+.browser-panel-site-host {
+  overflow: hidden;
+  padding: 16px 18px 12px;
+  font-size: 16px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-panel-site-security {
+  display: flex;
+  gap: 12px;
+  padding: 10px 18px 16px;
+  border-bottom: 1px solid var(--shell-divider, rgba(255, 255, 255, 0.08));
+}
+
+.browser-panel-site-security > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.browser-panel-site-security div {
+  display: grid;
+  gap: 5px;
+}
+
+.browser-panel-site-security strong {
+  font-size: 13px;
+}
+
+.browser-panel-site-security span {
+  color: var(--text-2, #bbb);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.browser-panel-site-settings {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  padding: 0 18px;
+  background: transparent;
+  color: var(--text-1, #eee);
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+}
+
+.browser-panel-site-settings span {
+  flex: 1;
+}
+
+.browser-panel-site-settings:hover {
+  background: var(--raised-2, rgba(255, 255, 255, 0.08));
+}
+
+.browser-panel-url-input {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  flex: 1 1 auto;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--text-1, #eee);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+
+.browser-panel-address.is-empty .browser-panel-url-input {
+  text-align: center;
+}
+
+.browser-panel-url-input::placeholder {
+  color: var(--text-3, #888);
+  opacity: 1;
+}
+
+.browser-panel-address-action {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-3, #888);
+}
+
+.browser-panel-address-action:hover {
+  background: var(--raised-3, rgba(255, 255, 255, 0.1));
+  color: var(--text-1, #eee);
+}
+
+.browser-panel-more {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.browser-panel-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  min-width: 158px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  border-radius: 9px;
+  padding: 5px;
+  background: var(--surface-raised, var(--surface-workspace));
+  box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 0, 0, 0.2));
+}
+
+.browser-panel-menu button {
+  display: flex;
+  width: 100%;
+  height: 30px;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 8px;
+  background: transparent;
+  color: var(--text-1, #eee);
+  font-size: 12px;
+  text-align: left;
+}
+
+.browser-panel-menu button:hover:not(:disabled) {
+  background: var(--raised-2, rgba(255, 255, 255, 0.08));
+}
+
+.browser-panel-menu button:disabled {
+  color: var(--text-3, #888);
+  opacity: 0.5;
+}
+
+.browser-panel-container {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: var(--surface-workspace, #1e1e1e);
+}
+
+.browser-panel-start {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: var(--text-3, #888);
+  text-align: center;
+}
+
+.browser-panel-start > svg {
+  margin-bottom: 16px;
+  color: var(--text-2, #bbb);
+}
+
+.browser-panel-start > strong {
+  color: var(--text-1, #eee);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.browser-panel-start > span {
+  margin-top: 8px;
+  color: var(--text-3, #888);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.browser-panel-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  overflow: auto;
+  padding: clamp(72px, 15vh, 160px) clamp(36px, 13vw, 190px);
+  color: var(--text-2, #bbb);
+}
+
+.browser-panel-error-content {
+  width: min(520px, 100%);
+}
+
+.browser-panel-error-content > svg {
+  margin-bottom: 28px;
+  color: var(--accent, #1473e6);
+}
+
+.browser-panel-error-content h2 {
+  margin: 0;
+  color: var(--text-1, #222);
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.browser-panel-error-content > p {
+  margin: 18px 0 0;
+  color: var(--text-2, #666);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.browser-panel-error-tips {
+  margin-top: 24px;
+  color: var(--text-2, #666);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.browser-panel-error-tips ul {
+  margin: 8px 0 0;
+  padding-left: 24px;
+}
+
+.browser-panel-error-content code {
+  display: block;
+  margin-top: 28px;
+  color: var(--text-3, #888);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.browser-panel-error-content > button {
+  height: 34px;
+  margin-top: 42px;
+  border: 0;
+  border-radius: 9px;
+  padding: 0 14px;
+  background: var(--raised-2, #f0f0f0);
+  color: var(--text-1, #222);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.browser-panel-error-content > button:hover {
+  background: var(--raised-3, #e7e7e7);
+}
+
+@media (max-width: 620px) {
+  .browser-panel-error {
+    padding: 52px 28px;
+  }
+}
+
+.browser-panel-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  color: var(--text-3, #888);
+  font-size: 12px;
+}
