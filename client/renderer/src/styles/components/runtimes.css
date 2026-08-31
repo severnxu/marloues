@@ -5,10 +5,10 @@
     max-width: 768px;
     margin: 10px auto 0;
     overflow: hidden;
-    border: var(--component-runtimes-runtime-panel-border-ea992a3);
+    border: 1px solid var(--border);
     border-radius: 12px;
-    background: var(--component-runtimes-runtime-panel-background-0107479);
-    color: var(--component-runtimes-runtime-panel-color-8525e10);
+    background: hsl(225 20% 10% / 0.62);
+    color: var(--muted);
     font-size: 12px;
   }
 
@@ -27,20 +27,20 @@
   }
 
   .runtime-panel summary span {
-    color: var(--component-runtimes-runtime-panel-color-8ebaaed);
+    color: var(--text);
     font-weight: 650;
   }
 
   .runtime-panel summary strong {
     border-radius: 999px;
-    background: var(--component-runtimes-runtime-panel-background-316ff6a);
-    color: var(--component-runtimes-runtime-panel-color-fb5a1a6);
+    background: var(--accent-soft);
+    color: var(--accent);
     padding: 3px 7px;
     font-size: 11px;
   }
 
   .runtime-list {
-    border-top: var(--component-runtimes-runtime-list-border-top-fd60319);
+    border-top: 1px solid var(--border);
     padding: 4px 12px 12px;
   }
 }
@@ -48,9 +48,9 @@
 @layer marloues-components.cascade-0104 {
   .runtime-panel code {
     border-radius: 8px;
-    background: var(--component-runtimes-runtime-panel-background-456384f);
+    background: hsl(0 0% 7%);
     padding: 8px;
-    color: var(--component-runtimes-runtime-panel-color-601aea3);
+    color: hsl(220 14% 84%);
     font-size: 11px;
   }
 }
@@ -70,10 +70,10 @@
 
   .runtimes-tabs button {
     padding: 6px 12px;
-    border: var(--component-runtimes-runtimes-tabs-border-69c7d1c);
+    border: 1px solid var(--settings-border);
     border-radius: 6px;
-    background: var(--component-runtimes-runtimes-tabs-background-b741122);
-    color: var(--component-runtimes-runtimes-tabs-color-7024a5c);
+    background: var(--settings-surface-raised);
+    color: var(--muted);
     font-size: 12px;
     cursor: pointer;
     transition:
@@ -83,14 +83,14 @@
   }
 
   .runtimes-tabs button:hover {
-    color: var(--component-runtimes-runtimes-tabs-color-f92f26e);
-    border-color: var(--component-runtimes-runtimes-tabs-border-color-a249a25);
+    color: var(--text);
+    border-color: hsl(var(--tw-accent) / 0.3);
   }
 
   .runtimes-tabs button.active {
-    color: var(--component-runtimes-runtimes-tabs-color-c4ec613);
-    border-color: var(--component-runtimes-runtimes-tabs-border-color-92fd95e);
-    background: var(--component-runtimes-runtimes-tabs-background-125fb9b);
+    color: var(--text);
+    border-color: hsl(var(--tw-accent) / 0.5);
+    background: hsl(var(--tw-accent) / 0.08);
   }
 
   .runtimes-refresh {
@@ -100,10 +100,10 @@
     justify-content: center;
     width: 28px;
     height: 28px;
-    border: var(--component-runtimes-runtimes-refresh-border-9199bdc);
+    border: 1px solid var(--settings-border);
     border-radius: 6px;
-    background: var(--component-runtimes-runtimes-refresh-background-6f66456);
-    color: var(--component-runtimes-runtimes-refresh-color-1245980);
+    background: var(--settings-surface-raised);
+    color: var(--muted);
     cursor: pointer;
     transition:
       color var(--settings-transition),
@@ -111,10 +111,8 @@
   }
 
   .runtimes-refresh:hover {
-    color: var(--component-runtimes-runtimes-refresh-color-1c03698);
-    border-color: var(
-      --component-runtimes-runtimes-refresh-border-color-52fa61c
-    );
+    color: var(--text);
+    border-color: hsl(var(--tw-accent) / 0.3);
   }
 }
 
@@ -130,10 +128,10 @@
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 6px 12px;
     width: 100%;
-    border: var(--component-runtimes-runtime-card-border-8ab42af);
+    border: 1px solid var(--settings-border);
     border-radius: 10px;
-    background: var(--component-runtimes-runtime-card-background-823de0c);
-    color: var(--component-runtimes-runtime-card-color-7b0dbd1);
+    background: var(--settings-field);
+    color: var(--text);
     padding: 12px;
     text-align: left;
     transition:
@@ -143,23 +141,23 @@
   }
 
   .runtime-card:hover:not(:disabled) {
-    border-color: var(--component-runtimes-runtime-card-border-color-16429b8);
-    background: var(--component-runtimes-runtime-card-background-cd6e4a3);
+    border-color: hsl(var(--tw-accent) / 0.88/0.34);
+    background: hsl(var(--tw-accent) / 0.88/0.08);
   }
 
   .runtime-card:focus-visible:not(:disabled) {
-    border-color: var(--component-runtimes-runtime-card-border-color-6c3a869);
-    background: var(--component-runtimes-runtime-card-background-bae22c2);
+    border-color: hsl(var(--tw-accent) / 0.88/0.34);
+    background: hsl(var(--tw-accent) / 0.88/0.08);
   }
 
   .runtime-card.active {
-    border-color: var(--component-runtimes-runtime-card-border-color-9d432b0);
-    background: var(--component-runtimes-runtime-card-background-fa2d1ad);
+    border-color: hsl(var(--tw-accent) / 0.88/0.34);
+    background: hsl(var(--tw-accent) / 0.88/0.08);
   }
 
   .runtime-card:disabled {
     cursor: not-allowed;
-    opacity: var(--component-runtimes-runtime-card-opacity-d21df47);
+    opacity: 0.72;
   }
 
   .runtime-card span {
@@ -175,7 +173,7 @@
 
   .runtime-card small {
     grid-column: 1 / -1;
-    color: var(--component-runtimes-runtime-card-color-f7ba494);
+    color: var(--muted);
     font-size: 11px;
     line-height: 1.45;
   }
@@ -190,17 +188,17 @@
   }
 
   .runtime-card em.ok {
-    background: var(--component-runtimes-runtime-card-background-ff80b06);
-    color: var(--component-runtimes-runtime-card-color-841113a);
+    background: hsl(160 70% 36% / 0.14);
+    color: hsl(160 70% 58%);
   }
 
   .runtime-card em.pending {
-    background: var(--component-runtimes-runtime-card-background-ea48b91);
-    color: var(--component-runtimes-runtime-card-color-f7185de);
+    background: hsl(var(--tw-accent) / 0.88/0.14);
+    color: hsl(var(--tw-accent-strong));
   }
 
   .runtime-card em.error {
-    background: var(--component-runtimes-runtime-card-background-6e0ab43);
-    color: var(--component-runtimes-runtime-card-color-2ff28b7);
+    background: hsl(8 78% 56% / 0.13);
+    color: hsl(8 88% 68%);
   }
 }

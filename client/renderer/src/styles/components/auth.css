@@ -5,38 +5,56 @@
     /* Login palette follows the active theme (dark/light/warm) instead of a fixed dark navy. */
     --login-bg: var(--bg);
     --login-panel: var(--panel-soft);
-    --login-border: var(
-      --component-auth-auth-loading-screen---login-border-456bac9
-    );
+    --login-border: color-mix(in srgb, var(--accent) 24%, transparent);
     --login-text: var(--text);
     --login-muted: var(--muted);
-    --login-subtle: var(
-      --component-auth-auth-loading-screen---login-subtle-2eb6374
-    );
+    --login-subtle: color-mix(in srgb, var(--text) 55%, var(--muted));
     --login-accent: var(--accent);
     --login-mint: var(--accent-2);
-    --login-ink: var(--component-auth-auth-loading-screen---login-ink-4dbadf4);
+    --login-ink: #fff;
     width: 100vw;
     height: 100vh;
-    background: var(--component-auth-auth-loading-screen-background-b52b391);
-    color: var(--component-auth-auth-loading-screen-color-290fef7);
+    background:
+      radial-gradient(
+        circle at 20% 18%,
+        color-mix(in srgb, var(--accent) 16%, transparent),
+        transparent 32%
+      ),
+      radial-gradient(
+        circle at 82% 76%,
+        color-mix(in srgb, var(--accent-2) 12%, transparent),
+        transparent 30%
+      ),
+      linear-gradient(180deg, var(--bg) 0%, var(--shell) 100%);
+    color: var(--login-muted);
   }
 
   .login-page {
     /* Login palette follows the active theme (dark/light/warm) instead of a fixed dark navy. */
     --login-bg: var(--bg);
     --login-panel: var(--panel-soft);
-    --login-border: var(--component-auth-login-page---login-border-b0f69e8);
+    --login-border: color-mix(in srgb, var(--accent) 24%, transparent);
     --login-text: var(--text);
     --login-muted: var(--muted);
-    --login-subtle: var(--component-auth-login-page---login-subtle-4413d4d);
+    --login-subtle: color-mix(in srgb, var(--text) 55%, var(--muted));
     --login-accent: var(--accent);
     --login-mint: var(--accent-2);
-    --login-ink: var(--component-auth-login-page---login-ink-a0c993c);
+    --login-ink: #fff;
     width: 100vw;
     height: 100vh;
-    background: var(--component-auth-login-page-background-807c610);
-    color: var(--component-auth-login-page-color-5b1e471);
+    background:
+      radial-gradient(
+        circle at 20% 18%,
+        color-mix(in srgb, var(--accent) 16%, transparent),
+        transparent 32%
+      ),
+      radial-gradient(
+        circle at 82% 76%,
+        color-mix(in srgb, var(--accent-2) 12%, transparent),
+        transparent 30%
+      ),
+      linear-gradient(180deg, var(--bg) 0%, var(--shell) 100%);
+    color: var(--login-text);
   }
 
   .auth-loading-screen {
@@ -45,7 +63,7 @@
     place-items: center;
     gap: 10px;
     align-content: center;
-    color: var(--component-auth-auth-loading-screen-color-290fef7);
+    color: var(--login-muted);
     font-size: 13px;
   }
 
@@ -61,7 +79,7 @@
 
   .auth-loading-screen svg {
     animation: auth-spin 900ms linear infinite;
-    color: var(--component-auth-auth-loading-screen-color-f435252);
+    color: var(--login-accent);
   }
 
   .login-page {
@@ -95,19 +113,19 @@
   .login-window-actions button {
     display: grid;
     place-items: center;
-    border: var(--component-auth-login-window-actions-border-347fe89);
-    background: var(--component-auth-login-window-actions-background-d3a06b5);
-    color: var(--component-auth-login-window-actions-color-5443ae3);
+    border: 0;
+    background: transparent;
+    color: var(--login-muted);
   }
 
   .login-window-actions button:hover {
-    background: var(--component-auth-login-window-actions-background-3e59ed1);
-    color: var(--component-auth-login-window-actions-color-0551def);
+    background: var(--hover);
+    color: var(--login-text);
   }
 
   .login-window-actions button:last-child:hover {
-    background: var(--component-auth-login-window-actions-background-5455fba);
-    color: var(--component-auth-login-window-actions-color-4d5e4be);
+    background: var(--danger);
+    color: hsl(var(--tw-accent-foreground));
   }
 
   .login-content {
@@ -116,10 +134,15 @@
     width: min(420px, calc(100vw - 48px));
     overflow: hidden;
     gap: 18px;
-    border: var(--component-auth-login-content-border-0c547f9);
+    border: 1px solid var(--login-border);
     border-radius: 14px;
-    background: var(--component-auth-login-content-background-37456b5);
-    box-shadow: var(--component-auth-login-content-box-shadow-45cfadf);
+    background:
+      linear-gradient(135deg, hsl(186 78% 54% / 0.09), transparent 38%),
+      var(--login-panel);
+    box-shadow:
+      0 22px 80px hsl(220 40% 2% / 0.48),
+      0 0 0 1px hsl(186 78% 54% / 0.18),
+      0 18px 52px hsl(186 78% 54% / 0.1);
     padding: 24px;
   }
 
@@ -129,9 +152,9 @@
     bottom: -72px;
     width: 180px;
     height: 180px;
-    border: var(--component-auth-login-content-border-14cb0ac);
+    border: 1px solid hsl(186 78% 54% / 0.12);
     border-radius: 50%;
-    background: var(--component-auth-login-content-background-1e331df);
+    background: hsl(148 64% 56% / 0.06);
     content: "";
   }
 
@@ -142,7 +165,7 @@
     align-items: center;
     gap: 10px;
     margin-bottom: 8px;
-    color: var(--component-auth-login-brand-row-color-7d8d231);
+    color: var(--login-text);
     font-size: 14px;
     font-weight: 850;
   }
@@ -152,10 +175,10 @@
     width: 28px;
     height: 28px;
     place-items: center;
-    border: var(--component-auth-login-brand-mark-border-12b2df2);
+    border: 1px solid hsl(186 78% 54% / 0.35);
     border-radius: 8px;
-    background: var(--component-auth-login-brand-mark-background-7b3fb22);
-    color: var(--component-auth-login-brand-mark-color-5cc5ce8);
+    background: linear-gradient(135deg, var(--login-accent), var(--login-mint));
+    color: var(--login-ink);
   }
 
   .login-copy {
@@ -166,7 +189,7 @@
   }
 
   .login-copy > span {
-    color: var(--component-auth-login-copy-color-79ce3f3);
+    color: var(--login-accent);
     font-size: 11px;
     font-weight: 850;
     letter-spacing: 0.08em;
@@ -180,13 +203,13 @@
     font-weight: 780;
     letter-spacing: 0;
     line-height: 1.08;
-    color: var(--component-auth-login-copy-color-c64bf1d);
+    color: var(--login-text);
   }
 
   .login-copy p {
     margin: 0;
     max-width: 330px;
-    color: var(--component-auth-login-copy-color-76db7cb);
+    color: var(--login-subtle);
     font-size: 13px;
     line-height: 1.7;
   }
@@ -206,13 +229,13 @@
   }
 
   .login-actions-head span {
-    color: var(--component-auth-login-actions-head-color-46e155d);
+    color: var(--login-accent);
     font-size: 11px;
     font-weight: 680;
   }
 
   .login-actions-head strong {
-    color: var(--component-auth-login-actions-head-color-1b1cca7);
+    color: var(--login-text);
     font-size: 20px;
     line-height: 1.2;
   }
@@ -220,17 +243,17 @@
   .login-actions-head p {
     max-width: 32rem;
     margin: 0;
-    color: var(--component-auth-login-actions-head-color-8703487);
+    color: var(--login-muted);
     font-size: 12px;
     line-height: 1.55;
   }
 
   .login-error {
     margin: -4px 0 0;
-    border: var(--component-auth-login-error-border-a4dea21);
+    border: 1px solid hsl(0 72% 51% / 0.28);
     border-radius: 8px;
-    background: var(--component-auth-login-error-background-19708d1);
-    color: var(--component-auth-login-error-color-df0703e);
+    background: var(--settings-danger-soft);
+    color: hsl(0 80% 70%);
     font-size: 12px;
     line-height: 1.5;
     padding: 9px 10px;
@@ -248,7 +271,7 @@
     justify-content: center;
     gap: 7px;
     min-height: 42px;
-    border: var(--component-auth-login-submit-border-4de8bd1);
+    border: 1px solid hsl(186 78% 54% / 0.2);
     border-radius: 8px;
     font-size: 14px;
     font-weight: 760;
@@ -260,7 +283,7 @@
     justify-content: center;
     gap: 7px;
     min-height: 42px;
-    border: var(--component-auth-login-secondary-border-316d855);
+    border: 1px solid hsl(186 78% 54% / 0.2);
     border-radius: 8px;
     font-size: 14px;
     font-weight: 760;
@@ -268,14 +291,16 @@
 
   .login-submit {
     width: 100%;
-    background: var(--component-auth-login-submit-background-b27034e);
-    color: var(--component-auth-login-submit-color-8121863);
-    box-shadow: var(--component-auth-login-submit-box-shadow-119520d);
+    background: linear-gradient(135deg, var(--login-accent), var(--login-mint));
+    color: var(--login-ink);
+    box-shadow:
+      0 0 0 1px hsl(186 78% 54% / 0.28),
+      0 18px 52px hsl(186 78% 54% / 0.12);
   }
 
   .login-secondary {
-    background: var(--component-auth-login-secondary-background-757f420);
-    color: var(--component-auth-login-secondary-color-cabec53);
+    background: hsl(225 24% 6% / 0.5);
+    color: var(--login-text);
   }
 
   .login-submit:hover {

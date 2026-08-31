@@ -19,7 +19,7 @@
 
 ## 背景
 
-设置页在开发时直接写代码、未先做设计稿，导致大量样式使用 `legacy-tokens.css` 中的哈希令牌（`--component-*` / `--theme-*`），与工作台语义令牌脱节。本设计稿用纯语义令牌重建设置页视觉，为后续 CSS 迁移提供像素基线与设计语言参照。
+设置页在开发时直接写代码、未先做设计稿，曾导致大量样式使用自动提取的哈希令牌（`--component-*` / `--theme-*`），与工作台语义令牌脱节。本设计稿用纯语义令牌重建视觉，并作为后续迁移的像素基线与设计语言参照；迁移现已完成。
 
 ## 评审目标
 
@@ -74,7 +74,7 @@
 
 ## 与 Renderer 的关系
 
-设置页真实代码位于 `client/renderer/src/components/settings/`，控件原型对应 `shared.tsx` 中的 `SettingsCard`、`SettingRow`、`ToggleSwitch`、`SegmentedOptions`、`SettingsSelect` 等。当前样式仍使用 `auth.css` 与 `legacy-tokens.css` 中的哈希令牌，后续迁移目标是将设置页 CSS 切换到语义令牌并删除 `legacy-tokens.css`。
+设置页真实代码位于 `client/renderer/src/components/settings/`，控件原型对应 `shared.tsx` 中的 `SettingsCard`、`SettingRow`、`ToggleSwitch`、`SegmentedOptions`、`SettingsSelect` 等。Renderer 样式已切换到语义令牌，自动提取的兼容 token 文件也已删除。
 
 ## 关联设计稿
 

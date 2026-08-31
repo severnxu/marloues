@@ -295,7 +295,6 @@ renderer 根文件：`App.tsx`（入口，AuthGate + Onboarding + WorkbenchRoot 
 | 文件 | 职责 |
 |---|---|
 | `tokens.css` | **语义设计系统唯一来源**（dark 默认 + `[data-theme="light"]` + `[data-theme="warm"]`） |
-| `legacy-tokens.css` | 旧自动抽取 token 隔离区（**禁止新代码引用**，迁移完删除） |
 | `README.md` | CSS 架构规范（见下） |
 | `components/index.css` | 全局组件样式 manifest：声明 ~150 个 `neobot-components.cascade-XXXX` 层 + 按依赖顺序 @import 全部 52 个组件 css |
 

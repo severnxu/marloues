@@ -5,10 +5,8 @@ position.
 
 1. `index.css` owns Tailwind's low-priority layer.
 2. `tokens.css` owns the semantic design system and theme values.
-3. `legacy-tokens.css` temporarily supports component styles that have not been
-   migrated. New code must never reference it.
-4. `components/index.css` is the global component-style manifest.
-5. New component-local styles use adjacent CSS Modules.
+3. `components/index.css` is the global component-style manifest.
+4. New component-local styles use adjacent CSS Modules.
 
 ## Semantic Tokens
 
@@ -40,19 +38,3 @@ patch selectors owned by another component.
 New React components should prefer an adjacent `ComponentName.module.css`.
 Global CSS remains appropriate for long-lived class contracts shared by the
 Workbench and existing business views.
-
-## Legacy Migration
-
-`legacy-tokens.css` is quarantine for the former automatic token extraction.
-It contains only `--component-*` and `--theme-*` definitions. Every migrated
-component must:
-
-1. replace those references with semantic tokens or direct non-paint values;
-2. remove recovered numeric cascade layers;
-3. delete its now-unused legacy token definitions;
-4. add the file to `migratedComponentFiles` in the CSS architecture check.
-
-The compatibility file is deleted when its last reference is gone. Do not add
-new entries to it.
-
-Run `npm run check:css` after every style change.

@@ -19,7 +19,7 @@
 
 ## 背景
 
-引导页最初直接写在 `auth.css` 中，并使用 `legacy-tokens.css` 的哈希令牌。本设计稿用纯语义令牌重建视觉；Renderer 已将实现抽离到独立的 `onboarding.css`，并以本设计稿作为像素基线。
+引导页最初直接写在 `auth.css` 中，并使用自动提取的哈希令牌。本设计稿用纯语义令牌重建视觉；Renderer 已将实现抽离到独立的 `onboarding.css`，以本设计稿作为像素基线，并完成了兼容 token 的清理。
 
 ## 评审目标
 
