@@ -23,7 +23,7 @@ export function ResizeHandle({
         }
       : {
           min: WORKBENCH_GEOMETRY.auxiliaryMin,
-          max: WORKBENCH_GEOMETRY.auxiliaryMax,
+          max: Number.POSITIVE_INFINITY,
         };
 
   return (
@@ -34,7 +34,7 @@ export function ResizeHandle({
       aria-orientation="vertical"
       aria-label={ariaLabel}
       aria-valuemin={bounds.min}
-      aria-valuemax={bounds.max}
+      aria-valuemax={Number.isFinite(bounds.max) ? bounds.max : undefined}
       onPointerDown={onPointerDown}
     />
   );

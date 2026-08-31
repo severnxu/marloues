@@ -51,7 +51,11 @@
   --windows-caption-controls-width: 138px;
   --windows-auxiliary-control-width: 38px;
   --windows-auxiliary-primary-leading-safe-area: 84px;
-  --windows-auxiliary-primary-trailing-safe-area: 320px;
+  /* 窗口控件 (138) + toggle-aux 按钮组 (38) + aux-primary-action+间距 (26+12=38) + 基础间距 (8) = 222 */
+  --windows-auxiliary-primary-trailing-safe-area: calc(
+    var(--windows-caption-controls-width) +
+      var(--windows-auxiliary-control-width) + 38px + var(--space-2)
+  );
   --windows-collapsed-header-safe-area: calc(
     var(--windows-caption-controls-width) +
       var(--windows-auxiliary-control-width) + var(--workspace-inline-padding)
@@ -77,8 +81,25 @@
   --windows-leading-width: 54px;
   --mac-auxiliary-leading-safe-area: 164px;
   --auxiliary-content-max-width: 900px;
-  --auxiliary-content-inline-padding: 8px;
-  --control-radius: 8px;
+ --auxiliary-content-inline-padding: 8px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --radius-sm: 6px;
+  --sidebar-row-gap: 2px;
+  --auxiliary-tab-height: 30px;
+  --auxiliary-picker-width: 132px;
+  --auxiliary-launcher-width: 164px;
+  --auxiliary-launcher-row-height: 34px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --font-code: var(--font-mono);
+  --surface-popover: var(--popover);
+  --shadow-lg: var(--shadow-popover);
+  --motion-shell: 580ms cubic-bezier(0.16, 1, 0.3, 1);
+ --control-radius: 8px;
   --card-radius: 10px;
   --presentation-window-radius: 12px;
   --scrollbar-width: 10px;

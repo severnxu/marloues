@@ -151,6 +151,13 @@
   padding-right: 112px;
 }
 
+/* With the auxiliary column open, its controls occupy that column's own
+   title track. Keep the summary toggle at the trailing edge of the main
+   conversation titlebar instead of reserving the window-level controls. */
+.platform-layout-macos.auxiliary-open .chat-page > .chat-header {
+  padding-right: 18px;
+}
+
 .messages-scroll {
   overflow-anchor: none;
   min-height: 0;

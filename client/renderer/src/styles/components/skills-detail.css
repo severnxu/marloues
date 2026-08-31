@@ -8,19 +8,19 @@
     justify-items: center;
     align-content: center;
     gap: 8px;
-    border: var(--component-skills-detail-skill-import-state-border-5941c6b);
+    border: 1px dashed var(--settings-border);
     border-radius: 12px;
-    color: var(--component-skills-detail-skill-import-state-color-7b4f402);
+    color: var(--muted);
     padding: 26px;
     text-align: center;
   }
 
   .skill-import-state svg {
-    color: var(--component-skills-detail-skill-import-state-color-3f6a528);
+    color: var(--muted);
   }
 
   .skill-import-state strong {
-    color: var(--component-skills-detail-skill-import-state-color-6287509);
+    color: var(--text);
     font-size: 14px;
     font-weight: 700;
   }
@@ -28,7 +28,7 @@
   .skill-import-state p {
     max-width: 360px;
     margin: 0;
-    color: var(--component-skills-detail-skill-import-state-color-d10e557);
+    color: var(--muted);
     font-size: 12px;
     line-height: 1.6;
   }
@@ -40,12 +40,10 @@
     justify-content: center;
     gap: 7px;
     margin-top: 6px;
-    border: var(--component-skills-detail-skill-import-state-border-b7461fc);
+    border: 1px solid var(--settings-border);
     border-radius: 8px;
-    background: var(
-      --component-skills-detail-skill-import-state-background-4b07721
-    );
-    color: var(--component-skills-detail-skill-import-state-color-b9b4385);
+    background: var(--settings-field);
+    color: var(--text);
     padding: 7px 12px;
     font-size: 12px;
     font-weight: 650;
@@ -56,12 +54,8 @@
   }
 
   .skill-import-state button:hover {
-    border-color: var(
-      --component-skills-detail-skill-import-state-border-color-c547c55
-    );
-    background: var(
-      --component-skills-detail-skill-import-state-background-b71e66b
-    );
+    border-color: var(--settings-control-border-hover);
+    background: var(--settings-control-surface-hover);
   }
 }
 
@@ -72,9 +66,7 @@
     height: 20px;
     flex-shrink: 0;
     border-radius: 999px;
-    background: var(
-      --component-skills-detail-skill-row-actions-background-90e226c
-    );
+    background: var(--settings-control-surface);
   }
 
   .skill-row-actions .skill-switch span {
@@ -84,19 +76,13 @@
     width: 14px;
     height: 14px;
     border-radius: 999px;
-    background: var(
-      --component-skills-detail-skill-row-actions-background-d94b0f9
-    );
-    box-shadow: var(
-      --component-skills-detail-skill-row-actions-box-shadow-7d6b494
-    );
+    background: var(--text-1);
+    box-shadow: 0 1px 3px hsl(0 0% 0% / 0.24);
     transition: transform var(--settings-transition);
   }
 
   .skill-row-actions .skill-switch.is-enabled {
-    background: var(
-      --component-skills-detail-skill-row-actions-background-3887ec3
-    );
+    background: var(--accent);
   }
 
   .skill-row-actions .skill-switch.is-enabled span {
@@ -111,9 +97,7 @@
     z-index: 1000;
     display: grid;
     place-items: center;
-    background: var(
-      --component-skills-detail-skill-detail-overlay-background-28059d2
-    );
+    background: var(--overlay);
     animation: overlay-fade 180ms var(--ease);
     padding: 24px;
   }
@@ -126,14 +110,10 @@
     max-height: calc(100vh - 48px);
     overflow: hidden;
     gap: 12px;
-    border: var(--component-skills-detail-skill-detail-modal-border-72926d8);
+    border: 1px solid var(--border);
     border-radius: var(--rad-window);
-    background: var(
-      --component-skills-detail-skill-detail-modal-background-0912264
-    );
-    box-shadow: var(
-      --component-skills-detail-skill-detail-modal-box-shadow-162ddfa
-    );
+    background: var(--surface-popover);
+    box-shadow: var(--settings-shadow);
     animation: dialog-rise 180ms var(--ease);
     padding: 14px;
   }
@@ -161,7 +141,7 @@
   .skill-detail-head strong {
     display: block;
     overflow: hidden;
-    color: var(--component-skills-detail-skill-detail-head-color-d658d08);
+    color: var(--text);
     text-overflow: ellipsis;
     white-space: nowrap;
     font-size: 14px;
@@ -171,7 +151,7 @@
   .skill-detail-head small {
     display: block;
     margin-top: 2px;
-    color: var(--component-skills-detail-skill-detail-head-color-0f730fe);
+    color: var(--muted);
     font-size: 11px;
   }
 
@@ -181,27 +161,21 @@
     height: 28px;
     align-items: center;
     justify-content: center;
-    border: var(--component-skills-detail-skill-detail-head-border-99e5114);
+    border: 0;
     border-radius: 8px;
-    background: var(
-      --component-skills-detail-skill-detail-head-background-5759ac2
-    );
-    color: var(--component-skills-detail-skill-detail-head-color-abd1b93);
+    background: transparent;
+    color: var(--muted);
     padding: 0;
   }
 
   .skill-detail-head button:hover {
-    background: var(
-      --component-skills-detail-skill-detail-head-background-6a1ccfb
-    );
-    color: var(--component-skills-detail-skill-detail-head-color-da04d24);
+    background: var(--raised-1);
+    color: var(--text);
   }
 
   .skill-detail-description {
     margin: 0;
-    color: var(
-      --component-skills-detail-skill-detail-description-color-c683980
-    );
+    color: var(--text-2);
     font-size: 12px;
     line-height: 1.55;
   }
@@ -210,12 +184,10 @@
     max-height: min(510px, calc(100vh - 220px));
     overflow: auto;
     margin: 0;
-    border: var(--component-skills-detail-skill-detail-modal-border-0cd4acf);
+    border: 1px solid var(--border);
     border-radius: 8px;
-    background: var(
-      --component-skills-detail-skill-detail-modal-background-9de1391
-    );
-    color: var(--component-skills-detail-skill-detail-modal-color-b9c8554);
+    background: var(--settings-field);
+    color: var(--text);
     padding: 12px;
     font-family: var(--mono);
     font-size: 12px;
@@ -238,13 +210,13 @@
   }
 
   .skill-detail-meta-item dt {
-    color: var(--component-skills-detail-skill-detail-meta-item-color-9b1bd9f);
+    color: var(--muted);
     font-size: 11px;
   }
 
   .skill-detail-meta-item dd {
     margin: 0;
-    color: var(--component-skills-detail-skill-detail-meta-item-color-18400c2);
+    color: var(--text);
     font-size: 12px;
     word-break: break-all;
   }
@@ -252,37 +224,23 @@
   .skill-detail-security {
     border-radius: 8px;
     padding: 10px 12px;
-    background: var(
-      --component-skills-detail-skill-detail-security-background-c96bf1e
-    );
-    border: var(--component-skills-detail-skill-detail-security-border-fa58466);
+    background: var(--warning-soft);
+    border: 1px solid hsl(45 80% 50% / 0.24);
   }
 
   .skill-detail-security.is-warning {
-    background: var(
-      --component-skills-detail-skill-detail-security-background-2727e56
-    );
-    border-color: var(
-      --component-skills-detail-skill-detail-security-border-color-59f39ed
-    );
+    background: var(--warning-soft);
+    border-color: color-mix(in srgb, var(--warning) 42%, transparent);
   }
 
   .skill-detail-security.is-suspicious {
-    background: var(
-      --component-skills-detail-skill-detail-security-background-1b91145
-    );
-    border-color: var(
-      --component-skills-detail-skill-detail-security-border-color-e729800
-    );
+    background: var(--danger-soft);
+    border-color: color-mix(in srgb, var(--danger) 42%, transparent);
   }
 
   .skill-detail-security.is-unknown {
-    background: var(
-      --component-skills-detail-skill-detail-security-background-961d609
-    );
-    border-color: var(
-      --component-skills-detail-skill-detail-security-border-color-854ea4b
-    );
+    background: var(--raised-1);
+    border-color: var(--border);
   }
 
   .skill-detail-installed-badge {
@@ -290,12 +248,8 @@
     align-items: center;
     padding: 6px 14px;
     border-radius: 8px;
-    background: var(
-      --component-skills-detail-skill-detail-installed-badge-background-ab31ca1
-    );
-    color: var(
-      --component-skills-detail-skill-detail-installed-badge-color-94858db
-    );
+    background: var(--success-soft);
+    color: var(--success);
     font-size: 12px;
     font-weight: 500;
   }
@@ -304,9 +258,7 @@
     display: flex;
     justify-content: flex-end;
     gap: 8px;
-    border-top: var(
-      --component-skills-detail-skill-detail-actions-border-top-ca0e6d6
-    );
+    border-top: 1px solid var(--border-subtle);
     padding-top: 12px;
   }
 
@@ -321,39 +273,25 @@
     align-items: center;
     justify-content: center;
     gap: 7px;
-    border: var(--component-skills-detail-skill-detail-actions-border-fa0efe3);
+    border: 1px solid color-mix(in srgb, var(--danger) 32%, transparent);
     border-radius: 8px;
-    background: var(
-      --component-skills-detail-skill-detail-actions-background-44c9a5a
-    );
-    color: var(--component-skills-detail-skill-detail-actions-color-598643b);
+    background: var(--settings-field);
+    color: var(--danger);
     padding: 0 12px;
     font-size: 12px;
     font-weight: 740;
   }
 
   .skill-detail-actions .danger:hover {
-    border-color: var(
-      --component-skills-detail-skill-detail-actions-border-color-36b26ea
-    );
-    background: var(
-      --component-skills-detail-skill-detail-actions-background-dfc3acd
-    );
-    outline: var(
-      --component-skills-detail-skill-detail-actions-outline-0fd5eda
-    );
+    border-color: var(--settings-control-border-hover);
+    background: var(--settings-control-surface-hover);
+    outline: none;
   }
 
   .skill-detail-actions .danger:focus-visible {
-    border-color: var(
-      --component-skills-detail-skill-detail-actions-border-color-d9c0abc
-    );
-    background: var(
-      --component-skills-detail-skill-detail-actions-background-1cf6b99
-    );
-    outline: var(
-      --component-skills-detail-skill-detail-actions-outline-ea4a374
-    );
+    border-color: var(--settings-control-border-focus);
+    background: var(--settings-control-surface-hover);
+    outline: none;
   }
 
   .skill-detail-body {
@@ -369,22 +307,16 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.12em;
-    color: var(
-      --component-skills-detail-skill-detail-section-label-color-d664bd6
-    );
+    color: var(--text-2);
   }
 
   .skill-detail-changelog {
     margin: 0;
     padding: 12px 14px;
-    border: var(
-      --component-skills-detail-skill-detail-changelog-border-825c113
-    );
+    border: 1px solid var(--border-subtle);
     border-radius: 10px;
-    background: var(
-      --component-skills-detail-skill-detail-changelog-background-3b395c9
-    );
-    color: var(--component-skills-detail-skill-detail-changelog-color-fad2927);
+    background: var(--settings-field);
+    color: hsl(220 12% 78%);
     font-size: 12px;
     line-height: 1.65;
     white-space: pre-wrap;
@@ -400,20 +332,14 @@
     display: grid;
     gap: 6px;
     padding: 12px 14px;
-    border: var(--component-skills-detail-skill-timeline-item-border-ac0b3f2);
+    border: 1px solid hsl(225 15% 16% / 0.72);
     border-radius: 12px;
-    background: var(
-      --component-skills-detail-skill-timeline-item-background-47617d0
-    );
+    background: var(--settings-field);
   }
 
   .skill-timeline-item.is-current {
-    border-color: var(
-      --component-skills-detail-skill-timeline-item-border-color-c9bc517
-    );
-    background: var(
-      --component-skills-detail-skill-timeline-item-background-8eaee5f
-    );
+    border-color: var(--settings-control-border-hover);
+    background: var(--settings-control-surface-hover);
   }
 
   .skill-timeline-head {
@@ -426,22 +352,20 @@
   .skill-timeline-head .version {
     font-size: 13px;
     font-weight: 700;
-    color: var(--component-skills-detail-skill-timeline-head-color-19d836c);
+    color: var(--text);
   }
 
   .skill-timeline-head .date {
     font-size: 11px;
     font-weight: 600;
-    color: var(--component-skills-detail-skill-timeline-head-color-ebab1f7);
+    color: var(--muted);
   }
 
   .skill-timeline-changelog {
     margin: 0;
     font-size: 11.5px;
     line-height: 1.6;
-    color: var(
-      --component-skills-detail-skill-timeline-changelog-color-11a44a7
-    );
+    color: var(--text-2);
     white-space: pre-wrap;
     word-break: break-word;
   }
@@ -452,14 +376,10 @@
     height: 26px;
     align-items: center;
     gap: 5px;
-    border: var(
-      --component-skills-detail-skill-timeline-install-border-080645c
-    );
+    border: 1px solid var(--settings-border);
     border-radius: 7px;
-    background: var(
-      --component-skills-detail-skill-timeline-install-background-a51f60e
-    );
-    color: var(--component-skills-detail-skill-timeline-install-color-9bd370b);
+    background: var(--settings-field);
+    color: var(--text);
     padding: 0 10px;
     font-size: 11px;
     font-weight: 600;
@@ -470,140 +390,14 @@
   }
 
   .skill-timeline-install:hover:not(:disabled) {
-    border-color: var(
-      --component-skills-detail-skill-timeline-install-border-color-ef01f16
-    );
-    background: var(
-      --component-skills-detail-skill-timeline-install-background-9e43dd1
-    );
+    border-color: var(--settings-control-border-hover);
+    background: var(--settings-control-surface-hover);
   }
 
   .skill-timeline-install:disabled {
-    opacity: var(
-      --component-skills-detail-skill-timeline-install-opacity-dd3e526
-    );
+    opacity: 0.58;
     cursor: not-allowed;
   }
-}
-/* Theme token bindings. The dark theme falls back to the component layer. */
-
-.skill-detail {
-  background: var(
-    --theme-skills-detail-skill-detail-background-164064e,
-    revert-layer
-  );
-  color: var(--theme-skills-detail-skill-detail-color-5d768f9, revert-layer);
-  border-color: var(
-    --theme-skills-detail-skill-detail-border-color-77fb193,
-    revert-layer
-  );
-}
-
-.skill-detail pre {
-  color: var(--theme-skills-detail-skill-detail-color-59c563d, revert-layer);
-  border-color: var(
-    --theme-skills-detail-skill-detail-border-color-c696d03,
-    revert-layer
-  );
-  background: var(
-    --theme-skills-detail-skill-detail-background-6af4481,
-    revert-layer
-  );
-}
-
-.skill-detail-description {
-  color: var(
-    --theme-skills-detail-skill-detail-description-color-dc74bc4,
-    revert-layer
-  );
-}
-
-.skill-detail-head button:hover {
-  background: var(
-    --theme-skills-detail-skill-detail-head-background-a964db7,
-    revert-layer
-  );
-}
-
-.skill-row-actions .skill-switch {
-  background: var(
-    --theme-skills-detail-skill-row-actions-background-014ee63,
-    revert-layer
-  );
-}
-
-.skill-row-actions .skill-switch.is-enabled {
-  background: var(
-    --theme-skills-detail-skill-row-actions-background-d5f4a77,
-    revert-layer
-  );
-}
-
-.skill-detail-changelog {
-  border-color: var(
-    --theme-skills-detail-skill-detail-changelog-border-color-f78c309,
-    revert-layer
-  );
-  background: var(
-    --theme-skills-detail-skill-detail-changelog-background-e6e8f67,
-    revert-layer
-  );
-  color: var(
-    --theme-skills-detail-skill-detail-changelog-color-7e43e1d,
-    revert-layer
-  );
-}
-
-.skill-timeline-item {
-  border-color: var(
-    --theme-skills-detail-skill-timeline-item-border-color-8c40a5a,
-    revert-layer
-  );
-  background: var(
-    --theme-skills-detail-skill-timeline-item-background-924fd42,
-    revert-layer
-  );
-}
-
-.skill-timeline-item.is-current {
-  border-color: var(
-    --theme-skills-detail-skill-timeline-item-border-color-6f1e853,
-    revert-layer
-  );
-  background: var(
-    --theme-skills-detail-skill-timeline-item-background-00c6cee,
-    revert-layer
-  );
-}
-
-.skill-timeline-install {
-  border-color: var(
-    --theme-skills-detail-skill-timeline-install-border-color-a741358,
-    revert-layer
-  );
-  background: var(
-    --theme-skills-detail-skill-timeline-install-background-935276b,
-    revert-layer
-  );
-}
-
-.skill-import-state {
-  border-color: var(
-    --theme-skills-detail-skill-import-state-border-color-98fa6ae,
-    revert-layer
-  );
-  background: var(
-    --theme-skills-detail-skill-import-state-background-838a527,
-    revert-layer
-  );
-  box-shadow: var(
-    --theme-skills-detail-skill-import-state-box-shadow-3300996,
-    revert-layer
-  );
-  color: var(
-    --theme-skills-detail-skill-import-state-color-5c4b32f,
-    revert-layer
-  );
 }
 
 /* ===== Redesign: tabbed detail modal (SKILL.md / 文件树 / 安全检测 / 历史版本) ===== */
@@ -866,4 +660,21 @@
     border-color: color-mix(in srgb, var(--success) 40%, transparent);
     color: var(--success);
   }
+}
+/* light theme overrides migrated from legacy tokens. */
+:root[data-theme="light"] .skill-detail pre {
+  color: hsl(222 28% 16%);
+}
+
+:root[data-theme="light"] .skill-detail {
+  color: var(--text);
+}
+
+/* warm theme overrides migrated from legacy tokens. */
+:root[data-theme="warm"] .skill-detail pre {
+  color: var(--text);
+}
+
+:root[data-theme="warm"] .skill-detail {
+  color: var(--text);
 }

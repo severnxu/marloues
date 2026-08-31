@@ -79,7 +79,7 @@
     gap: 3px;
   }
   .mcp-panel-head strong {
-    color: var(--component-mcp-shell-mcp-panel-head-color-e8f72b6);
+    color: var(--text);
     font-size: 13px;
     font-weight: 700;
   }
@@ -92,8 +92,8 @@
     flex: 0 0 auto;
     place-items: center;
     border-radius: 8px;
-    background: var(--component-mcp-shell-mcp-panel-icon-background-0e60a7e);
-    color: var(--component-mcp-shell-mcp-panel-icon-color-1266a27);
+    background: var(--accent-soft);
+    color: var(--accent);
   }
 }
 @layer marloues-components.cascade-0200 {
@@ -102,9 +102,9 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    border: var(--component-mcp-shell-mcp-list-toolbar-border-7569e04);
+    border: 1px solid var(--settings-border);
     border-radius: 8px;
-    background: var(--component-mcp-shell-mcp-list-toolbar-background-4619dbc);
+    background: hsl(225 24% 6% / 0.28);
     padding: 12px 14px;
   }
   .mcp-list-toolbar > div {
@@ -113,12 +113,12 @@
     gap: 3px;
   }
   .mcp-list-toolbar strong {
-    color: var(--component-mcp-shell-mcp-list-toolbar-color-f3da014);
+    color: var(--text);
     font-size: 13px;
     font-weight: 720;
   }
   .mcp-list-toolbar small {
-    color: var(--component-mcp-shell-mcp-list-toolbar-color-cc377a7);
+    color: var(--muted);
     font-size: 11px;
   }
 }
@@ -140,11 +140,11 @@
     align-items: center;
     gap: 18px;
     overflow: hidden;
-    border: var(--component-mcp-shell-mcp-workbench-head-border-c354e72);
+    border: 1px solid hsl(var(--tw-accent) / 0.22);
     border-radius: 8px;
-    background: var(
-      --component-mcp-shell-mcp-workbench-head-background-a3b64cb
-    );
+    background:
+      linear-gradient(135deg, hsl(var(--tw-accent) / 0.12), transparent 36%),
+      hsl(225 24% 6% / 0.44);
     padding: 18px;
   }
   .mcp-workbench-head > div:first-child {
@@ -153,7 +153,7 @@
     gap: 5px;
   }
   .mcp-workbench-head span {
-    color: var(--component-mcp-shell-mcp-workbench-head-color-700d0f5);
+    color: var(--accent-2);
     font-size: 10px;
     font-weight: 800;
     letter-spacing: 0.08em;
@@ -161,7 +161,7 @@
   }
   .mcp-workbench-head h2 {
     margin: 0;
-    color: var(--component-mcp-shell-mcp-workbench-head-color-4bdcd19);
+    color: var(--text);
     font-size: 22px;
     font-weight: 760;
     line-height: 1.16;
@@ -169,7 +169,7 @@
   .mcp-workbench-head p {
     max-width: 640px;
     margin: 0;
-    color: var(--component-mcp-shell-mcp-workbench-head-color-1110c45);
+    color: hsl(220 13% 72%);
     font-size: 12px;
     line-height: 1.6;
   }
@@ -183,18 +183,18 @@
     gap: 4px;
     min-height: 58px;
     place-items: center;
-    border: var(--component-mcp-shell-mcp-stats-row-border-d109868);
+    border: 1px solid hsl(220 12% 70% / 0.13);
     border-radius: 8px;
-    background: var(--component-mcp-shell-mcp-stats-row-background-2d1af6b);
+    background: hsl(225 24% 6% / 0.42);
     padding: 8px 10px;
   }
   .mcp-stats-row strong {
-    color: var(--component-mcp-shell-mcp-stats-row-color-2ec5345);
+    color: var(--text);
     font-size: 20px;
     line-height: 1;
   }
   .mcp-stats-row small {
-    color: var(--component-mcp-shell-mcp-stats-row-color-72b8cfb);
+    color: var(--muted);
     font-size: 10px;
   }
   .mcp-workbench-grid {
@@ -210,9 +210,9 @@
 @layer marloues-components.cascade-0213 {
   .mcp-compose-panel {
     min-width: 0;
-    border: var(--component-mcp-shell-mcp-compose-panel-border-783c782);
+    border: 1px solid var(--settings-border);
     border-radius: 8px;
-    background: var(--component-mcp-shell-mcp-compose-panel-background-76b6784);
+    background: hsl(225 24% 6% / 0.32);
   }
   .mcp-compose-panel {
     display: grid;
@@ -230,12 +230,12 @@
     min-width: 0;
   }
   .mcp-panel-title strong {
-    color: var(--component-mcp-shell-mcp-panel-title-color-0c9dee5);
+    color: var(--text);
     font-size: 13px;
     font-weight: 740;
   }
   .mcp-panel-title small {
-    color: var(--component-mcp-shell-mcp-panel-title-color-3becbf2);
+    color: var(--muted);
     font-size: 11px;
   }
 }
@@ -252,12 +252,10 @@
     align-items: center;
     justify-content: center;
     gap: 7px;
-    border: var(--component-mcp-shell-mcp-compose-actions-border-95a0a2e);
+    border: 1px solid var(--settings-border);
     border-radius: 8px;
-    background: var(
-      --component-mcp-shell-mcp-compose-actions-background-02169ed
-    );
-    color: var(--component-mcp-shell-mcp-compose-actions-color-9d7b59b);
+    background: var(--settings-field);
+    color: var(--text);
     padding: 8px 11px;
     font-size: 12px;
     font-weight: 650;
@@ -268,41 +266,35 @@
     align-items: center;
     justify-content: center;
     gap: 7px;
-    border: var(--component-mcp-shell-mcp-bulk-panel-border-2144989);
+    border: 1px solid var(--settings-border);
     border-radius: 8px;
-    background: var(--component-mcp-shell-mcp-bulk-panel-background-1a54e70);
-    color: var(--component-mcp-shell-mcp-bulk-panel-color-b0bd5cc);
+    background: var(--settings-field);
+    color: var(--text);
     padding: 8px 11px;
     font-size: 12px;
     font-weight: 650;
   }
   .mcp-compose-actions button:hover {
-    border-color: var(
-      --component-mcp-shell-mcp-compose-actions-border-color-458cb39
-    );
-    background: var(
-      --component-mcp-shell-mcp-compose-actions-background-d91efe7
-    );
+    border-color: hsl(var(--tw-accent) / 0.88/0.34);
+    background: hsl(var(--tw-accent) / 0.88/0.08);
   }
   .mcp-bulk-panel button:hover {
-    border-color: var(
-      --component-mcp-shell-mcp-bulk-panel-border-color-ce2ecc5
-    );
-    background: var(--component-mcp-shell-mcp-bulk-panel-background-6332775);
+    border-color: hsl(var(--tw-accent) / 0.88/0.34);
+    background: hsl(var(--tw-accent) / 0.88/0.08);
   }
 }
 @layer marloues-components.cascade-0219 {
   .mcp-tools-panel {
     display: grid;
     gap: 10px;
-    border: var(--component-mcp-shell-mcp-tools-panel-border-cc3eb4c);
+    border: 1px solid var(--settings-border);
     border-radius: 8px;
-    background: var(--component-mcp-shell-mcp-tools-panel-background-f766c6b);
+    background: hsl(225 24% 6% / 0.26);
     padding: 12px;
   }
   .mcp-tools-panel p {
     margin: 0;
-    color: var(--component-mcp-shell-mcp-tools-panel-color-b545bef);
+    color: var(--muted);
     font-size: 12px;
   }
 }
@@ -313,7 +305,7 @@
   .mcp-bulk-panel {
     display: grid;
     gap: 8px;
-    border-top: var(--component-mcp-shell-mcp-bulk-panel-border-top-eb00157);
+    border-top: 1px solid var(--settings-border);
     padding-top: 12px;
   }
   .mcp-bulk-panel > button:first-child {
@@ -326,7 +318,7 @@
   .mcp-console-v2 {
     display: grid;
     gap: 14px;
-    color: var(--component-mcp-shell-mcp-console-v2-color-2887088);
+    color: var(--mcp-ink);
   }
 }
 @layer marloues-components.cascade-0223 {
@@ -335,7 +327,7 @@
     width: fit-content;
     align-items: center;
     gap: 7px;
-    color: var(--component-mcp-shell-mcp-eyebrow-color-ede1704);
+    color: var(--mcp-accent);
     font-size: 11px;
     font-weight: 820;
     letter-spacing: 0.08em;
@@ -349,11 +341,11 @@
     align-items: center;
     justify-content: center;
     gap: 8px !important;
-    border: var(--component-mcp-shell-mcp-enable-pill-border-59dabfa);
+    border: 1px solid var(--mcp-line);
     border-radius: 8px;
-    background: var(--component-mcp-shell-mcp-enable-pill-background-8064a57);
+    background: hsl(225 24% 6% / 0.4);
     padding: 0 12px;
-    color: var(--component-mcp-shell-mcp-enable-pill-color-70a3449) !important;
+    color: var(--mcp-ink) !important;
     font-size: 12px !important;
     letter-spacing: 0 !important;
     text-transform: none !important;
@@ -384,14 +376,14 @@
     margin-bottom: 4px;
   }
   .mcp-section-label span {
-    color: var(--component-mcp-shell-mcp-section-label-color-41de1ed);
+    color: var(--mcp-muted);
     font-size: 11px;
     font-weight: 780;
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
   .mcp-section-label strong {
-    color: var(--component-mcp-shell-mcp-section-label-color-9432e5b);
+    color: var(--mcp-accent);
     font-size: 12px;
   }
 }
@@ -402,23 +394,23 @@
     place-items: center;
     align-content: center;
     gap: 8px;
-    color: var(--component-mcp-shell-mcp-empty-stack-color-094fb61);
+    color: var(--mcp-muted);
     text-align: center;
   }
   .mcp-empty-stack strong {
-    color: var(--component-mcp-shell-mcp-empty-stack-color-018c2fd);
+    color: var(--mcp-ink);
     font-size: 14px;
   }
   .mcp-empty-stack small {
     margin: 0;
-    color: var(--component-mcp-shell-mcp-empty-stack-color-5c00a8f);
+    color: var(--mcp-muted);
     font-size: 12px;
     line-height: 1.5;
   }
 }
 @layer marloues-components.cascade-0236 {
   .mcp-tile-index {
-    color: var(--component-mcp-shell-mcp-tile-index-color-d64bfa0);
+    color: hsl(220 10% 62%);
     font-family: var(--mono);
     font-size: 10px;
   }
@@ -438,18 +430,18 @@
     white-space: nowrap;
   }
   .mcp-tile-body strong {
-    color: var(--component-mcp-shell-mcp-tile-body-color-ac7b88d);
+    color: var(--mcp-ink);
     font-size: 13px;
   }
   .mcp-tile-body small {
-    color: var(--component-mcp-shell-mcp-tile-body-color-223f2b3);
+    color: var(--mcp-muted);
     font-family: var(--mono);
     font-size: 10px;
   }
   .mcp-tile-meta {
-    border: var(--component-mcp-shell-mcp-tile-meta-border-9446637);
+    border: 1px solid hsl(162 78% 52% / 0.22);
     border-radius: 999px;
-    color: var(--component-mcp-shell-mcp-tile-meta-color-9b643d9);
+    color: var(--mcp-accent);
     padding: 4px 7px;
     font-size: 10px;
     font-weight: 820;
@@ -459,24 +451,24 @@
   .mcp-tool-shelf {
     display: grid;
     gap: 10px;
-    border: var(--component-mcp-shell-mcp-tool-shelf-border-2e0dc08);
+    border: 1px solid var(--mcp-line);
     border-radius: 8px;
-    background: var(--component-mcp-shell-mcp-tool-shelf-background-7bbf33d);
+    background: hsl(225 24% 6% / 0.3);
     padding: 12px;
   }
   .mcp-probe-log {
     display: grid;
     gap: 10px;
-    border: var(--component-mcp-shell-mcp-probe-log-border-172f39d);
+    border: 1px solid var(--mcp-line);
     border-radius: 8px;
-    background: var(--component-mcp-shell-mcp-probe-log-background-1491dcb);
+    background: hsl(225 24% 6% / 0.3);
     padding: 12px;
   }
 }
 @layer marloues-components.cascade-0239 {
   .mcp-tool-shelf p {
     margin: 0;
-    color: var(--component-mcp-shell-mcp-tool-shelf-color-ff9e7c6);
+    color: var(--mcp-muted);
     font-size: 12px;
   }
   .mcp-tool-grid {
@@ -490,16 +482,16 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    border: var(--component-mcp-shell-mcp-tool-grid-border-a5973ee);
+    border: 1px solid hsl(162 78% 52% / 0.22);
     border-radius: 999px;
-    background: var(--component-mcp-shell-mcp-tool-grid-background-8524879);
-    color: var(--component-mcp-shell-mcp-tool-grid-color-5d056e7);
+    background: hsl(162 78% 52% / 0.08);
+    color: var(--mcp-accent);
     padding: 6px 9px;
     font-size: 11px;
     font-weight: 720;
   }
   .mcp-probe-log strong {
-    color: var(--component-mcp-shell-mcp-probe-log-color-32cc266);
+    color: var(--mcp-ink);
     font-size: 12px;
   }
 }
@@ -508,7 +500,7 @@
     max-height: 220px;
     overflow: auto;
     margin: 0;
-    color: var(--component-mcp-shell-mcp-probe-log-color-4427821);
+    color: var(--mcp-ink);
     white-space: pre-wrap;
     word-break: break-word;
     font-family: var(--mono);
@@ -521,7 +513,7 @@
     display: grid;
     min-width: 0;
     gap: 8px;
-    color: var(--component-mcp-shell-mcp-args-builder-color-02419af);
+    color: var(--muted);
     font-size: 12px;
     font-weight: 650;
   }
@@ -531,10 +523,10 @@
     gap: 8px;
   }
   .mcp-arg-entry button {
-    border: var(--component-mcp-shell-mcp-arg-entry-border-ec14ba3);
+    border: 1px solid hsl(225 15% 16% / 0.72);
     border-radius: 8px;
-    background: var(--component-mcp-shell-mcp-arg-entry-background-ed52053);
-    color: var(--component-mcp-shell-mcp-arg-entry-color-5d4964d);
+    background: hsl(225 18% 10% / 0.32);
+    color: var(--text);
     min-height: 34px;
     justify-content: center;
     padding: 0 12px;
@@ -542,8 +534,8 @@
     font-weight: 650;
   }
   .mcp-arg-entry button:hover:not(:disabled) {
-    border-color: var(--component-mcp-shell-mcp-arg-entry-border-color-2c26954);
-    background: var(--component-mcp-shell-mcp-arg-entry-background-7f2c227);
+    border-color: hsl(var(--tw-accent) / 0.36);
+    background: hsl(var(--tw-accent) / 0.1);
   }
 }
 @layer marloues-components.cascade-0259 {
@@ -567,13 +559,13 @@
     gap: 3px;
   }
   .mcp-panel-heading strong {
-    color: var(--component-mcp-shell-mcp-panel-heading-color-1ae043c);
+    color: var(--text);
     font-size: 13px;
     font-weight: 740;
   }
   .mcp-panel-heading small {
     overflow: hidden;
-    color: var(--component-mcp-shell-mcp-panel-heading-color-be011a2);
+    color: var(--muted);
     text-overflow: ellipsis;
     white-space: nowrap;
     font-family: var(--mono);
@@ -581,10 +573,10 @@
   }
   .mcp-panel-heading > span {
     flex-shrink: 0;
-    border: var(--component-mcp-shell-mcp-panel-heading-border-565cc15);
+    border: 1px solid hsl(160 84% 53% / 0.22);
     border-radius: 999px;
-    background: var(--component-mcp-shell-mcp-panel-heading-background-88fb8c2);
-    color: var(--component-mcp-shell-mcp-panel-heading-color-1de1689);
+    background: hsl(160 84% 53% / 0.08);
+    color: var(--accent-2);
     padding: 4px 8px;
     font-size: 10px;
     font-weight: 720;
@@ -592,12 +584,12 @@
 }
 @layer marloues-components.cascade-0263 {
   .mcp-tools-head > span {
-    color: var(--component-mcp-shell-mcp-tools-head-color-451b665);
+    color: hsl(220 10% 52%);
     font-size: 11px;
     font-weight: 720;
   }
   .mcp-tools-head strong {
-    color: var(--component-mcp-shell-mcp-tools-head-color-88e4c98);
+    color: var(--text);
     font-size: 15px;
     line-height: 1;
   }
@@ -615,16 +607,12 @@
 @layer marloues-components.cascade-0282 {
   .mcp-enable-pill {
     min-height: 36px;
-    border-color: var(
-      --component-mcp-shell-mcp-enable-pill-border-color-68bf259
-    );
-    color: var(--component-mcp-shell-mcp-enable-pill-color-70a3449) !important;
+    border-color: hsl(217 20% 70% / 0.32);
+    color: var(--mcp-ink) !important;
     font-weight: 730;
   }
   .mcp-enable-pill input {
-    accent-color: var(
-      --component-mcp-shell-mcp-enable-pill-accent-color-bdd7f18
-    );
+    accent-color: var(--mcp-accent-2);
   }
 }
 @layer marloues-components.cascade-0284 {
@@ -643,7 +631,7 @@
 }
 @layer marloues-components.cascade-0288 {
   .mcp-tile-index {
-    color: var(--component-mcp-shell-mcp-tile-index-color-d64bfa0);
+    color: hsl(220 10% 62%);
   }
   .mcp-tile-meta {
     min-width: 34px;
@@ -658,157 +646,119 @@
     padding: 11px;
   }
 }
-/* Theme token bindings. The dark theme falls back to the component layer. */
-.mcp-list-toolbar {
-  border-color: var(
-    --theme-mcp-shell-mcp-list-toolbar-border-color-95e0e79,
-    revert-layer
-  );
-  background: var(
-    --theme-mcp-shell-mcp-list-toolbar-background-1fc15bd,
-    revert-layer
-  );
-  box-shadow: var(
-    --theme-mcp-shell-mcp-list-toolbar-box-shadow-61ca468,
-    revert-layer
-  );
-  color: var(--theme-mcp-shell-mcp-list-toolbar-color-d7698b9, revert-layer);
+/* light theme overrides migrated from legacy tokens. */
+:root[data-theme="light"] .mcp-tools-head > span {
+  color: hsl(220 10% 42%);
 }
-.mcp-workbench-head {
-  border-color: var(
-    --theme-mcp-shell-mcp-workbench-head-border-color-196e3c9,
-    revert-layer
-  );
-  background: var(
-    --theme-mcp-shell-mcp-workbench-head-background-6e84e33,
-    revert-layer
-  );
+
+:root[data-theme="light"] .mcp-arg-entry button:hover:not(:disabled) {
+  border-color: hsl(var(--tw-accent) / 0.88/0.28);
+  background: hsl(var(--tw-accent) / 0.88/0.07);
 }
-.mcp-workbench-head span {
-  color: var(--theme-mcp-shell-mcp-workbench-head-color-d75c3d5, revert-layer);
+
+:root[data-theme="light"] .mcp-arg-entry button {
+  border-color: var(--settings-border);
+  background: hsl(0 0% 100% / 0.62);
+  color: hsl(225 18% 18%);
 }
-.mcp-workbench-head p {
-  color: var(--theme-mcp-shell-mcp-workbench-head-color-7a9202a, revert-layer);
+
+:root[data-theme="light"] .mcp-enable-pill {
+  background: hsl(225 14% 97% / 0.86);
 }
-.mcp-stats-row span {
-  border-color: var(
-    --theme-mcp-shell-mcp-stats-row-border-color-ec64bfe,
-    revert-layer
-  );
-  background: var(
-    --theme-mcp-shell-mcp-stats-row-background-1315a38,
-    revert-layer
-  );
+
+:root[data-theme="light"] .mcp-probe-log {
+  background: hsl(0 0% 100% / 0.74);
 }
-.mcp-compose-panel {
-  border-color: var(
-    --theme-mcp-shell-mcp-compose-panel-border-color-8a8c5a4,
-    revert-layer
-  );
-  background: var(
-    --theme-mcp-shell-mcp-compose-panel-background-d24ba23,
-    revert-layer
-  );
-  box-shadow: var(
-    --theme-mcp-shell-mcp-compose-panel-box-shadow-077cac6,
-    revert-layer
-  );
-  color: var(--theme-mcp-shell-mcp-compose-panel-color-6281763, revert-layer);
+
+:root[data-theme="light"] .mcp-tool-shelf {
+  background: hsl(0 0% 100% / 0.74);
 }
-.mcp-tools-panel {
-  border-color: var(
-    --theme-mcp-shell-mcp-tools-panel-border-color-8821741,
-    revert-layer
-  );
-  background: var(
-    --theme-mcp-shell-mcp-tools-panel-background-14004f7,
-    revert-layer
-  );
-  box-shadow: var(
-    --theme-mcp-shell-mcp-tools-panel-box-shadow-7ee4c2a,
-    revert-layer
-  );
-  color: var(--theme-mcp-shell-mcp-tools-panel-color-187b026, revert-layer);
+
+:root[data-theme="light"] .mcp-tools-panel {
+  border-color: var(--settings-border);
+  background: hsl(0 0% 100% / 0.64);
 }
-.mcp-tool-shelf {
-  background: var(
-    --theme-mcp-shell-mcp-tool-shelf-background-ae8d5f8,
-    revert-layer
-  );
-  border-color: var(
-    --theme-mcp-shell-mcp-tool-shelf-border-color-097b466,
-    revert-layer
-  );
-  box-shadow: var(
-    --theme-mcp-shell-mcp-tool-shelf-box-shadow-9d41b65,
-    revert-layer
-  );
-  color: var(--theme-mcp-shell-mcp-tool-shelf-color-d642483, revert-layer);
+
+:root[data-theme="light"] .mcp-compose-panel {
+  border-color: var(--settings-border);
+  background: hsl(0 0% 100% / 0.64);
 }
-.mcp-probe-log {
-  background: var(
-    --theme-mcp-shell-mcp-probe-log-background-43e9d01,
-    revert-layer
-  );
-  border-color: var(
-    --theme-mcp-shell-mcp-probe-log-border-color-dff2eff,
-    revert-layer
-  );
-  box-shadow: var(
-    --theme-mcp-shell-mcp-probe-log-box-shadow-a5244ae,
-    revert-layer
-  );
-  color: var(--theme-mcp-shell-mcp-probe-log-color-35c6a29, revert-layer);
+
+:root[data-theme="light"] .mcp-stats-row span {
+  border-color: var(--settings-border);
+  background: hsl(0 0% 100% / 0.64);
 }
-.mcp-enable-pill {
-  background: var(
-    --theme-mcp-shell-mcp-enable-pill-background-bb2f37e,
-    revert-layer
-  );
+
+:root[data-theme="light"] .mcp-workbench-head p {
+  color: hsl(220 10% 42%);
 }
-.mcp-arg-entry button {
-  border-color: var(
-    --theme-mcp-shell-mcp-arg-entry-border-color-1bb4c03,
-    revert-layer
-  );
-  background: var(
-    --theme-mcp-shell-mcp-arg-entry-background-13bfbd7,
-    revert-layer
-  );
-  color: var(--theme-mcp-shell-mcp-arg-entry-color-e26bd82, revert-layer);
+
+:root[data-theme="light"] .mcp-workbench-head span {
+  color: hsl(160 70% 28%);
 }
-.mcp-arg-entry button:hover:not(:disabled) {
-  border-color: var(
-    --theme-mcp-shell-mcp-arg-entry-border-color-d78a96c,
-    revert-layer
-  );
-  background: var(
-    --theme-mcp-shell-mcp-arg-entry-background-b7bb816,
-    revert-layer
-  );
+
+:root[data-theme="light"] .mcp-workbench-head {
+  border-color: hsl(var(--tw-accent) / 0.2);
+  background:
+    linear-gradient(135deg, hsl(var(--tw-accent) / 0.1), transparent 36%),
+    hsl(0 0% 100% / 0.78);
 }
-.mcp-tools-head > span {
-  color: var(--theme-mcp-shell-mcp-tools-head-color-ee216a8, revert-layer);
+
+:root[data-theme="light"] .mcp-list-toolbar {
+  border-color: var(--settings-border);
+  background: hsl(225 14% 98% / 0.64);
 }
-.mcp-config-editor textarea {
-  border-color: var(
-    --theme-mcp-shell-mcp-config-editor-border-color-4c2c47b,
-    revert-layer
-  );
-  background: var(
-    --theme-mcp-shell-mcp-config-editor-background-f5d4b87,
-    revert-layer
-  );
-  color: var(--theme-mcp-shell-mcp-config-editor-color-2ca2cab, revert-layer);
+
+/* warm theme overrides migrated from legacy tokens. */
+:root[data-theme="warm"] .mcp-probe-log pre {
+  border-color: var(--border);
+  background: var(--panel-2);
+  color: var(--text);
 }
-.mcp-probe-log pre {
-  border-color: var(
-    --theme-mcp-shell-mcp-probe-log-border-color-90f79b1,
-    revert-layer
-  );
-  background: var(
-    --theme-mcp-shell-mcp-probe-log-background-3c5e14f,
-    revert-layer
-  );
-  color: var(--theme-mcp-shell-mcp-probe-log-color-6e9c043, revert-layer);
+
+:root[data-theme="warm"] .mcp-config-editor textarea {
+  border-color: var(--settings-border);
+  background: var(--settings-field);
+  color: var(--text);
+}
+
+:root[data-theme="warm"] .mcp-arg-entry button {
+  border-color: var(--settings-border);
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+:root[data-theme="warm"] .mcp-probe-log {
+  background: var(--panel);
+  border-color: var(--settings-border);
+  box-shadow: var(--settings-shadow);
+  color: var(--text);
+}
+
+:root[data-theme="warm"] .mcp-tool-shelf {
+  background: var(--panel);
+  border-color: var(--settings-border);
+  box-shadow: var(--settings-shadow);
+  color: var(--text);
+}
+
+:root[data-theme="warm"] .mcp-tools-panel {
+  border-color: var(--settings-border);
+  background: var(--panel);
+  box-shadow: var(--settings-shadow);
+  color: var(--text);
+}
+
+:root[data-theme="warm"] .mcp-compose-panel {
+  border-color: var(--settings-border);
+  background: var(--panel);
+  box-shadow: var(--settings-shadow);
+  color: var(--text);
+}
+
+:root[data-theme="warm"] .mcp-list-toolbar {
+  border-color: var(--settings-border);
+  background: var(--panel);
+  box-shadow: var(--settings-shadow);
+  color: var(--text);
 }

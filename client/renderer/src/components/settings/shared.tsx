@@ -8,6 +8,37 @@ import {
 } from "react";
 import { Check, ChevronDown } from "lucide-react";
 
+type SettingsChoiceInputProps = Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "type"
+>;
+
+export function SettingsRadio({
+  className,
+  ...props
+}: SettingsChoiceInputProps) {
+  return (
+    <input
+      {...props}
+      type="radio"
+      className={`settings-radio ${className ?? ""}`.trim()}
+    />
+  );
+}
+
+export function SettingsCheckbox({
+  className,
+  ...props
+}: SettingsChoiceInputProps) {
+  return (
+    <input
+      {...props}
+      type="checkbox"
+      className={`settings-checkbox ${className ?? ""}`.trim()}
+    />
+  );
+}
+
 export function SettingsCard({
   title,
   description,
@@ -94,17 +125,18 @@ export function SegmentedOptions({
     value: string;
     title: string;
     description: string;
-    icon: ReactNode;
   }>;
 }) {
   return (
-    <div className="settings-segmented-options">
+    <div className="settings-segmented-options" role="radiogroup">
       {options.map((option) => (
         <button
           key={option.value}
           className={value === option.value ? "active" : ""}
           onClick={() => onChange(option.value)}
           type="button"
+          role="radio"
+          aria-checked={value === option.value}
         >
           <strong>{option.title}</strong>
           <small>{option.description}</small>
@@ -288,7 +320,9 @@ export function SettingsTextarea({
 }) {
   return (
     <label
-      className={`settings-field settings-field--textarea ${fieldClassName ?? ""}`}
+      className={`settings-field settings-field--textarea ${
+        fieldClassName ?? ""
+      }`}
     >
       <span className={hideLabel ? "settings-field-label--hidden" : undefined}>
         {label}

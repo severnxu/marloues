@@ -1,16 +1,12 @@
-import { useEffect, useState } from "react";
 import {
   Bell,
-  Check,
   Code2,
-  Laptop,
   Moon,
   Palette,
   Pencil,
   Pipette,
   RotateCcw,
   ShieldCheck,
-  Sparkles,
   Sun,
 } from "lucide-react";
 import {
@@ -44,16 +40,10 @@ export function AppearanceSettings({
     typeof document === "undefined"
       ? DEFAULT_ACCENT_COLOR
       : getComputedStyle(document.documentElement)
-          .getPropertyValue("--accent")
+          .getPropertyValue("--theme-default-accent")
           .trim() || DEFAULT_ACCENT_COLOR;
   const themeAccent = hslToHex(themeAccentCss) ?? DEFAULT_ACCENT_COLOR;
   const shownAccent = accentColor ?? themeAccent;
-  const isCustomAccent = Boolean(accentColor);
-  const [accentDraft, setAccentDraft] = useState(accentColor ?? "");
-
-  useEffect(() => {
-    setAccentDraft(accentColor ?? "");
-  }, [accentColor]);
 
   return (
     <div className="appearance-settings">
@@ -77,7 +67,6 @@ export function AppearanceSettings({
               value: "system",
               title: "System",
               description: "跟随系统外观自动切换。",
-              icon: <Laptop size={15} />,
             },
             ...themeDefinitions.map((theme) => ({
               value: theme.mode,
@@ -88,14 +77,6 @@ export function AppearanceSettings({
                   : theme.colorScheme === "light"
                     ? "适合明亮环境。"
                     : "适合长时间使用与低光环境。",
-              icon:
-                theme.mode === "warm" ? (
-                  <Sparkles size={15} />
-                ) : theme.colorScheme === "light" ? (
-                  <Sun size={15} />
-                ) : (
-                  <Moon size={15} />
-                ),
             })),
           ]}
         />
@@ -103,7 +84,7 @@ export function AppearanceSettings({
 
       <SettingsCard
         title="强调色"
-        description="默认是 personal-claw 使用的蓝色，也可以自定义并随时恢复。"
+        description="默认随当前主题匹配，也可以为每个主题分别自定义并随时恢复。"
         icon={<Palette size={16} />}
       >
         <div className="appearance-accent-panel">
@@ -113,13 +94,18 @@ export function AppearanceSettings({
               style={{ background: shownAccent }}
             />
             <div>
-              <strong>{isCustomAccent ? "当前强调色" : "主题默认色"}</strong>
-              <small>
-                {isCustomAccent
-                  ? shownAccent.toUpperCase()
-                  : shownAccent.toUpperCase()}
-              </small>
+              <strong>强调色</strong>
+              <small>{shownAccent.toUpperCase()}</small>
             </div>
+            <label className="appearance-accent-picker" title="自定义强调色">
+              <input
+                aria-label="自定义强调色"
+                type="color"
+                value={shownAccent}
+                onChange={(event) => onSetAccentColor(event.target.value)}
+              />
+              <Pipette size={14} aria-hidden="true" />
+            </label>
             <button
               className="appearance-accent-reset"
               onClick={onResetAccentColor}
@@ -129,33 +115,6 @@ export function AppearanceSettings({
             >
               <RotateCcw size={14} />
             </button>
-          </div>
-
-          <div className="appearance-accent-controls">
-            <label>
-              自定义颜色
-              <input
-                value={accentDraft}
-                onChange={(event) => {
-                  const value = event.target.value.trim();
-                  setAccentDraft(event.target.value);
-                  if (!value) {
-                    onResetAccentColor();
-                    return;
-                  }
-                  onSetAccentColor(value);
-                }}
-                placeholder={DEFAULT_ACCENT_COLOR}
-              />
-            </label>
-            <label className="appearance-color-picker" title="选择强调色">
-              <input
-                type="color"
-                value={shownAccent}
-                onChange={(event) => onSetAccentColor(event.target.value)}
-              />
-              <Pipette size={16} />
-            </label>
           </div>
         </div>
       </SettingsCard>
@@ -225,19 +184,16 @@ export function GeneralSettings({
               value: "default",
               title: "Default",
               description: "展示关键进度，保持对话清爽。",
-              icon: <Check size={15} />,
             },
             {
               value: "coding",
               title: "Coding",
               description: "聚焦代码，精简解释，注重正确性。",
-              icon: <Code2 size={15} />,
             },
             {
               value: "explanatory",
               title: "Explanatory",
               description: "附带实现选择与模式的教学性解释。",
-              icon: <Sparkles size={15} />,
             },
           ]}
         />

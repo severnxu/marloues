@@ -209,12 +209,14 @@
     height: 18px;
     flex: 0 0 18px;
     place-items: center;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--surface-popover);
     color: var(--text-1);
-    font-size: 10px;
-    font-weight: 650;
+    line-height: 0;
+  }
+
+  .title-product-mark svg {
+    display: block;
+    width: 100%;
+    height: 100%;
   }
 
   .title-global-search {
@@ -226,6 +228,7 @@
     color: var(--text-2);
     font-size: var(--text-sm);
     font-weight: 600;
+    line-height: 1;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -282,9 +285,23 @@
     position: static;
   }
 
-  .auxiliary-primary-titlebar-slot,
   .thread-summary-titlebar-slot {
     display: contents;
+  }
+
+  .windows-auxiliary-primary-action {
+    width: 26px;
+    height: 26px;
+    flex-basis: 26px;
+  }
+
+  .platform-windows .titlebar-context-actions {
+    right: calc(var(--windows-caption-controls-width) + var(--space-2));
+    gap: var(--space-3);
+  }
+
+  .auxiliary-primary-overlay .thread-summary-titlebar-slot {
+    display: none;
   }
 
   .platform-macos .titlebar-context-actions {

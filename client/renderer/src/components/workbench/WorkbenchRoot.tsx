@@ -318,6 +318,7 @@ export function WorkbenchRoot({
               page={page}
               isMacOS={isMacOS}
               sidebarOpen={state.primaryOpen}
+              auxiliaryOpen={auxiliaryOpen}
               hideChatTitle={hideChatTitle}
               auxiliaryObscuresMain={auxiliaryMode === "primary-overlay"}
               permissionRequest={permissionRequest}

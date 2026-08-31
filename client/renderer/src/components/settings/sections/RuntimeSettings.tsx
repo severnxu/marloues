@@ -2,9 +2,11 @@ import { Cpu, Gauge, TerminalSquare } from "lucide-react";
 import {
   SettingRow,
   SettingsCard,
+  SettingsCheckbox,
   SettingsSelect,
   SettingsTextField,
 } from "@/components/settings";
+import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { notify } from "@/lib/notifications";
 import { runtimePresentation } from "@/lib/runtime-presentation";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -24,6 +26,7 @@ export function RuntimeSettings({
   );
   const switchRuntime = useSettingsStore((state) => state.switchRuntime);
   const hasRunningTask = useUnifiedChatStore((state) => state.isStreaming);
+  const { showConfirm, DialogComponent } = useConfirmDialog();
   const activeRuntimeId =
     runtimeState?.activeRuntimeId ?? draft.activeRuntimeId ?? "sdk";
   const activeRuntime = runtimePresentation(activeRuntimeId);
@@ -32,17 +35,32 @@ export function RuntimeSettings({
       .filter((runtime) => runtime.status === "available")
       .map((runtime) => ({
         value: runtime.id,
-        label: `${runtimePresentation(runtime.id).label} · ${runtimePresentation(runtime.id).protocol}`,
+        label: `${runtimePresentation(runtime.id).label} · ${
+          runtimePresentation(runtime.id).protocol
+        }`,
       })) ?? [];
 
   const handleRuntimeChange = async (value: string) => {
     const runtimeId = value as RuntimeKind;
     if (runtimeId === activeRuntimeId) return;
+    if (hasRunningTask) {
+      const confirmed = await showConfirm({
+        title: "切换运行时？",
+        message:
+          "当前有任务正在运行。切换运行时会先停止正在运行的会话，然后后续任务将使用新的运行时。",
+        confirmLabel: "停止并切换",
+        variant: "warning",
+      });
+      if (!confirmed) return;
+      await stopRunningSessions();
+    }
     try {
       await switchRuntime(runtimeId);
       notify({
         title: `已切换到 ${runtimePresentation(runtimeId).label}`,
-        description: `模型请求将使用 ${runtimePresentation(runtimeId).protocol} 协议路由。`,
+        description: `模型请求将使用 ${
+          runtimePresentation(runtimeId).protocol
+        } 协议路由。`,
         tone: "success",
       });
     } catch (error) {
@@ -56,6 +74,7 @@ export function RuntimeSettings({
 
   return (
     <>
+      {DialogComponent}
       <SettingsCard
         title="Agent 运行时"
         description="选择执行任务的引擎，模型供应商会自动匹配对应协议。"
@@ -71,7 +90,7 @@ export function RuntimeSettings({
                 ariaLabel="默认 Agent 运行时"
                 value={activeRuntimeId}
                 options={runtimeOptions}
-                disabled={Boolean(switchingRuntimeId) || hasRunningTask}
+                disabled={Boolean(switchingRuntimeId)}
                 onChange={(value) => void handleRuntimeChange(value)}
               />
             </div>
@@ -107,8 +126,7 @@ export function RuntimeSettings({
           }
         />
         <label className="settings-toggle">
-          <input
-            type="checkbox"
+          <SettingsCheckbox
             checked={draft.thinkingEnabled}
             onChange={(event) =>
               onCommitDraft({ ...draft, thinkingEnabled: event.target.checked })
@@ -118,5 +136,21 @@ export function RuntimeSettings({
         </label>
       </SettingsCard>
     </>
+  );
+}
+
+async function stopRunningSessions(): Promise<void> {
+  const chatStore = useUnifiedChatStore.getState();
+  const runningSessionIds = Object.entries(chatStore.streamingSessionIds)
+    .filter(([, running]) => Boolean(running))
+    .map(([sessionId]) => sessionId);
+
+  if (!runningSessionIds.length) {
+    await chatStore.abort();
+    return;
+  }
+
+  await Promise.all(
+    runningSessionIds.map((sessionId) => chatStore.abort(sessionId)),
   );
 }

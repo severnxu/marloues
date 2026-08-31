@@ -1,6 +1,5 @@
 import {
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
   type DragEvent,
@@ -10,10 +9,6 @@ import { createPortal } from "react-dom";
 import { Maximize2, Minimize2, Plus, X } from "lucide-react";
 import type { AuxiliaryHeaderTab, AuxiliaryViewOption } from "./types";
 import { auxiliaryPanelDomId, auxiliaryTabDomId } from "./types";
-
-const AUXILIARY_PRIMARY_TITLEBAR_SLOT_ID = "auxiliary-primary-titlebar-slot";
-const useIsomorphicLayoutEffect =
-  typeof document === "undefined" ? useEffect : useLayoutEffect;
 
 export function AuxiliaryHeader({
   open,
@@ -38,22 +33,9 @@ export function AuxiliaryHeader({
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerPosition, setPickerPosition] = useState({ top: 0, left: 0 });
-  const [titlebarPrimarySlot, setTitlebarPrimarySlot] = useState<
-    HTMLElement | false | null
-  >(null);
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const dragRef = useRef<{ from: number; to: number } | null>(null);
   const hasTabs = tabs.length > 0;
-
-  useIsomorphicLayoutEffect(() => {
-    if (!open) {
-      setTitlebarPrimarySlot(null);
-      return;
-    }
-    setTitlebarPrimarySlot(
-      document.getElementById(AUXILIARY_PRIMARY_TITLEBAR_SLOT_ID) ?? false,
-    );
-  }, [open]);
 
   useEffect(() => {
     if (!open || !hasTabs || availableViews.length === 0) {
@@ -205,13 +187,7 @@ export function AuxiliaryHeader({
         </div>
       ) : null}
 
-      {open && titlebarPrimarySlot
-        ? createPortal(primaryAction, titlebarPrimarySlot)
-        : titlebarPrimarySlot === false ||
-            typeof document === "undefined" ||
-            !open
-          ? primaryAction
-          : null}
+      {primaryAction}
 
       {pickerOpen
         ? createPortal(

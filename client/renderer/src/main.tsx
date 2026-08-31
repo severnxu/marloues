@@ -2,7 +2,6 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
 import "./styles/tokens.css";
-import "./styles/legacy-tokens.css";
 import "./styles/components/index.css";
 import App from "./App";
 import { UI_BUILD_VERSION } from "@shared/build-info";

@@ -8,11 +8,13 @@ import {
   useTaskContextLayout,
   useTaskPresentationModel,
 } from "@/components/workflow-chat/task-context";
+import { shouldPlaceThreadSummaryInWindowTitlebar } from "./layout-model";
 
 export interface WorkbenchViewHostProps {
   page: Page;
   isMacOS: boolean;
   sidebarOpen: boolean;
+  auxiliaryOpen: boolean;
   hideChatTitle: boolean;
   auxiliaryObscuresMain: boolean;
   permissionRequest?: PermissionDialogRequest;
@@ -64,6 +66,7 @@ export function KeepAliveWorkbenchView({
 interface PersistentChatWorkspaceProps {
   isMacOS: boolean;
   sidebarOpen: boolean;
+  auxiliaryOpen: boolean;
   hideChatTitle: boolean;
   permissionRequest?: PermissionDialogRequest;
   onPermissionRespond: WorkbenchViewHostProps["onPermissionRespond"];
@@ -77,6 +80,7 @@ interface PersistentChatWorkspaceProps {
 const PersistentChatWorkspace = memo(function PersistentChatWorkspace({
   isMacOS,
   sidebarOpen,
+  auxiliaryOpen,
   hideChatTitle,
   permissionRequest,
   onPermissionRespond,
@@ -108,6 +112,10 @@ const PersistentChatWorkspace = memo(function PersistentChatWorkspace({
           taskPresentation={model}
           taskContextMode={taskContext.mode}
           taskContextControl={headerTaskContext}
+          taskContextInWindowTitlebar={shouldPlaceThreadSummaryInWindowTitlebar(
+            isMacOS,
+            auxiliaryOpen,
+          )}
           taskContextGitLoading={gitLoading}
           onTaskContextRefresh={refreshGitContext}
           onTaskContextCloseFloating={taskContext.closeFloating}
@@ -123,6 +131,7 @@ export function WorkbenchViewHost({
   page,
   isMacOS,
   sidebarOpen,
+  auxiliaryOpen,
   hideChatTitle,
   auxiliaryObscuresMain,
   permissionRequest,
@@ -141,6 +150,7 @@ export function WorkbenchViewHost({
         <PersistentChatWorkspace
           isMacOS={isMacOS}
           sidebarOpen={sidebarOpen}
+          auxiliaryOpen={auxiliaryOpen}
           hideChatTitle={hideChatTitle}
           permissionRequest={permissionRequest}
           onPermissionRespond={onPermissionRespond}

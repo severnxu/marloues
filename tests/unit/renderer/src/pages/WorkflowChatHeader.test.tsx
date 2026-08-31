@@ -15,7 +15,21 @@ describe("WorkflowChatHeader", () => {
     expect(markup).toContain('data-thread-summary-toggle="true"');
     expect(markup).toContain('aria-pressed="true"');
     expect(markup).toContain('data-state="open"');
+    expect(markup).toContain('data-placement="window-titlebar"');
     expect(markup).toContain('data-icon-contract="pinned-summary"');
+  });
+
+  it("keeps the pinned summary in the conversation titlebar when window-titlebar placement is disabled", () => {
+    const markup = renderToStaticMarkup(
+      <WorkflowChatHeader
+        title="会话标题"
+        threadSummary={{ available: true, open: false, onToggle: vi.fn() }}
+        threadSummaryInWindowTitlebar={false}
+      />,
+    );
+
+    expect(markup).toContain('data-placement="conversation-titlebar"');
+    expect(markup).toContain("thread-summary-toggle");
   });
 
   it("keeps the pinned summary control visible before summary data is ready", () => {

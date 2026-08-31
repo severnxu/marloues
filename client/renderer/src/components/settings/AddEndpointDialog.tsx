@@ -23,7 +23,7 @@ import {
   type BuiltinProviderPresetId,
 } from "@shared/builtin-provider-metadata";
 import { STRINGS } from "@shared/strings.zh";
-import { SettingsSelect } from "./shared";
+import { SettingsCheckbox, SettingsRadio, SettingsSelect } from "./shared";
 import { withModelMetadataDefaults } from "./SettingsWorkbench.utils";
 import styles from "./AddEndpointDialog.module.css";
 
@@ -518,8 +518,7 @@ export function AddEndpointDialog({
                   <div className={styles.endpointRow} key={endpoint.id}>
                     <div className={styles.endpointRowHead}>
                       <label className={styles.configCheck}>
-                        <input
-                          type="checkbox"
+                        <SettingsCheckbox
                           checked={endpoint.enabled}
                           onChange={(event) =>
                             setEndpoints((current) =>
@@ -699,8 +698,7 @@ export function AddEndpointDialog({
                 <div className={styles.importList}>
                   {importDraft.models.map((model) => (
                     <label className={styles.importItem} key={model.id}>
-                      <input
-                        type="checkbox"
+                      <SettingsCheckbox
                         checked={importDraft.selectedIds.has(model.id)}
                         onChange={() => toggleImportSelection(model.id)}
                       />
@@ -717,8 +715,7 @@ export function AddEndpointDialog({
                   <div className={styles.modelRow} key={model.id}>
                     <div className={styles.modelRowHead}>
                       <label className={styles.modelDefault}>
-                        <input
-                          type="radio"
+                        <SettingsRadio
                           name="add-endpoint-default-model"
                           checked={defaultModelId === model.id}
                           onChange={() => setDefaultModelId(model.id)}
@@ -730,8 +727,7 @@ export function AddEndpointDialog({
                       </label>
                       <div className={styles.modelRowState}>
                         <label className={styles.configCheck}>
-                          <input
-                            type="checkbox"
+                          <SettingsCheckbox
                             checked={model.enabled}
                             onChange={(event) =>
                               updateModel(model.id, {
@@ -804,8 +800,7 @@ export function AddEndpointDialog({
                         />
                       </label>
                       <label className={styles.configCheck}>
-                        <input
-                          type="checkbox"
+                        <SettingsCheckbox
                           checked={Boolean(model.supportsVision)}
                           onChange={(event) =>
                             updateModel(model.id, {
@@ -816,8 +811,7 @@ export function AddEndpointDialog({
                         视觉
                       </label>
                       <label className={styles.configCheck}>
-                        <input
-                          type="checkbox"
+                        <SettingsCheckbox
                           checked={Boolean(model.supportsThinking)}
                           onChange={(event) =>
                             updateModel(model.id, {

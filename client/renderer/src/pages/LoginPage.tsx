@@ -4,6 +4,7 @@
  * it is shown exclusively when the auth store has no valid session.
  */
 import { useAuthStore } from "@/stores/auth-store";
+import { MonkeyMark } from "@/components/brand/MonkeyMark";
 
 export function LoginPage() {
   const error = useAuthStore((state) => state.error);
@@ -33,7 +34,7 @@ export function LoginPage() {
       </div>
       <div className="text-center">
         <div className="mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-primary to-primary-glow text-primary-foreground text-2xl font-bold mx-auto">
-          N
+          <MonkeyMark size={48} />
         </div>
         <h1 className="text-2xl font-bold text-foreground">Marloues</h1>
         <p className="mt-2 text-sm text-muted-foreground">

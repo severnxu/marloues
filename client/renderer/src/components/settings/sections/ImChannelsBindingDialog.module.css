@@ -110,13 +110,6 @@
   line-height: 18px;
 }
 
-.modeOption input {
-  width: 15px;
-  height: 15px;
-  margin: 0;
-  accent-color: var(--accent);
-}
-
 .quickPanel {
   display: grid;
   justify-items: center;

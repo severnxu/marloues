@@ -3,6 +3,7 @@ import {
   WORKBENCH_GEOMETRY,
   createInitialWorkbenchLayoutState,
   deriveAuxiliaryMode,
+  shouldPlaceThreadSummaryInWindowTitlebar,
   workbenchLayoutReducer,
   type WorkbenchLayoutState,
 } from "../../../../../../client/renderer/src/components/workbench/layout-model";
@@ -237,5 +238,20 @@ describe("deriveAuxiliaryMode", () => {
   it("returns 'primary-overlay' regardless of session-open when overlay set", () => {
     expect(deriveAuxiliaryMode(false, true)).toBe("primary-overlay");
     expect(deriveAuxiliaryMode(true, true)).toBe("primary-overlay");
+  });
+});
+
+describe("shouldPlaceThreadSummaryInWindowTitlebar", () => {
+  it("keeps the existing window-titlebar placement when the macOS auxiliary column is closed", () => {
+    expect(shouldPlaceThreadSummaryInWindowTitlebar(true, false)).toBe(true);
+  });
+
+  it("moves only the expanded macOS state into the conversation titlebar", () => {
+    expect(shouldPlaceThreadSummaryInWindowTitlebar(true, true)).toBe(false);
+  });
+
+  it("does not change Windows placement", () => {
+    expect(shouldPlaceThreadSummaryInWindowTitlebar(false, false)).toBe(true);
+    expect(shouldPlaceThreadSummaryInWindowTitlebar(false, true)).toBe(true);
   });
 });

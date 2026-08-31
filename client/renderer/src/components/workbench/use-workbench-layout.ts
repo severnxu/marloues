@@ -120,11 +120,7 @@ export function useWorkbenchLayout(
               WORKBENCH_GEOMETRY.mainMin -
               WORKBENCH_GEOMETRY.auxiliaryDivider,
           );
-          const nextWidth = Math.min(
-            WORKBENCH_GEOMETRY.auxiliaryMax,
-            maxWidth,
-            frameRight - event.clientX,
-          );
+          const nextWidth = Math.min(maxWidth, frameRight - event.clientX);
           if (nextWidth < WORKBENCH_GEOMETRY.auxiliaryCollapse) {
             setAuxiliaryOpen(false);
             dispatch({ type: "auxiliary.close" });

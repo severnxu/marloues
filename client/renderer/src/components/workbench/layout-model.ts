@@ -22,7 +22,6 @@ export const WORKBENCH_GEOMETRY = {
   primaryCollapse: 220,
   auxiliaryDefault: 319,
   auxiliaryMin: 319,
-  auxiliaryMax: 500,
   auxiliaryCollapse: 220,
   auxiliaryDivider: 1,
   mainMin: 400,
@@ -61,6 +60,18 @@ export function deriveAuxiliaryMode(
 ): AuxiliaryMode {
   if (primaryOverlay) return "primary-overlay";
   return openForActiveSession ? "open" : "closed";
+}
+
+/**
+ * On macOS an open auxiliary column owns the window's trailing titlebar area,
+ * so the conversation summary control stays in the conversation titlebar.
+ * A closed auxiliary column keeps the established window-titlebar placement.
+ */
+export function shouldPlaceThreadSummaryInWindowTitlebar(
+  isMacOS: boolean,
+  auxiliaryOpen: boolean,
+): boolean {
+  return !isMacOS || !auxiliaryOpen;
 }
 
 export interface WorkbenchLayoutState {
@@ -239,11 +250,7 @@ export function workbenchLayoutReducer(
     case "auxiliary.resize":
       return {
         ...state,
-        auxiliaryWidth: clamp(
-          action.width,
-          WORKBENCH_GEOMETRY.auxiliaryMin,
-          WORKBENCH_GEOMETRY.auxiliaryMax,
-        ),
+        auxiliaryWidth: Math.max(WORKBENCH_GEOMETRY.auxiliaryMin, action.width),
       };
     case "auxiliary.width.ensureMin":
       return {

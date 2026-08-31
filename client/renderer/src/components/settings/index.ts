@@ -8,6 +8,8 @@ export type { SettingsSection } from "./types";
 // Shared settings primitives
 export {
   SettingsCard,
+  SettingsCheckbox,
+  SettingsRadio,
   SettingRow,
   SettingsSelect,
   SettingsTextarea,

@@ -42,6 +42,7 @@
   --presentation-window-shadow:
     0 34px 80px -28px hsl(0 0% 0% / 0.78), 0 0 0 1px hsl(0 0% 0% / 0.55);
   --shadow-popover: 0 20px 50px -18px hsl(0 0% 0% / 0.72);
+  --shadow-lg: 0 20px 50px -18px hsl(0 0% 0% / 0.72);
   --shadow-sidebar: 26px 0 58px -30px hsl(0 0% 0% / 0.86);
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --motion-fast: 140ms;
@@ -120,6 +121,7 @@ html[data-theme="light"] {
   --presentation-window-shadow:
     0 30px 72px -36px hsl(60 8% 8% / 0.42), 0 0 0 1px hsl(0 0% 100% / 0.72);
   --shadow-popover: 0 18px 42px -24px hsl(60 8% 12% / 0.34);
+  --shadow-lg: 0 18px 42px -24px hsl(60 8% 12% / 0.34);
   --shadow-sidebar: 22px 0 48px -32px hsl(60 8% 12% / 0.28);
 }
 
@@ -169,6 +171,7 @@ html[data-theme="warm"] {
   --presentation-window-shadow:
     0 30px 72px -36px hsl(30 24% 10% / 0.4), 0 0 0 1px hsl(38 35% 30% / 0.3);
   --shadow-popover: 0 18px 42px -24px hsl(30 24% 12% / 0.32);
+  --shadow-lg: 0 18px 42px -24px hsl(30 20% 15% / 0.18);
   --shadow-sidebar: 22px 0 48px -32px hsl(30 24% 12% / 0.26);
 }
 

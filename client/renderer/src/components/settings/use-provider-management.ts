@@ -54,38 +54,13 @@ export function useProviderManagement(
   const [visibleApiKeyProviderIds, setVisibleApiKeyProviderIds] = useState<
     Set<string>
   >(() => new Set());
-  const [newProviderId, setNewProviderId] = useState<string | null>(null);
   const [modelImportDraft, setModelImportDraft] =
     useState<ModelImportDraft | null>(null);
   const [manualModelDraft, setManualModelDraft] =
     useState<ManualModelDraft | null>(null);
   const manualModelRef = useRef<HTMLDivElement | null>(null);
-  const providerEditRef = useRef<HTMLDivElement | null>(null);
 
   // ── Provider CRUD ──────────────────────────────────────────────
-
-  const addEndpointProfile = () => {
-    if (!draft) return;
-    const id = crypto.randomUUID();
-    setDraft({
-      ...draft,
-      providers: [
-        {
-          id,
-          name: `Endpoint ${draft.providers.length + 1}`,
-          kind: "custom",
-          enabled: true,
-          endpoints: [createProviderEndpoint(1)],
-          apiKey: "",
-          models: [],
-        },
-        ...draft.providers,
-      ],
-      defaultModel: draft.defaultModel,
-    });
-    setExpandedProviderIds((ids) => new Set(ids).add(id));
-    setNewProviderId(id);
-  };
 
   const removeEndpointProfile = async (providerId: string) => {
     if (!draft) return;
@@ -117,60 +92,6 @@ export function useProviderManagement(
             : draft.defaultModel,
       },
       STRINGS.model.removeProvider(removedProvider?.name || "模型"),
-    );
-  };
-
-  const discardNewProviderDraft = (providerId: string) => {
-    if (!draft) return;
-    const providers = draft.providers.filter(
-      (provider) => provider.id !== providerId,
-    );
-    const fallback = providers[0];
-    const fallbackModelId =
-      fallback?.models.find((model) => model.enabled)?.id ??
-      fallback?.models[0]?.id ??
-      "";
-    setDraft({
-      ...draft,
-      providers,
-      defaultModel:
-        draft.defaultModel.providerId === providerId && fallback
-          ? {
-              providerId: fallback.id,
-              modelId: fallbackModelId,
-            }
-          : draft.defaultModel,
-    });
-    setExpandedProviderIds((ids) => {
-      const next = new Set(ids);
-      next.delete(providerId);
-      return next;
-    });
-    setNewProviderId(null);
-  };
-
-  const confirmNewProviderDraft = async (providerId: string) => {
-    if (!draft) return;
-    const provider = draft.providers.find((item) => item.id === providerId);
-    if (!provider) return;
-    if (
-      !provider.apiKey?.trim() ||
-      (provider.kind === "custom" &&
-        !provider.endpoints.some(
-          (endpoint) => endpoint.enabled && endpoint.baseUrl.trim(),
-        ))
-    ) {
-      setStatus(STRINGS.model.missingEndpointFields, "error");
-      return;
-    }
-    if (provider.models.length === 0) {
-      setStatus(STRINGS.model.missingModel, "error");
-      return;
-    }
-    setNewProviderId(null);
-    await commitDraft(
-      draft,
-      STRINGS.model.addProvider(provider.name || "新模型"),
     );
   };
 
@@ -210,6 +131,18 @@ export function useProviderManagement(
     });
   };
 
+  const openProviderDetail = (providerId: string) => {
+    setExpandedProviderIds((ids) => new Set(ids).add(providerId));
+  };
+
+  const closeProviderDetail = (providerId: string) => {
+    setExpandedProviderIds((ids) => {
+      const next = new Set(ids);
+      next.delete(providerId);
+      return next;
+    });
+  };
+
   const toggleApiKeyVisible = (providerId: string) => {
     setVisibleApiKeyProviderIds((ids) => {
       const next = new Set(ids);
@@ -233,10 +166,6 @@ export function useProviderManagement(
         item.id === providerId ? { ...item, [field]: value } : item,
       ),
     };
-    if (newProviderId === providerId) {
-      setDraft(nextDraft);
-      return;
-    }
     void commitDraft(nextDraft);
   };
 
@@ -662,19 +591,6 @@ export function useProviderManagement(
       window.removeEventListener("pointerdown", handlePointerDown, true);
   }, [manualModelDraft]);
 
-  useEffect(() => {
-    if (!draft || !newProviderId) return undefined;
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target;
-      if (target instanceof Node && providerEditRef.current?.contains(target))
-        return;
-      discardNewProviderDraft(newProviderId);
-    };
-    window.addEventListener("pointerdown", handlePointerDown, true);
-    return () =>
-      window.removeEventListener("pointerdown", handlePointerDown, true);
-  }, [draft, newProviderId]); // eslint-disable-line react-hooks/exhaustive-deps -- discardNewProviderDraft 声明于上方（TDZ），且每次渲染重建；effect 已随 draft/newProviderId 重跑
-
   return {
     // State
     checkingEndpointIds,
@@ -682,23 +598,20 @@ export function useProviderManagement(
     fetchingModelIds,
     expandedProviderIds,
     visibleApiKeyProviderIds,
-    newProviderId,
     modelImportDraft,
     manualModelDraft,
     // Refs
     manualModelRef,
-    providerEditRef,
     // Setters
     setManualModelDraft,
     setModelImportDraft,
     setStatus,
     // Functions
-    addEndpointProfile,
     commitNewProvider,
     removeEndpointProfile,
-    discardNewProviderDraft,
-    confirmNewProviderDraft,
     toggleProviderExpanded,
+    openProviderDetail,
+    closeProviderDetail,
     toggleApiKeyVisible,
     toggleModelImportSelection,
     applyModelImport,

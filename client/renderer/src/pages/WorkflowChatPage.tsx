@@ -50,7 +50,6 @@ import {
   copyToClipboard,
 } from "./workflow-chat-helpers";
 import { ModelSelector } from "./WorkflowChatModelSelector";
-import { RuntimeSelector } from "./WorkflowChatRuntimeSelector";
 import {
   ModelChangeDivider,
   PlanImplementationPromptCard,
@@ -134,6 +133,7 @@ export function WorkflowChatPage({
   taskPresentation,
   taskContextMode = "hidden",
   taskContextControl,
+  taskContextInWindowTitlebar = true,
   taskContextGitLoading = false,
   onTaskContextRefresh,
   onTaskContextCloseFloating,
@@ -146,6 +146,7 @@ export function WorkflowChatPage({
   taskPresentation: TaskPresentationModel;
   taskContextMode?: TaskContextMode;
   taskContextControl?: WorkflowChatHeaderThreadSummary;
+  taskContextInWindowTitlebar?: boolean;
   taskContextGitLoading?: boolean;
   onTaskContextRefresh: () => void;
   onTaskContextCloseFloating: () => void;
@@ -756,6 +757,7 @@ export function WorkflowChatPage({
         <WorkflowChatHeader
           titleHidden={titleHidden}
           threadSummary={taskContextControl}
+          threadSummaryInWindowTitlebar={taskContextInWindowTitlebar}
         />
       ) : null}
 
@@ -903,7 +905,6 @@ export function WorkflowChatPage({
         onStop={() => void abort(activeSessionId ?? undefined)}
         onSecurityModeChange={handleSecurityModeChange}
         onOpenSecuritySettings={() => openSettings("security")}
-        runtimeControl={<RuntimeSelector />}
         modelControl={
           <ModelSelector switchWarningVisible={modelSwitchWarningVisible} />
         }

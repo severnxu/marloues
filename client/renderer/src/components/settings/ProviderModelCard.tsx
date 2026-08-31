@@ -1,6 +1,7 @@
 import { PlugZap, RefreshCcw, Trash2 } from "lucide-react";
 import type { ModelOption, ModelProviderConfig } from "@shared/types";
 import { STRINGS } from "@shared/strings.zh";
+import { SettingsCheckbox, SettingsRadio } from "./shared";
 
 export function ProviderModelCard({
   model,
@@ -49,8 +50,7 @@ export function ProviderModelCard({
       <div className="provider-model-main">
         <div className="provider-model-title-line">
           <label className="provider-model-default" title={defaultTitle}>
-            <input
-              type="radio"
+            <SettingsRadio
               name="settings-default-model"
               checked={isDefault}
               disabled={!canSetDefault}
@@ -104,8 +104,7 @@ export function ProviderModelCard({
             />
           </label>
           <label className="settings-inline-check">
-            <input
-              type="checkbox"
+            <SettingsCheckbox
               checked={Boolean(model.supportsVision)}
               disabled={provider.locked || !canEdit}
               onChange={(event) =>
@@ -115,8 +114,7 @@ export function ProviderModelCard({
             视觉
           </label>
           <label className="settings-inline-check">
-            <input
-              type="checkbox"
+            <SettingsCheckbox
               checked={Boolean(model.supportsThinking)}
               disabled={provider.locked || !canEdit}
               onChange={(event) =>
@@ -128,14 +126,15 @@ export function ProviderModelCard({
         </div>
       </div>
       <div
-        className={`settings-row-actions provider-model-actions ${isChecking ? "visible" : ""}`}
+        className={`settings-row-actions provider-model-actions ${
+          isChecking ? "visible" : ""
+        }`}
       >
         <label
           className="settings-inline-check provider-model-enable-check"
           title={enableTitle}
         >
-          <input
-            type="checkbox"
+          <SettingsCheckbox
             checked={model.enabled}
             disabled={!canDisableModel}
             onChange={onToggleEnabled}

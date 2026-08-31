@@ -299,14 +299,15 @@ async function verifySecurityCenter(window: ElectronPage): Promise<void> {
   await networkPolicy.click();
   await window.getByRole("option", { name: "按请求审批" }).click();
   await expectSecurityRule(window, "networkAccess", "ask");
-  const allowedDomains = window.getByLabel("允许域名（每行一项）");
+  const allowedDomains = window.getByLabel("添加允许域名");
   await allowedDomains.fill("api.example.com");
+  await allowedDomains.press("Enter");
   await expectSecurityRule(window, "allowedDomains", ["api.example.com"]);
   await window.screenshot({
     path: join(artifactsDir, "04-security-center.png"),
     fullPage: true,
   });
-  await allowedDomains.fill("");
+  await window.getByRole("button", { name: "移除 api.example.com" }).click();
   await window.getByRole("button", { name: "返回工作区" }).click();
   await expect(window.locator(".app-shell")).toBeVisible();
 }
@@ -339,6 +340,10 @@ async function verifyElevationAndFullAccess(
   const stamp = Date.now();
   const elevatedPath = join(homedir(), `marloues-elevated-${stamp}.txt`);
   const fullPath = join(homedir(), `marloues-full-access-${stamp}.txt`);
+  const continuedFullPath = join(
+    homedir(),
+    `marloues-full-access-new-session-${stamp}.txt`,
+  );
   try {
     await setSecurityMode(window, "请求批准", "request");
     await requestSandboxCommand(
@@ -388,10 +393,24 @@ async function verifyElevationAndFullAccess(
     });
 
     await startNewSession(window);
-    await expectSetting(window, "securityMode", "request");
+    await expectSetting(window, "securityMode", "full-access");
+    await expectSetting(window, "permissionMode", "bypassPermissions");
+    await expectSetting(window, "sandboxMode", "danger-full-access");
+    await sendSandboxCommand(
+      window,
+      setContentCommand(continuedFullPath, "FULL_ACCESS_NEW_SESSION_OK"),
+    );
+    await expect
+      .poll(() => existsSync(continuedFullPath), { timeout: 120_000 })
+      .toBe(true);
+    expect(readFileSync(continuedFullPath, "utf-8")).toBe(
+      "FULL_ACCESS_NEW_SESSION_OK",
+    );
+    await expect(permissionPanel(window)).toBeHidden();
   } finally {
     removeFileIfPresent(elevatedPath);
     removeFileIfPresent(fullPath);
+    removeFileIfPresent(continuedFullPath);
   }
 }
 
@@ -404,6 +423,10 @@ async function verifyBinaryUnifiedSecurityLifecycle(
   const allowedPath = join(homedir(), `marloues-binary-allowed-${stamp}.txt`);
   const reviewedPath = join(homedir(), `marloues-binary-guardian-${stamp}.txt`);
   const fullPath = join(homedir(), `marloues-binary-full-${stamp}.txt`);
+  const continuedFullPath = join(
+    homedir(),
+    `marloues-binary-full-new-session-${stamp}.txt`,
+  );
   try {
     await setSecurityMode(window, "请求批准", "request");
     await sendBinaryApprovalCommand(
@@ -460,11 +483,29 @@ async function verifyBinaryUnifiedSecurityLifecycle(
       path: join(artifactsDir, "08-binary-unified-security.png"),
       fullPage: true,
     });
+
+    await startNewSession(window);
+    await expectSetting(window, "securityMode", "full-access");
+    await expectSetting(window, "permissionMode", "bypassPermissions");
+    await expectSetting(window, "sandboxMode", "danger-full-access");
+    await sendBinaryExactCommand(
+      window,
+      setContentCommand(continuedFullPath, "BINARY_FULL_ACCESS_NEW_SESSION_OK"),
+    );
+    await expect
+      .poll(() => existsSync(continuedFullPath), { timeout: 120_000 })
+      .toBe(true);
+    expect(readFileSync(continuedFullPath, "utf-8")).toBe(
+      "BINARY_FULL_ACCESS_NEW_SESSION_OK",
+    );
+    await waitForIdle(window);
+    await expect(permissionPanel(window)).toBeHidden();
   } finally {
     removeFileIfPresent(deniedPath);
     removeFileIfPresent(allowedPath);
     removeFileIfPresent(reviewedPath);
     removeFileIfPresent(fullPath);
+    removeFileIfPresent(continuedFullPath);
   }
 }
 
