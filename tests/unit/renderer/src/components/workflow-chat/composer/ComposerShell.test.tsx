@@ -2,6 +2,13 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { WorkflowComposerShell } from "../../../../../../../client/renderer/src/components/workflow-chat/composer/ComposerShell";
 
+vi.hoisted(() => {
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: { userAgent: "vitest" },
+  });
+});
+
 describe("WorkflowComposerShell permission branch", () => {
   it("renders the permission panel instead of the complete input stack", () => {
     const markup = renderToStaticMarkup(
@@ -41,5 +48,56 @@ describe("WorkflowComposerShell permission branch", () => {
     expect(markup).toContain('data-composer-navigation-target="add-context"');
     expect(markup).toContain('aria-label="添加文件及更多内容"');
     expect(markup).toContain('data-icon-contract="add-context"');
+  });
+
+  it("uses the Codex hand icon for the request permission mode", () => {
+    const markup = renderToStaticMarkup(
+      <WorkflowComposerShell
+        input=""
+        isGenerating={false}
+        securityMode="request"
+        selectedProvider={null}
+        onInputChange={vi.fn()}
+        onKeyDown={vi.fn()}
+        onSend={vi.fn()}
+        onStop={vi.fn()}
+      />,
+    );
+
+    expect(markup).toContain("lucide-hand");
+  });
+
+  it("keeps the stop action available while a running task has draft input", () => {
+    const markup = renderToStaticMarkup(
+      <WorkflowComposerShell
+        input="保留用于重试的消息"
+        isGenerating
+        selectedProvider={null}
+        onInputChange={vi.fn()}
+        onKeyDown={vi.fn()}
+        onSend={vi.fn()}
+        onStop={vi.fn()}
+      />,
+    );
+
+    expect(markup).toContain('aria-label="停止任务"');
+    expect(markup).toContain('aria-label="发送追加消息"');
+  });
+
+  it("keeps the stop action available while a running task has no input", () => {
+    const markup = renderToStaticMarkup(
+      <WorkflowComposerShell
+        input=""
+        isGenerating
+        selectedProvider={null}
+        onInputChange={vi.fn()}
+        onKeyDown={vi.fn()}
+        onSend={vi.fn()}
+        onStop={vi.fn()}
+      />,
+    );
+
+    expect(markup).toContain('aria-label="停止任务"');
+    expect(markup).not.toContain('aria-label="发送追加消息"');
   });
 });

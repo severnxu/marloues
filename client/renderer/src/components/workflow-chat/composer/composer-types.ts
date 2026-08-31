@@ -1,4 +1,4 @@
-import { Hand, ShieldCheck, TriangleAlert } from "lucide-react";
+import { Hand, ShieldAlert, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import type {
   ExecutionTaskRecord,
@@ -13,8 +13,11 @@ import type { AgentSecurityMode, SkillInfo } from "@shared/types";
 import type { ContextUsageRecord, TokenUsage } from "@shared/types";
 import type { WorkflowUserMessageContent } from "@shared/workflow-read-thread-contract";
 
-export const COMPOSER_TEXTAREA_MIN_HEIGHT = 56;
-export const COMPOSER_TEXTAREA_WITH_ATTACHMENTS_MIN_HEIGHT = 59;
+// Two 14px lines at 1.55 line-height plus the textarea's vertical padding.
+// Keeping two rows inside the minimum prevents the composer shell from
+// jumping when the user enters the first newline.
+export const COMPOSER_TEXTAREA_MIN_HEIGHT = 64;
+export const COMPOSER_TEXTAREA_WITH_ATTACHMENTS_MIN_HEIGHT = 60;
 export const COMPOSER_TEXTAREA_MAX_HEIGHT = 150;
 
 export const securityModeOptions: Array<{
@@ -39,7 +42,7 @@ export const securityModeOptions: Array<{
     mode: "full-access",
     label: "完全访问",
     description: "可不受限制地访问互联网和本机文件",
-    icon: TriangleAlert,
+    icon: ShieldAlert,
   },
 ];
 
@@ -50,12 +53,20 @@ export interface WorkflowComposerShellProps {
   /** Browser annotations to add as structured composer attachments. */
   incomingBrowserComment?: {
     eventId: string;
+    pageId: string;
     payloads: Extract<WorkflowUserMessageContent, { type: "browserComment" }>[];
   };
   /** Browser annotation bar request to submit through the primary composer path. */
   browserCommentSubmit?: {
     eventId: string;
+    pageId: string;
     payloads: Extract<WorkflowUserMessageContent, { type: "browserComment" }>[];
+  };
+  /** A browser-side annotation removal to mirror in the composer. */
+  browserCommentRemoval?: {
+    eventId: string;
+    pageId: string;
+    commentId: number;
   };
   isGenerating: boolean;
   securityMode?: AgentSecurityMode;

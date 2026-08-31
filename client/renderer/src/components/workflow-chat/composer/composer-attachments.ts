@@ -53,6 +53,7 @@ export type ComposerAttachment =
   | {
       kind: "browser-comment";
       id: string;
+      pageId?: string;
       payload: Extract<WorkflowUserMessageContent, { type: "browserComment" }>;
     };
 export const MAX_ATTACHMENTS = 6;
@@ -286,12 +287,26 @@ export function browserCommentAttachment(
     Extract<WorkflowUserMessageContent, { type: "browserComment" }>,
     "type"
   >,
+  pageId?: string,
 ): ComposerAttachment {
   return {
     kind: "browser-comment",
     id: crypto.randomUUID(),
+    pageId,
     payload: { type: "browserComment", ...payload },
   };
+}
+
+export function isMatchingBrowserCommentAttachment(
+  attachment: ComposerAttachment,
+  pageId: string,
+  commentId: number,
+): boolean {
+  return (
+    attachment.kind === "browser-comment" &&
+    attachment.pageId === pageId &&
+    attachment.payload.commentId === commentId
+  );
 }
 /** Convert composer attachments to the wire content sent to the store. */
 export function attachmentsToUserContent(

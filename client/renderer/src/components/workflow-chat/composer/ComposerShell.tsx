@@ -3,6 +3,7 @@ import { Check, ChevronDown, Settings2 } from "lucide-react";
 import {
   attachmentsToUserContent,
   browserCommentAttachment,
+  isMatchingBrowserCommentAttachment,
   MAX_ATTACHMENTS,
   skillAttachment,
 } from "./composer-attachments";
@@ -40,6 +41,7 @@ export function WorkflowComposerShell({
   input,
   incomingBrowserComment,
   browserCommentSubmit,
+  browserCommentRemoval,
   isGenerating,
   securityMode: controlledSecurityMode,
   selectedProvider,
@@ -115,12 +117,15 @@ export function WorkflowComposerShell({
             !previous.some(
               (attachment) =>
                 attachment.kind === "browser-comment" &&
+                attachment.pageId === incomingBrowserComment.pageId &&
                 attachment.payload.commentId === payload.commentId &&
                 attachment.payload.pageUrl === payload.pageUrl,
             ),
         )
         .slice(0, Math.max(0, MAX_ATTACHMENTS - previous.length))
-        .map(browserCommentAttachment);
+        .map((payload) =>
+          browserCommentAttachment(payload, incomingBrowserComment.pageId),
+        );
       return additions.length > 0 ? [...previous, ...additions] : previous;
     });
     requestAnimationFrame(() => textareaRef.current?.focus());
@@ -139,10 +144,14 @@ export function WorkflowComposerShell({
       const exists = submittedAttachments.some(
         (attachment) =>
           attachment.kind === "browser-comment" &&
+          attachment.pageId === browserCommentSubmit.pageId &&
           attachment.payload.commentId === payload.commentId &&
           attachment.payload.pageUrl === payload.pageUrl,
       );
-      if (!exists) submittedAttachments.push(browserCommentAttachment(payload));
+      if (!exists)
+        submittedAttachments.push(
+          browserCommentAttachment(payload, browserCommentSubmit.pageId),
+        );
     }
 
     // Keep the browser bar's send semantics identical to the primary submit
@@ -150,6 +159,38 @@ export function WorkflowComposerShell({
     onSend(attachmentsToUserContent(submittedAttachments));
     setAttachments([]);
   }, [attachments, browserCommentSubmit, onSend, setAttachments]);
+
+  useEffect(() => {
+    if (!browserCommentRemoval) return;
+    setAttachments((previous) =>
+      previous.filter(
+        (attachment) =>
+          !isMatchingBrowserCommentAttachment(
+            attachment,
+            browserCommentRemoval.pageId,
+            browserCommentRemoval.commentId,
+          ),
+      ),
+    );
+  }, [browserCommentRemoval, setAttachments]);
+
+  const handleRemoveAttachment = useCallback(
+    (id: string) => {
+      const attachment = attachments.find((item) => item.id === id);
+      removeAttachment(id);
+      if (
+        attachment?.kind === "browser-comment" &&
+        attachment.pageId &&
+        window.marloues.browser?.removeComment
+      ) {
+        void window.marloues.browser.removeComment(
+          attachment.pageId,
+          attachment.payload.commentId,
+        );
+      }
+    },
+    [attachments, removeAttachment],
+  );
   const {
     query: composerQuery,
     items: composerSuggestions,
@@ -262,6 +303,13 @@ export function WorkflowComposerShell({
   }, [slashCommands, slashFilter]);
 
   const canSubmit = input.trim().length > 0 || attachments.length > 0;
+
+  const submitComposer = useCallback(() => {
+    if (!canSubmit) return;
+    const outgoingAttachments = sendAttachments();
+    onSend(outgoingAttachments);
+    setAttachments([]);
+  }, [canSubmit, onSend, sendAttachments, setAttachments]);
 
   const activateContextTrigger = useCallback(
     (trigger: "$" | "@" | "/") => {
@@ -392,7 +440,7 @@ export function WorkflowComposerShell({
       if (event.key === "Enter" && !event.shiftKey && !event.ctrlKey) {
         if (canSubmit) {
           event.preventDefault();
-          onSend(sendAttachments());
+          submitComposer();
         }
         return;
       }
@@ -408,8 +456,7 @@ export function WorkflowComposerShell({
       suggestionSelectedIndex,
       handleSuggestionSelect,
       canSubmit,
-      onSend,
-      sendAttachments,
+      submitComposer,
       onKeyDown,
     ],
   );
@@ -456,9 +503,7 @@ export function WorkflowComposerShell({
               onDrop={handleDrop}
               onSubmit={(event) => {
                 event.preventDefault();
-                if (!canSubmit) return;
-                onSend(sendAttachments());
-                setAttachments([]);
+                submitComposer();
               }}
               className="composer input-glow"
             >
@@ -477,7 +522,7 @@ export function WorkflowComposerShell({
               >
                 <ComposerAttachmentChips
                   attachments={attachments}
-                  onRemove={removeAttachment}
+                  onRemove={handleRemoveAttachment}
                   onPreviewImage={setPreviewImage}
                 />
                 <textarea
@@ -589,6 +634,7 @@ export function WorkflowComposerShell({
                   <button
                     type="button"
                     aria-label={`权限：${activeSecurityMode.label}`}
+                    title={activeSecurityMode.label}
                     aria-haspopup="menu"
                     aria-expanded={securityOpen}
                     onClick={() => setSecurityOpen((value) => !value)}
@@ -698,8 +744,28 @@ export function WorkflowComposerShell({
                   )}
                 </div>
 
-                {isGenerating && !canSubmit ? (
-                  <button type="button" className="send stop" onClick={onStop}>
+                {isGenerating && canSubmit ? (
+                  <button
+                    type="submit"
+                    className="send steer-submit"
+                    aria-label="发送追加消息"
+                    title="发送追加消息"
+                  >
+                    <COMPOSER_ICONS.send
+                      size={15}
+                      data-icon-contract="composer-send"
+                    />
+                  </button>
+                ) : null}
+
+                {isGenerating ? (
+                  <button
+                    type="button"
+                    className="send stop"
+                    onClick={onStop}
+                    aria-label="停止任务"
+                    title="停止任务"
+                  >
                     <COMPOSER_ICONS.stop
                       size={12}
                       fill="currentColor"
@@ -711,9 +777,9 @@ export function WorkflowComposerShell({
                   <button
                     type="submit"
                     disabled={!canSubmit}
-                    className={`send ${isGenerating ? "steer-submit" : ""}`}
-                    aria-label={isGenerating ? "发送追加消息" : "发送消息"}
-                    title={isGenerating ? "发送追加消息" : "发送消息"}
+                    className="send"
+                    aria-label="发送消息"
+                    title="发送消息"
                   >
                     <COMPOSER_ICONS.send
                       size={15}

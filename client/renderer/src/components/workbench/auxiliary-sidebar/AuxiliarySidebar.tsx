@@ -50,6 +50,7 @@ interface TabState {
   reviewTarget?: ReviewTarget;
   sessionId?: string;
   pageId?: string;
+  browserTitle?: string;
 }
 
 interface SessionAuxiliaryState {
@@ -472,6 +473,7 @@ export function AuxiliarySidebar({
             id: makeTabId(),
             type: "browser" as const,
             pageId: page.pageId,
+            browserTitle: page.title,
           }));
         return restored.length > 0 ? [...prev, ...restored] : prev;
       });
@@ -487,6 +489,9 @@ export function AuxiliarySidebar({
 
   const tabLabel = useCallback(
     (tab: TabState): string => {
+      if (tab.type === "browser") {
+        return compactTabLabel(tab.browserTitle?.trim() || "新标签页");
+      }
       if (tab.type !== "subagent") return AUXILIARY_VIEW_LABELS[tab.type];
       const subagent = tab.subagentId ? subagentById.get(tab.subagentId) : null;
       if (!subagent) return "子代理";
@@ -503,6 +508,7 @@ export function AuxiliarySidebar({
     () =>
       tabs.map((tab) => ({
         id: tab.id,
+        type: tab.type,
         label: tabLabel(tab),
         icon:
           tab.type === "subagent"
@@ -574,7 +580,18 @@ export function AuxiliarySidebar({
             ) : tab.type === "terminal" ? (
               <TerminalPanel sessionId={tab.sessionId} />
             ) : tab.type === "browser" ? (
-              <BrowserPanel pageId={tab.pageId} />
+              <BrowserPanel
+                pageId={tab.pageId}
+                onTitleChange={(title) => {
+                  setTabs((previous) =>
+                    previous.map((entry) =>
+                      entry.id === tab.id
+                        ? { ...entry, browserTitle: title }
+                        : entry,
+                    ),
+                  );
+                }}
+              />
             ) : null}
           </AuxiliaryViewPanel>
         ))}

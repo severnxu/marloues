@@ -365,6 +365,12 @@ const api: MarlouesAPI = {
   browser: {
     viewNavigate: (pageId: string, url: string) =>
       ipcRenderer.invoke(IPC.BROWSER_VIEW_NAVIGATE, pageId, url),
+    goBack: (pageId: string) => ipcRenderer.invoke(IPC.BROWSER_GO_BACK, pageId),
+    goForward: (pageId: string) =>
+      ipcRenderer.invoke(IPC.BROWSER_GO_FORWARD, pageId),
+    reload: (pageId: string) => ipcRenderer.invoke(IPC.BROWSER_RELOAD, pageId),
+    navigationState: (pageId: string) =>
+      ipcRenderer.invoke(IPC.BROWSER_NAVIGATION_STATE, pageId),
     newPage: (url: string) => ipcRenderer.invoke(IPC.BROWSER_NEW_PAGE, url),
     closePage: (pageId: string) =>
       ipcRenderer.invoke(IPC.BROWSER_CLOSE_PAGE, pageId),
@@ -383,6 +389,38 @@ const api: MarlouesAPI = {
       ) => callback(threadId, pageId, url);
       ipcRenderer.on(IPC.BROWSER_URL_CHANGED, listener);
       return () => ipcRenderer.off(IPC.BROWSER_URL_CHANGED, listener);
+    },
+    onTitleChanged: (callback) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        pageId: string,
+        title: string,
+      ) => callback(pageId, title);
+      ipcRenderer.on(IPC.BROWSER_TITLE_CHANGED, listener);
+      return () => ipcRenderer.off(IPC.BROWSER_TITLE_CHANGED, listener);
+    },
+    onLoadFailed: (callback) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        pageId: string,
+        error: { url: string; errorCode: number; errorDescription: string },
+      ) => callback(pageId, error);
+      ipcRenderer.on(IPC.BROWSER_LOAD_FAILED, listener);
+      return () => ipcRenderer.off(IPC.BROWSER_LOAD_FAILED, listener);
+    },
+    onNavigationStateChanged: (callback) => {
+      const listener = (
+        _event: Electron.IpcRendererEvent,
+        pageId: string,
+        state: {
+          canGoBack: boolean;
+          canGoForward: boolean;
+          isLoading: boolean;
+        },
+      ) => callback(pageId, state);
+      ipcRenderer.on(IPC.BROWSER_NAVIGATION_STATE_CHANGED, listener);
+      return () =>
+        ipcRenderer.off(IPC.BROWSER_NAVIGATION_STATE_CHANGED, listener);
     },
     onNavigationBlocked: (callback) => {
       const listener = (
@@ -421,6 +459,8 @@ const api: MarlouesAPI = {
       ),
     clearComments: (pageId) =>
       ipcRenderer.invoke(IPC.BROWSER_CLEAR_COMMENTS, pageId),
+    removeComment: (pageId, commentId) =>
+      ipcRenderer.invoke(IPC.BROWSER_REMOVE_COMMENT, pageId, commentId),
     onCommentEvent: (callback) => {
       const listener = (
         _event: Electron.IpcRendererEvent,

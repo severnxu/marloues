@@ -203,7 +203,8 @@
   --interaction-content-gap: 8px;
   --task-result-gap: 8px;
   --steer-queue-inline-inset: 14px;
-  --composer-attachment-size: 54px;
+  --composer-attachment-size: 80px;
+  --conversation-image-thumbnail-size: var(--composer-attachment-size);
   --composer-file-attachment-width: 176px;
   --attachment-remove-bg: hsl(0 0% 8% / 0.94);
   --attachment-remove-fg: hsl(0 0% 100% / 0.96);

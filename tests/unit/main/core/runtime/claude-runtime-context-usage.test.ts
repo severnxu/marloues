@@ -136,6 +136,47 @@ function settings(): AgentSettings {
 }
 
 describe("ClaudeRuntime context usage", () => {
+  it("finalizes the workflow turn when the SDK fails before streaming starts", async () => {
+    mocks.queryClaude.mockRejectedValueOnce(
+      new Error("Claude executable is missing"),
+    );
+
+    const runtime = new ClaudeRuntime();
+
+    await expect(
+      runtime.sendMessage({
+        threadId: "thread-startup-failure",
+        turnId: "turn-startup-failure",
+        content: "hi",
+        settingsSnapshot: settings(),
+      }),
+    ).rejects.toThrow("Claude executable is missing");
+
+    expect(mocks.workflowThreadStore.applyRuntimeEvent).toHaveBeenCalledWith(
+      "thread-startup-failure",
+      "turn-startup-failure",
+      expect.objectContaining({
+        kind: "error",
+        payload: expect.objectContaining({
+          code: "SDK_STARTUP_ERROR",
+          message: "Claude executable is missing",
+        }),
+      }),
+    );
+    expect(mocks.workflowThreadStore.applyRuntimeEvent).toHaveBeenCalledWith(
+      "thread-startup-failure",
+      "turn-startup-failure",
+      {
+        kind: "turn-complete",
+        payload: {
+          turnId: "turn-startup-failure",
+          result: "error",
+          error: "Claude executable is missing",
+        },
+      },
+    );
+  });
+
   it("does not block streaming while the turn-end context probe is pending", async () => {
     let resolveContextUsage!: (value: unknown) => void;
     const getContextUsage = vi.fn(

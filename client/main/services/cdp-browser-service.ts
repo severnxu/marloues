@@ -7,7 +7,6 @@ import {
   EMBEDDED_COMMENT_BRIDGE_SCRIPT,
   EMBEDDED_COMMENT_CONTROL_NAME,
   EMBEDDED_COMMENT_BINDING_NAME,
-  EMBEDDED_COMMENT_WORLD_ID,
   normalizeCommentBridgeMessage,
   type CommentPayload,
   type CommentBridgeMessage,
@@ -1045,6 +1044,21 @@ class CdpBrowserServiceImpl extends EventEmitter {
     return { success: true };
   }
 
+  async removeComment(
+    pageId: string,
+    commentId: number,
+  ): Promise<{ success: boolean }> {
+    const state = this.states.get(pageId);
+    if (!state || !Number.isInteger(commentId) || commentId <= 0) {
+      return { success: false };
+    }
+    const success = await this.postCommentBridgeMessage(pageId, {
+      type: "remove-comment",
+      commentId,
+    });
+    return { success };
+  }
+
   isCommentModeEnabled(pageId: string): boolean {
     return this.states.get(pageId)?.commentModeEnabled ?? false;
   }
@@ -1174,6 +1188,18 @@ class CdpBrowserServiceImpl extends EventEmitter {
       logInfo("cdpBrowser.commentBridge.diagnostic", {
         pageId,
         payload: JSON.stringify(message.payload).slice(0, 200),
+      });
+      return;
+    }
+
+    if (message.type === "exit-requested") {
+      await this.setCommentMode(pageId, false);
+      this.emit("comment-event", pageId, {
+        eventId: 0,
+        type: "comment-mode-changed",
+        pageId,
+        enabled: false,
+        ts: Date.now(),
       });
       return;
     }

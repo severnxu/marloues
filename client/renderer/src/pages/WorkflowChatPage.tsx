@@ -248,11 +248,18 @@ export function WorkflowChatPage({
   >(null);
   const [incomingBrowserComment, setIncomingBrowserComment] = useState<{
     eventId: string;
+    pageId: string;
     payloads: BrowserCommentPayload[];
   } | null>(null);
   const [browserCommentSubmit, setBrowserCommentSubmit] = useState<{
     eventId: string;
+    pageId: string;
     payloads: BrowserCommentPayload[];
+  } | null>(null);
+  const [browserCommentRemoval, setBrowserCommentRemoval] = useState<{
+    eventId: string;
+    pageId: string;
+    commentId: number;
   } | null>(null);
 
   useEffect(() => {
@@ -285,6 +292,7 @@ export function WorkflowChatPage({
       if (record.type === "submit-comments") {
         setBrowserCommentSubmit({
           eventId: `${pageId}:${payloads.map((payload) => payload.commentId).join(",")}:${Date.now()}`,
+          pageId,
           payloads,
         });
         return;
@@ -298,6 +306,7 @@ export function WorkflowChatPage({
       if (freshPayloads.length === 0) return;
       setIncomingBrowserComment({
         eventId: `${pageId}:${freshPayloads.map((payload) => payload.commentId).join(",")}`,
+        pageId,
         payloads: freshPayloads,
       });
     };
@@ -305,6 +314,36 @@ export function WorkflowChatPage({
     return () =>
       window.removeEventListener("browser:send-to-agent", handleBrowserInput);
   }, [setInputText]);
+
+  useEffect(() => {
+    const handleBrowserCommentRemoval = (event: Event) => {
+      const detail = (event as CustomEvent<unknown>).detail;
+      if (!detail || typeof detail !== "object") return;
+      const record = detail as { pageId?: unknown; commentId?: unknown };
+      const pageId = typeof record.pageId === "string" ? record.pageId : "";
+      const commentId = Number(record.commentId);
+      if (!pageId || !Number.isInteger(commentId) || commentId <= 0) return;
+      const keyPrefix = `${pageId}:${commentId}:`;
+      for (const key of browserCommentKeysRef.current) {
+        if (key.startsWith(keyPrefix))
+          browserCommentKeysRef.current.delete(key);
+      }
+      setBrowserCommentRemoval({
+        eventId: `${pageId}:${commentId}:${Date.now()}`,
+        pageId,
+        commentId,
+      });
+    };
+    window.addEventListener(
+      "browser:comment-removed",
+      handleBrowserCommentRemoval,
+    );
+    return () =>
+      window.removeEventListener(
+        "browser:comment-removed",
+        handleBrowserCommentRemoval,
+      );
+  }, []);
 
   const handleSecurityModeChange = useCallback(
     (securityMode: AgentSecurityMode) => {
@@ -860,6 +899,7 @@ export function WorkflowChatPage({
         input={inputText}
         incomingBrowserComment={incomingBrowserComment ?? undefined}
         browserCommentSubmit={browserCommentSubmit ?? undefined}
+        browserCommentRemoval={browserCommentRemoval ?? undefined}
         isGenerating={activeSessionIsStreaming}
         securityMode={settings?.securityMode ?? "request"}
         permissionPanel={

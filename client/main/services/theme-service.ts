@@ -31,8 +31,6 @@ const FALLBACK_BACKGROUNDS: Record<string, string> = {
   light: "#faf9f7",
   warm: "#ede2c9",
 };
-const DEFAULT_BACKGROUND = FALLBACK_BACKGROUNDS.dark;
-
 function isHexColor(value: unknown): value is string {
   return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value.trim());
 }
@@ -101,7 +99,10 @@ function applyBackgroundColorToAllWindows(background: string): void {
  * drive nativeTheme so macOS traffic lights pick the right appearance, and
  * repaint every window's background.
  */
-export function registerThemeIpc(): void {
+export function registerThemeIpc(
+  onBackgroundChanged?: (background: string) => void,
+): void {
+  onBackgroundChanged?.(getThemeAwareBackgroundColor());
   ipcMain.on(
     IPC.WINDOW_SET_THEME,
     (_event, mode: string, background: string, next: NativeThemeSource) => {
@@ -118,6 +119,7 @@ export function registerThemeIpc(): void {
         nativeTheme.themeSource = next;
       }
       applyBackgroundColorToAllWindows(background);
+      onBackgroundChanged?.(background);
     },
   );
 }

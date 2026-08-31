@@ -68,6 +68,8 @@
 
 .composer {
   position: relative;
+  container-name: workflow-composer;
+  container-type: inline-size;
   z-index: 2;
   width: min(100%, var(--chat-max-width));
   min-height: 0;
@@ -104,7 +106,7 @@
 
 .composer textarea {
   width: 100%;
-  min-height: 56px;
+  min-height: 64px;
   max-height: 150px;
   resize: none;
   overflow-y: auto;
@@ -128,7 +130,7 @@
 }
 
 .composer-input.has-chips textarea {
-  min-height: 59px;
+  min-height: 60px;
   padding-top: 10px;
 }
 
@@ -161,7 +163,8 @@
 }
 
 .composer-chip-image {
-  width: var(--composer-attachment-size);
+  width: var(--conversation-image-thumbnail-size);
+  height: var(--conversation-image-thumbnail-size);
 }
 
 .composer-chip-image-btn {
@@ -190,6 +193,10 @@
   align-items: center;
   gap: var(--space-2);
   padding: 5px 28px 5px 5px;
+}
+
+.composer-chip-file {
+  height: var(--composer-attachment-size);
 }
 
 .composer-chip-url {
@@ -669,6 +676,17 @@ button.composer-browser-review-image {
   color: var(--text-1);
 }
 
+.composer .mode-button.security-full-access,
+.composer .mode-button.security-full-access:hover,
+.composer .mode-button.security-full-access:focus-visible,
+.composer .mode-button.security-full-access[aria-expanded="true"],
+.composer .mode-button.security-full-access svg,
+.composer .mode-button.security-full-access:hover svg,
+.composer .mode-button.security-full-access:focus-visible svg,
+.composer .mode-button.security-full-access[aria-expanded="true"] svg {
+  color: var(--danger, #d14b4b);
+}
+
 .composer-spacer {
   min-width: var(--space-2);
   flex: 1 1 auto;
@@ -822,11 +840,23 @@ button.composer-browser-review-image {
   white-space: normal;
 }
 
+.security-mode-popover button.security-full-access,
+.security-mode-popover button.security-full-access > svg:first-child,
 .security-mode-popover button.security-full-access:hover,
 .security-mode-popover button.security-full-access.active,
 .security-mode-popover button.security-full-access:hover > svg:first-child,
 .security-mode-popover button.security-full-access.active > svg:first-child {
   color: var(--danger, #d14b4b);
+}
+
+.composer .model-menu {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.composer .model-menu .model-selector-surface,
+.composer .model-menu .model-chip {
+  max-width: 100%;
 }
 
 .security-popover-separator {
@@ -1574,12 +1604,10 @@ button.composer-browser-review-image {
 }
 
 @media (max-width: 520px) {
-  .composer .mode-button > span,
   .composer-steer-guide > span {
     display: none;
   }
 
-  .composer .mode-button,
   .composer-steer-guide {
     width: 30px;
     padding: 0;
@@ -1593,6 +1621,43 @@ button.composer-browser-review-image {
   .composer-chip-link,
   .composer-chip-url {
     width: 160px;
+  }
+}
+
+@container workflow-composer (max-width: 560px) {
+  .composer-toolbar {
+    gap: 2px;
+    padding-right: 6px;
+    padding-left: 6px;
+  }
+
+  .composer .model-chip > span {
+    display: none;
+  }
+
+  .composer .model-chip {
+    padding-right: 6px;
+    padding-left: 6px;
+  }
+
+  .composer .model-chip strong {
+    max-width: 112px;
+  }
+
+  .composer .mode-button {
+    width: 28px;
+    padding: 0;
+  }
+
+  .composer .mode-button > span,
+  .composer .mode-button > svg:last-child {
+    display: none;
+  }
+}
+
+@container workflow-composer (max-width: 420px) {
+  .composer .model-chip strong {
+    max-width: 72px;
   }
 }
 

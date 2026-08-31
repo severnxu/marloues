@@ -1204,6 +1204,14 @@ export interface MarlouesAPI {
   };
   browser: {
     viewNavigate(pageId: string, url: string): Promise<void>;
+    goBack(pageId: string): Promise<void>;
+    goForward(pageId: string): Promise<void>;
+    reload(pageId: string): Promise<void>;
+    navigationState(pageId: string): Promise<{
+      canGoBack: boolean;
+      canGoForward: boolean;
+      isLoading: boolean;
+    }>;
     newPage(url: string): Promise<string>;
     closePage(pageId: string): Promise<void>;
     listPages(): Promise<
@@ -1224,6 +1232,25 @@ export interface MarlouesAPI {
     ): Promise<void>;
     onUrlChanged(
       callback: (threadId: string, pageId: string, url: string) => void,
+    ): () => void;
+    onTitleChanged(
+      callback: (pageId: string, title: string) => void,
+    ): () => void;
+    onLoadFailed(
+      callback: (
+        pageId: string,
+        error: { url: string; errorCode: number; errorDescription: string },
+      ) => void,
+    ): () => void;
+    onNavigationStateChanged(
+      callback: (
+        pageId: string,
+        state: {
+          canGoBack: boolean;
+          canGoForward: boolean;
+          isLoading: boolean;
+        },
+      ) => void,
     ): () => void;
     onNavigationBlocked(
       callback: (pageId: string, url: string, host: string) => void,
@@ -1267,6 +1294,10 @@ export interface MarlouesAPI {
       throughEventId: number,
     ): Promise<{ success: boolean }>;
     clearComments(pageId: string): Promise<{ success: boolean }>;
+    removeComment(
+      pageId: string,
+      commentId: number,
+    ): Promise<{ success: boolean }>;
     onCommentEvent(
       callback: (pageId: string, event: unknown) => void,
     ): () => void;
@@ -1379,17 +1410,25 @@ export const IPC = {
   TERMINAL_HISTORY: "terminal:history",
   TERMINAL_EXIT: "terminal:exit",
   BROWSER_VIEW_NAVIGATE: "browser:view-navigate",
+  BROWSER_GO_BACK: "browser:go-back",
+  BROWSER_GO_FORWARD: "browser:go-forward",
+  BROWSER_RELOAD: "browser:reload",
+  BROWSER_NAVIGATION_STATE: "browser:navigation-state",
+  BROWSER_NAVIGATION_STATE_CHANGED: "browser:navigation-state-changed",
   BROWSER_NEW_PAGE: "browser:new-page",
   BROWSER_CLOSE_PAGE: "browser:close-page",
   BROWSER_VIEW_BOUNDS: "browser:view-bounds",
   BROWSER_LIST_PAGES: "browser:list-pages",
   BROWSER_SCREENSHOT: "browser:screenshot",
   BROWSER_URL_CHANGED: "browser:url-changed",
+  BROWSER_TITLE_CHANGED: "browser:title-changed",
+  BROWSER_LOAD_FAILED: "browser:load-failed",
   BROWSER_NAVIGATION_BLOCKED: "browser:navigation-blocked",
   BROWSER_EVENT: "browser:event",
   BROWSER_SET_COMMENT_MODE: "browser:set-comment-mode",
   BROWSER_GET_COMMENT_EVENTS: "browser:get-comment-events",
   BROWSER_ACK_COMMENT_EVENTS: "browser:ack-comment-events",
   BROWSER_CLEAR_COMMENTS: "browser:clear-comments",
+  BROWSER_REMOVE_COMMENT: "browser:remove-comment",
   BROWSER_COMMENT_EVENT: "browser:comment-event",
 } as const;

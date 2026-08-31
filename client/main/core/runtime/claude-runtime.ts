@@ -1656,6 +1656,24 @@ export class ClaudeRuntime implements AgentRuntime {
     try {
       query = await queryClaude(channel.generator, options);
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      // startTurn() has already published an active workflow snapshot. If SDK
+      // startup fails before an event stream exists (for example, a missing
+      // packaged Claude executable), no generator catch block can finalize it.
+      // Explicitly settle the snapshot here so the renderer does not keep the
+      // timer and stop button alive indefinitely.
+      workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, {
+        kind: "error",
+        payload: {
+          code: "SDK_STARTUP_ERROR",
+          message: errorMessage,
+          recoverable: false,
+        },
+      });
+      workflowThreadStore.applyRuntimeEvent(opts.threadId, turnId, {
+        kind: "turn-complete",
+        payload: { turnId, result: "error", error: errorMessage },
+      });
       sdkCommandSandbox.clear();
       sdkTerminalServer.clear();
       sdkBrowserServer.clear();

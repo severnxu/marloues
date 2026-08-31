@@ -244,5 +244,8 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Marloues"
     }
+  },
+  "optionalDependencies": {
+    "@anthropic-ai/claude-agent-sdk-darwin-arm64": "^0.3.220"
   }
 }

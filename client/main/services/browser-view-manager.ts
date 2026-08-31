@@ -5,9 +5,17 @@ interface ManagedView {
   view: WebContentsView;
   pageId: string;
   url: string;
+  committedUrl: string;
   title: string;
   visible: boolean;
   bounds: { x: number; y: number; width: number; height: number };
+  failedUrl?: string;
+}
+
+interface BrowserNavigationState {
+  canGoBack: boolean;
+  canGoForward: boolean;
+  isLoading: boolean;
 }
 
 /**
@@ -25,6 +33,7 @@ interface ManagedView {
 class BrowserViewManagerImpl {
   private views = new Map<string, ManagedView>();
   private activePageId: string | null = null;
+  private backgroundColor = "#212121";
 
   createView(
     pageId: string,
@@ -50,30 +59,64 @@ class BrowserViewManagerImpl {
         sandbox: true,
       },
     });
+    view.setBackgroundColor(this.backgroundColor);
 
     view.webContents.on("did-navigate", (_event, targetUrl: string) => {
       const managed = this.views.get(pageId);
       if (managed) {
         managed.url = targetUrl;
+        managed.committedUrl = targetUrl;
+        managed.failedUrl = undefined;
         this.emitUrlChanged(pageId, targetUrl);
+        this.emitNavigationState(pageId);
       }
     });
     view.webContents.on("did-navigate-in-page", (_event, targetUrl: string) => {
       const managed = this.views.get(pageId);
       if (managed) {
         managed.url = targetUrl;
+        managed.committedUrl = targetUrl;
+        managed.failedUrl = undefined;
         this.emitUrlChanged(pageId, targetUrl);
+        this.emitNavigationState(pageId);
       }
+    });
+    view.webContents.on("did-start-loading", () => {
+      this.emitNavigationState(pageId);
+    });
+    view.webContents.on("did-stop-loading", () => {
+      this.emitNavigationState(pageId);
     });
     view.webContents.on("page-title-updated", (_event, title: string) => {
       const managed = this.views.get(pageId);
-      if (managed) managed.title = title;
+      if (managed) {
+        managed.title = title;
+        this.emitTitleChanged(pageId, title);
+      }
     });
+    view.webContents.on(
+      "did-fail-load",
+      (_event, errorCode, errorDescription, validatedUrl, isMainFrame) => {
+        if (!isMainFrame || errorCode === -3) return;
+        const managed = this.views.get(pageId);
+        if (!managed) return;
+        managed.failedUrl = validatedUrl || managed.url;
+        managed.title = "无法访问此站点";
+        this.emitTitleChanged(pageId, managed.title);
+        this.emitLoadFailed(pageId, {
+          url: managed.failedUrl,
+          errorCode,
+          errorDescription,
+        });
+        this.emitNavigationState(pageId);
+      },
+    );
 
     const managed: ManagedView = {
       view,
       pageId,
       url: url || "about:blank",
+      committedUrl: "about:blank",
       title: "",
       visible: false,
       bounds,
@@ -97,10 +140,60 @@ class BrowserViewManagerImpl {
       return;
     }
     managed.url = url;
-    managed.view.webContents
-      .loadURL(url)
-      .then(() => this.emitUrlChanged(pageId, url))
-      .catch(() => {});
+    managed.failedUrl = undefined;
+    managed.title = "";
+    this.emitUrlChanged(pageId, url);
+    this.emitTitleChanged(pageId, "");
+    managed.view.webContents.loadURL(url).catch(() => {});
+  }
+
+  goBack(pageId: string): void {
+    const managed = this.views.get(pageId);
+    if (!managed) return;
+    if (managed.failedUrl && managed.committedUrl !== "about:blank") {
+      const targetUrl = managed.committedUrl;
+      managed.failedUrl = undefined;
+      managed.url = targetUrl;
+      managed.title = "";
+      this.emitUrlChanged(pageId, targetUrl);
+      this.emitTitleChanged(pageId, "");
+      managed.view.webContents.loadURL(targetUrl).catch(() => {});
+      return;
+    }
+    const history = managed.view.webContents.navigationHistory;
+    if (history.canGoBack()) history.goBack();
+  }
+
+  goForward(pageId: string): void {
+    const managed = this.views.get(pageId);
+    if (!managed) return;
+    const history = managed.view.webContents.navigationHistory;
+    if (history.canGoForward()) history.goForward();
+  }
+
+  reload(pageId: string): void {
+    const managed = this.views.get(pageId);
+    if (!managed) return;
+    if (managed.failedUrl) {
+      this.navigate(pageId, managed.failedUrl);
+      return;
+    }
+    managed.view.webContents.reload();
+  }
+
+  getNavigationState(pageId: string): BrowserNavigationState {
+    const managed = this.views.get(pageId);
+    if (!managed) {
+      return { canGoBack: false, canGoForward: false, isLoading: false };
+    }
+    const contents = managed.view.webContents;
+    return {
+      canGoBack:
+        contents.navigationHistory.canGoBack() ||
+        Boolean(managed.failedUrl && managed.committedUrl !== "about:blank"),
+      canGoForward: contents.navigationHistory.canGoForward(),
+      isLoading: contents.isLoading(),
+    };
   }
 
   setBounds(
@@ -124,6 +217,15 @@ class BrowserViewManagerImpl {
         managed.visible = false;
         managed.view.setBounds({ x: 0, y: 0, width: 0, height: 0 });
       }
+    }
+  }
+
+  /** Keep blank pages and navigation/loading gaps aligned with the app theme. */
+  setBackgroundColor(background: string): void {
+    if (!/^#[0-9a-f]{6}$/i.test(background)) return;
+    this.backgroundColor = background;
+    for (const managed of this.views.values()) {
+      managed.view.setBackgroundColor(background);
     }
   }
 
@@ -211,6 +313,31 @@ class BrowserViewManagerImpl {
     const win = this.getMainWindow();
     if (!win || win.isDestroyed()) return;
     win.webContents.send("browser:url-changed", undefined, pageId, url);
+  }
+
+  private emitTitleChanged(pageId: string, title: string): void {
+    const win = this.getMainWindow();
+    if (!win || win.isDestroyed()) return;
+    win.webContents.send("browser:title-changed", pageId, title);
+  }
+
+  private emitLoadFailed(
+    pageId: string,
+    error: { url: string; errorCode: number; errorDescription: string },
+  ): void {
+    const win = this.getMainWindow();
+    if (!win || win.isDestroyed()) return;
+    win.webContents.send("browser:load-failed", pageId, error);
+  }
+
+  private emitNavigationState(pageId: string): void {
+    const win = this.getMainWindow();
+    if (!win || win.isDestroyed()) return;
+    win.webContents.send(
+      "browser:navigation-state-changed",
+      pageId,
+      this.getNavigationState(pageId),
+    );
   }
 }
 

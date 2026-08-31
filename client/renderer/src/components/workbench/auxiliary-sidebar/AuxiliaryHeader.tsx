@@ -123,6 +123,7 @@ export function AuxiliaryHeader({
                 <div
                   key={tab.id}
                   className={`inspector-tab ${tab.selected ? "active" : ""}`}
+                  data-view-type={tab.type}
                   draggable
                   onDragStart={() => {
                     dragRef.current = { from: index, to: index };

@@ -112,8 +112,8 @@ async function switchToTab(window: ElectronPage, index: number): Promise<void> {
 /** Open the auxiliary sidebar if it is not already open. */
 async function openAuxiliarySidebar(window: ElectronPage): Promise<void> {
   const toggle = window.locator(".thread-inspector-toggle");
-  const aria = await toggle.getAttribute("aria-label");
-  if (aria === "展开侧栏") {
+  const expanded = await toggle.getAttribute("aria-pressed");
+  if (expanded !== "true") {
     await toggle.evaluate((el: HTMLElement) => el.click());
   }
   await expect(window.locator(".auxiliary-header")).toBeVisible({
@@ -562,14 +562,15 @@ async function testBrowserAnnotationComposer(
   window: ElectronPage,
   remoteBrowser: Awaited<ReturnType<typeof chromium.connectOverCDP>>,
   annotationPageUrl: string,
+  browserTabIndex = 2,
 ): Promise<void> {
-  await switchToTab(window, 2);
+  await switchToTab(window, browserTabIndex);
   await window.waitForTimeout(300);
 
   const browserPages = await listBrowserPages(window);
-  const annotationPageId = browserPages.find((page) =>
-    page.url.includes("page1.html"),
-  )?.pageId;
+  const annotationPageId =
+    browserPages.find((page) => page.url.includes("page1.html"))?.pageId ??
+    browserPages[0]?.pageId;
   expect(annotationPageId).toBeDefined();
 
   await window.evaluate(
@@ -605,6 +606,25 @@ async function testBrowserAnnotationComposer(
   await annotationModeButton.click();
 
   const annotationBar = window.locator(".browser-annotation-bar");
+  await expect(annotationBar).toContainText("正在批注");
+  await expect(annotationPage.locator(".ec-interaction-shield")).toBeVisible();
+
+  // Escape is captured inside the real WebContentsView and exits only the
+  // annotation mode, even though focus never returned to the app toolbar.
+  await annotationPage.keyboard.press("Escape");
+  await expect(annotationBar).toHaveCount(0);
+  await expect(annotationPage.locator(".ec-interaction-shield")).toHaveCount(0);
+  await expect(
+    window
+      .locator("section.auxiliary-view-panel:not([hidden])")
+      .locator(".browser-panel-toolbar"),
+  ).toBeVisible();
+  await expect(window.locator(".thread-inspector-toggle")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  await annotationModeButton.click();
   await expect(annotationBar).toContainText("正在批注");
   await expect(annotationPage.locator(".ec-interaction-shield")).toBeVisible();
 
@@ -756,6 +776,39 @@ async function testBrowserAnnotationComposer(
   await expect(reviewDetails.locator("img")).toHaveCount(2);
   await expect(composer).toHaveValue("补充说明：请优先处理这个按钮。");
 
+  // Removing one composer attachment removes exactly the same page marker.
+  // The remaining marker keeps its stable id so later removals cannot target
+  // the wrong annotation after a renumber.
+  await reviewDetails
+    .getByRole("button", { name: "移除第 2 条页面注释" })
+    .click();
+  await expect(annotationPage.locator(".ec-comment-marker")).toHaveCount(1);
+  await expect(annotationPage.locator(".ec-comment-marker")).toHaveText("1");
+  await expect(
+    browserReview.getByRole("button", { name: "页面批注，1 条" }),
+  ).toBeVisible();
+
+  // Add the region annotation again. Its id advances instead of reusing or
+  // renumbering an existing marker.
+  await annotationPage.mouse.move(regionBox.x + 20, regionBox.y + 20);
+  await annotationPage.mouse.down();
+  await annotationPage.mouse.move(regionBox.x + 180, regionBox.y + 85, {
+    steps: 8,
+  });
+  await annotationPage.mouse.up();
+  await annotationPage.locator(".ec-comment-input").fill("第二个真实区域注释");
+  await annotationPage.locator(".ec-popup-send").click();
+  await expect(annotationPage.locator(".ec-comment-marker")).toHaveCount(2);
+  await expect(annotationPage.locator(".ec-comment-marker").nth(0)).toHaveText(
+    "1",
+  );
+  await expect(annotationPage.locator(".ec-comment-marker").nth(1)).toHaveText(
+    "3",
+  );
+  await expect(
+    browserReview.getByRole("button", { name: "页面批注，2 条" }),
+  ).toBeVisible();
+
   await window.screenshot({
     path: join(artifactsDir, "09-browser-annotation-composer.png"),
     fullPage: true,
@@ -834,6 +887,7 @@ async function testBrowserAnnotationComposer(
   await expect(window.locator(".workflow-user-message").first()).toContainText(
     "第二个真实区域注释",
   );
+
   await window.screenshot({
     path: join(artifactsDir, "10-browser-annotation-sent.png"),
     fullPage: true,
@@ -1002,19 +1056,32 @@ async function main(): Promise<void> {
       fullPage: true,
     });
 
-    // Run all 8 test cases
-    const firstSessionId = await testTerminalExecute(window);
-    await testTerminalMultiTab(window, firstSessionId);
-    await testTerminalReloadRecovery(window);
-    await testBrowserMultiTab(window, page1Url, page2Url);
-    await testBrowserNavigate(window, page1Url, remoteBrowser);
-    await testBrowserResize(window);
-    await testTabSwitching(window);
-    await testBrowserAnnotationComposer(
-      window,
-      remoteBrowser,
-      annotationPageUrl,
-    );
+    if (process.argv.includes("--annotation-only")) {
+      await window
+        .locator(".inspector-empty-cards")
+        .getByRole("button", { name: "浏览器" })
+        .evaluate((element: HTMLElement) => element.click());
+      await testBrowserAnnotationComposer(
+        window,
+        remoteBrowser,
+        annotationPageUrl,
+        0,
+      );
+    } else {
+      // Run all 8 test cases
+      const firstSessionId = await testTerminalExecute(window);
+      await testTerminalMultiTab(window, firstSessionId);
+      await testTerminalReloadRecovery(window);
+      await testBrowserMultiTab(window, page1Url, page2Url);
+      await testBrowserNavigate(window, page1Url, remoteBrowser);
+      await testBrowserResize(window);
+      await testTabSwitching(window);
+      await testBrowserAnnotationComposer(
+        window,
+        remoteBrowser,
+        annotationPageUrl,
+      );
+    }
 
     console.info("terminal-browser smoke ok");
     console.info(`Evidence: ${artifactsDir}`);

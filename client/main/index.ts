@@ -35,6 +35,7 @@ import {
 import { getAgentSettings } from "./services/config-service";
 import { getWorkspaceSettings } from "./services/workspace-service";
 import { startRuntimePrewarm } from "./services/runtime-prewarm-service";
+import { browserViewManager } from "./services/browser-view-manager";
 import {
   getConfigDir,
   getLogDir,
@@ -415,12 +416,15 @@ app.whenReady().then(async () => {
   // traffic-light buttons stay visible (light theme → dark lights, dark theme
   // → light lights). Renderer pushes theme changes via WINDOW_SET_THEME.
   nativeTheme.themeSource = readInitialNativeThemeSource();
-  registerThemeIpc();
+  registerThemeIpc((background) => {
+    browserViewManager.setBackgroundColor(background);
+  });
   nativeTheme.on("updated", () => {
+    const background = getThemeAwareBackgroundColor();
     for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.isDestroyed())
-        win.setBackgroundColor(getThemeAwareBackgroundColor());
+      if (!win.isDestroyed()) win.setBackgroundColor(background);
     }
+    browserViewManager.setBackgroundColor(background);
   });
   createWindow();
   initAutoUpdateService();

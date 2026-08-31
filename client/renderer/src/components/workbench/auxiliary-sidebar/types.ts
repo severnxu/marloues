@@ -11,6 +11,7 @@ export interface AuxiliaryViewOption {
 
 export interface AuxiliaryHeaderTab {
   id: string;
+  type?: AuxiliaryStaticViewType | "subagent";
   label: string;
   icon: LucideIcon;
   selected: boolean;

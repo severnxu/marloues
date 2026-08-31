@@ -3572,6 +3572,18 @@ export function registerHandlers(): void {
       browserViewManager.navigate(pageId, url);
     },
   );
+  ipcMain.handle(IPC.BROWSER_GO_BACK, (_event, pageId: string) => {
+    browserViewManager.goBack(pageId);
+  });
+  ipcMain.handle(IPC.BROWSER_GO_FORWARD, (_event, pageId: string) => {
+    browserViewManager.goForward(pageId);
+  });
+  ipcMain.handle(IPC.BROWSER_RELOAD, (_event, pageId: string) => {
+    browserViewManager.reload(pageId);
+  });
+  ipcMain.handle(IPC.BROWSER_NAVIGATION_STATE, (_event, pageId: string) => {
+    return browserViewManager.getNavigationState(pageId);
+  });
   ipcMain.handle(
     IPC.BROWSER_VIEW_BOUNDS,
     async (
@@ -3611,4 +3623,10 @@ export function registerHandlers(): void {
   ipcMain.handle(IPC.BROWSER_CLEAR_COMMENTS, async (_event, pageId: string) => {
     return cdpBrowserService.clearComments(pageId);
   });
+  ipcMain.handle(
+    IPC.BROWSER_REMOVE_COMMENT,
+    async (_event, pageId: string, commentId: number) => {
+      return cdpBrowserService.removeComment(pageId, commentId);
+    },
+  );
 }

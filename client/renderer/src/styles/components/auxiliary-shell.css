@@ -208,6 +208,12 @@
     color: var(--text-1);
   }
 
+  .auxiliary-sidebar.is-primary-overlay
+    .inspector-tab[data-view-type="browser"] {
+    width: 180px;
+    max-width: 240px;
+  }
+
   .inspector-tab-main {
     display: flex;
     height: 100%;
