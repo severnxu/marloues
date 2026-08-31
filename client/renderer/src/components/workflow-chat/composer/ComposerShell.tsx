@@ -107,18 +107,19 @@ export function WorkflowComposerShell({
   useEffect(() => {
     if (!incomingBrowserComment) return;
     setAttachments((previous) => {
-      const duplicate = previous.some(
-        (attachment) =>
-          attachment.kind === "browser-comment" &&
-          attachment.payload.commentId ===
-            incomingBrowserComment.payload.commentId &&
-          attachment.payload.pageUrl === incomingBrowserComment.payload.pageUrl,
-      );
-      if (duplicate || previous.length >= MAX_ATTACHMENTS) return previous;
-      return [
-        ...previous,
-        browserCommentAttachment(incomingBrowserComment.payload),
-      ];
+      const additions = incomingBrowserComment.payloads
+        .filter(
+          (payload) =>
+            !previous.some(
+              (attachment) =>
+                attachment.kind === "browser-comment" &&
+                attachment.payload.commentId === payload.commentId &&
+                attachment.payload.pageUrl === payload.pageUrl,
+            ),
+        )
+        .slice(0, Math.max(0, MAX_ATTACHMENTS - previous.length))
+        .map(browserCommentAttachment);
+      return additions.length > 0 ? [...previous, ...additions] : previous;
     });
     requestAnimationFrame(() => textareaRef.current?.focus());
   }, [incomingBrowserComment, setAttachments]);

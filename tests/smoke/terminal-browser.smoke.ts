@@ -568,44 +568,55 @@ async function testBrowserAnnotationComposer(
 
   const annotationModeButton = window
     .locator("section.auxiliary-view-panel:not([hidden])")
-    .getByTitle("进入标注模式");
+    .getByTitle("进入批注模式");
   await expect(annotationModeButton).toBeVisible();
   await annotationModeButton.click();
 
+  const annotationBar = window.locator(".browser-annotation-bar");
+  await expect(annotationBar).toContainText("正在批注");
+
   await annotationPage.locator("#annotation-target").click();
-  await expect(annotationPage.locator(".ec-popup-textarea")).toBeVisible();
-  await annotationPage.locator(".ec-popup-textarea").fill("第一个真实页面注释");
+  await expect(annotationPage.locator(".ec-comment-input")).toBeVisible();
+  await expect(annotationPage.locator(".ec-selection-outline")).toBeVisible();
+  await annotationPage.locator(".ec-comment-input").fill("第一个真实页面注释");
   await annotationPage.locator(".ec-popup-send").click();
+  await expect(annotationPage.locator(".ec-comment-marker")).toHaveCount(1);
+  await expect(
+    annotationBar.getByRole("button", { name: "发送 1" }),
+  ).toBeEnabled();
 
   const composer = window.locator(".composer textarea");
-  await expect(composer).toContainText("页面注释", { timeout: 15_000 });
-  await expect(composer).toContainText("第一个真实页面注释");
-  const firstChip = window
-    .locator(".composer-skill-token")
-    .filter({ hasText: "页面注释" });
-  await expect(firstChip).toHaveCount(1);
-  await expect(firstChip).toContainText("<button>");
+  await expect(composer).toHaveValue("");
+
+  await annotationBar.getByRole("button", { name: "发送 1" }).click();
+  const firstComment = window.locator(".composer-browser-comment");
+  await expect(firstComment).toHaveCount(1, { timeout: 15_000 });
+  await expect(firstComment).toContainText("第一个真实页面注释");
+  await expect(firstComment.locator("img")).toBeVisible();
+  await expect(composer).toHaveValue("");
 
   await window.screenshot({
     path: join(artifactsDir, "09-browser-annotation-composer.png"),
     fullPage: true,
   });
 
-  // Removing the metadata chip must leave the user-editable text intact.
-  await firstChip.getByRole("button", { name: "移除页面注释" }).click();
-  await expect(firstChip).toHaveCount(0);
-  await expect(composer).toContainText("第一个真实页面注释");
+  // Removing a structured annotation must leave normal user text untouched.
+  await composer.fill("补充说明：请优先处理这个按钮。");
+  await firstComment.getByRole("button", { name: "移除页面注释" }).click();
+  await expect(firstComment).toHaveCount(0);
+  await expect(composer).toHaveValue("补充说明：请优先处理这个按钮。");
 
-  // Add a second annotation so the message sent below retains structured
-  // browser metadata after the remove-chip interaction has been verified.
+  // Add a second annotation so the sent message retains structured browser
+  // metadata after the independent text/remove interaction has been verified.
   await annotationPage.locator("#annotation-target-two").click();
-  await expect(annotationPage.locator(".ec-popup-textarea")).toBeVisible();
-  await annotationPage.locator(".ec-popup-textarea").fill("第二个真实页面注释");
+  await expect(annotationPage.locator(".ec-comment-input")).toBeVisible();
+  await annotationPage.locator(".ec-comment-input").fill("第二个真实页面注释");
   await annotationPage.locator(".ec-popup-send").click();
 
-  await expect(firstChip).toHaveCount(1, { timeout: 15_000 });
-  const composedText = await composer.inputValue();
-  await composer.fill(`${composedText}\n\n补充说明：请优先处理这个按钮。`);
+  await expect(annotationPage.locator(".ec-comment-marker")).toHaveCount(2);
+  await annotationBar.getByRole("button", { name: "发送 1" }).click();
+  await expect(firstComment).toHaveCount(1, { timeout: 15_000 });
+  await expect(firstComment).toContainText("第二个真实页面注释");
 
   await window.getByRole("button", { name: "发送消息" }).click();
 
@@ -636,8 +647,7 @@ async function testBrowserAnnotationComposer(
   const textItem = persisted!.userContent.find((item) => item.type === "text");
   expect(textItem?.type).toBe("text");
   if (textItem?.type === "text") {
-    expect(textItem.text).toContain("第一个真实页面注释");
-    expect(textItem.text).toContain("补充说明：请优先处理这个按钮。");
+    expect(textItem.text).toBe("补充说明：请优先处理这个按钮。");
   }
   const browserComment = persisted!.userContent.find(
     (item) =>
@@ -648,6 +658,7 @@ async function testBrowserAnnotationComposer(
     expect(browserComment.ref).toContain("annotation-target-two");
     expect(browserComment.tagName.toLowerCase()).toBe("button");
     expect(browserComment.pageUrl).toBe(annotationPageUrl);
+    expect(browserComment.screenshotDataUrl).toMatch(/^data:image\//);
   }
 
   await expect(window.locator(".workflow-user-message").first()).toContainText(

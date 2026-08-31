@@ -259,6 +259,85 @@
   transition: transform var(--motion-fast) var(--ease);
 }
 
+.composer-browser-comment {
+  position: relative;
+  display: flex;
+  width: min(100%, 420px);
+  min-height: 74px;
+  flex: 0 0 auto;
+  align-items: stretch;
+  gap: 9px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 7px 30px 7px 7px;
+  background: var(--raised-1);
+}
+
+.composer-browser-comment-preview,
+.composer-browser-comment-icon {
+  width: 70px;
+  min-width: 70px;
+  border-radius: 4px;
+}
+
+.composer-browser-comment-preview {
+  height: 58px;
+  object-fit: cover;
+}
+
+.composer-browser-comment-icon {
+  display: grid;
+  height: 58px;
+  place-items: center;
+  background: var(--raised-2);
+  color: var(--accent);
+}
+
+.composer-browser-comment-copy {
+  display: grid;
+  min-width: 0;
+  align-content: center;
+  gap: 5px;
+}
+
+.composer-browser-comment-context,
+.composer-browser-comment-note {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-browser-comment-context {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.composer-browser-comment-tag {
+  flex: 0 0 auto;
+  border-radius: 4px;
+  padding: 2px 5px;
+  background: var(--raised-2);
+  color: var(--text-2);
+  font-family: var(--font-mono, Menlo, monospace);
+  font-size: 10px;
+}
+
+.composer-browser-comment-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-browser-comment-note {
+  color: var(--text-1);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .composer-chip-remove::before,
 .composer-skill-token-remove::before {
   position: absolute;

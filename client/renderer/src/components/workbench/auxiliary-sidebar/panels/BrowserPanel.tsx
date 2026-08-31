@@ -2,11 +2,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  CircleX,
   RotateCw,
   Globe,
   Send,
   MessageSquarePlus,
+  Trash2,
 } from "lucide-react";
+
+type PendingComment = {
+  eventId: number;
+  payload: Record<string, unknown>;
+};
 
 /**
  * Renders a user-facing browser panel backed by an Electron WebContentsView.
@@ -22,7 +29,8 @@ export function BrowserPanel({ pageId }: { pageId?: string }) {
   const [urlInput, setUrlInput] = useState("");
   const [lastEvent, setLastEvent] = useState<string | null>(null);
   const [commentMode, setCommentMode] = useState(false);
-  const [commentBadge, setCommentBadge] = useState(0);
+  const [pendingComments, setPendingComments] = useState<PendingComment[]>([]);
+  const lastCommentEventId = useRef(0);
 
   const pushBounds = useCallback(() => {
     if (!pageId || !containerRef.current) return;
@@ -76,49 +84,71 @@ export function BrowserPanel({ pageId }: { pageId?: string }) {
     return () => off?.();
   }, [pageId]);
 
+  const applyCommentEvent = useCallback((event: unknown) => {
+    const entry = event as {
+      eventId?: unknown;
+      type?: unknown;
+      commentId?: unknown;
+      payload?: unknown;
+    };
+    const eventId = typeof entry.eventId === "number" ? entry.eventId : 0;
+    if (eventId)
+      lastCommentEventId.current = Math.max(
+        lastCommentEventId.current,
+        eventId,
+      );
+    if (
+      entry.type === "comment-added" &&
+      entry.payload &&
+      typeof entry.payload === "object"
+    ) {
+      const payload = entry.payload as Record<string, unknown>;
+      const commentId = Number(payload.commentId);
+      setPendingComments((previous) => {
+        const withoutDuplicate = previous.filter(
+          (item) => Number(item.payload.commentId) !== commentId,
+        );
+        return [...withoutDuplicate, { eventId, payload }];
+      });
+      return;
+    }
+    if (entry.type === "comment-removed") {
+      const commentId = Number(
+        entry.commentId ??
+          (entry.payload as { commentId?: unknown } | undefined)?.commentId,
+      );
+      if (Number.isFinite(commentId)) {
+        setPendingComments((previous) =>
+          previous.filter(
+            (item) => Number(item.payload.commentId) !== commentId,
+          ),
+        );
+      }
+    }
+  }, []);
+
   // Listen for comment/annotation events from the bridge
   useEffect(() => {
     if (!pageId) return;
+    lastCommentEventId.current = 0;
+    setPendingComments([]);
+    void window.marloues.browser?.getCommentEvents(pageId, 0).then((result) => {
+      if (!result) return;
+      result.commentEvents.forEach(applyCommentEvent);
+      lastCommentEventId.current = Math.max(
+        lastCommentEventId.current,
+        result.maxCommentEventId,
+      );
+      setCommentMode(result.annotationEnabled);
+    });
     const off = window.marloues.browser?.onCommentEvent(
       (changedPageId, event) => {
         if (changedPageId !== pageId) return;
-        const entry = event as {
-          type?: string;
-          pageUrl?: unknown;
-          screenshotDataUrl?: unknown;
-          payload?: unknown;
-        };
-        if (entry?.type === "comment-added") {
-          setCommentBadge((n) => n + 1);
-          setTimeout(() => setCommentBadge((n) => Math.max(0, n - 1)), 3000);
-          // Dispatch comment to agent input as a send-to-agent event
-          window.dispatchEvent(
-            new CustomEvent("browser:send-to-agent", {
-              detail: {
-                pageId,
-                type: "comment",
-                payload:
-                  entry.payload && typeof entry.payload === "object"
-                    ? {
-                        ...(entry.payload as Record<string, unknown>),
-                        pageUrl:
-                          typeof entry.pageUrl === "string"
-                            ? entry.pageUrl
-                            : undefined,
-                        screenshotDataUrl:
-                          typeof entry.screenshotDataUrl === "string"
-                            ? entry.screenshotDataUrl
-                            : undefined,
-                      }
-                    : entry.payload,
-              },
-            }),
-          );
-        }
+        applyCommentEvent(event);
       },
     );
     return () => off?.();
-  }, [pageId]);
+  }, [applyCommentEvent, pageId]);
 
   const handleNavigate = useCallback(
     (url: string) => {
@@ -159,8 +189,36 @@ export function BrowserPanel({ pageId }: { pageId?: string }) {
       selectionMode: "dom_node",
       theme: "system",
     });
-    if (!next) setCommentBadge(0);
+    if (!next) setPendingComments([]);
   }, [pageId, commentMode]);
+
+  const handleClearComments = useCallback(() => {
+    if (!pageId) return;
+    setPendingComments([]);
+    lastCommentEventId.current = 0;
+    void window.marloues.browser?.clearComments(pageId);
+  }, [pageId]);
+
+  const handleSendComments = useCallback(() => {
+    if (!pageId || pendingComments.length === 0) return;
+    const pageUrl = urlInput || undefined;
+    window.dispatchEvent(
+      new CustomEvent("browser:send-to-agent", {
+        detail: {
+          pageId,
+          type: "comments",
+          payloads: pendingComments.map(({ payload }) => ({
+            ...payload,
+            pageUrl,
+          })),
+        },
+      }),
+    );
+    const lastId = lastCommentEventId.current;
+    setPendingComments([]);
+    if (lastId > 0)
+      void window.marloues.browser?.ackCommentEvents(pageId, lastId);
+  }, [pageId, pendingComments, urlInput]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -180,48 +238,79 @@ export function BrowserPanel({ pageId }: { pageId?: string }) {
 
   return (
     <div className="browser-panel">
-      <div className="browser-panel-toolbar">
-        <button className="browser-panel-btn" title="后退" disabled>
-          <ArrowLeft size={16} />
-        </button>
-        <button className="browser-panel-btn" title="前进" disabled>
-          <ArrowRight size={16} />
-        </button>
-        <button
-          className="browser-panel-btn"
-          onClick={handleReload}
-          title="刷新"
-        >
-          <RotateCw size={16} />
-        </button>
-        <button
-          className="browser-panel-btn"
-          onClick={handleSendToAgent}
-          title="发送给 Agent"
-          disabled={!urlInput}
-        >
-          <Send size={16} />
-        </button>
-        <button
-          className={`browser-panel-btn ${commentMode ? "browser-panel-btn-active" : ""}`}
-          onClick={handleToggleComment}
-          title={commentMode ? "退出标注模式" : "进入标注模式"}
-        >
-          <MessageSquarePlus size={16} />
-          {commentBadge > 0 && (
-            <span className="browser-panel-badge">{commentBadge}</span>
-          )}
-        </button>
-        <input
-          className="browser-panel-url-input"
-          type="text"
-          value={urlInput}
-          onChange={(e) => setUrlInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="输入网址或搜索..."
-          spellCheck={false}
-        />
-      </div>
+      {commentMode ? (
+        <div className="browser-annotation-bar">
+          <button
+            className="browser-panel-btn"
+            onClick={handleToggleComment}
+            title="退出批注"
+            aria-label="退出批注"
+          >
+            <CircleX size={16} />
+          </button>
+          <button
+            className="browser-panel-btn"
+            onClick={handleClearComments}
+            title="清空批注"
+            aria-label="清空批注"
+            disabled={pendingComments.length === 0}
+          >
+            <Trash2 size={16} />
+          </button>
+          <div className="browser-annotation-title" title={urlInput}>
+            正在批注 · {urlInput || "当前页面"}
+          </div>
+          <button
+            className="browser-annotation-send"
+            onClick={handleSendComments}
+            disabled={pendingComments.length === 0}
+          >
+            <Send size={14} />
+            发送 {pendingComments.length}
+          </button>
+        </div>
+      ) : (
+        <div className="browser-panel-toolbar">
+          <button className="browser-panel-btn" title="后退" disabled>
+            <ArrowLeft size={16} />
+          </button>
+          <button className="browser-panel-btn" title="前进" disabled>
+            <ArrowRight size={16} />
+          </button>
+          <button
+            className="browser-panel-btn"
+            onClick={handleReload}
+            title="刷新"
+          >
+            <RotateCw size={16} />
+          </button>
+          <button
+            className="browser-panel-btn"
+            onClick={handleSendToAgent}
+            title="发送给 Agent"
+            disabled={!urlInput}
+          >
+            <Send size={16} />
+          </button>
+          <button
+            className={`browser-panel-btn ${commentMode ? "browser-panel-btn-active" : ""}`}
+            onClick={handleToggleComment}
+            title="进入批注模式"
+            aria-label="进入批注模式"
+          >
+            <MessageSquarePlus size={16} />
+          </button>
+          <input
+            className="browser-panel-url-input"
+            type="text"
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="输入网址或搜索..."
+            spellCheck={false}
+          />
+        </div>
+      )}
       {lastEvent && <div className="browser-panel-event-bar">{lastEvent}</div>}
       <div
         ref={containerRef}

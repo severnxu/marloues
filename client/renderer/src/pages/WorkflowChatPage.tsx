@@ -237,7 +237,7 @@ export function WorkflowChatPage({
   >(null);
   const [incomingBrowserComment, setIncomingBrowserComment] = useState<{
     eventId: string;
-    payload: BrowserCommentPayload;
+    payloads: BrowserCommentPayload[];
   } | null>(null);
 
   useEffect(() => {
@@ -253,22 +253,31 @@ export function WorkflowChatPage({
         pageId?: unknown;
         payload?: unknown;
       };
-      if (record.type !== "comment") return;
-      const payload = browserCommentFromEvent(record.payload);
-      if (!payload) return;
+      const values =
+        record.type === "comments" &&
+        Array.isArray((record as { payloads?: unknown }).payloads)
+          ? (record as { payloads: unknown[] }).payloads
+          : record.type === "comment"
+            ? [record.payload]
+            : [];
+      const payloads = values
+        .map(browserCommentFromEvent)
+        .filter((payload): payload is BrowserCommentPayload =>
+          Boolean(payload),
+        );
+      if (payloads.length === 0) return;
       const pageId = typeof record.pageId === "string" ? record.pageId : "";
-      const eventId = `${pageId}:${payload.commentId}:${payload.ref}`;
-      if (browserCommentKeysRef.current.has(eventId)) return;
-      browserCommentKeysRef.current.add(eventId);
-      const target = payload.tagName
-        ? `<${payload.tagName.toLowerCase()}> ${payload.ref}`
-        : payload.ref;
-      const annotation = `页面注释（${target}）：${payload.comment}`;
-      const current = inputTextRef.current.trim();
-      const nextText = current ? `${current}\n\n${annotation}` : annotation;
-      inputTextRef.current = nextText;
-      setInputText(nextText);
-      setIncomingBrowserComment({ eventId, payload });
+      const freshPayloads = payloads.filter((payload) => {
+        const key = `${pageId}:${payload.commentId}:${payload.ref}`;
+        if (browserCommentKeysRef.current.has(key)) return false;
+        browserCommentKeysRef.current.add(key);
+        return true;
+      });
+      if (freshPayloads.length === 0) return;
+      setIncomingBrowserComment({
+        eventId: `${pageId}:${freshPayloads.map((payload) => payload.commentId).join(",")}`,
+        payloads: freshPayloads,
+      });
     };
     window.addEventListener("browser:send-to-agent", handleBrowserInput);
     return () =>

@@ -1077,10 +1077,54 @@ class CdpBrowserServiceImpl extends EventEmitter {
     }
   }
 
-  private handleCommentBridgeMessage(
+  private async captureCommentPreview(
+    pageId: string,
+    payload: CommentPayload,
+  ): Promise<string | undefined> {
+    const margin = 14;
+    const viewportWidth = Math.max(0, payload.viewport.width);
+    const viewportHeight = Math.max(0, payload.viewport.height);
+    if (
+      !viewportWidth ||
+      !viewportHeight ||
+      !payload.rect.width ||
+      !payload.rect.height
+    ) {
+      return undefined;
+    }
+    const x = Math.max(0, Math.floor(payload.rect.x - margin));
+    const y = Math.max(0, Math.floor(payload.rect.y - margin));
+    const right = Math.min(
+      viewportWidth,
+      Math.ceil(payload.rect.x + payload.rect.width + margin),
+    );
+    const bottom = Math.min(
+      viewportHeight,
+      Math.ceil(payload.rect.y + payload.rect.height + margin),
+    );
+    if (right <= x || bottom <= y) return undefined;
+    try {
+      return (
+        (await browserViewManager.capturePageRegion(pageId, {
+          x,
+          y,
+          width: right - x,
+          height: bottom - y,
+        })) || undefined
+      );
+    } catch (error) {
+      logWarn("cdpBrowser.commentBridge.previewFailed", {
+        pageId,
+        error: String(error),
+      });
+      return undefined;
+    }
+  }
+
+  private async handleCommentBridgeMessage(
     pageId: string,
     message: CommentBridgeMessage,
-  ): void {
+  ): Promise<void> {
     const state = this.states.get(pageId);
     if (!state) return;
 
@@ -1109,7 +1153,13 @@ class CdpBrowserServiceImpl extends EventEmitter {
     state.nextCommentEventId = eventId + 1;
 
     if (message.type === "comment-added") {
-      const payload = message.payload;
+      const screenshotDataUrl = await this.captureCommentPreview(
+        pageId,
+        message.payload,
+      );
+      const payload = screenshotDataUrl
+        ? { ...message.payload, screenshotDataUrl }
+        : message.payload;
       const event: CommentEventEntry = {
         eventId,
         type: "comment-added",
@@ -1117,6 +1167,7 @@ class CdpBrowserServiceImpl extends EventEmitter {
         commentId: payload.commentId,
         pageUrl: state.url,
         payload,
+        screenshotDataUrl,
         ts: Date.now(),
       };
       this.enqueueCommentEvent(pageId, event);
@@ -1175,7 +1226,7 @@ class CdpBrowserServiceImpl extends EventEmitter {
       const envelope = JSON.parse(payload);
       const message = normalizeCommentBridgeMessage(envelope);
       if (message) {
-        this.handleCommentBridgeMessage(pageId, message);
+        void this.handleCommentBridgeMessage(pageId, message);
       }
     } catch (err) {
       logWarn("cdpBrowser.commentBridge.parseFailed", {

@@ -136,6 +136,34 @@ class BrowserViewManagerImpl {
     return image.toDataURL();
   }
 
+  /** Capture a bounded crop from the visible page for annotation previews. */
+  async capturePageRegion(
+    pageId: string,
+    rect: { x: number; y: number; width: number; height: number },
+  ): Promise<string> {
+    const managed = this.views.get(pageId);
+    if (!managed) return "";
+    const image = await managed.view.webContents.capturePage({
+      x: Math.max(0, Math.floor(rect.x)),
+      y: Math.max(0, Math.floor(rect.y)),
+      width: Math.max(1, Math.floor(rect.width)),
+      height: Math.max(1, Math.floor(rect.height)),
+    });
+    const maxWidth = 480;
+    const maxHeight = 320;
+    const size = image.getSize();
+    if (size.width > maxWidth || size.height > maxHeight) {
+      const scale = Math.min(maxWidth / size.width, maxHeight / size.height);
+      return image
+        .resize({
+          width: Math.max(1, Math.round(size.width * scale)),
+          height: Math.max(1, Math.round(size.height * scale)),
+        })
+        .toDataURL();
+    }
+    return image.toDataURL();
+  }
+
   destroyView(pageId: string): void {
     const managed = this.views.get(pageId);
     if (!managed) return;

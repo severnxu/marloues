@@ -154,28 +154,42 @@ export function ComposerAttachmentChips({
 
         if (attachment.kind === "browser-comment") {
           const target = attachment.payload.tagName
-            ? `<${attachment.payload.tagName.toLowerCase()}>`
+            ? attachment.payload.tagName.toLowerCase()
             : "页面元素";
           return (
-            <span
-              className="composer-skill-token"
-              key={attachment.id}
-              title={attachment.payload.comment}
-            >
-              <MessageSquareText size={14} aria-hidden="true" />
-              <span className="composer-skill-token-name">
-                页面注释 · {target}
+            <article className="composer-browser-comment" key={attachment.id}>
+              {attachment.payload.screenshotDataUrl ? (
+                <img
+                  className="composer-browser-comment-preview"
+                  src={attachment.payload.screenshotDataUrl}
+                  alt={`已批注的 ${target} 元素`}
+                />
+              ) : (
+                <span className="composer-browser-comment-icon">
+                  <MessageSquareText size={18} aria-hidden="true" />
+                </span>
+              )}
+              <span className="composer-browser-comment-copy">
+                <span className="composer-browser-comment-context">
+                  <span className="composer-browser-comment-tag">{target}</span>
+                  <span className="composer-browser-comment-text">
+                    {attachment.payload.text || attachment.payload.ref}
+                  </span>
+                </span>
+                <span className="composer-browser-comment-note">
+                  {attachment.payload.comment}
+                </span>
               </span>
               <button
                 type="button"
-                className="composer-skill-token-remove"
+                className="composer-chip-remove"
                 onClick={() => onRemove(attachment.id)}
                 aria-label="移除页面注释"
                 title="移除页面注释"
               >
                 <X size={12} />
               </button>
-            </span>
+            </article>
           );
         }
 

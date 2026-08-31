@@ -64,6 +64,49 @@
   border-bottom: 1px solid var(--shell-divider, rgba(255, 255, 255, 0.08));
 }
 
+.browser-annotation-bar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-bottom: 1px solid rgba(92, 177, 255, 0.24);
+  background: #17334a;
+}
+
+.browser-annotation-title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  padding: 0 5px;
+  color: #f2f8ff;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-annotation-send {
+  display: inline-flex;
+  height: 27px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: 4px;
+  padding: 0 9px;
+  background: #2997ff;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.browser-annotation-send:disabled {
+  opacity: 0.48;
+  cursor: default;
+}
+
 .browser-panel-btn {
   display: flex;
   align-items: center;

@@ -47,10 +47,10 @@ export interface WorkflowComposerShellProps {
   /** Changes whenever the active conversation changes; clears transient attachments. */
   conversationKey?: string;
   input: string;
-  /** Browser annotation to add as a structured composer attachment. */
+  /** Browser annotations to add as structured composer attachments. */
   incomingBrowserComment?: {
     eventId: string;
-    payload: Extract<WorkflowUserMessageContent, { type: "browserComment" }>;
+    payloads: Extract<WorkflowUserMessageContent, { type: "browserComment" }>[];
   };
   isGenerating: boolean;
   securityMode?: AgentSecurityMode;
