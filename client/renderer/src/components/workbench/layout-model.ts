@@ -22,7 +22,6 @@ export const WORKBENCH_GEOMETRY = {
   primaryCollapse: 220,
   auxiliaryDefault: 319,
   auxiliaryMin: 319,
-  auxiliaryMax: 500,
   auxiliaryCollapse: 220,
   auxiliaryDivider: 1,
   mainMin: 400,
@@ -239,11 +238,7 @@ export function workbenchLayoutReducer(
     case "auxiliary.resize":
       return {
         ...state,
-        auxiliaryWidth: clamp(
-          action.width,
-          WORKBENCH_GEOMETRY.auxiliaryMin,
-          WORKBENCH_GEOMETRY.auxiliaryMax,
-        ),
+        auxiliaryWidth: Math.max(WORKBENCH_GEOMETRY.auxiliaryMin, action.width),
       };
     case "auxiliary.width.ensureMin":
       return {
