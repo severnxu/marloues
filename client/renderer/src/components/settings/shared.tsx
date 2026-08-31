@@ -79,9 +79,7 @@ export function ToggleSwitch({
       type="button"
       aria-pressed={checked}
       disabled={disabled}
-    >
-      <span />
-    </button>
+    ></button>
   );
 }
 
@@ -108,12 +106,51 @@ export function SegmentedOptions({
           onClick={() => onChange(option.value)}
           type="button"
         >
-          <span>{value === option.value ? <Check size={14} /> : null}</span>
           <strong>{option.title}</strong>
           <small>{option.description}</small>
         </button>
       ))}
     </div>
+  );
+}
+
+export function Radio({
+  checked,
+  onChange,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      className={`settings-radio ${checked ? "checked" : ""}`}
+      onClick={disabled ? undefined : onChange}
+      aria-pressed={checked}
+      disabled={disabled}
+    />
+  );
+}
+
+export function Checkbox({
+  checked,
+  onChange,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      className={`settings-checkbox ${checked ? "checked" : ""}`}
+      onClick={disabled ? undefined : onChange}
+      aria-pressed={checked}
+      disabled={disabled}
+    />
   );
 }
 

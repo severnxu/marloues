@@ -8,23 +8,21 @@
     width: 28px;
     height: 28px;
     border: 0;
-    border-radius: 8px;
+    border-radius: var(--control-radius);
     background: transparent;
     padding: 0;
     cursor: pointer;
     transition: 160ms ease;
-    color: var(--component-update-sidebar-update-badge-color-96d0efb);
+    color: var(--text-2);
   }
 
   .sidebar-update-badge-available {
-    color: var(--component-update-sidebar-update-badge-available-color-846acf2);
+    color: var(--accent);
   }
 
   .sidebar-update-badge-available:hover {
-    background: var(
-      --component-update-sidebar-update-badge-available-background-aec990f
-    );
-    color: var(--component-update-sidebar-update-badge-available-color-a657366);
+    background: var(--raised-2);
+    color: var(--accent);
   }
 
   .sidebar-update-badge-ready {
@@ -32,16 +30,16 @@
     min-width: 48px;
     gap: 4px;
     background: var(--accent-soft);
-    color: var(--component-update-sidebar-update-badge-ready-color-ccbe51d);
+    color: var(--accent);
     padding: 0 7px;
   }
 
   .sidebar-update-badge-ready:hover {
-    background: var(--hover);
+    background: var(--raised-2);
   }
 
   .sidebar-update-ready-label {
-    font-size: 11px;
+    font-size: var(--text-xs);
     font-weight: 600;
     line-height: 1;
   }
@@ -53,7 +51,7 @@
   }
 
   .sidebar-update-badge-error {
-    color: var(--component-update-sidebar-update-badge-error-color-88833af);
+    color: var(--danger);
   }
 
   .sidebar-update-icon-spinning {
@@ -62,15 +60,15 @@
 }
 @layer marloues-components.cascade-0317 {
   .sidebar-update-badge-idle {
-    color: var(--component-update-sidebar-update-badge-idle-color-e1c6251);
+    color: var(--text-2);
   }
 
   .sidebar-update-badge-idle:hover {
-    color: var(--component-update-sidebar-update-badge-idle-color-6ca6a4b);
+    color: var(--accent);
   }
 
   .sidebar-update-badge.is-open {
-    background: var(--component-update-sidebar-update-badge-background-7e05173);
+    background: var(--raised-2);
   }
 
   .sidebar-update-progress-ring {
@@ -88,19 +86,13 @@
   }
 
   .sidebar-update-popover {
-    background: var(
-      --component-update-sidebar-update-popover-background-d3bfc1f
-    );
-    backdrop-filter: var(
-      --component-update-sidebar-update-popover-backdrop-filter-5cf64dc
-    );
-    border: var(--component-update-sidebar-update-popover-border-d3fe73c);
-    border-radius: 12px;
+    background: var(--surface-popover);
+    backdrop-filter: blur(18px);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
     padding: 0;
-    box-shadow: var(
-      --component-update-sidebar-update-popover-box-shadow-3dec11e
-    );
-    color: var(--component-update-sidebar-update-popover-color-310b5f2);
+    box-shadow: var(--shadow-md);
+    color: inherit;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -113,13 +105,11 @@
     justify-content: space-between;
     gap: 12px;
     padding: 12px 16px;
-    border-bottom: var(
-      --component-update-sidebar-update-popover-header-border-bottom-79d9737
-    );
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .sidebar-update-popover-title {
-    font-size: 13px;
+    font-size: var(--text-base);
     font-weight: 600;
     letter-spacing: 0;
   }
@@ -134,14 +124,14 @@
     flex-direction: column;
     gap: 12px;
     overflow: auto;
-    font-size: 13px;
+    font-size: var(--text-base);
     line-height: 1.55;
   }
 
   .sidebar-update-popover-hint {
     margin: 0;
-    color: var(--component-update-sidebar-update-popover-hint-color-9893e55);
-    font-size: 12px;
+    color: var(--text-2);
+    font-size: var(--text-sm);
   }
 
   .sidebar-update-components {
@@ -154,12 +144,12 @@
     align-items: center;
     justify-content: space-between;
     min-width: 0;
-    font-size: 12px;
+    font-size: var(--text-sm);
     font-variant-numeric: tabular-nums;
   }
 
   .sidebar-update-components small {
-    color: var(--component-update-sidebar-update-popover-hint-color-9893e55);
+    color: var(--text-2);
   }
 
   .sidebar-update-popover-body > button {
@@ -168,43 +158,31 @@
     gap: 6px;
     justify-content: center;
     padding: 8px 12px;
-    border-radius: 8px;
-    border: var(--component-update-sidebar-update-popover-body-border-f17760b);
-    background: var(
-      --component-update-sidebar-update-popover-body-background-e6b827b
-    );
-    color: var(--component-update-sidebar-update-popover-body-color-d545a44);
-    font-size: 13px;
+    border-radius: var(--control-radius);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: inherit;
+    font-size: var(--text-base);
     cursor: pointer;
     transition: 160ms ease;
   }
 
   .sidebar-update-popover-body > button:hover {
-    background: var(
-      --component-update-sidebar-update-popover-body-background-46ebfe7
-    );
+    background: var(--raised-2);
   }
 
   .sidebar-update-popover-body > button.primary {
-    background: var(
-      --component-update-sidebar-update-popover-body-background-1f77639
-    );
-    color: var(--component-update-sidebar-update-popover-body-color-7f60b94);
-    border-color: var(
-      --component-update-sidebar-update-popover-body-border-color-0777233
-    );
+    background: var(--accent);
+    color: hsl(0 0% 100%);
+    border-color: transparent;
   }
 
   .sidebar-update-popover-body > button.primary:hover {
-    background: var(
-      --component-update-sidebar-update-popover-body-background-576a00b
-    );
+    background: var(--accent);
   }
 
   .sidebar-update-popover-body > button:disabled {
-    opacity: var(
-      --component-update-sidebar-update-popover-body-opacity-99596df
-    );
+    opacity: 0.5;
     cursor: not-allowed;
   }
 
@@ -223,34 +201,26 @@
   .sidebar-update-popover-progress-percent {
     font-size: 26px;
     font-weight: 700;
-    color: var(
-      --component-update-sidebar-update-popover-progress-percent-color-a53ea88
-    );
+    color: var(--accent);
     font-variant-numeric: tabular-nums;
   }
 
   .sidebar-update-popover-progress-bytes {
-    font-size: 12px;
-    color: var(
-      --component-update-sidebar-update-popover-progress-bytes-color-c38d37e
-    );
+    font-size: var(--text-sm);
+    color: var(--text-2);
     font-variant-numeric: tabular-nums;
   }
 
   .sidebar-update-popover-progress-bar {
     height: 6px;
     border-radius: 999px;
-    background: var(
-      --component-update-sidebar-update-popover-progress-bar-background-8deb7a7
-    );
+    background: var(--raised-3);
     overflow: hidden;
   }
 
   .sidebar-update-popover-progress-bar-fill {
     height: 100%;
-    background: var(
-      --component-update-sidebar-update-popover-progress-bar-fill-background-0a9613a
-    );
+    background: var(--accent);
     transition: width 200ms ease;
   }
 
@@ -259,19 +229,15 @@
     align-items: center;
     gap: 8px;
     margin: 0;
-    color: var(
-      --component-update-sidebar-update-popover-error-msg-color-14bda91
-    );
+    color: var(--danger);
     font-weight: 500;
   }
 
   .sidebar-update-popover-error-detail {
-    border: var(
-      --component-update-sidebar-update-popover-error-detail-border-2cfd0db
-    );
-    border-radius: 8px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--control-radius);
     padding: 0;
-    font-size: 12px;
+    font-size: var(--text-sm);
     overflow: hidden;
   }
 
@@ -282,9 +248,7 @@
     align-items: center;
     gap: 6px;
     user-select: none;
-    color: var(
-      --component-update-sidebar-update-popover-error-detail-color-cbf704d
-    );
+    color: var(--text-2);
   }
 
   .sidebar-update-popover-error-detail pre {
@@ -294,24 +258,18 @@
     word-break: break-word;
     max-height: 160px;
     overflow: auto;
-    background: var(
-      --component-update-sidebar-update-popover-error-detail-background-2766e66
-    );
+    background: var(--surface-navigation);
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
-    font-size: 11px;
+    font-size: var(--text-xs);
   }
 
   .sidebar-update-popover-error-detail .sidebar-update-popover-copy-error {
     margin: 6px 10px 8px;
     padding: 4px 8px;
-    border-radius: 6px;
-    border: var(
-      --component-update-sidebar-update-popover-error-detail-border-d6da14a
-    );
-    background: var(
-      --component-update-sidebar-update-popover-error-detail-background-f4446c2
-    );
-    font-size: 11px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+    background: var(--raised-2);
+    font-size: var(--text-xs);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -332,14 +290,10 @@
     justify-content: space-between;
     gap: 12px;
     padding: 8px 16px;
-    font-size: 11px;
-    color: var(--component-update-sidebar-update-popover-footer-color-d3a11fe);
-    border-top: var(
-      --component-update-sidebar-update-popover-footer-border-top-92bb518
-    );
-    background: var(
-      --component-update-sidebar-update-popover-footer-background-79d2387
-    );
+    font-size: var(--text-xs);
+    color: var(--text-2);
+    border-top: 1px solid var(--border-subtle);
+    background: var(--surface-navigation);
   }
 
   .sidebar-update-popover-footer code {
@@ -347,9 +301,9 @@
   }
 
   .release-notes {
-    font-size: 13px;
+    font-size: var(--text-base);
     line-height: 1.6;
-    color: var(--component-update-release-notes-color-dcca312);
+    color: var(--text-2);
     max-height: 240px;
     overflow: auto;
   }
@@ -359,24 +313,24 @@
   }
 
   .release-notes-h1 {
-    font-size: 13px;
+    font-size: var(--text-base);
     font-weight: 600;
     margin: 8px 0 4px;
-    color: var(--component-update-release-notes-h1-color-c50400d);
+    color: inherit;
   }
 
   .release-notes-h2 {
-    font-size: 13px;
+    font-size: var(--text-base);
     font-weight: 600;
     margin: 8px 0 4px;
-    color: var(--component-update-release-notes-h2-color-89b1a03);
+    color: inherit;
   }
 
   .release-notes-h3 {
-    font-size: 13px;
+    font-size: var(--text-base);
     font-weight: 600;
     margin: 8px 0 4px;
-    color: var(--component-update-release-notes-h3-color-00d8083);
+    color: inherit;
   }
 
   .release-notes-ul {
@@ -390,18 +344,16 @@
   }
 
   .release-notes-link {
-    color: var(--component-update-release-notes-link-color-2da7077);
+    color: var(--accent);
     text-decoration: underline;
   }
 
   .release-notes-inline-code {
     font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
-    background: var(
-      --component-update-release-notes-inline-code-background-458ac54
-    );
+    background: var(--surface-navigation);
     border-radius: 4px;
     padding: 1px 4px;
-    font-size: 12px;
+    font-size: var(--text-sm);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -423,80 +375,26 @@
     }
   }
 }
-/* Theme token bindings. The dark theme falls back to the component layer. */
-.sidebar-update-badge-available {
-  color: var(
-    --theme-update-sidebar-update-badge-available-color-e354f53,
-    revert-layer
-  );
-}
-.sidebar-update-popover {
-  background: var(
-    --theme-update-sidebar-update-popover-background-d8f0380,
-    revert-layer
-  );
-  border-color: var(
-    --theme-update-sidebar-update-popover-border-color-955f28e,
-    revert-layer
-  );
-  box-shadow: var(
-    --theme-update-sidebar-update-popover-box-shadow-499b566,
-    revert-layer
-  );
-}
-.sidebar-update-popover-header {
-  border-bottom-color: var(
-    --theme-update-sidebar-update-popover-header-border-bottom-color-1683e4e,
-    revert-layer
-  );
-}
-.sidebar-update-popover-body > button {
-  background: var(
-    --theme-update-sidebar-update-popover-body-background-c1e0600,
-    revert-layer
-  );
-  border-color: var(
-    --theme-update-sidebar-update-popover-body-border-color-c33cd8f,
-    revert-layer
-  );
-}
-.sidebar-update-popover-body > button:hover {
-  background: var(
-    --theme-update-sidebar-update-popover-body-background-da0744a,
-    revert-layer
-  );
-}
-.sidebar-update-popover-footer {
-  background: var(
-    --theme-update-sidebar-update-popover-footer-background-44e3050,
-    revert-layer
-  );
-  border-top-color: var(
-    --theme-update-sidebar-update-popover-footer-border-top-color-92793ed,
-    revert-layer
-  );
-}
-.sidebar-update-popover-error-detail {
-  border-color: var(
-    --theme-update-sidebar-update-popover-error-detail-border-color-8f4e9a5,
-    revert-layer
-  );
-}
-.sidebar-update-popover-error-detail pre {
-  background: var(
-    --theme-update-sidebar-update-popover-error-detail-background-b49b312,
-    revert-layer
-  );
-}
-.sidebar-update-popover-progress-bar {
-  background: var(
-    --theme-update-sidebar-update-popover-progress-bar-background-2e5f6e8,
-    revert-layer
-  );
-}
-.sidebar-update-badge-idle:hover {
-  background: var(
-    --theme-update-sidebar-update-badge-idle-background-5988873,
-    revert-layer
-  );
+
+@layer marloues-components.cascade-0320 {
+  /* ── Update panel (from prototype) ── */
+  .update-status-panel {
+    display: grid;
+    gap: 4px;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--control-radius);
+    background: var(--raised-1);
+  }
+
+  .update-status-panel strong {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-1);
+  }
+
+  .update-status-panel small {
+    color: var(--text-3);
+    font-size: var(--text-xs);
+  }
 }
