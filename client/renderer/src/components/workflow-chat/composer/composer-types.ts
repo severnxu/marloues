@@ -52,6 +52,11 @@ export interface WorkflowComposerShellProps {
     eventId: string;
     payloads: Extract<WorkflowUserMessageContent, { type: "browserComment" }>[];
   };
+  /** Browser annotation bar request to submit through the primary composer path. */
+  browserCommentSubmit?: {
+    eventId: string;
+    payloads: Extract<WorkflowUserMessageContent, { type: "browserComment" }>[];
+  };
   isGenerating: boolean;
   securityMode?: AgentSecurityMode;
   selectedProvider: Provider | null;

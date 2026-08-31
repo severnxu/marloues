@@ -31,6 +31,11 @@ export function BrowserPanel({ pageId }: { pageId?: string }) {
   const [commentMode, setCommentMode] = useState(false);
   const [pendingComments, setPendingComments] = useState<PendingComment[]>([]);
   const lastCommentEventId = useRef(0);
+  const urlInputRef = useRef(urlInput);
+
+  useEffect(() => {
+    urlInputRef.current = urlInput;
+  }, [urlInput]);
 
   const pushBounds = useCallback(() => {
     if (!pageId || !containerRef.current) return;
@@ -84,48 +89,68 @@ export function BrowserPanel({ pageId }: { pageId?: string }) {
     return () => off?.();
   }, [pageId]);
 
-  const applyCommentEvent = useCallback((event: unknown) => {
-    const entry = event as {
-      eventId?: unknown;
-      type?: unknown;
-      commentId?: unknown;
-      payload?: unknown;
-    };
-    const eventId = typeof entry.eventId === "number" ? entry.eventId : 0;
-    if (eventId)
-      lastCommentEventId.current = Math.max(
-        lastCommentEventId.current,
-        eventId,
-      );
-    if (
-      entry.type === "comment-added" &&
-      entry.payload &&
-      typeof entry.payload === "object"
-    ) {
-      const payload = entry.payload as Record<string, unknown>;
-      const commentId = Number(payload.commentId);
-      setPendingComments((previous) => {
-        const withoutDuplicate = previous.filter(
-          (item) => Number(item.payload.commentId) !== commentId,
+  const applyCommentEvent = useCallback(
+    (event: unknown) => {
+      const entry = event as {
+        eventId?: unknown;
+        type?: unknown;
+        commentId?: unknown;
+        payload?: unknown;
+      };
+      const eventId = typeof entry.eventId === "number" ? entry.eventId : 0;
+      if (eventId)
+        lastCommentEventId.current = Math.max(
+          lastCommentEventId.current,
+          eventId,
         );
-        return [...withoutDuplicate, { eventId, payload }];
-      });
-      return;
-    }
-    if (entry.type === "comment-removed") {
-      const commentId = Number(
-        entry.commentId ??
-          (entry.payload as { commentId?: unknown } | undefined)?.commentId,
-      );
-      if (Number.isFinite(commentId)) {
-        setPendingComments((previous) =>
-          previous.filter(
+      if (
+        entry.type === "comment-added" &&
+        entry.payload &&
+        typeof entry.payload === "object"
+      ) {
+        const payload = entry.payload as Record<string, unknown>;
+        const commentId = Number(payload.commentId);
+        setPendingComments((previous) => {
+          const withoutDuplicate = previous.filter(
             (item) => Number(item.payload.commentId) !== commentId,
-          ),
-        );
+          );
+          return [...withoutDuplicate, { eventId, payload }];
+        });
+        // A saved page annotation is immediately available in the composer as a
+        // structured attachment. The annotation bar's send action is separate:
+        // it submits the current composer text and the accumulated annotations.
+        if (pageId) {
+          window.dispatchEvent(
+            new CustomEvent("browser:send-to-agent", {
+              detail: {
+                pageId,
+                type: "comment",
+                payload: {
+                  ...payload,
+                  pageUrl: urlInputRef.current || undefined,
+                },
+              },
+            }),
+          );
+        }
+        return;
       }
-    }
-  }, []);
+      if (entry.type === "comment-removed") {
+        const commentId = Number(
+          entry.commentId ??
+            (entry.payload as { commentId?: unknown } | undefined)?.commentId,
+        );
+        if (Number.isFinite(commentId)) {
+          setPendingComments((previous) =>
+            previous.filter(
+              (item) => Number(item.payload.commentId) !== commentId,
+            ),
+          );
+        }
+      }
+    },
+    [pageId],
+  );
 
   // Listen for comment/annotation events from the bridge
   useEffect(() => {
@@ -154,7 +179,9 @@ export function BrowserPanel({ pageId }: { pageId?: string }) {
     (url: string) => {
       if (!pageId || !url.trim()) return;
       let normalized = url.trim();
-      if (!/^https?:\/\//i.test(normalized)) {
+      // Preserve explicit schemes such as file: and about:. They are valid
+      // browser targets and must not be rewritten as https://file/... .
+      if (!/^[a-z][a-z\d+.-]*:/i.test(normalized)) {
         normalized = `https://${normalized}`;
       }
       setUrlInput(normalized);
@@ -206,7 +233,7 @@ export function BrowserPanel({ pageId }: { pageId?: string }) {
       new CustomEvent("browser:send-to-agent", {
         detail: {
           pageId,
-          type: "comments",
+          type: "submit-comments",
           payloads: pendingComments.map(({ payload }) => ({
             ...payload,
             pageUrl,

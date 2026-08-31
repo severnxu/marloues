@@ -78,7 +78,9 @@ if (!isDev && isWindows) app.setAppUserModelId("com.marloues.desktop");
 // testing. The smoke test drives the embedded WebContentsView through this
 // port, rather than faking browser events in the renderer.
 if (isDev || isTest) {
-  app.commandLine.appendSwitch("remote-debugging-port", "9223");
+  const remoteDebuggingPort =
+    process.env.MARLOUES_REMOTE_DEBUGGING_PORT?.trim() || "9223";
+  app.commandLine.appendSwitch("remote-debugging-port", remoteDebuggingPort);
   app.commandLine.appendSwitch("remote-allow-origins", "*");
 }
 

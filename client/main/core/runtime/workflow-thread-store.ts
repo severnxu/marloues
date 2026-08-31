@@ -95,6 +95,7 @@ function userContentFromInput(
       content.push({
         type: "browserComment",
         commentId: record.commentId,
+        targetType: record.targetType === "region" ? "region" : "element",
         ref: record.ref,
         tagName: typeof record.tagName === "string" ? record.tagName : "",
         text: typeof record.text === "string" ? record.text : "",
@@ -118,6 +119,15 @@ function userContentFromInput(
         scrollX: typeof record.scrollX === "number" ? record.scrollX : 0,
         scrollY: typeof record.scrollY === "number" ? record.scrollY : 0,
         comment: record.comment,
+        styleEdits:
+          record.styleEdits && typeof record.styleEdits === "object"
+            ? Object.fromEntries(
+                Object.entries(record.styleEdits).filter(
+                  (entry): entry is [string, string] =>
+                    typeof entry[1] === "string",
+                ),
+              )
+            : undefined,
         pageUrl:
           typeof record.pageUrl === "string" ? record.pageUrl : undefined,
         screenshotDataUrl:

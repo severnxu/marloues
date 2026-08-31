@@ -92,6 +92,7 @@ function browserCommentFromEvent(value: unknown): BrowserCommentPayload | null {
   return {
     type: "browserComment",
     commentId,
+    targetType: raw.targetType === "region" ? "region" : "element",
     ref,
     tagName: typeof raw.tagName === "string" ? raw.tagName : "",
     text: typeof raw.text === "string" ? raw.text : "",
@@ -109,6 +110,15 @@ function browserCommentFromEvent(value: unknown): BrowserCommentPayload | null {
     scrollX: Number(raw.scrollX) || 0,
     scrollY: Number(raw.scrollY) || 0,
     comment,
+    styleEdits:
+      raw.styleEdits && typeof raw.styleEdits === "object"
+        ? Object.fromEntries(
+            Object.entries(raw.styleEdits as Record<string, unknown>).filter(
+              (entry): entry is [string, string] =>
+                typeof entry[1] === "string",
+            ),
+          )
+        : undefined,
     pageUrl: typeof raw.pageUrl === "string" ? raw.pageUrl : undefined,
     screenshotDataUrl:
       typeof raw.screenshotDataUrl === "string"
@@ -239,6 +249,10 @@ export function WorkflowChatPage({
     eventId: string;
     payloads: BrowserCommentPayload[];
   } | null>(null);
+  const [browserCommentSubmit, setBrowserCommentSubmit] = useState<{
+    eventId: string;
+    payloads: BrowserCommentPayload[];
+  } | null>(null);
 
   useEffect(() => {
     inputTextRef.current = inputText;
@@ -252,11 +266,11 @@ export function WorkflowChatPage({
         type?: unknown;
         pageId?: unknown;
         payload?: unknown;
+        payloads?: unknown;
       };
       const values =
-        record.type === "comments" &&
-        Array.isArray((record as { payloads?: unknown }).payloads)
-          ? (record as { payloads: unknown[] }).payloads
+        record.type === "submit-comments" && Array.isArray(record.payloads)
+          ? record.payloads
           : record.type === "comment"
             ? [record.payload]
             : [];
@@ -267,6 +281,13 @@ export function WorkflowChatPage({
         );
       if (payloads.length === 0) return;
       const pageId = typeof record.pageId === "string" ? record.pageId : "";
+      if (record.type === "submit-comments") {
+        setBrowserCommentSubmit({
+          eventId: `${pageId}:${payloads.map((payload) => payload.commentId).join(",")}:${Date.now()}`,
+          payloads,
+        });
+        return;
+      }
       const freshPayloads = payloads.filter((payload) => {
         const key = `${pageId}:${payload.commentId}:${payload.ref}`;
         if (browserCommentKeysRef.current.has(key)) return false;
@@ -836,6 +857,7 @@ export function WorkflowChatPage({
         conversationKey={`${activeSessionId ?? "new-session"}:${composerEpoch}`}
         input={inputText}
         incomingBrowserComment={incomingBrowserComment ?? undefined}
+        browserCommentSubmit={browserCommentSubmit ?? undefined}
         isGenerating={activeSessionIsStreaming}
         securityMode={settings?.securityMode ?? "request"}
         permissionPanel={

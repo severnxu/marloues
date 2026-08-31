@@ -136,12 +136,9 @@
   display: flex;
   max-width: 100%;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-2);
-  overflow-x: auto;
-  overflow-y: hidden;
   padding: 9px 9px 0;
-  scrollbar-color: var(--border-strong) transparent;
-  scrollbar-width: thin;
 }
 
 .composer-chip {
@@ -257,6 +254,228 @@
   color: var(--attachment-remove-fg);
   cursor: var(--cursor-control);
   transition: transform var(--motion-fast) var(--ease);
+}
+
+.composer-browser-review {
+  position: relative;
+  display: inline-flex;
+  height: 30px;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.composer-browser-review-trigger {
+  display: inline-flex;
+  height: 30px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  padding: 0 31px 0 7px;
+  background: var(--raised-1);
+  color: var(--text-2);
+  cursor: var(--cursor-control);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.composer-browser-review-trigger:hover,
+.composer-browser-review-trigger[aria-expanded="true"] {
+  border-color: var(--border-strong);
+  background: var(--raised-2);
+}
+
+.composer-browser-review-trigger > svg {
+  color: var(--text-3);
+  transition: transform var(--motion-fast) var(--ease);
+}
+
+.composer-browser-review-trigger > svg.is-open {
+  transform: rotate(180deg);
+}
+
+.composer-browser-review-thumbnail {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.composer-browser-review-remove-all {
+  position: absolute;
+  z-index: 2;
+  top: 6px;
+  right: 7px;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: transparent;
+  color: var(--text-3);
+  cursor: var(--cursor-control);
+}
+
+.composer-browser-review-remove-all:hover,
+.composer-browser-review-remove-all:focus-visible {
+  background: var(--attachment-remove-bg);
+  color: var(--attachment-remove-fg);
+  outline: 0;
+}
+
+.composer-browser-review-popover {
+  position: absolute;
+  z-index: 20;
+  bottom: calc(100% + 9px);
+  left: 0;
+  width: min(390px, calc(100vw - 42px));
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--popover, var(--raised-1));
+  box-shadow: var(--popover-shadow, var(--shadow-sm));
+}
+
+.composer-browser-review-header {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  padding: 0 10px 0 12px;
+  color: var(--text-1);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.composer-browser-review-header > span:last-child {
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.composer-browser-review-list {
+  display: grid;
+  max-height: 244px;
+  overflow-y: auto;
+}
+
+.composer-browser-review-item {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 18px 54px minmax(0, 1fr) 24px;
+  gap: 8px;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding: 8px 7px 8px 10px;
+}
+
+.composer-browser-review-item:last-child {
+  border-bottom: 0;
+}
+
+.composer-browser-review-index {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-foreground, white);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.composer-browser-review-image {
+  display: grid;
+  width: 54px;
+  height: 42px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0;
+  background: var(--raised-2);
+  color: var(--text-3);
+}
+
+button.composer-browser-review-image {
+  cursor: var(--cursor-control);
+}
+
+.composer-browser-review-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.composer-browser-review-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.composer-browser-review-context {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-3);
+  font-size: 10px;
+}
+
+.composer-browser-review-context code,
+.composer-browser-review-context > span,
+.composer-browser-review-note {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-browser-review-context code {
+  flex: 0 0 auto;
+  border-radius: 3px;
+  padding: 1px 4px;
+  background: var(--raised-2);
+  color: var(--text-2);
+  font-family: var(--font-mono, Menlo, monospace);
+  font-size: 9px;
+}
+
+.composer-browser-review-note {
+  color: var(--text-1);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.composer-browser-review-edits {
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.composer-browser-review-remove {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  padding: 0;
+  background: transparent;
+  color: var(--text-3);
+  cursor: var(--cursor-control);
+}
+
+.composer-browser-review-remove:hover,
+.composer-browser-review-remove:focus-visible {
+  background: var(--raised-2);
+  color: var(--text-1);
+  outline: 0;
 }
 
 .composer-browser-comment {

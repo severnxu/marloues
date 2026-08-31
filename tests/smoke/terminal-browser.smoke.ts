@@ -4,6 +4,7 @@ import {
   expect,
 } from "../../client/node_modules/@playwright/test";
 import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -37,6 +38,23 @@ async function poll<T>(
   throw new Error(
     `poll timed out after ${timeoutMs}ms — last value: ${JSON.stringify(last)}`,
   );
+}
+
+/** Reserve an ephemeral loopback port for the app's CDP server. */
+async function getAvailableLoopbackPort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      if (!address || typeof address === "string") {
+        server.close(() => reject(new Error("Unable to allocate CDP port")));
+        return;
+      }
+      const { port } = address;
+      server.close((error) => (error ? reject(error) : resolve(port)));
+    });
+  });
 }
 
 /** Get the text content of all .xterm-rows in the visible terminal panel. */
@@ -384,6 +402,7 @@ async function testBrowserMultiTab(
 async function testBrowserNavigate(
   window: ElectronPage,
   page1Url: string,
+  remoteBrowser: Awaited<ReturnType<typeof chromium.connectOverCDP>>,
 ): Promise<void> {
   // Switch to first browser tab (index 2)
   await switchToTab(window, 2);
@@ -409,6 +428,19 @@ async function testBrowserNavigate(
     (val) => val.includes("page1.html"),
     15_000,
   );
+
+  // This must load the actual local page through the user-facing address bar,
+  // not merely preserve the text in the input.
+  const localPage = await poll(
+    () =>
+      remoteBrowser
+        .contexts()
+        .flatMap((context) => context.pages())
+        .find((page) => page.url() === page1Url) ?? null,
+    (page) => page !== null,
+    15_000,
+  );
+  await expect(localPage!.locator("#marker")).toHaveText("PAGE_ONE_MARKER");
 
   // Take a screenshot via IPC
   const screenshot = await window.evaluate(() =>
@@ -575,9 +607,50 @@ async function testBrowserAnnotationComposer(
   const annotationBar = window.locator(".browser-annotation-bar");
   await expect(annotationBar).toContainText("正在批注");
 
-  await annotationPage.locator("#annotation-target").click();
+  // Annotation mode receives pointer events through the overlay. The local
+  // page counters prove that neither hover nor click reaches its own handlers.
+  const targetBox = await annotationPage
+    .locator("#annotation-target")
+    .boundingBox();
+  expect(targetBox).not.toBeNull();
+  if (!targetBox) throw new Error("annotation target was not laid out");
+  const targetPoint = {
+    x: targetBox.x + targetBox.width / 2,
+    y: targetBox.y + targetBox.height / 2,
+  };
+  await annotationPage.mouse.move(targetPoint.x, targetPoint.y);
+  await expect
+    .poll(() =>
+      annotationPage.evaluate(() => ({
+        clicks: Number(document.body.dataset.annotationClicks ?? 0),
+        hovers: Number(document.body.dataset.annotationHovers ?? 0),
+      })),
+    )
+    .toEqual({ clicks: 0, hovers: 0 });
+  await annotationPage.mouse.click(targetPoint.x, targetPoint.y);
   await expect(annotationPage.locator(".ec-comment-input")).toBeVisible();
   await expect(annotationPage.locator(".ec-selection-outline")).toBeVisible();
+  await expect(
+    annotationPage.getByRole("textbox", { name: "编辑文本颜色" }),
+  ).toBeVisible();
+  await annotationPage
+    .getByRole("textbox", { name: "编辑文本颜色" })
+    .fill("rgb(255, 0, 0)");
+  await expect
+    .poll(() =>
+      annotationPage
+        .locator("#annotation-target")
+        .evaluate((element) => getComputedStyle(element).color),
+    )
+    .toBe("rgb(255, 0, 0)");
+  await expect
+    .poll(() =>
+      annotationPage.evaluate(() => ({
+        clicks: Number(document.body.dataset.annotationClicks ?? 0),
+        hovers: Number(document.body.dataset.annotationHovers ?? 0),
+      })),
+    )
+    .toEqual({ clicks: 0, hovers: 0 });
   await annotationPage.locator(".ec-comment-input").fill("第一个真实页面注释");
   await annotationPage.locator(".ec-popup-send").click();
   await expect(annotationPage.locator(".ec-comment-marker")).toHaveCount(1);
@@ -585,40 +658,96 @@ async function testBrowserAnnotationComposer(
     annotationBar.getByRole("button", { name: "发送 1" }),
   ).toBeEnabled();
 
+  // Editing is previewed, but cancelling an element annotation restores the
+  // page's original inline styles and does not add another attachment.
+  const cancelTargetBox = await annotationPage
+    .locator("#annotation-target-two")
+    .boundingBox();
+  expect(cancelTargetBox).not.toBeNull();
+  if (!cancelTargetBox)
+    throw new Error("cancel annotation target was not laid out");
+  await annotationPage.mouse.click(
+    cancelTargetBox.x + cancelTargetBox.width / 2,
+    cancelTargetBox.y + cancelTargetBox.height / 2,
+  );
+  const backgroundField = annotationPage.getByRole("textbox", {
+    name: "编辑背景",
+  });
+  await expect(backgroundField).toBeVisible();
+  await backgroundField.fill("rgb(255, 255, 0)");
+  await expect
+    .poll(() =>
+      annotationPage
+        .locator("#annotation-target-two")
+        .evaluate((element) => getComputedStyle(element).backgroundColor),
+    )
+    .toBe("rgb(255, 255, 0)");
+  await annotationPage.getByRole("button", { name: "取消批注" }).click();
+  await expect(annotationPage.locator(".ec-popup")).toHaveCount(0);
+  await expect
+    .poll(() =>
+      annotationPage
+        .locator("#annotation-target-two")
+        .evaluate((element) => getComputedStyle(element).backgroundColor),
+    )
+    .not.toBe("rgb(255, 255, 0)");
+  await expect(annotationPage.locator(".ec-comment-marker")).toHaveCount(1);
+
   const composer = window.locator(".composer textarea");
   await expect(composer).toHaveValue("");
-
-  await annotationBar.getByRole("button", { name: "发送 1" }).click();
-  const firstComment = window.locator(".composer-browser-comment");
-  await expect(firstComment).toHaveCount(1, { timeout: 15_000 });
-  await expect(firstComment).toContainText("第一个真实页面注释");
-  await expect(firstComment.locator("img")).toBeVisible();
+  const browserReview = window.locator(".composer-browser-review");
+  await expect(browserReview).toHaveCount(1, { timeout: 15_000 });
+  await expect(
+    browserReview.getByRole("button", { name: "页面批注，1 条" }),
+  ).toBeVisible();
   await expect(composer).toHaveValue("");
+
+  // Text remains untouched while saved page annotations are immediately added
+  // as structured composer attachments.
+  await composer.fill("补充说明：请优先处理这个按钮。");
+
+  // A dragged page area joins the same review group as element annotations.
+  // This runs through the actual WebContentsView event bridge, not a mocked
+  // renderer callback.
+  const region = annotationPage.locator("#annotation-region");
+  const regionBox = await region.boundingBox();
+  expect(regionBox).not.toBeNull();
+  if (!regionBox) throw new Error("annotation region was not laid out");
+  await annotationPage.mouse.move(regionBox.x + 20, regionBox.y + 20);
+  await annotationPage.mouse.down();
+  await annotationPage.mouse.move(regionBox.x + 180, regionBox.y + 85, {
+    steps: 8,
+  });
+  await annotationPage.mouse.up();
+  await expect(annotationPage.locator(".ec-comment-input")).toBeVisible();
+  await expect(annotationPage.locator(".ec-selection-outline")).toBeVisible();
+  await expect(annotationPage.locator(".ec-style-editor")).toHaveCount(0);
+  await annotationPage.locator(".ec-comment-input").fill("第二个真实区域注释");
+  await annotationPage.locator(".ec-popup-send").click();
+
+  await expect(annotationPage.locator(".ec-comment-marker")).toHaveCount(2);
+  await expect(browserReview).toHaveCount(1, { timeout: 15_000 });
+  await expect(
+    browserReview.getByRole("button", { name: "页面批注，2 条" }),
+  ).toBeVisible();
+  await browserReview.getByRole("button", { name: "页面批注，2 条" }).click();
+  const reviewDetails = window.locator("#composer-browser-review-details");
+  await expect(reviewDetails).toBeVisible();
+  await expect(reviewDetails).toContainText("第一个真实页面注释");
+  await expect(reviewDetails).toContainText("第二个真实区域注释");
+  await expect(reviewDetails).toContainText("页面区域");
+  await expect(reviewDetails.locator("img")).toHaveCount(2);
+  await expect(composer).toHaveValue("补充说明：请优先处理这个按钮。");
 
   await window.screenshot({
     path: join(artifactsDir, "09-browser-annotation-composer.png"),
     fullPage: true,
   });
 
-  // Removing a structured annotation must leave normal user text untouched.
-  await composer.fill("补充说明：请优先处理这个按钮。");
-  await firstComment.getByRole("button", { name: "移除页面注释" }).click();
-  await expect(firstComment).toHaveCount(0);
-  await expect(composer).toHaveValue("补充说明：请优先处理这个按钮。");
-
-  // Add a second annotation so the sent message retains structured browser
-  // metadata after the independent text/remove interaction has been verified.
-  await annotationPage.locator("#annotation-target-two").click();
-  await expect(annotationPage.locator(".ec-comment-input")).toBeVisible();
-  await annotationPage.locator(".ec-comment-input").fill("第二个真实页面注释");
-  await annotationPage.locator(".ec-popup-send").click();
-
-  await expect(annotationPage.locator(".ec-comment-marker")).toHaveCount(2);
-  await annotationBar.getByRole("button", { name: "发送 1" }).click();
-  await expect(firstComment).toHaveCount(1, { timeout: 15_000 });
-  await expect(firstComment).toContainText("第二个真实页面注释");
-
-  await window.getByRole("button", { name: "发送消息" }).click();
+  // Annotation-bar send follows the primary composer submit path. It must
+  // create a user message without an additional click on the composer button.
+  await annotationBar.getByRole("button", { name: "发送 2" }).click();
+  await expect(browserReview).toHaveCount(0, { timeout: 15_000 });
 
   const persisted = await poll(
     () =>
@@ -637,8 +766,18 @@ async function testBrowserAnnotationComposer(
       Boolean(
         value?.userContent.some(
           (item) =>
+            item.type === "text" &&
+            item.text === "补充说明：请优先处理这个按钮。",
+        ) &&
+        value?.userContent.some(
+          (item) =>
             item.type === "browserComment" &&
-            item.comment === "第二个真实页面注释",
+            item.comment === "第一个真实页面注释",
+        ) &&
+        value?.userContent.some(
+          (item) =>
+            item.type === "browserComment" &&
+            item.comment === "第二个真实区域注释",
         ),
       ),
     15_000,
@@ -649,20 +788,34 @@ async function testBrowserAnnotationComposer(
   if (textItem?.type === "text") {
     expect(textItem.text).toBe("补充说明：请优先处理这个按钮。");
   }
+  const elementComment = persisted!.userContent.find(
+    (item) =>
+      item.type === "browserComment" && item.comment === "第一个真实页面注释",
+  );
+  expect(elementComment?.type).toBe("browserComment");
+  if (elementComment?.type === "browserComment") {
+    expect(elementComment.targetType).toBe("element");
+    expect(elementComment.pageUrl).toBe(annotationPageUrl);
+    expect(elementComment.screenshotDataUrl).toMatch(/^data:image\//);
+    expect(elementComment.styleEdits).toEqual({ color: "rgb(255, 0, 0)" });
+  }
   const browserComment = persisted!.userContent.find(
     (item) =>
-      item.type === "browserComment" && item.comment === "第二个真实页面注释",
+      item.type === "browserComment" && item.comment === "第二个真实区域注释",
   );
   expect(browserComment?.type).toBe("browserComment");
   if (browserComment?.type === "browserComment") {
-    expect(browserComment.ref).toContain("annotation-target-two");
-    expect(browserComment.tagName.toLowerCase()).toBe("button");
+    expect(browserComment.targetType).toBe("region");
+    expect(browserComment.ref).toContain("viewport region");
+    expect(browserComment.tagName).toBe("");
+    expect(browserComment.rect.width).toBeGreaterThanOrEqual(150);
+    expect(browserComment.rect.height).toBeGreaterThanOrEqual(60);
     expect(browserComment.pageUrl).toBe(annotationPageUrl);
     expect(browserComment.screenshotDataUrl).toMatch(/^data:image\//);
   }
 
   await expect(window.locator(".workflow-user-message").first()).toContainText(
-    "第二个真实页面注释",
+    "第二个真实区域注释",
   );
   await window.screenshot({
     path: join(artifactsDir, "10-browser-annotation-sent.png"),
@@ -789,7 +942,7 @@ async function main(): Promise<void> {
   writeFileSync(
     annotationPagePath,
     "<!DOCTYPE html><html><head><title>Annotation Page</title></head>" +
-      '<body><main><h1>ANNOTATION_PAGE_MARKER</h1><button id="annotation-target">ANNOTATION_TARGET_ONE</button><button id="annotation-target-two">ANNOTATION_TARGET_TWO</button></main></body></html>',
+      '<body data-annotation-clicks="0" data-annotation-hovers="0"><main><h1>ANNOTATION_PAGE_MARKER</h1><button id="annotation-target" style="color:rgb(0, 0, 0)">ANNOTATION_TARGET_ONE</button><button id="annotation-target-two">ANNOTATION_TARGET_TWO</button><div id="annotation-region" style="width:280px;height:130px;margin-top:24px;border:1px solid #333">ANNOTATION_REGION_TARGET</div></main><script>const target=document.querySelector("#annotation-target");target.addEventListener("click",()=>document.body.dataset.annotationClicks=String(Number(document.body.dataset.annotationClicks||0)+1));target.addEventListener("mouseenter",()=>document.body.dataset.annotationHovers=String(Number(document.body.dataset.annotationHovers||0)+1));</script></body></html>',
     "utf-8",
   );
   const page1Url = pathToFileURL(page1Path).href;
@@ -798,6 +951,7 @@ async function main(): Promise<void> {
 
   console.info("=== Marloues terminal-browser smoke ===");
   console.info(`Home: ${liveHome}`);
+  const remoteDebuggingPort = await getAvailableLoopbackPort();
 
   const app = await electron.launch({
     args: [mainEntry],
@@ -806,10 +960,14 @@ async function main(): Promise<void> {
       ...process.env,
       NODE_ENV: "test",
       MARLOUES_HOME: liveHome,
+      MARLOUES_REMOTE_DEBUGGING_PORT: String(remoteDebuggingPort),
     },
   });
   const remoteBrowser = (await poll(
-    () => chromium.connectOverCDP("http://127.0.0.1:9223").catch(() => null),
+    () =>
+      chromium
+        .connectOverCDP(`http://127.0.0.1:${remoteDebuggingPort}`)
+        .catch(() => null),
     (browser) => browser !== null,
     15_000,
   ))!;
@@ -832,7 +990,7 @@ async function main(): Promise<void> {
     await testTerminalMultiTab(window, firstSessionId);
     await testTerminalReloadRecovery(window);
     await testBrowserMultiTab(window, page1Url, page2Url);
-    await testBrowserNavigate(window, page1Url);
+    await testBrowserNavigate(window, page1Url, remoteBrowser);
     await testBrowserResize(window);
     await testTabSwitching(window);
     await testBrowserAnnotationComposer(

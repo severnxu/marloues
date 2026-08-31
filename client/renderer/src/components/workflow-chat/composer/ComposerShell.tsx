@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Settings2 } from "lucide-react";
 import {
+  attachmentsToUserContent,
   browserCommentAttachment,
   MAX_ATTACHMENTS,
   skillAttachment,
@@ -38,6 +39,7 @@ export function WorkflowComposerShell({
   conversationKey,
   input,
   incomingBrowserComment,
+  browserCommentSubmit,
   isGenerating,
   securityMode: controlledSecurityMode,
   selectedProvider,
@@ -75,6 +77,7 @@ export function WorkflowComposerShell({
   const slashPopoverRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const previousPermissionPanelRef = useRef(false);
+  const submittedBrowserCommentEventRef = useRef<string | null>(null);
   const [modelOpen, setModelOpen] = useState(false);
   const [slashOpen, setSlashOpen] = useState(false);
   const [slashFilter, setSlashFilter] = useState("");
@@ -123,6 +126,31 @@ export function WorkflowComposerShell({
     });
     requestAnimationFrame(() => textareaRef.current?.focus());
   }, [incomingBrowserComment, setAttachments]);
+
+  useEffect(() => {
+    if (!browserCommentSubmit) return;
+    if (
+      submittedBrowserCommentEventRef.current === browserCommentSubmit.eventId
+    )
+      return;
+
+    submittedBrowserCommentEventRef.current = browserCommentSubmit.eventId;
+    const submittedAttachments = [...attachments];
+    for (const payload of browserCommentSubmit.payloads) {
+      const exists = submittedAttachments.some(
+        (attachment) =>
+          attachment.kind === "browser-comment" &&
+          attachment.payload.commentId === payload.commentId &&
+          attachment.payload.pageUrl === payload.pageUrl,
+      );
+      if (!exists) submittedAttachments.push(browserCommentAttachment(payload));
+    }
+
+    // Keep the browser bar's send semantics identical to the primary submit
+    // button: send current text + attachments, then clear transient chips.
+    onSend(attachmentsToUserContent(submittedAttachments));
+    setAttachments([]);
+  }, [attachments, browserCommentSubmit, onSend, setAttachments]);
   const {
     query: composerQuery,
     items: composerSuggestions,

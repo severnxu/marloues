@@ -156,6 +156,7 @@ export type WorkflowUserMessageContent =
       /** A page annotation captured from the embedded browser. */
       type: "browserComment";
       commentId: number;
+      targetType?: "element" | "region";
       ref: string;
       tagName: string;
       text: string;
@@ -165,6 +166,8 @@ export type WorkflowUserMessageContent =
       scrollX: number;
       scrollY: number;
       comment: string;
+      /** Direct style changes proposed for a selected DOM element. */
+      styleEdits?: Record<string, string>;
       pageUrl?: string;
       screenshotDataUrl?: string;
     };
