@@ -37,6 +37,24 @@ describe("embedded comment bridge", () => {
     expect(EMBEDDED_COMMENT_BRIDGE_SCRIPT).toContain("new MutationObserver");
   });
 
+  it("keeps annotation borders visible when a target touches the viewport edge", () => {
+    expect(EMBEDDED_COMMENT_BRIDGE_SCRIPT).toContain(
+      "positionSelectionOverlay(selection, rect)",
+    );
+    expect(EMBEDDED_COMMENT_BRIDGE_SCRIPT).toContain(
+      "Math.max(0, Math.min(window.innerWidth, rect.x))",
+    );
+    expect(EMBEDDED_COMMENT_BRIDGE_SCRIPT).toContain(
+      "Math.max(0, Math.min(window.innerHeight, rect.y))",
+    );
+    expect(EMBEDDED_COMMENT_BRIDGE_SCRIPT).toContain(
+      "border:2px solid #1683ff",
+    );
+    expect(EMBEDDED_COMMENT_BRIDGE_SCRIPT).not.toContain(
+      "outline:2px solid #1683ff",
+    );
+  });
+
   it("preserves transparent send-icon edges in the light theme", () => {
     expect(EMBEDDED_COMMENT_BRIDGE_SCRIPT).toContain(
       "border-left-color:transparent;border-right-color:transparent;border-bottom-color:#fff",

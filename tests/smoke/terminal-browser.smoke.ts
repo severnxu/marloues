@@ -792,6 +792,47 @@ async function testBrowserAnnotationComposer(
   await expect(annotationBar).toContainText("正在批注");
   await expect(annotationPage.locator(".ec-interaction-shield")).toBeVisible();
 
+  // A target flush with the embedded page's top-left edge must still render
+  // both edge borders. Outlines with a positive offset were clipped here.
+  const edgeTarget = annotationPage.locator("#annotation-edge-target");
+  const edgeTargetBox = await edgeTarget.boundingBox();
+  expect(edgeTargetBox).not.toBeNull();
+  if (!edgeTargetBox)
+    throw new Error("edge annotation target was not laid out");
+  expect(edgeTargetBox.x).toBe(0);
+  expect(edgeTargetBox.y).toBe(0);
+  await annotationPage.mouse.click(
+    edgeTargetBox.x + edgeTargetBox.width / 2,
+    edgeTargetBox.y + edgeTargetBox.height / 2,
+  );
+  const edgeSelection = annotationPage.locator(".ec-selection-outline");
+  await expect(edgeSelection).toBeVisible();
+  await expect(edgeSelection).toHaveCSS("border-top-style", "solid");
+  await expect(edgeSelection).toHaveCSS("border-left-style", "solid");
+  const edgeSelectionBox = await edgeSelection.boundingBox();
+  expect(edgeSelectionBox).not.toBeNull();
+  if (!edgeSelectionBox)
+    throw new Error("edge annotation selection was not laid out");
+  expect(edgeSelectionBox.x).toBe(0);
+  expect(edgeSelectionBox.y).toBe(0);
+  const edgeScreenshotPath = join(
+    artifactsDir,
+    "09-edge-browser-annotation.png",
+  );
+  await annotationPage.screenshot({ path: edgeScreenshotPath });
+  const edgePixels = [
+    readScreenshotPixel(edgeScreenshotPath, 90, 1),
+    readScreenshotPixel(edgeScreenshotPath, 1, 30),
+  ];
+  for (const [red, green, blue] of edgePixels) {
+    expect(blue).toBeGreaterThan(200);
+    expect(blue - red).toBeGreaterThan(100);
+    expect(blue - green).toBeGreaterThan(50);
+  }
+  await annotationPage.getByRole("button", { name: "编辑元素样式" }).click();
+  await annotationPage.getByRole("button", { name: "取消批注" }).click();
+  await expect(annotationPage.locator(".ec-popup")).toHaveCount(0);
+
   // Annotation mode receives pointer events through the overlay. The local
   // page counters prove that neither hover nor click reaches its own handlers.
   const targetBox = await annotationPage
@@ -1176,8 +1217,8 @@ async function main(): Promise<void> {
   );
   writeFileSync(
     annotationPagePath,
-    "<!DOCTYPE html><html><head><title>Annotation Page</title></head>" +
-      '<body data-annotation-clicks="0" data-annotation-hovers="0"><main><h1>ANNOTATION_PAGE_MARKER</h1><button id="annotation-target" style="color:rgb(0, 0, 0)">ANNOTATION_TARGET_ONE</button><button id="annotation-target-two">ANNOTATION_TARGET_TWO</button><div id="annotation-region" style="width:280px;height:130px;margin-top:24px;border:1px solid #333">ANNOTATION_REGION_TARGET</div></main><script>const target=document.querySelector("#annotation-target");target.addEventListener("click",()=>document.body.dataset.annotationClicks=String(Number(document.body.dataset.annotationClicks||0)+1));target.addEventListener("mouseenter",()=>document.body.dataset.annotationHovers=String(Number(document.body.dataset.annotationHovers||0)+1));</script></body></html>',
+    "<!DOCTYPE html><html><head><title>Annotation Page</title><style>html,body{margin:0}#annotation-edge-target{position:fixed;left:0;top:0;width:180px;height:60px;border:0;background:#d9eaff}main{padding:84px 16px 16px}</style></head>" +
+      '<body data-annotation-clicks="0" data-annotation-hovers="0"><button id="annotation-edge-target">EDGE_ANNOTATION_TARGET</button><main><h1>ANNOTATION_PAGE_MARKER</h1><button id="annotation-target" style="color:rgb(0, 0, 0)">ANNOTATION_TARGET_ONE</button><button id="annotation-target-two">ANNOTATION_TARGET_TWO</button><div id="annotation-region" style="width:280px;height:130px;margin-top:24px;border:1px solid #333">ANNOTATION_REGION_TARGET</div></main><script>const target=document.querySelector("#annotation-target");target.addEventListener("click",()=>document.body.dataset.annotationClicks=String(Number(document.body.dataset.annotationClicks||0)+1));target.addEventListener("mouseenter",()=>document.body.dataset.annotationHovers=String(Number(document.body.dataset.annotationHovers||0)+1));</script></body></html>',
     "utf-8",
   );
   const page1Url = pathToFileURL(page1Path).href;
