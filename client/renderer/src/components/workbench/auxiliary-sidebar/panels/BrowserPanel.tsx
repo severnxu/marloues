@@ -487,9 +487,36 @@ export function BrowserPanel({
     );
     const lastId = lastCommentEventId.current;
     setPendingComments([]);
+    lastCommentEventId.current = 0;
     if (lastId > 0)
       void window.marloues.browser?.ackCommentEvents(pageId, lastId);
+    // Exit annotation mode and clear overlays after sending so the browser
+    // returns to its normal state — both the annotation bar send and the
+    // main composer send should sync to this behaviour.
+    void window.marloues.browser?.setCommentMode(pageId, false);
+    void window.marloues.browser?.clearComments(pageId);
+    setCommentMode(false);
   }, [pageId, pendingComments, urlInput]);
+
+  // Sync with the main composer send: when the user sends from the input box
+  // (not the annotation bar), exit annotation mode and clear overlays too.
+  useEffect(() => {
+    if (!pageId) return;
+    const handleAnnotationsSent = () => {
+      if (!commentMode) return;
+      void window.marloues.browser?.setCommentMode(pageId, false);
+      void window.marloues.browser?.clearComments(pageId);
+      setCommentMode(false);
+      setPendingComments([]);
+      lastCommentEventId.current = 0;
+    };
+    window.addEventListener("browser:annotations-sent", handleAnnotationsSent);
+    return () =>
+      window.removeEventListener(
+        "browser:annotations-sent",
+        handleAnnotationsSent,
+      );
+  }, [pageId, commentMode]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {

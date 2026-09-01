@@ -625,6 +625,10 @@ export function WorkflowChatPage({
       // steer 不可用会在 sendMessage 内降级为新 turn（仍 ok），消息不丢。
       if (result.ok) setInputText("");
       if (!isSteer) setNextWorkModeOverride(null);
+      // Notify the browser panel to exit annotation mode and clear overlays —
+      // this syncs the main composer send with the annotation bar send.
+      if (result.ok)
+        window.dispatchEvent(new CustomEvent("browser:annotations-sent"));
     } finally {
       sendInFlightRef.current = false;
     }
