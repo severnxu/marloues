@@ -35,6 +35,7 @@
     "lint:client": "npm run lint --workspace marloues",
     "lint:tests": "node node_modules/eslint/bin/eslint.js --config tests/eslint.config.mjs tests",
     "format": "npm run format --workspace marloues",
+    "generate:icons": "node gen-dock-icon.cjs",
     "rebuild:native": "npm run rebuild:native --workspace marloues",
     "package:dir": "npm run package:dir --workspace marloues",
     "package:smoke": "npm run package:smoke --workspace marloues",
@@ -62,6 +63,7 @@
     "@types/react": "~18.3.18",
     "husky": "^9.1.7",
     "lint-staged": "^17.3.0",
+    "sharp": "^0.35.3",
     "turbo": "^2.5.8"
   },
   "dependencies": {

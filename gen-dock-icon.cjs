@@ -1,4 +1,6 @@
-const sharp = require("/Users/severnxu/workspace/personal/marloues/node_modules/sharp");
+const { mkdir, writeFile } = require("node:fs/promises");
+const path = require("node:path");
+const sharp = require("sharp");
 
 // Rounded rect path with proper arc corners (visible rounding at 64px)
 function roundedRectPath(size, r) {
@@ -7,6 +9,7 @@ function roundedRectPath(size, r) {
 }
 
 const CANVAS = 512;
+const WINDOWS_ICON_SIZES = [16, 32, 48, 64, 128, 256];
 // 78% of canvas — slightly smaller than the old 82% so corners read at dock size
 const ICON_SIZE = 400;
 const ICON_OFFSET = (CANVAS - ICON_SIZE) / 2; // 56px padding
@@ -41,31 +44,109 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${CANVAS}" height="$
   </g>
 </svg>`;
 
-const outDir = "/Users/severnxu/workspace/personal/marloues/client";
+const outDir = path.join(__dirname, "client");
 
-async function generate() {
-  await sharp(Buffer.from(svg)).resize(CANVAS, CANVAS).png().toFile(`${outDir}/resources/dock-icon.png`);
-  console.log("dock-icon.png generated");
-  await sharp(Buffer.from(svg)).resize(CANVAS, CANVAS).png().toFile(`${outDir}/build/icon.png`);
-  console.log("build/icon.png generated");
-  const svg1024 = svg.replace(`width="${CANVAS}" height="${CANVAS}"`, `width="1024" height="1024"`);
-  await sharp(Buffer.from(svg1024)).resize(1024, 1024).png().toFile(`${outDir}/build/icon@2x.png`);
-  console.log("build/icon@2x.png generated");
+function createWindowsIcon(images) {
+  const directory = Buffer.alloc(6 + images.length * 16);
+  directory.writeUInt16LE(0, 0);
+  directory.writeUInt16LE(1, 2);
+  directory.writeUInt16LE(images.length, 4);
 
-  // Pixel analysis
-  const { data } = await sharp(`${outDir}/resources/dock-icon.png`).resize(64, 64).raw().toBuffer({ resolveWithObject: true });
-  let opaque = 0, total = 64 * 64;
-  for (let i = 0; i < data.length; i += 4) { if (data[i+3] > 128) opaque++; }
-  console.log(`At 64px dock: ${(opaque/total*100).toFixed(1)}% opaque (was 61.9%)`);
-
-  const { data: fullData } = await sharp(`${outDir}/resources/dock-icon.png`).raw().toBuffer({ resolveWithObject: true });
-  let topPad = 512, leftPad = 512;
-  for (let y = 0; y < 512; y++) for (let x = 0; x < 512; x++) {
-    const idx = (y * 512 + x) * 4;
-    if (fullData[idx+3] > 128) { if (y < topPad) topPad = y; if (x < leftPad) leftPad = x; }
+  let imageOffset = directory.length;
+  for (let index = 0; index < images.length; index += 1) {
+    const { size, png } = images[index];
+    const entryOffset = 6 + index * 16;
+    directory.writeUInt8(size === 256 ? 0 : size, entryOffset);
+    directory.writeUInt8(size === 256 ? 0 : size, entryOffset + 1);
+    directory.writeUInt8(0, entryOffset + 2);
+    directory.writeUInt8(0, entryOffset + 3);
+    directory.writeUInt16LE(1, entryOffset + 4);
+    directory.writeUInt16LE(32, entryOffset + 6);
+    directory.writeUInt32LE(png.length, entryOffset + 8);
+    directory.writeUInt32LE(imageOffset, entryOffset + 12);
+    imageOffset += png.length;
   }
-  console.log(`Padding: ${topPad}px (was 46px), Content: ${512-2*leftPad}px = ${((512-2*leftPad)/512*100).toFixed(0)}% (was 82%)`);
-  console.log(`Corner radius: ${CORNER_RADIUS}px (${(CORNER_RADIUS/ICON_SIZE*100).toFixed(1)}% of icon)`);
+
+  return Buffer.concat([directory, ...images.map(({ png }) => png)]);
 }
 
-generate().catch(err => console.error("Error:", err));
+async function generate() {
+  const buildDir = path.join(outDir, "build");
+  const resourcesDir = path.join(outDir, "resources");
+  await Promise.all([
+    mkdir(buildDir, { recursive: true }),
+    mkdir(resourcesDir, { recursive: true }),
+  ]);
+
+  const iconPng = await sharp(Buffer.from(svg))
+    .resize(CANVAS, CANVAS)
+    .png()
+    .toBuffer();
+  await writeFile(path.join(resourcesDir, "dock-icon.png"), iconPng);
+  console.log("dock-icon.png generated");
+  await writeFile(path.join(buildDir, "icon.png"), iconPng);
+  console.log("build/icon.png generated");
+
+  const svg1024 = svg.replace(
+    `width="${CANVAS}" height="${CANVAS}"`,
+    'width="1024" height="1024"',
+  );
+  const icon2xPng = await sharp(Buffer.from(svg1024))
+    .resize(1024, 1024)
+    .png()
+    .toBuffer();
+  await writeFile(path.join(buildDir, "icon@2x.png"), icon2xPng);
+  console.log("build/icon@2x.png generated");
+
+  const windowsImages = await Promise.all(
+    WINDOWS_ICON_SIZES.map(async (size) => ({
+      size,
+      png: await sharp(iconPng).resize(size, size).png().toBuffer(),
+    })),
+  );
+  await writeFile(
+    path.join(buildDir, "icon.ico"),
+    createWindowsIcon(windowsImages),
+  );
+  console.log(`build/icon.ico generated (${WINDOWS_ICON_SIZES.join(", ")}px)`);
+
+  // Pixel analysis
+  const { data } = await sharp(iconPng)
+    .resize(64, 64)
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  let opaque = 0;
+  const total = 64 * 64;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] > 128) opaque += 1;
+  }
+  console.log(
+    `At 64px dock: ${((opaque / total) * 100).toFixed(1)}% opaque (was 61.9%)`,
+  );
+
+  const { data: fullData } = await sharp(iconPng)
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  let topPad = 512;
+  let leftPad = 512;
+  for (let y = 0; y < 512; y += 1) {
+    for (let x = 0; x < 512; x += 1) {
+      const idx = (y * 512 + x) * 4;
+      if (fullData[idx + 3] > 128) {
+        if (y < topPad) topPad = y;
+        if (x < leftPad) leftPad = x;
+      }
+    }
+  }
+  console.log(
+    `Padding: ${topPad}px (was 46px), Content: ${512 - 2 * leftPad}px = ${(((512 - 2 * leftPad) / 512) * 100).toFixed(0)}% (was 82%)`,
+  );
+  console.log(
+    `Corner radius: ${CORNER_RADIUS}px (${((CORNER_RADIUS / ICON_SIZE) * 100).toFixed(1)}% of icon)`,
+  );
+}
+
+generate().catch((error) => {
+  console.error("Error:", error);
+  process.exitCode = 1;
+});
