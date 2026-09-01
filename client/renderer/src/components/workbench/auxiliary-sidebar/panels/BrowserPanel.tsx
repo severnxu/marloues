@@ -124,6 +124,7 @@ export function BrowserPanel({
     if (!pageId || !containerRef.current) return;
 
     let disposed = false;
+    let registered = false;
     void window.marloues.browser?.listPages().then((pages) => {
       if (disposed || !containerRef.current) return;
       const page = pages.find((entry) => entry.pageId === pageId);
@@ -139,18 +140,29 @@ export function BrowserPanel({
         "contextIsolation=yes,nodeIntegration=no,sandbox=yes",
       );
       webview.classList.add("browser-panel-webview");
-      if (initialUrl !== "about:blank") {
-        webview.setAttribute("src", initialUrl);
-      }
 
-      webview.addEventListener("did-attach", () => {
-        const wcId = (
-          webview as HTMLElement & { getWebContentsId: () => number }
-        ).getWebContentsId();
-        void window.marloues.browser?.registerWebview(pageId, wcId);
-      });
+      // getWebContentsId() requires the webview to be attached to the DOM
+      // AND the dom-ready event to have fired. Only call it on dom-ready —
+      // calling on did-attach throws an uncaught error from the webview's
+      // internal isolated_bundle that can leave the guest in a broken state.
+      const onDomReady = () => {
+        if (registered || disposed) return;
+        try {
+          const wcId = (
+            webview as HTMLElement & { getWebContentsId: () => number }
+          ).getWebContentsId();
+          registered = true;
+          void window.marloues.browser?.registerWebview(pageId, wcId);
+        } catch (err) {
+          console.error("[BrowserPanel] registerWebview failed", err);
+        }
+      };
+      webview.addEventListener("dom-ready", onDomReady);
 
+      // Append to DOM first, then set src — setting src before attachment
+      // can trigger "WebView must be attached to the DOM" errors.
       containerRef.current.appendChild(webview);
+      webview.setAttribute("src", initialUrl);
       webviewRef.current = webview;
     });
 

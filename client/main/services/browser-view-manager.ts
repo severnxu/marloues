@@ -8,6 +8,7 @@ interface ManagedView {
   title: string;
   webContentsId: number | undefined;
   failedUrl?: string;
+  pendingUrl?: string;
 }
 
 interface BrowserNavigationState {
@@ -125,11 +126,14 @@ class BrowserViewManagerImpl {
       },
     );
 
-    // Load the initial URL if it was set at view creation time. The webview
-    // tag's `src` attribute is only used to bootstrap the first load; all
+    // Load the initial URL if it was set at view creation time, or a pending
+    // URL from a navigate() call that arrived before the webview was ready.
+    // The webview tag's `src` attribute only bootstraps the first load;
     // subsequent navigation goes through `wc.loadURL()` from the main process.
-    if (managed.url && managed.url !== "about:blank") {
-      wc.loadURL(managed.url).catch(() => {});
+    const urlToLoad = managed.pendingUrl ?? managed.url;
+    if (urlToLoad && urlToLoad !== "about:blank") {
+      managed.pendingUrl = undefined;
+      wc.loadURL(urlToLoad).catch(() => {});
     }
 
     logInfo("browserView.registerWebview", { pageId, webContentsId });
@@ -148,7 +152,22 @@ class BrowserViewManagerImpl {
     this.emitTitleChanged(pageId, "");
     const wc = this.getWebContents(pageId);
     if (wc) {
+      logInfo("browserView.navigate", {
+        pageId,
+        url,
+        webContentsId: managed.webContentsId,
+      });
       wc.loadURL(url).catch(() => {});
+    } else {
+      // Webview not yet registered (dom-ready hasn't fired) or the
+      // webContents was destroyed (e.g. after HMR reload). Queue the
+      // URL so it loads when registerWebview() is called next.
+      managed.pendingUrl = url;
+      logWarn("browserView.navigate.queued", {
+        pageId,
+        url,
+        webContentsId: managed.webContentsId,
+      });
     }
   }
 
