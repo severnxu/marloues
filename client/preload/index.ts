@@ -378,10 +378,8 @@ const api: MarlouesAPI = {
     listPages: (threadId?: string) =>
       ipcRenderer.invoke(IPC.BROWSER_LIST_PAGES, threadId),
     screenshot: () => ipcRenderer.invoke(IPC.BROWSER_SCREENSHOT),
-    setViewBounds: (
-      pageId: string,
-      bounds: { x: number; y: number; width: number; height: number },
-    ) => ipcRenderer.invoke(IPC.BROWSER_VIEW_BOUNDS, pageId, bounds),
+    registerWebview: (pageId: string, webContentsId: number) =>
+      ipcRenderer.invoke(IPC.BROWSER_REGISTER_WEBVIEW, pageId, webContentsId),
     onUrlChanged: (callback) => {
       const listener = (
         _event: Electron.IpcRendererEvent,

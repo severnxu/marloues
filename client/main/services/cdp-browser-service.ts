@@ -134,7 +134,7 @@ const CDP_VERSION = "1.3";
 // ---------------------------------------------------------------------------
 
 /**
- * CDP-based browser service that unifies the user-facing WebContentsView
+ * CDP-based browser service that unifies the user-facing `<webview>`
  * with agent-driven operations via the Chrome DevTools Protocol.
  *
  * This replaces the former Playwright-based BrowserService. Instead of a
@@ -164,12 +164,7 @@ class CdpBrowserServiceImpl extends EventEmitter {
 
   async newPage(url: string, threadId?: string): Promise<string> {
     const pageId = crypto.randomUUID();
-    browserViewManager.createView(pageId, url || "about:blank", {
-      x: 0,
-      y: 0,
-      width: 0,
-      height: 0,
-    });
+    browserViewManager.createView(pageId, url || "about:blank");
 
     const state: PageCdpState = {
       pageId,
@@ -189,7 +184,6 @@ class CdpBrowserServiceImpl extends EventEmitter {
       this.activePageByThread.set(threadId, pageId);
     }
 
-    this.attachNavigationListener(pageId);
     logInfo("cdpBrowser.newPage", { pageId, url, threadId });
     return pageId;
   }
@@ -907,7 +901,7 @@ class CdpBrowserServiceImpl extends EventEmitter {
   // Private: Navigation listener
   // ------------------------------------------------------------------
 
-  private attachNavigationListener(pageId: string): void {
+  attachNavigationListener(pageId: string): void {
     const wc = this.getWebContents(pageId);
     if (!wc) return;
 

@@ -69,13 +69,12 @@ export function browserNavigationErrorMessage(
 }
 
 /**
- * Renders a user-facing browser panel backed by an Electron WebContentsView.
+ * Renders a user-facing browser panel backed by a renderer-side <webview> tag.
  *
- * The WebContentsView is a main-process component overlaid on top of the
- * renderer DOM. This component provides a URL bar and a container div whose
- * screen rect is measured via ResizeObserver and pushed to the main process
- * (browser:view-bounds) to position the view. It also listens for url-changed
- * events to keep the URL bar in sync.
+ * The <webview> lives inside the renderer DOM, so React overlays (image
+ * lightbox, menus, auxiliary items) can naturally stack above it via CSS
+ * z-index. Navigation is handled by the main process via webContents.loadURL()
+ * — the webview's `src` attribute is only used for the initial load.
  */
 export function BrowserPanel({
   pageId,
@@ -87,6 +86,7 @@ export function BrowserPanel({
   const containerRef = useRef<HTMLDivElement>(null);
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const siteInfoRef = useRef<HTMLDivElement>(null);
+  const webviewRef = useRef<HTMLElement | null>(null);
   const [urlInput, setUrlInput] = useState("");
   const [currentUrl, setCurrentUrl] = useState("about:blank");
   const [navigationError, setNavigationError] =
@@ -116,35 +116,64 @@ export function BrowserPanel({
     onTitleChangeRef.current = onTitleChange;
   }, [onTitleChange]);
 
-  const pushBounds = useCallback(() => {
-    if (!pageId || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    window.marloues.browser?.setViewBounds(pageId, {
-      x: Math.round(rect.left),
-      y: Math.round(rect.top),
-      width:
-        isBlankPage || navigationError || moreMenuOpen || siteInfoOpen
-          ? 0
-          : Math.round(rect.width),
-      height:
-        isBlankPage || navigationError || moreMenuOpen || siteInfoOpen
-          ? 0
-          : Math.round(rect.height),
-    });
-  }, [isBlankPage, moreMenuOpen, navigationError, pageId, siteInfoOpen]);
-
+  // Create the <webview> tag imperatively. The webview lives in the renderer
+  // DOM, so React overlays (image lightbox, menus, auxiliary items) can
+  // naturally stack above it via CSS z-index — no native surface obscuring
+  // or snapshot workarounds needed.
   useEffect(() => {
     if (!pageId || !containerRef.current) return;
-    requestAnimationFrame(() => pushBounds());
-    const resizeObserver = new ResizeObserver(() => pushBounds());
-    resizeObserver.observe(containerRef.current);
-    const onWindowResize = () => pushBounds();
-    window.addEventListener("resize", onWindowResize);
+
+    let disposed = false;
+    let registered = false;
+    void window.marloues.browser?.listPages().then((pages) => {
+      if (disposed || !containerRef.current) return;
+      const page = pages.find((entry) => entry.pageId === pageId);
+      const initialUrl =
+        page && !isBlankBrowserUrl(page.url) ? page.url : "about:blank";
+
+      const webview = document.createElement("webview") as HTMLElement & {
+        getWebContentsId: () => number;
+      };
+      webview.setAttribute("partition", "persist:marloues-browser");
+      webview.setAttribute(
+        "webpreferences",
+        "contextIsolation=yes,nodeIntegration=no,sandbox=yes",
+      );
+      webview.classList.add("browser-panel-webview");
+
+      // getWebContentsId() requires the webview to be attached to the DOM
+      // AND the dom-ready event to have fired. Only call it on dom-ready —
+      // calling on did-attach throws an uncaught error from the webview's
+      // internal isolated_bundle that can leave the guest in a broken state.
+      const onDomReady = () => {
+        if (registered || disposed) return;
+        try {
+          const wcId = (
+            webview as HTMLElement & { getWebContentsId: () => number }
+          ).getWebContentsId();
+          registered = true;
+          void window.marloues.browser?.registerWebview(pageId, wcId);
+        } catch (err) {
+          console.error("[BrowserPanel] registerWebview failed", err);
+        }
+      };
+      webview.addEventListener("dom-ready", onDomReady);
+
+      // Append to DOM first, then set src — setting src before attachment
+      // can trigger "WebView must be attached to the DOM" errors.
+      containerRef.current.appendChild(webview);
+      webview.setAttribute("src", initialUrl);
+      webviewRef.current = webview;
+    });
+
     return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener("resize", onWindowResize);
+      disposed = true;
+      if (webviewRef.current) {
+        webviewRef.current.remove();
+        webviewRef.current = null;
+      }
     };
-  }, [pageId, pushBounds]);
+  }, [pageId]);
 
   useEffect(() => {
     if (!pageId) return;
@@ -458,9 +487,36 @@ export function BrowserPanel({
     );
     const lastId = lastCommentEventId.current;
     setPendingComments([]);
+    lastCommentEventId.current = 0;
     if (lastId > 0)
       void window.marloues.browser?.ackCommentEvents(pageId, lastId);
+    // Exit annotation mode and clear overlays after sending so the browser
+    // returns to its normal state — both the annotation bar send and the
+    // main composer send should sync to this behaviour.
+    void window.marloues.browser?.setCommentMode(pageId, false);
+    void window.marloues.browser?.clearComments(pageId);
+    setCommentMode(false);
   }, [pageId, pendingComments, urlInput]);
+
+  // Sync with the main composer send: when the user sends from the input box
+  // (not the annotation bar), exit annotation mode and clear overlays too.
+  useEffect(() => {
+    if (!pageId) return;
+    const handleAnnotationsSent = () => {
+      if (!commentMode) return;
+      void window.marloues.browser?.setCommentMode(pageId, false);
+      void window.marloues.browser?.clearComments(pageId);
+      setCommentMode(false);
+      setPendingComments([]);
+      lastCommentEventId.current = 0;
+    };
+    window.addEventListener("browser:annotations-sent", handleAnnotationsSent);
+    return () =>
+      window.removeEventListener(
+        "browser:annotations-sent",
+        handleAnnotationsSent,
+      );
+  }, [pageId, commentMode]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -667,7 +723,7 @@ export function BrowserPanel({
       )}
       <div
         ref={containerRef}
-        className="browser-panel-container"
+        className={`browser-panel-container${isBlankPage || navigationError ? " is-webview-hidden" : ""}`}
         style={{ width: "100%", flex: 1, position: "relative" }}
       >
         {navigationError ? (

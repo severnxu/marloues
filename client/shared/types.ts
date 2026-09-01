@@ -1225,10 +1225,7 @@ export interface MarlouesAPI {
       }>
     >;
     screenshot(): Promise<string>;
-    setViewBounds(
-      pageId: string,
-      bounds: { x: number; y: number; width: number; height: number },
-    ): Promise<void>;
+    registerWebview(pageId: string, webContentsId: number): Promise<void>;
     onUrlChanged(
       callback: (threadId: string, pageId: string, url: string) => void,
     ): () => void;
@@ -1424,7 +1421,7 @@ export const IPC = {
   BROWSER_NAVIGATION_STATE_CHANGED: "browser:navigation-state-changed",
   BROWSER_NEW_PAGE: "browser:new-page",
   BROWSER_CLOSE_PAGE: "browser:close-page",
-  BROWSER_VIEW_BOUNDS: "browser:view-bounds",
+  BROWSER_REGISTER_WEBVIEW: "browser:register-webview",
   BROWSER_LIST_PAGES: "browser:list-pages",
   BROWSER_SCREENSHOT: "browser:screenshot",
   BROWSER_URL_CHANGED: "browser:url-changed",

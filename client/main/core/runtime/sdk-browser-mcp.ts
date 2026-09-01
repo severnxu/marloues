@@ -39,7 +39,7 @@ export function normalizeMcpImageData(data: string): string {
 
 /**
  * Creates an in-process SDK MCP server exposing CDP-based browser tools.
- * All tools operate on the same WebContentsView the user sees -- no separate
+ * All tools operate on the same `<webview>` the user sees -- no separate
  * headless browser. The agent uses accessibility-tree indices (not CSS
  * selectors) to interact with elements.
  */

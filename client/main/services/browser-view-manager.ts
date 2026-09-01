@@ -1,15 +1,14 @@
-import { BrowserWindow, WebContentsView } from "electron";
+import { BrowserWindow, webContents, type WebContents } from "electron";
 import { logInfo, logWarn } from "../core/logging/app-logger";
 
 interface ManagedView {
-  view: WebContentsView;
   pageId: string;
   url: string;
   committedUrl: string;
   title: string;
-  visible: boolean;
-  bounds: { x: number; y: number; width: number; height: number };
+  webContentsId: number | undefined;
   failedUrl?: string;
+  pendingUrl?: string;
 }
 
 interface BrowserNavigationState {
@@ -19,92 +18,107 @@ interface BrowserNavigationState {
 }
 
 /**
- * Manages Electron WebContentsView instances for the user-facing browser panel.
+ * Manages renderer-side `<webview>` tags for the user-facing browser panel.
  *
- * This is separate from BrowserService (which manages Playwright headless browsers
- * for model-driven operations). BrowserViewManager provides the visible browser
- * that the user sees in the auxiliary sidebar.
+ * This is separate from CdpBrowserService (which manages CDP-driven operations
+ * for agent interactions). BrowserViewManager provides the visible browser
+ * surface that lives inside the renderer DOM, allowing React overlays (image
+ * lightbox, menus, auxiliary items) to stack above it naturally via CSS
+ * z-index — no native surface obscuring or snapshot workarounds needed.
  *
- * Views are tracked by pageId and attached to the main BrowserWindow's contentView.
- * The renderer pushes geometric bounds via `browser:view-bounds` IPC whenever the
- * BrowserPanel container resizes (ResizeObserver / window resize / sidebar toggle).
- * Only the active tab's view is visible; others are zero-sized to hide them.
+ * Views are tracked by pageId. The renderer creates a `<webview>` tag
+ * imperatively and reports the webContentsId back to the main process via
+ * `browser:register-webview` after the `did-attach` event fires.
  */
 class BrowserViewManagerImpl {
   private views = new Map<string, ManagedView>();
-  private activePageId: string | null = null;
   private backgroundColor = "#212121";
 
-  createView(
-    pageId: string,
-    url: string,
-    bounds: { x: number; y: number; width: number; height: number },
-  ): void {
+  createView(pageId: string, url: string): void {
     const existing = this.views.get(pageId);
     if (existing) {
       this.navigate(pageId, url);
       return;
     }
 
-    const win = this.getMainWindow();
-    if (!win) {
-      logWarn("browserView.create.noWindow", { pageId });
+    const managed: ManagedView = {
+      pageId,
+      url: url || "about:blank",
+      committedUrl: "about:blank",
+      title: "",
+      webContentsId: undefined,
+    };
+
+    this.views.set(pageId, managed);
+    logInfo("browserView.create", { pageId, url });
+  }
+
+  /**
+   * Called by the renderer after a `<webview>` tag's `did-attach` event fires.
+   * Stores the webContentsId, sets up event listeners, and loads the initial
+   * URL if one was provided at view creation time.
+   */
+  registerWebview(pageId: string, webContentsId: number): void {
+    const managed = this.views.get(pageId);
+    if (!managed) {
+      logWarn("browserView.registerWebview.notFound", { pageId });
       return;
     }
 
-    const view = new WebContentsView({
-      webPreferences: {
-        contextIsolation: true,
-        nodeIntegration: false,
-        sandbox: true,
-      },
-    });
-    view.setBackgroundColor(this.backgroundColor);
+    managed.webContentsId = webContentsId;
+    const wc = this.getWebContents(pageId);
+    if (!wc) {
+      logWarn("browserView.registerWebview.webContentsUnavailable", {
+        pageId,
+        webContentsId,
+      });
+      return;
+    }
 
-    view.webContents.on("did-navigate", (_event, targetUrl: string) => {
-      const managed = this.views.get(pageId);
-      if (managed) {
-        managed.url = targetUrl;
-        managed.committedUrl = targetUrl;
-        managed.failedUrl = undefined;
+    wc.on("did-navigate", (_event, targetUrl: string) => {
+      const m = this.views.get(pageId);
+      if (m) {
+        m.url = targetUrl;
+        m.committedUrl = targetUrl;
+        m.failedUrl = undefined;
         this.emitUrlChanged(pageId, targetUrl);
         this.emitNavigationState(pageId);
       }
     });
-    view.webContents.on("did-navigate-in-page", (_event, targetUrl: string) => {
-      const managed = this.views.get(pageId);
-      if (managed) {
-        managed.url = targetUrl;
-        managed.committedUrl = targetUrl;
-        managed.failedUrl = undefined;
+    wc.on("did-navigate-in-page", (_event, targetUrl: string) => {
+      const m = this.views.get(pageId);
+      if (m) {
+        m.url = targetUrl;
+        m.committedUrl = targetUrl;
+        m.failedUrl = undefined;
         this.emitUrlChanged(pageId, targetUrl);
         this.emitNavigationState(pageId);
       }
     });
-    view.webContents.on("did-start-loading", () => {
+    wc.on("did-start-loading", () => {
       this.emitNavigationState(pageId);
     });
-    view.webContents.on("did-stop-loading", () => {
+    wc.on("did-stop-loading", () => {
       this.emitNavigationState(pageId);
     });
-    view.webContents.on("page-title-updated", (_event, title: string) => {
-      const managed = this.views.get(pageId);
-      if (managed) {
-        managed.title = title;
+    wc.on("page-title-updated", (_event, title: string) => {
+      const m = this.views.get(pageId);
+      if (m) {
+        m.title = title;
         this.emitTitleChanged(pageId, title);
       }
     });
-    view.webContents.on(
+    wc.on(
       "did-fail-load",
       (_event, errorCode, errorDescription, validatedUrl, isMainFrame) => {
         if (!isMainFrame || errorCode === -3) return;
-        const managed = this.views.get(pageId);
-        if (!managed) return;
-        managed.failedUrl = validatedUrl || managed.url;
-        managed.title = "无法访问此站点";
-        this.emitTitleChanged(pageId, managed.title);
+        const m = this.views.get(pageId);
+        if (!m) return;
+        m.failedUrl = validatedUrl || m.url;
+        m.title = "无法访问此站点";
+        this.emitTitleChanged(pageId, m.title);
         this.emitLoadFailed(pageId, {
-          url: managed.failedUrl,
+          url: m.failedUrl,
           errorCode,
           errorDescription,
         });
@@ -112,25 +126,17 @@ class BrowserViewManagerImpl {
       },
     );
 
-    const managed: ManagedView = {
-      view,
-      pageId,
-      url: url || "about:blank",
-      committedUrl: "about:blank",
-      title: "",
-      visible: false,
-      bounds,
-    };
-
-    win.contentView.addChildView(view);
-    this.views.set(pageId, managed);
-    view.setBounds({ x: 0, y: 0, width: 0, height: 0 });
-
-    if (url && url !== "about:blank") {
-      view.webContents.loadURL(url).catch(() => {});
+    // Load the initial URL if it was set at view creation time, or a pending
+    // URL from a navigate() call that arrived before the webview was ready.
+    // The webview tag's `src` attribute only bootstraps the first load;
+    // subsequent navigation goes through `wc.loadURL()` from the main process.
+    const urlToLoad = managed.pendingUrl ?? managed.url;
+    if (urlToLoad && urlToLoad !== "about:blank") {
+      managed.pendingUrl = undefined;
+      wc.loadURL(urlToLoad).catch(() => {});
     }
 
-    logInfo("browserView.create", { pageId, url });
+    logInfo("browserView.registerWebview", { pageId, webContentsId });
   }
 
   navigate(pageId: string, url: string): void {
@@ -144,7 +150,25 @@ class BrowserViewManagerImpl {
     managed.title = "";
     this.emitUrlChanged(pageId, url);
     this.emitTitleChanged(pageId, "");
-    managed.view.webContents.loadURL(url).catch(() => {});
+    const wc = this.getWebContents(pageId);
+    if (wc) {
+      logInfo("browserView.navigate", {
+        pageId,
+        url,
+        webContentsId: managed.webContentsId,
+      });
+      wc.loadURL(url).catch(() => {});
+    } else {
+      // Webview not yet registered (dom-ready hasn't fired) or the
+      // webContents was destroyed (e.g. after HMR reload). Queue the
+      // URL so it loads when registerWebview() is called next.
+      managed.pendingUrl = url;
+      logWarn("browserView.navigate.queued", {
+        pageId,
+        url,
+        webContentsId: managed.webContentsId,
+      });
+    }
   }
 
   goBack(pageId: string): void {
@@ -157,66 +181,35 @@ class BrowserViewManagerImpl {
       managed.title = "";
       this.emitUrlChanged(pageId, targetUrl);
       this.emitTitleChanged(pageId, "");
-      managed.view.webContents.loadURL(targetUrl).catch(() => {});
+      const wc = this.getWebContents(pageId);
+      if (wc) {
+        wc.loadURL(targetUrl).catch(() => {});
+      }
       return;
     }
-    const history = managed.view.webContents.navigationHistory;
-    if (history.canGoBack()) history.goBack();
+    const wc = this.getWebContents(pageId);
+    if (wc && wc.navigationHistory.canGoBack()) {
+      wc.navigationHistory.goBack();
+    }
   }
 
   goForward(pageId: string): void {
-    const managed = this.views.get(pageId);
-    if (!managed) return;
-    const history = managed.view.webContents.navigationHistory;
-    if (history.canGoForward()) history.goForward();
+    const wc = this.getWebContents(pageId);
+    if (!wc) return;
+    if (wc.navigationHistory.canGoForward()) {
+      wc.navigationHistory.goForward();
+    }
   }
 
   reload(pageId: string): void {
     const managed = this.views.get(pageId);
     if (!managed) return;
-    if (managed.failedUrl) {
-      this.navigate(pageId, managed.failedUrl);
-      return;
-    }
-    managed.view.webContents.reload();
-  }
-
-  getNavigationState(pageId: string): BrowserNavigationState {
-    const managed = this.views.get(pageId);
-    if (!managed) {
-      return { canGoBack: false, canGoForward: false, isLoading: false };
-    }
-    const contents = managed.view.webContents;
-    return {
-      canGoBack:
-        contents.navigationHistory.canGoBack() ||
-        Boolean(managed.failedUrl && managed.committedUrl !== "about:blank"),
-      canGoForward: contents.navigationHistory.canGoForward(),
-      isLoading: contents.isLoading(),
-    };
-  }
-
-  setBounds(
-    pageId: string,
-    bounds: { x: number; y: number; width: number; height: number },
-  ): void {
-    const managed = this.views.get(pageId);
-    if (!managed) return;
-    managed.bounds = bounds;
-    if (managed.visible) managed.view.setBounds(bounds);
-  }
-
-  setActivePage(pageId: string | null): void {
-    if (this.activePageId === pageId) return;
-    this.activePageId = pageId;
-    for (const [pid, managed] of this.views) {
-      if (pid === pageId) {
-        managed.visible = true;
-        managed.view.setBounds(managed.bounds);
-      } else {
-        managed.visible = false;
-        managed.view.setBounds({ x: 0, y: 0, width: 0, height: 0 });
-      }
+    managed.failedUrl = undefined;
+    managed.title = "";
+    this.emitTitleChanged(pageId, "");
+    const wc = this.getWebContents(pageId);
+    if (wc) {
+      wc.reload();
     }
   }
 
@@ -224,17 +217,14 @@ class BrowserViewManagerImpl {
   setBackgroundColor(background: string): void {
     if (!/^#[0-9a-f]{6}$/i.test(background)) return;
     this.backgroundColor = background;
-    for (const managed of this.views.values()) {
-      managed.view.setBackgroundColor(background);
-    }
   }
 
   async capturePage(pageId?: string): Promise<string> {
-    const targetId = pageId ?? this.activePageId;
+    const targetId = pageId ?? this.activePageId();
     if (!targetId) return "";
-    const managed = this.views.get(targetId);
-    if (!managed) return "";
-    const image = await managed.view.webContents.capturePage();
+    const wc = this.getWebContents(targetId);
+    if (!wc) return "";
+    const image = await wc.capturePage();
     return image.toDataURL();
   }
 
@@ -243,9 +233,9 @@ class BrowserViewManagerImpl {
     pageId: string,
     rect: { x: number; y: number; width: number; height: number },
   ): Promise<string> {
-    const managed = this.views.get(pageId);
-    if (!managed) return "";
-    const image = await managed.view.webContents.capturePage({
+    const wc = this.getWebContents(pageId);
+    if (!wc) return "";
+    const image = await wc.capturePage({
       x: Math.max(0, Math.floor(rect.x)),
       y: Math.max(0, Math.floor(rect.y)),
       width: Math.max(1, Math.floor(rect.width)),
@@ -269,15 +259,11 @@ class BrowserViewManagerImpl {
   destroyView(pageId: string): void {
     const managed = this.views.get(pageId);
     if (!managed) return;
-    const win = this.getMainWindow();
-    if (win && !win.isDestroyed()) {
-      win.contentView.removeChildView(managed.view);
-    }
-    if (!managed.view.webContents.isDestroyed()) {
-      managed.view.webContents.close();
+    const wc = this.getWebContents(pageId);
+    if (wc && !wc.isDestroyed()) {
+      wc.close();
     }
     this.views.delete(pageId);
-    if (this.activePageId === pageId) this.activePageId = null;
     logInfo("browserView.destroy", { pageId });
   }
 
@@ -294,14 +280,40 @@ class BrowserViewManagerImpl {
   }
 
   /** Exposes the underlying WebContents for CDP attachment by CdpBrowserService. */
-  getWebContents(pageId: string): import("electron").WebContents | undefined {
-    return this.views.get(pageId)?.view.webContents;
+  getWebContents(pageId: string): WebContents | undefined {
+    const managed = this.views.get(pageId);
+    if (!managed?.webContentsId) return undefined;
+    const wc = webContents.fromId(managed.webContentsId);
+    return wc && !wc.isDestroyed() ? wc : undefined;
+  }
+
+  getNavigationState(pageId: string): BrowserNavigationState {
+    const wc = this.getWebContents(pageId);
+    if (!wc) {
+      return { canGoBack: false, canGoForward: false, isLoading: false };
+    }
+    const managed = this.views.get(pageId);
+    return {
+      canGoBack: managed?.failedUrl
+        ? managed.committedUrl !== "about:blank"
+        : wc.navigationHistory.canGoBack(),
+      canGoForward: wc.navigationHistory.canGoForward(),
+      isLoading: wc.isLoading(),
+    };
   }
 
   destroyAll(): void {
     for (const pageId of Array.from(this.views.keys())) {
       this.destroyView(pageId);
     }
+  }
+
+  private activePageId(): string | undefined {
+    // Return the first view that has a registered webContentsId
+    for (const managed of this.views.values()) {
+      if (managed.webContentsId !== undefined) return managed.pageId;
+    }
+    return undefined;
   }
 
   private getMainWindow(): BrowserWindow | null {

@@ -16,7 +16,7 @@
   "scripts": {
     "dev": "electron-vite dev --config electron.vite.config.ts",
     "build": "electron-vite build --config electron.vite.config.ts",
-    "postinstall": "node scripts/patch-electron-identity.mjs",
+    "postinstall": "node scripts/patch-electron-identity.mjs && node scripts/fix-node-pty-permissions.mjs",
     "package:dir": "npm run build && electron-builder --dir --publish=never",
     "package:smoke": "npm run package:dir && npm run test:smoke:packaged",
     "package:mac": "npm run build && electron-builder --mac --publish=never",
