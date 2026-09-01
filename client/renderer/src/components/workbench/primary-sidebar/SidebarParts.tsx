@@ -27,7 +27,6 @@ import type {
 } from "@shared/types";
 import { SidebarActivityIndicator } from "./SidebarActivityIndicator";
 import type { SidebarActivityStatus } from "./sidebar-activity";
-import { formatSidebarTimestamp } from "./sidebar-work-areas";
 export function SessionRow({
   session,
   active,
@@ -110,13 +109,11 @@ export function SessionRow({
       </div>
 
       <div className="session-trailing">
-        {metaActivity ? (
+        {metaActivity && (
           <SidebarActivityIndicator
             status={metaActivity}
             className="session-activity-indicator"
           />
-        ) : (
-          <time>{formatSidebarTimestamp(session.updatedAt)}</time>
         )}
         <span className="session-actions">
           <button

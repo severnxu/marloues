@@ -321,9 +321,7 @@
     font-weight: 500;
   }
 
-  .session-item.session-item:hover,
-  .session-item.session-item:focus-visible,
-  .session-item.session-item:focus-within {
+  .session-item.session-item:hover {
     --session-safe-area: 54px;
   }
 
@@ -504,18 +502,12 @@
   }
 
   .session-item:hover .session-trailing > time,
-  .session-item:focus-visible .session-trailing > time,
-  .session-item:focus-within .session-trailing > time,
-  .session-item:hover .session-activity-indicator,
-  .session-item:focus-visible .session-activity-indicator,
-  .session-item:focus-within .session-activity-indicator {
+  .session-item:hover .session-activity-indicator {
     opacity: 0;
     visibility: hidden;
   }
 
-  .session-item:hover .session-actions,
-  .session-item:focus-visible .session-actions,
-  .session-item:focus-within .session-actions {
+  .session-item:hover .session-actions {
     opacity: 1;
     visibility: visible;
   }

@@ -126,6 +126,16 @@ class BrowserViewManagerImpl {
       },
     );
 
+    // Accept self-signed / untrusted certificates so users can browse
+    // internal HTTPS sites (e.g. https://172.x.x.x) without being blocked.
+    wc.on(
+      "certificate-error",
+      (event, _url, _error, _certificate, callback) => {
+        event.preventDefault();
+        callback(true);
+      },
+    );
+
     // Load the initial URL if it was set at view creation time, or a pending
     // URL from a navigate() call that arrived before the webview was ready.
     // The webview tag's `src` attribute only bootstraps the first load;
