@@ -1,4 +1,5 @@
 import type { RuntimeEvent, Thread } from "../../../shared/agent-runtime";
+import type { TokenUsage } from "../../../shared/types";
 import type {
   WorkflowAgentMessageItem,
   WorkflowMcpToolCallItem,
@@ -18,6 +19,21 @@ import {
   type WorkflowThreadStoreTurn,
 } from "./read-thread-serializer";
 import { compressToolResult } from "../context/token-economy";
+
+/** Minimal shape needed to rehydrate turns from persisted session messages. */
+interface RehydratableMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  userContent?: WorkflowUserMessageContent[];
+  timestamp: number;
+  startedAt?: number;
+  completedAt?: number;
+  modelId?: string;
+  modelName?: string;
+  usage?: TokenUsage;
+  items: WorkflowTurnItem[];
+}
 
 interface StartTurnInput {
   threadId: string;
@@ -541,6 +557,114 @@ class WorkflowThreadStore {
       this.ensureThread(input.threadId ?? "default"),
       input,
     );
+  }
+
+  /**
+   * Reconstruct turns from persisted session messages after an app restart.
+   * The WorkflowThreadStore is in-memory only; after restart it starts empty,
+   * so readThread snapshots only contain turns created this session — causing
+   * older conversation history to vanish once a live snapshot replaces the
+   * renderer's legacy fallback. This method seeds the thread with turns
+   * derived from the stored messages so snapshots include the full history.
+   *
+   * Safe to call when turns already exist — returns without modifying.
+   */
+  rehydrateFromStoredMessages(
+    threadId: string,
+    messages: RehydratableMessage[],
+    options: { title?: string; cwd?: string | null } = {},
+  ): void {
+    const thread = this.ensureThread(threadId, {
+      title: options.title,
+      cwd: options.cwd ?? undefined,
+    });
+    if (thread.turnOrder.length > 0) return;
+
+    let currentTurn: WorkflowThreadStoreTurn | null = null;
+
+    for (const message of messages) {
+      if (message.role === "user") {
+        if (currentTurn) currentTurn.status = "completed";
+        const turnId = `seed-${message.id}`;
+        const userContent: WorkflowUserMessageContent[] =
+          message.userContent ??
+          (message.content.trim()
+            ? [{ type: "text", text: message.content }]
+            : []);
+        currentTurn = {
+          id: turnId,
+          status: "completed",
+          error: null,
+          startedAt: message.timestamp,
+          completedAt: null,
+          durationMs: null,
+          modelId: null,
+          modelName: null,
+          itemOrder: [message.id],
+          items: new Map([
+            [
+              message.id,
+              {
+                item: {
+                  type: "userMessage",
+                  id: message.id,
+                  content: userContent,
+                },
+              },
+            ],
+          ]),
+        };
+        thread.turns.set(turnId, currentTurn);
+        thread.turnOrder.push(turnId);
+      } else if (message.role === "assistant") {
+        if (!currentTurn) {
+          const turnId = `seed-${message.id}`;
+          currentTurn = {
+            id: turnId,
+            status: "completed",
+            error: null,
+            startedAt: message.startedAt ?? message.timestamp,
+            completedAt: message.completedAt ?? message.timestamp,
+            durationMs: null,
+            modelId: message.modelId ?? null,
+            modelName: message.modelName ?? null,
+            usage: message.usage,
+            itemOrder: [],
+            items: new Map(),
+          };
+          thread.turns.set(turnId, currentTurn);
+          thread.turnOrder.push(turnId);
+        }
+        currentTurn.status =
+          message.items.length === 0 && !message.content
+            ? "failed"
+            : "completed";
+        currentTurn.completedAt = message.completedAt ?? message.timestamp;
+        currentTurn.modelId = message.modelId ?? currentTurn.modelId;
+        currentTurn.modelName = message.modelName ?? currentTurn.modelName;
+        currentTurn.usage = message.usage ?? currentTurn.usage;
+        for (const item of message.items) {
+          if (!currentTurn.items.has(item.id)) {
+            currentTurn.itemOrder.push(item.id);
+          }
+          currentTurn.items.set(item.id, { item });
+        }
+        currentTurn = null;
+      }
+    }
+
+    if (currentTurn) {
+      currentTurn.status = "completed";
+      currentTurn.completedAt = currentTurn.startedAt ?? now();
+    }
+
+    thread.preview = previewFromThread(thread);
+    if (messages.length > 0) {
+      const last = messages[messages.length - 1];
+      thread.updatedAt = last.completedAt ?? last.timestamp;
+    }
+
+    if (thread.turnOrder.length > 0) this.emit(threadId);
   }
 
   subscribeThread(

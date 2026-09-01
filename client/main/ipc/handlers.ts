@@ -229,6 +229,15 @@ async function readRuntimeThreadSnapshot(
 ): Promise<WorkflowReadThreadResponse | null> {
   const runtime = getRuntime();
   if (!runtime.readThread) return null;
+  // Rehydrate in-memory thread store from persisted messages after restart
+  // so readThread snapshots include the full conversation history.
+  const stored = store.getSession(threadId);
+  if (stored && stored.messages.length > 0) {
+    workflowThreadStore.rehydrateFromStoredMessages(threadId, stored.messages, {
+      title: stored.title,
+      cwd: stored.cwd,
+    });
+  }
   const snapshot = await runtime.readThread({ threadId, limit: 100 });
   return snapshot.turns.length > 0
     ? sanitizeReadThreadForRenderer(snapshot)
@@ -1762,6 +1771,15 @@ async function sendChatTurn(
   const turnModelSnapshot = modelSnapshotFromProvider(turnModelProvider);
   const activeRuntimeId = getRuntimeState().activeRuntimeId;
   const savedSession = store.getSession(threadId);
+  // Rehydrate in-memory thread store from persisted messages after restart
+  // so the readThread snapshot sent during this turn includes the full history.
+  if (savedSession && savedSession.messages.length > 0) {
+    workflowThreadStore.rehydrateFromStoredMessages(
+      threadId,
+      savedSession.messages,
+      { title: savedSession.title, cwd: savedSession.cwd },
+    );
+  }
   const nativeRuntimeThreadId =
     savedSession?.runtimeThreadIds?.[activeRuntimeId] ??
     (activeRuntimeId === "sdk" ? savedSession?.runtimeThreadId : undefined);
