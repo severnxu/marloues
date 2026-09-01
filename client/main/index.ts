@@ -76,7 +76,7 @@ configureDevelopmentIdentity();
 if (!isDev && isWindows) app.setAppUserModelId("com.marloues.desktop");
 
 // Enable CDP remote debugging for local development and real Electron E2E
-// testing. The smoke test drives the embedded WebContentsView through this
+// testing. The smoke test drives the embedded `<webview>` through this
 // port, rather than faking browser events in the renderer.
 if (isDev || isTest) {
   const remoteDebuggingPort =
@@ -139,6 +139,7 @@ function createWindow(): void {
     webPreferences: {
       preload: join(__dirname, "../preload/index.js"),
       sandbox: false,
+      webviewTag: true,
     },
   });
   mainWindow = window;

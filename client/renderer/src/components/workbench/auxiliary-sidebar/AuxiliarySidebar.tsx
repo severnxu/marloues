@@ -494,7 +494,7 @@ export function AuxiliarySidebar({
     });
   }, [setTabs]);
 
-  // Reload recovery: restore browser tabs from active WebContentsViews
+  // Reload recovery: restore browser tabs from active `<webview>` tabs
   const browserRecoveryRef = useRef(new Set<string>());
   useEffect(() => {
     if (!activeSessionId || browserRecoveryRef.current.has(sessionScope))

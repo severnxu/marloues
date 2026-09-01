@@ -3586,6 +3586,13 @@ export function registerHandlers(): void {
     return browserViewManager.capturePage();
   });
   ipcMain.handle(
+    IPC.BROWSER_REGISTER_WEBVIEW,
+    async (_event, pageId: string, webContentsId: number) => {
+      browserViewManager.registerWebview(pageId, webContentsId);
+      cdpBrowserService.attachNavigationListener(pageId);
+    },
+  );
+  ipcMain.handle(
     IPC.BROWSER_VIEW_NAVIGATE,
     async (_event, pageId: string, url: string) => {
       browserViewManager.navigate(pageId, url);
@@ -3603,17 +3610,6 @@ export function registerHandlers(): void {
   ipcMain.handle(IPC.BROWSER_NAVIGATION_STATE, (_event, pageId: string) => {
     return browserViewManager.getNavigationState(pageId);
   });
-  ipcMain.handle(
-    IPC.BROWSER_VIEW_BOUNDS,
-    async (
-      _event,
-      pageId: string,
-      bounds: { x: number; y: number; width: number; height: number },
-    ) => {
-      browserViewManager.setBounds(pageId, bounds);
-      browserViewManager.setActivePage(pageId);
-    },
-  );
 
   // ---------- Browser: Comment / Annotation ----------
 

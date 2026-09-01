@@ -69,13 +69,12 @@ export function browserNavigationErrorMessage(
 }
 
 /**
- * Renders a user-facing browser panel backed by an Electron WebContentsView.
+ * Renders a user-facing browser panel backed by a renderer-side <webview> tag.
  *
- * The WebContentsView is a main-process component overlaid on top of the
- * renderer DOM. This component provides a URL bar and a container div whose
- * screen rect is measured via ResizeObserver and pushed to the main process
- * (browser:view-bounds) to position the view. It also listens for url-changed
- * events to keep the URL bar in sync.
+ * The <webview> lives inside the renderer DOM, so React overlays (image
+ * lightbox, menus, auxiliary items) can naturally stack above it via CSS
+ * z-index. Navigation is handled by the main process via webContents.loadURL()
+ * — the webview's `src` attribute is only used for the initial load.
  */
 export function BrowserPanel({
   pageId,
@@ -87,6 +86,7 @@ export function BrowserPanel({
   const containerRef = useRef<HTMLDivElement>(null);
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const siteInfoRef = useRef<HTMLDivElement>(null);
+  const webviewRef = useRef<HTMLElement | null>(null);
   const [urlInput, setUrlInput] = useState("");
   const [currentUrl, setCurrentUrl] = useState("about:blank");
   const [navigationError, setNavigationError] =
@@ -116,35 +116,52 @@ export function BrowserPanel({
     onTitleChangeRef.current = onTitleChange;
   }, [onTitleChange]);
 
-  const pushBounds = useCallback(() => {
-    if (!pageId || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    window.marloues.browser?.setViewBounds(pageId, {
-      x: Math.round(rect.left),
-      y: Math.round(rect.top),
-      width:
-        isBlankPage || navigationError || moreMenuOpen || siteInfoOpen
-          ? 0
-          : Math.round(rect.width),
-      height:
-        isBlankPage || navigationError || moreMenuOpen || siteInfoOpen
-          ? 0
-          : Math.round(rect.height),
-    });
-  }, [isBlankPage, moreMenuOpen, navigationError, pageId, siteInfoOpen]);
-
+  // Create the <webview> tag imperatively. The webview lives in the renderer
+  // DOM, so React overlays (image lightbox, menus, auxiliary items) can
+  // naturally stack above it via CSS z-index — no native surface obscuring
+  // or snapshot workarounds needed.
   useEffect(() => {
     if (!pageId || !containerRef.current) return;
-    requestAnimationFrame(() => pushBounds());
-    const resizeObserver = new ResizeObserver(() => pushBounds());
-    resizeObserver.observe(containerRef.current);
-    const onWindowResize = () => pushBounds();
-    window.addEventListener("resize", onWindowResize);
+
+    let disposed = false;
+    void window.marloues.browser?.listPages().then((pages) => {
+      if (disposed || !containerRef.current) return;
+      const page = pages.find((entry) => entry.pageId === pageId);
+      const initialUrl =
+        page && !isBlankBrowserUrl(page.url) ? page.url : "about:blank";
+
+      const webview = document.createElement("webview") as HTMLElement & {
+        getWebContentsId: () => number;
+      };
+      webview.setAttribute("partition", "persist:marloues-browser");
+      webview.setAttribute(
+        "webpreferences",
+        "contextIsolation=yes,nodeIntegration=no,sandbox=yes",
+      );
+      webview.classList.add("browser-panel-webview");
+      if (initialUrl !== "about:blank") {
+        webview.setAttribute("src", initialUrl);
+      }
+
+      webview.addEventListener("did-attach", () => {
+        const wcId = (
+          webview as HTMLElement & { getWebContentsId: () => number }
+        ).getWebContentsId();
+        void window.marloues.browser?.registerWebview(pageId, wcId);
+      });
+
+      containerRef.current.appendChild(webview);
+      webviewRef.current = webview;
+    });
+
     return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener("resize", onWindowResize);
+      disposed = true;
+      if (webviewRef.current) {
+        webviewRef.current.remove();
+        webviewRef.current = null;
+      }
     };
-  }, [pageId, pushBounds]);
+  }, [pageId]);
 
   useEffect(() => {
     if (!pageId) return;
@@ -667,7 +684,7 @@ export function BrowserPanel({
       )}
       <div
         ref={containerRef}
-        className="browser-panel-container"
+        className={`browser-panel-container${isBlankPage || navigationError ? " is-webview-hidden" : ""}`}
         style={{ width: "100%", flex: 1, position: "relative" }}
       >
         {navigationError ? (

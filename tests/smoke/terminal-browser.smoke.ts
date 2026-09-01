@@ -4,6 +4,7 @@ import {
   expect,
 } from "../../client/node_modules/@playwright/test";
 import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -13,9 +14,8 @@ const repoRoot = join(__dirname, "..", "..");
 const mainEntry = join(repoRoot, "client", "out", "main", "index.js");
 const artifactsDir = join(repoRoot, "test-artifacts", "terminal-browser-smoke");
 
-type ElectronPage = Awaited<
-  ReturnType<typeof electron.launch>
->["windows"][number];
+type ElectronApplication = Awaited<ReturnType<typeof electron.launch>>;
+type ElectronPage = ElectronApplication["windows"][number];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -55,6 +55,132 @@ async function getAvailableLoopbackPort(): Promise<number> {
       server.close((error) => (error ? reject(error) : resolve(port)));
     });
   });
+}
+
+type NativeWindowBounds = {
+  id: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+/**
+ * Captures the operating system's composited Electron window on macOS.
+ * Verifies that the webview content is actually composited on screen, not just
+ * present in the renderer DOM.
+ */
+function captureCompositedElectronWindow(
+  app: ElectronApplication,
+  path: string,
+): NativeWindowBounds | null {
+  if (process.platform !== "darwin") return null;
+  const pid = app.process().pid;
+  if (!pid) throw new Error("Electron process PID is unavailable");
+
+  const script = String.raw`
+import Foundation
+import CoreGraphics
+let targetPid = Int(CommandLine.arguments[1])!
+let infos = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as! [[String: Any]]
+for info in infos {
+  guard (info[kCGWindowOwnerPID as String] as? Int) == targetPid,
+        let id = info[kCGWindowNumber as String] as? Int,
+        let bounds = info[kCGWindowBounds as String] as? [String: Any],
+        let x = bounds["X"] as? Double,
+        let y = bounds["Y"] as? Double,
+        let width = bounds["Width"] as? Double,
+        let height = bounds["Height"] as? Double,
+        width > 300, height > 300 else { continue }
+  print("\(id),\(x),\(y),\(width),\(height)")
+  break
+}
+`;
+  const swiftSourcePath = `${path}.swift`;
+  writeFileSync(swiftSourcePath, script, "utf-8");
+  const output = execFileSync(
+    "/usr/bin/swift",
+    [swiftSourcePath, String(pid)],
+    {
+      encoding: "utf-8",
+    },
+  ).trim();
+  if (!output) {
+    throw new Error(`Could not find a visible Electron window for PID ${pid}`);
+  }
+  const [id, x, y, width, height] = output.split(",").map(Number);
+  if (![id, x, y, width, height].every(Number.isFinite)) {
+    throw new Error(`Unexpected macOS window metadata: ${output}`);
+  }
+  try {
+    execFileSync("/usr/sbin/screencapture", ["-x", `-l${id}`, path], {
+      stdio: "pipe",
+    });
+  } catch (error) {
+    // Screen Recording permission is not available in every CI/automation
+    // environment. The rest of this Electron smoke remains deterministic;
+    // a local run with the permission enabled performs the pixel assertion.
+    console.warn(
+      `Skipping OS-composited screenshot assertion: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    return null;
+  }
+  return { id, x, y, width, height };
+}
+
+/** Read an RGB pixel from an image using the locally available Pillow runtime. */
+function readScreenshotPixel(
+  path: string,
+  x: number,
+  y: number,
+): [number, number, number] {
+  const script =
+    "from PIL import Image\n" +
+    "import sys\n" +
+    "im=Image.open(sys.argv[1]).convert('RGB')\n" +
+    "x=min(max(0, int(round(float(sys.argv[2])))), im.width-1)\n" +
+    "y=min(max(0, int(round(float(sys.argv[3])))), im.height-1)\n" +
+    "print(','.join(map(str, im.getpixel((x,y)))))\n";
+  const output = execFileSync(
+    "python3",
+    ["-c", script, path, String(x), String(y)],
+    {
+      encoding: "utf-8",
+    },
+  ).trim();
+  const values = output.split(",").map(Number);
+  if (values.length !== 3 || !values.every(Number.isFinite)) {
+    throw new Error(`Unexpected screenshot pixel value: ${output}`);
+  }
+  return values as [number, number, number];
+}
+
+/** Translate a DOM point into a native window screenshot pixel coordinate. */
+function nativeScreenshotPoint(
+  bounds: NativeWindowBounds,
+  screenshotPath: string,
+  domX: number,
+  domY: number,
+): { x: number; y: number } {
+  const size = execFileSync(
+    "python3",
+    [
+      "-c",
+      "from PIL import Image; import sys; print(*Image.open(sys.argv[1]).size)",
+      screenshotPath,
+    ],
+    {
+      encoding: "utf-8",
+    },
+  )
+    .trim()
+    .split(/\s+/)
+    .map(Number);
+  const scaleX = size[0]! / bounds.width;
+  const scaleY = size[1]! / bounds.height;
+  return { x: domX * scaleX, y: domY * scaleY };
 }
 
 /** Get the text content of all .xterm-rows in the visible terminal panel. */
@@ -400,6 +526,7 @@ async function testBrowserMultiTab(
 
 /** Test 5: Browser navigate + screenshot + url-changed sync. */
 async function testBrowserNavigate(
+  app: ElectronApplication,
   window: ElectronPage,
   page1Url: string,
   remoteBrowser: Awaited<ReturnType<typeof chromium.connectOverCDP>>,
@@ -442,6 +569,42 @@ async function testBrowserNavigate(
   );
   await expect(localPage!.locator("#marker")).toHaveText("PAGE_ONE_MARKER");
 
+  // A URL and a CDP page are insufficient evidence: the renderer must have
+  // non-zero geometry to display the webview in the window.
+  const browserRect = await window.evaluate(() => {
+    const element = document.querySelector(
+      "section.auxiliary-view-panel:not([hidden]) .browser-panel-container",
+    );
+    if (!element) return null;
+    const rect = element.getBoundingClientRect();
+    return {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+  });
+  expect(browserRect).not.toBeNull();
+  expect(browserRect!.width).toBeGreaterThan(0);
+  expect(browserRect!.height).toBeGreaterThan(0);
+
+  // Verify the OS-composited Electron window rather than renderer DOM alone.
+  // A webview can load through CDP while still being invisible here.
+  const compositedPath = join(artifactsDir, "06a-browser-composited.png");
+  const nativeWindow = captureCompositedElectronWindow(app, compositedPath);
+  if (nativeWindow) {
+    const point = nativeScreenshotPoint(
+      nativeWindow,
+      compositedPath,
+      browserRect!.left + browserRect!.width / 2,
+      browserRect!.top + browserRect!.height / 2,
+    );
+    const pixel = readScreenshotPixel(compositedPath, point.x, point.y);
+    // Fixture page one uses saturated blue as its full-page background.
+    expect(pixel[2]).toBeGreaterThan(180);
+    expect(pixel[0]).toBeLessThan(80);
+  }
+
   // Take a screenshot via IPC
   const screenshot = await window.evaluate(() =>
     window.marloues.browser.screenshot(),
@@ -456,7 +619,8 @@ async function testBrowserNavigate(
   console.info("Test 5: browser navigate + screenshot — ok");
 }
 
-/** Test 6: Browser resize — view-bounds push via ResizeObserver. */
+/** Test 7: Browser resize — container dimensions after viewport change. */
+/** Test 7: Browser resize — view-bounds push via ResizeObserver. */
 async function testBrowserResize(window: ElectronPage): Promise<void> {
   // Ensure we're on a browser tab
   await switchToTab(window, 2);
@@ -516,7 +680,7 @@ async function testBrowserResize(window: ElectronPage): Promise<void> {
   console.info("Test 6: browser resize — ok");
 }
 
-/** Test 7: Tab switching — non-active browser view hidden. */
+/** Test 8: Tab switching — non-active browser view hidden. */
 async function testTabSwitching(window: ElectronPage): Promise<void> {
   // Switch to first browser tab (index 2)
   await switchToTab(window, 2);
@@ -1000,7 +1164,7 @@ async function main(): Promise<void> {
   const annotationPagePath = join(workspace, "annotation-page.html");
   writeFileSync(
     page1Path,
-    "<!DOCTYPE html><html><head><title>Page One</title></head>" +
+    "<!DOCTYPE html><html><head><title>Page One</title><style>html,body{margin:0;width:100%;height:100%;background:#1677ff;color:white;font:700 32px sans-serif}#marker{padding:36px}</style></head>" +
       '<body><h1 id="marker">PAGE_ONE_MARKER</h1></body></html>',
     "utf-8",
   );
@@ -1068,12 +1232,12 @@ async function main(): Promise<void> {
         0,
       );
     } else {
-      // Run all 8 test cases
+      // Run browser/terminal smoke cases.
       const firstSessionId = await testTerminalExecute(window);
       await testTerminalMultiTab(window, firstSessionId);
       await testTerminalReloadRecovery(window);
       await testBrowserMultiTab(window, page1Url, page2Url);
-      await testBrowserNavigate(window, page1Url, remoteBrowser);
+      await testBrowserNavigate(app, window, page1Url, remoteBrowser);
       await testBrowserResize(window);
       await testTabSwitching(window);
       await testBrowserAnnotationComposer(
