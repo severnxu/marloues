@@ -86,6 +86,7 @@ export default defineConfig(({ command }) => {
       define: defineEntries,
       plugins: [externalizeDepsPlugin({ exclude: ["fflate"] })],
       build: {
+        outDir: resolve(__here, "out/main"),
         rollupOptions: {
           input: resolve(__here, "main/index.ts"),
         },
@@ -100,6 +101,7 @@ export default defineConfig(({ command }) => {
       define: defineEntries,
       plugins: [externalizeDepsPlugin()],
       build: {
+        outDir: resolve(__here, "out/preload"),
         rollupOptions: {
           input: resolve(__here, "preload/index.ts"),
         },
@@ -114,6 +116,7 @@ export default defineConfig(({ command }) => {
       define: defineEntries,
       root: resolve(__here, "renderer"),
       build: {
+        outDir: resolve(__here, "out/renderer"),
         rollupOptions: {
           input: resolve(__here, "renderer/index.html"),
         },
