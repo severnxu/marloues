@@ -34,6 +34,43 @@ export interface WorkspaceInfo {
   name: string;
   path: string;
   lastOpenedAt: number;
+  /** Local display/search tags. They never modify the workspace itself. */
+  tags?: string[];
+  /** Controls which globally installed and project-local Skills are active. */
+  skillPolicy?: WorkspaceSkillPolicy;
+  /** Controls which global and project-only MCP servers are active. */
+  mcpPolicy?: WorkspaceMcpPolicy;
+}
+
+export type WorkspaceExtensionMode = "inherit" | "custom";
+
+export interface WorkspaceSkillPolicy {
+  /** inherit = all globally enabled Skills; custom = only enabledSkillIds. */
+  mode: WorkspaceExtensionMode;
+  enabledSkillIds: string[];
+  /** Project-native Skills remain independent from the global marketplace. */
+  includeProjectSkills: boolean;
+}
+
+export interface WorkspaceMcpPolicy {
+  /** inherit = all globally enabled servers; custom = only enabledServerIds. */
+  mode: WorkspaceExtensionMode;
+  enabledServerIds: string[];
+  /** Servers owned only by this workspace. */
+  projectServers: McpServerConfig[];
+}
+
+/** Partial payload used by the project configuration dialog. */
+export interface WorkspaceConfigUpdate {
+  name?: string;
+  tags?: string[];
+  skillPolicy?: WorkspaceSkillPolicy;
+  mcpPolicy?: WorkspaceMcpPolicy;
+}
+
+/** Payload used when a selected directory is confirmed as a new project. */
+export interface WorkspaceCreateInput extends WorkspaceConfigUpdate {
+  path: string;
 }
 
 export interface WorkspaceGitContext {
@@ -712,8 +749,27 @@ export interface SkillInfo {
   version?: string;
 }
 
+export interface SkillDetailFile {
+  path: string;
+  size?: number;
+  sha256?: string;
+  contentType?: string;
+  content?: string;
+}
+
+export interface SkillVersionRecord {
+  version: string;
+  createdAt?: number;
+  changelog?: string;
+  changelogSource?: string;
+}
+
+export type SkillMarketplaceDetailSection =
+  "base" | "content" | "files" | "security" | "versions" | "all";
+
 export interface SkillDetail extends SkillInfo {
   content: string;
+  files?: SkillDetailFile[];
 }
 
 export interface SkillMarketplaceItem {
@@ -742,6 +798,16 @@ export type SkillInstallSource =
       type: "archive";
       url: string;
       sha256?: string;
+      verification?: {
+        kind: "sha256-manifest";
+        registry: "clawhub.ai";
+        status: "clean";
+        files: Array<{
+          path: string;
+          sha256: string;
+          size?: number;
+        }>;
+      };
     }
   | {
       type: "files";
@@ -754,6 +820,8 @@ export type SkillInstallSource =
 
 export interface SkillMarketplaceDetail extends SkillMarketplaceItem {
   content: string;
+  files?: SkillDetailFile[];
+  versions?: SkillVersionRecord[];
   install?: SkillInstallSource;
   changelog?: string;
   license?: string | null;
@@ -761,11 +829,17 @@ export interface SkillMarketplaceDetail extends SkillMarketplaceItem {
   securitySummary?: string;
 }
 
+export type SkillImportSourceKind = "directory" | "archive" | "manifest";
+
 export interface SkillImportPreview {
   path: string;
   name: string;
   version?: string;
   entry: "SKILL.md";
+  sourceKind: SkillImportSourceKind;
+  fileCount: number;
+  totalBytes: number;
+  replacesExisting: boolean;
 }
 
 export interface SkillMarketplaceListRequest {
@@ -807,6 +881,11 @@ export interface McpMarketplacePackage {
   command?: string;
   args?: string[];
   environment?: Record<string, string>;
+  requiredEnvironment?: Array<{
+    name: string;
+    description?: string;
+    secret?: boolean;
+  }>;
 }
 
 export interface McpMarketplaceRemote {
@@ -1103,8 +1182,18 @@ export interface MarlouesAPI {
   };
   workspace: {
     select(): Promise<WorkspaceInfo | null>;
+    pickFolder(): Promise<string | null>;
+    create(input: WorkspaceCreateInput): Promise<WorkspaceInfo>;
     switch(workspaceId: string): Promise<WorkspaceInfo | null>;
     rename(workspaceId: string, name: string): Promise<WorkspaceInfo | null>;
+    updateConfig(
+      workspaceId: string,
+      update: WorkspaceConfigUpdate,
+    ): Promise<WorkspaceInfo | null>;
+    listSkills(
+      workspaceId: string,
+      workspacePath?: string,
+    ): Promise<SkillInfo[]>;
     remove(workspaceId: string): Promise<WorkspaceInfo | null>;
     getCurrent(): Promise<WorkspaceInfo | null>;
     getSettings(): Promise<WorkspaceSettings>;
@@ -1206,8 +1295,12 @@ export interface MarlouesAPI {
   };
   skill: {
     list(): Promise<SkillInfo[]>;
-    selectImportFolder(): Promise<SkillImportPreview | null>;
-    importFolder(path?: string): Promise<SkillInfo | null>;
+    selectImportSource(
+      kind: "file" | "directory",
+    ): Promise<SkillImportPreview | null>;
+    inspectImportSource(path: string): Promise<SkillImportPreview>;
+    resolveDroppedPath(file: File): string;
+    importSource(path: string): Promise<SkillInfo>;
     toggle(skillId: string, enabled: boolean): Promise<SkillInfo[]>;
     remove(skillId: string): Promise<SkillInfo[]>;
     getDetail(skillId: string): Promise<SkillDetail>;
@@ -1217,6 +1310,7 @@ export interface MarlouesAPI {
     marketplaceDetail(
       slug: string,
       version?: string,
+      section?: SkillMarketplaceDetailSection,
     ): Promise<SkillMarketplaceDetail>;
     marketplaceInstall(slug: string, version?: string): Promise<SkillInfo[]>;
     testMarketplaceEndpoint(
@@ -1434,8 +1528,12 @@ export const IPC = {
   WINDOW_MAXIMIZED_CHANGED: "window:maximized-changed",
   WINDOW_SET_THEME: "window:set-theme",
   WORKSPACE_SELECT: "workspace:select",
+  WORKSPACE_PICK_FOLDER: "workspace:pick-folder",
+  WORKSPACE_CREATE: "workspace:create",
   WORKSPACE_SWITCH: "workspace:switch",
   WORKSPACE_RENAME: "workspace:rename",
+  WORKSPACE_UPDATE_CONFIG: "workspace:update-config",
+  WORKSPACE_LIST_SKILLS: "workspace:list-skills",
   WORKSPACE_REMOVE: "workspace:remove",
   WORKSPACE_GET_CURRENT: "workspace:get-current",
   WORKSPACE_GET_SETTINGS: "workspace:get-settings",
@@ -1476,6 +1574,7 @@ export const IPC = {
   SCHEDULE_CHANGED: "schedule:changed",
   SKILL_LIST: "skill:list",
   SKILL_SELECT_IMPORT_FOLDER: "skill:select-import-folder",
+  SKILL_INSPECT_IMPORT_SOURCE: "skill:inspect-import-source",
   SKILL_IMPORT_FOLDER: "skill:import-folder",
   SKILL_TOGGLE: "skill:toggle",
   SKILL_REMOVE: "skill:remove",

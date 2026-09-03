@@ -28,6 +28,8 @@
     "test:smoke:process-sandbox": "npm run test:smoke:process-sandbox --workspace marloues",
     "test:smoke:live-runtime": "npm run test:smoke:live-runtime --workspace marloues",
     "test:smoke:binary-live": "npm run test:smoke:binary-live --workspace marloues",
+    "test:smoke:runtime-extensions": "npm run test:smoke:runtime-extensions --workspace marloues",
+    "test:smoke:marketplace-live": "npm run test:smoke:marketplace-live --workspace marloues",
     "test:smoke:electron-live-ui": "npm run test:smoke:electron-live-ui --workspace marloues",
     "test:smoke:electron-binary-live-ui": "npm run test:smoke:electron-binary-live-ui --workspace marloues",
     "test:visual": "npm run test:visual --workspace marloues",

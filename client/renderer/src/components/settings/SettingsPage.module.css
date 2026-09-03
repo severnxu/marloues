@@ -398,6 +398,12 @@
   color: var(--danger);
 }
 
+.workbench :global(.settings-chip.running) {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .workbench :global(.marketplace-endpoint-status) {
   flex: 0 0 auto;
 }
@@ -553,6 +559,16 @@
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+}
+
+.workbench :global(.provider-list:has(.settings-select[data-open])),
+.workbench :global(.provider-row:has(.settings-select[data-open])) {
+  overflow: visible;
+}
+
+.workbench :global(.provider-row:has(.settings-select[data-open])) {
+  position: relative;
+  z-index: 60;
 }
 
 .workbench :global(.provider-row:last-child) {

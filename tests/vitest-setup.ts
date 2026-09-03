@@ -31,6 +31,18 @@ if (typeof g.window === "undefined") {
 
 const win = g.window as Record<string, unknown>;
 
+// Some renderer dependencies inspect window.navigator during module setup.
+// Node 20 does not expose it, so provide the one stable field they require.
+if (typeof win.navigator === "undefined") {
+  win.navigator = { userAgent: "marloues-vitest" };
+}
+if (typeof globalThis.navigator === "undefined") {
+  Object.defineProperty(globalThis, "navigator", {
+    value: win.navigator,
+    configurable: true,
+  });
+}
+
 // Minimal `window.marloues` surface so renderer modules can be imported.
 // Individual test files should still mock behavior they care about via
 // `vi.mock("@/lib/ipc-client", ...)` or similar — this is just the baseline

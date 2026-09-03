@@ -41,6 +41,8 @@ import type {
   TimelineItem,
   RuntimeKind,
   WorkspaceInfo,
+  WorkspaceConfigUpdate,
+  WorkspaceCreateInput,
   WorkspaceGitContext,
   WorkspaceSettings,
   ChatSessionRecord,
@@ -121,23 +123,27 @@ import {
   testMcpServer,
 } from "../services/mcp-service";
 import {
+  createWorkspace,
   getCurrentWorkspace as currentWorkspace,
+  getEffectiveAgentSettings,
   getWorkspaceSettings,
+  updateWorkspaceConfig,
   removeWorkspace,
   renameWorkspace,
+  pickWorkspaceFolder,
   selectWorkspace,
   switchWorkspace,
 } from "../services/workspace-service";
 import {
   getMarketplaceSkillDetail,
   getSkillDetail as getSkillDetailFromService,
-  importSkillFolder as importSkillFolderFromService,
-  importSkillFolderToRoot,
+  importSkillSourceToRoot,
+  inspectSkillImportSource,
   installMarketplaceSkill,
   listInstalledSkills as listInstalledSkillsFromService,
+  listWorkspaceSkills,
   listMarketplaceSkills,
   testMarketplaceEndpoint as testSkillMarketplaceEndpointFromSettings,
-  readSkillInfo as readSkillInfoFromService,
   removeSkill as removeSkillFromService,
   toggleSkill as toggleSkillFromService,
 } from "../services/skill-service";
@@ -1241,7 +1247,10 @@ function truncateText(text: string, limit: number): string {
   if (!text) return text;
   if (text.length <= limit) return text;
   const omitted = text.length - limit;
-  return `${text.slice(0, limit)}\n\n[truncated ${omitted} chars for renderer stability]`;
+  return `${text.slice(
+    0,
+    limit,
+  )}\n\n[truncated ${omitted} chars for renderer stability]`;
 }
 
 function sessionRecordFromStoredSession(
@@ -1385,7 +1394,9 @@ function renderSessionMarkdown(session: ChatSessionRecord): string {
 
   if (session.workspaceName || session.workspacePath) {
     lines.push(
-      `- Workspace: ${session.workspaceName ?? "Unknown"}${session.workspacePath ? ` (${session.workspacePath})` : ""}`,
+      `- Workspace: ${session.workspaceName ?? "Unknown"}${
+        session.workspacePath ? ` (${session.workspacePath})` : ""
+      }`,
     );
   }
 
@@ -1623,7 +1634,9 @@ function appendAttachmentSummaryToPrompt(
   return [
     base,
     "",
-    `[User attached ${summaries.length} item${summaries.length === 1 ? "" : "s"}. The current runtime receives this metadata, but not binary image pixels.]`,
+    `[User attached ${summaries.length} item${
+      summaries.length === 1 ? "" : "s"
+    }. The current runtime receives this metadata, but not binary image pixels.]`,
     ...summaries,
   ].join("\n");
 }
@@ -1645,7 +1658,9 @@ function attachmentPromptSummaries(
       record.path.trim()
     ) {
       summaries.push(
-        `${summaries.length + 1}. ${record.path.split(/[\\/]/).pop() || "local image"} (local path: ${record.path})`,
+        `${summaries.length + 1}. ${
+          record.path.split(/[\\/]/).pop() || "local image"
+        } (local path: ${record.path})`,
       );
       continue;
     }
@@ -1689,7 +1704,11 @@ function attachmentPromptSummaries(
       const selectedText =
         typeof record.text === "string" ? record.text.trim() : "";
       summaries.push(
-        `${summaries.length + 1}. Browser annotation on ${pageUrl}\n   target: ${ref}${selectedText ? `\n   selected text: ${selectedText}` : ""}\n   comment: ${record.comment.trim()}`,
+        `${
+          summaries.length + 1
+        }. Browser annotation on ${pageUrl}\n   target: ${ref}${
+          selectedText ? `\n   selected text: ${selectedText}` : ""
+        }\n   comment: ${record.comment.trim()}`,
       );
     }
   }
@@ -1770,12 +1789,18 @@ async function sendChatTurn(
   const turnId = crypto.randomUUID();
   const startedAt = Date.now();
   const userMessageId = request.clientMessageId || `user-${turnId}`;
-  const workspacePath = overrides.cwd ?? currentWorkspace()?.path;
-  const turnSettings = getAgentSettings();
+  const savedSession = store.getSession(threadId);
+  // A session remains bound to the workspace it was created in. Switching the
+  // sidebar while it runs must never switch its Skill/MCP policy underneath it.
+  const workspacePath =
+    overrides.cwd ?? savedSession?.cwd ?? currentWorkspace()?.path;
+  const turnSettings = getEffectiveAgentSettings(
+    getAgentSettings(),
+    workspacePath,
+  );
   const turnModelProvider = resolveModelProvider(turnSettings);
   const turnModelSnapshot = modelSnapshotFromProvider(turnModelProvider);
   const activeRuntimeId = getRuntimeState().activeRuntimeId;
-  const savedSession = store.getSession(threadId);
   // Rehydrate in-memory thread store from persisted messages after restart
   // so the readThread snapshot sent during this turn includes the full history.
   if (savedSession && savedSession.messages.length > 0) {
@@ -1853,6 +1878,25 @@ async function sendChatTurn(
     sessionId: threadId,
     model: turnModelSnapshot.modelName,
     runtime: runtime.name,
+  });
+
+  // Publish the canonical turn before persisting the user message. A renderer
+  // readThread request can arrive immediately after appendStoredMessage(); if
+  // the in-memory store is still empty, it will rehydrate that just-persisted
+  // message as a `seed-*` turn. The runtime then creates the real turn and the
+  // UI renders the same user message twice. Runtime adapters call startTurn()
+  // again with this same turnId; WorkflowThreadStore replaces that entry
+  // idempotently without appending a second turn.
+  workflowThreadStore.startTurn({
+    threadId,
+    turnId,
+    content,
+    attachments: request.attachments,
+    userMessageId,
+    startedAt,
+    cwd: workspacePath ?? null,
+    modelId: turnModelSnapshot.modelId,
+    modelName: turnModelSnapshot.modelName,
   });
 
   appendStoredMessage(
@@ -2005,7 +2049,9 @@ async function sendChatTurn(
             sessionId: threadId,
             turnId,
             level: decision.level === "warning" ? "medium" : "high",
-            message: `Context usage is ${Math.round(decision.percentage ?? 0)}%. Consider starting a new branch soon.`,
+            message: `Context usage is ${Math.round(
+              decision.percentage ?? 0,
+            )}%. Consider starting a new branch soon.`,
             percentage: decision.percentage,
           });
         }
@@ -2045,13 +2091,33 @@ async function sendChatTurn(
         }
         if (decision.level === "restart" || decision.level === "blocked") {
           const completedAt = Date.now();
+          const blockedMessage =
+            "Context window is nearly full. Start a new session or choose a larger context model.";
+          workflowThreadStore.applyRuntimeEvent(threadId, turnId, {
+            kind: "error",
+            payload: {
+              code: "CONTEXT_WINDOW_BLOCKED",
+              message: blockedMessage,
+              recoverable: true,
+            },
+          });
+          workflowThreadStore.applyRuntimeEvent(threadId, turnId, {
+            kind: "turn-complete",
+            payload: {
+              turnId,
+              result: "error",
+              error: blockedMessage,
+            },
+          });
           mainWindow.webContents.send(IPC.CHAT_EVENT, {
             type: "context.compaction",
             sessionId: threadId,
             turnId,
             phase: "blocked",
             reason: "preflight",
-            message: `Context usage is ${Math.round(decision.percentage ?? 0)}%, above the restart threshold. Start a new session or switch to a larger context model.`,
+            message: `Context usage is ${Math.round(
+              decision.percentage ?? 0,
+            )}%, above the restart threshold. Start a new session or switch to a larger context model.`,
             actionRequest: {
               id: `context-action-${turnId}`,
               sessionId: threadId,
@@ -2072,20 +2138,14 @@ async function sendChatTurn(
             sessionId: threadId,
             turnId,
             result: "error",
-            error:
-              "Context window is nearly full. Start a new session or choose a larger context model.",
+            error: blockedMessage,
             completedAt,
           });
-          emitImTurnComplete(
-            "error",
-            "Context window is nearly full. Start a new session or choose a larger context model.",
-            completedAt,
-          );
+          emitImTurnComplete("error", blockedMessage, completedAt);
           appendStoredMessage(threadId, {
             id: `assistant-${turnId}`,
             role: "assistant",
-            content:
-              "Context window is nearly full. Start a new session or choose a larger context model.",
+            content: blockedMessage,
             timestamp: startedAt,
             status: "failed",
             startedAt,
@@ -2398,6 +2458,18 @@ async function sendChatTurn(
     } catch (err) {
       const completedAt = Date.now();
       const errorMessage = err instanceof Error ? err.message : String(err);
+      workflowThreadStore.applyRuntimeEvent(threadId, turnId, {
+        kind: "error",
+        payload: {
+          code: "CHAT_TURN_ERROR",
+          message: errorMessage,
+          recoverable: false,
+        },
+      });
+      workflowThreadStore.applyRuntimeEvent(threadId, turnId, {
+        kind: "turn-complete",
+        payload: { turnId, result: "error", error: errorMessage },
+      });
       await captureWorkspaceCheckpoint({
         sessionId: threadId,
         turnId,
@@ -3218,6 +3290,28 @@ export function registerHandlers(): void {
   );
 
   ipcMain.handle(
+    IPC.WORKSPACE_CREATE,
+    (_e, input: WorkspaceCreateInput): WorkspaceInfo => {
+      const workspace = createWorkspace(input.path, input);
+      recordAuditEvent({
+        workspacePath: workspace.path,
+        toolName: "workspace.create",
+        inputSummary: workspace.path,
+        outputSummary: workspace.id,
+        status: "completed",
+      });
+      return workspace;
+    },
+  );
+
+  ipcMain.handle(
+    IPC.WORKSPACE_PICK_FOLDER,
+    async (): Promise<string | null> => {
+      return pickWorkspaceFolder();
+    },
+  );
+
+  ipcMain.handle(
     IPC.WORKSPACE_SWITCH,
     (_e, id: string): WorkspaceInfo | null => {
       const ws = switchWorkspace(id);
@@ -3248,6 +3342,30 @@ export function registerHandlers(): void {
         });
       }
       return ws;
+    },
+  );
+
+  ipcMain.handle(
+    IPC.WORKSPACE_UPDATE_CONFIG,
+    (_e, id: string, update: WorkspaceConfigUpdate): WorkspaceInfo | null => {
+      const workspace = updateWorkspaceConfig(id, update);
+      if (workspace) {
+        recordAuditEvent({
+          workspacePath: workspace.path,
+          toolName: "workspace.updateConfig",
+          inputSummary: id,
+          outputSummary: "Project extension policy updated",
+          status: "completed",
+        });
+      }
+      return workspace;
+    },
+  );
+
+  ipcMain.handle(
+    IPC.WORKSPACE_LIST_SKILLS,
+    (_e, id: string, workspacePath?: string): SkillInfo[] => {
+      return listWorkspaceSkills(id, workspacePath);
     },
   );
 
@@ -3383,7 +3501,9 @@ export function registerHandlers(): void {
       const refreshed = await refreshMcpServerStatuses();
       recordAuditEvent({
         toolName: "mcp.refreshStatus",
-        inputSummary: `${refreshed.filter((server) => server.enabled).length} enabled servers`,
+        inputSummary: `${
+          refreshed.filter((server) => server.enabled).length
+        } enabled servers`,
         outputSummary: refreshed
           .map((server) => `${server.name}:${server.lastStatus ?? "untested"}`)
           .join(", "),
@@ -3489,31 +3609,37 @@ export function registerHandlers(): void {
 
   ipcMain.handle(
     IPC.SKILL_SELECT_IMPORT_FOLDER,
-    async (): Promise<SkillImportPreview | null> => {
+    async (
+      _event,
+      kind: "file" | "directory" = "directory",
+    ): Promise<SkillImportPreview | null> => {
       const result = await dialog.showOpenDialog({
-        title: "选择 Skill 目录",
-        properties: ["openDirectory"],
+        title: kind === "file" ? "选择 Skill 文件" : "选择 Skill 文件夹",
+        properties: [kind === "file" ? "openFile" : "openDirectory"],
+        ...(kind === "file"
+          ? {
+              filters: [
+                { name: "Skill", extensions: ["zip", "md"] },
+                { name: "所有文件", extensions: ["*"] },
+              ],
+            }
+          : {}),
       });
       if (result.canceled || !result.filePaths[0]) return null;
-      const dir = resolve(result.filePaths[0]);
-      const skill = readSkillInfoFromService(dir, "user");
-      if (!skill) return null;
-      return {
-        path: dir,
-        name: skill.name,
-        version: skill.version,
-        entry: "SKILL.md",
-      };
+      return inspectSkillImportSource(resolve(result.filePaths[0]));
     },
   );
 
   ipcMain.handle(
+    IPC.SKILL_INSPECT_IMPORT_SOURCE,
+    async (_event, path: string): Promise<SkillImportPreview> =>
+      inspectSkillImportSource(path),
+  );
+
+  ipcMain.handle(
     IPC.SKILL_IMPORT_FOLDER,
-    async (_e, path?: string): Promise<SkillInfo | null> => {
-      const skill = path
-        ? importSkillFolderToRoot(path, getUserSkillsDir())
-        : await importSkillFolderFromService();
-      if (!skill) return null;
+    async (_e, path: string): Promise<SkillInfo> => {
+      const skill = importSkillSourceToRoot(path, getUserSkillsDir());
       recordAuditEvent({
         toolName: "skill.importFolder",
         inputSummary: skill.path,
@@ -3565,13 +3691,13 @@ export function registerHandlers(): void {
   );
   ipcMain.handle(
     IPC.SKILL_MARKETPLACE_DETAIL,
-    async (_e, slug: string, _version?: string) =>
-      getMarketplaceSkillDetail(slug),
+    async (_e, slug: string, version?: string, section?: string) =>
+      getMarketplaceSkillDetail(slug, version, section),
   );
   ipcMain.handle(
     IPC.SKILL_MARKETPLACE_INSTALL,
-    async (_e, slug: string, _version?: string) =>
-      installMarketplaceSkill(slug),
+    async (_e, slug: string, version?: string) =>
+      installMarketplaceSkill(slug, version),
   );
   ipcMain.handle(IPC.SKILL_TEST_MARKETPLACE_ENDPOINT, async (_e, endpoint) =>
     testSkillMarketplaceEndpointFromSettings(endpoint),

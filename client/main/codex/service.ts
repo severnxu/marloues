@@ -33,6 +33,12 @@ import {
   type SandboxProfile,
 } from "../core/security/sandbox-broker";
 import type { AgentSettings, ModelProviderConfig } from "@shared/types";
+import {
+  codexExtraSkillRoots,
+  codexMcpServersConfig,
+  codexSkillConfig,
+  resolveEffectiveExtensionPlan,
+} from "../services/extension-plan-service";
 
 function svcLog(...args: unknown[]): void {
   log("[svc]", ...args);
@@ -160,6 +166,7 @@ export interface Session {
   lastFailedTurn?: { stepIndex: number; stepType: string; error: string };
   workingDir?: string;
   securityFingerprint?: string;
+  settingsSnapshot?: AgentSettings;
 }
 
 const RECOVERABLE_PATTERNS = [
@@ -265,11 +272,11 @@ export class CodexService {
 
   async createSession(
     sessionId: string,
-    options?: { cwd?: string },
+    options?: { cwd?: string; settings?: AgentSettings },
   ): Promise<string> {
     svcLog("[svc] createSession called:", sessionId);
     // 配置统一：cwd/权限/沙箱从 AgentSettings 派生（替代旧 SimpleStore）。
-    const agentSettings = getAgentSettings();
+    const agentSettings = options?.settings ?? getAgentSettings();
     const routePlan = resolveRuntimeProviderRoutes(agentSettings, {
       runtimeId: "binary",
     });
@@ -290,10 +297,19 @@ export class CodexService {
           apiKey: gateway.token,
           apiBaseUrl: `${gateway.baseUrl}/v1`,
           transportBaseUrl: gateway.baseUrl,
-          routeId: `gateway:${routePlan.routes.map((route) => route.endpointId).join(",")}`,
-          fingerprint: `gateway:${routePlan.routes.map((route) => route.endpointId).join(",")}`,
+          routeId: `gateway:${routePlan.routes
+            .map((route) => route.endpointId)
+            .join(",")}`,
+          fingerprint: `gateway:${routePlan.routes
+            .map((route) => route.endpointId)
+            .join(",")}`,
         }));
     const workingDir = canonicalWorkingDirectory(options?.cwd || process.cwd());
+    const extensionPlan = resolveEffectiveExtensionPlan(
+      agentSettings,
+      workingDir,
+      "binary",
+    );
     const model = routePlan.routes[0].model;
     const permissionMode = agentSettings.permissionMode;
     const sandboxEnabled = agentSettings.sandboxEnabled;
@@ -307,6 +323,7 @@ export class CodexService {
       routePlan.routes[0].providerId,
       model,
       connection.fingerprint,
+      extensionPlan.fingerprint,
     );
     svcLog(
       "[svc] Working dir:",
@@ -362,6 +379,10 @@ export class CodexService {
             ? "untrusted"
             : "on-request",
       permissions: codexAppServerPermissions(sandboxProfile),
+      config: {
+        mcp_servers: codexMcpServersConfig(extensionPlan.mcpServers),
+        skills: codexSkillConfig(extensionPlan),
+      },
     });
 
     // Set up event forwarding from Codex session
@@ -479,6 +500,9 @@ export class CodexService {
     // Start the Codex session
     try {
       await codexSession.start();
+      await codexSession.setSkillExtraRoots(
+        codexExtraSkillRoots(extensionPlan),
+      );
     } catch (err) {
       svcLog("[svc] Failed to start session:", err);
       throw err;
@@ -491,7 +515,9 @@ export class CodexService {
         if (attempts < this.maxReconnectAttempts) {
           this.reconnectAttempts.set(sessionId, attempts + 1);
           svcLog(
-            `[svc] Process exited, attempting reconnect ${attempts + 1}/${this.maxReconnectAttempts}`,
+            `[svc] Process exited, attempting reconnect ${attempts + 1}/${
+              this.maxReconnectAttempts
+            }`,
           );
           this.eventEmitter.emit("status", sessionId, "reconnecting");
           // Auto-reconnect after delay
@@ -499,7 +525,10 @@ export class CodexService {
             async () => {
               try {
                 await this.closeSession(sessionId);
-                await this.createSession(sessionId, { cwd: workingDir });
+                await this.createSession(sessionId, {
+                  cwd: workingDir,
+                  settings: agentSettings,
+                });
                 this.reconnectAttempts.set(sessionId, 0);
                 svcLog("[svc] Reconnect successful");
               } catch (reconnectErr) {
@@ -555,6 +584,7 @@ export class CodexService {
       rpcClient: rpc,
       workingDir,
       securityFingerprint,
+      settingsSnapshot: agentSettings,
     };
     // Store interval for cleanup
     (newSession as any).exitCheckInterval = exitCheckInterval;
@@ -585,11 +615,16 @@ export class CodexService {
   async sendMessage(
     sessionId: string,
     content: string,
-    options?: { cwd?: string },
+    options?: { cwd?: string; settings?: AgentSettings },
   ): Promise<void> {
     let session = this.sessions.get(sessionId);
     const workingDir = canonicalWorkingDirectory(options?.cwd || process.cwd());
-    const currentSettings = getAgentSettings();
+    const currentSettings = options?.settings ?? getAgentSettings();
+    const extensionPlan = resolveEffectiveExtensionPlan(
+      currentSettings,
+      workingDir,
+      "binary",
+    );
     const currentSandboxProfile = codexSandboxProfileFromSettings({
       sandboxEnabled: currentSettings.sandboxEnabled,
       sandboxMode: currentSettings.sandboxMode,
@@ -598,6 +633,7 @@ export class CodexService {
       currentSettings.permissionMode,
       currentSandboxProfile,
       ...binaryRouteFingerprint(currentSettings),
+      extensionPlan.fingerprint,
     );
     if (
       session &&
@@ -608,7 +644,10 @@ export class CodexService {
       session = undefined;
     }
     if (!session) {
-      await this.createSession(sessionId, { cwd: workingDir });
+      await this.createSession(sessionId, {
+        cwd: workingDir,
+        settings: currentSettings,
+      });
       session = this.sessions.get(sessionId)!;
     }
 
@@ -876,8 +915,9 @@ function sessionSecurityFingerprint(
   providerId: string,
   model: string,
   routeId: string,
+  extensionFingerprint = "",
 ): string {
-  return `${permissionMode}:${sandboxProfile}:${providerId}:${model}:${routeId}`;
+  return `${permissionMode}:${sandboxProfile}:${providerId}:${model}:${routeId}:${extensionFingerprint}`;
 }
 
 function binaryRouteFingerprint(

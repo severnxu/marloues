@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type {
   AgentSettings,
   ChatForkRequest,
@@ -89,10 +89,16 @@ const api: MarlouesAPI = {
   },
   workspace: {
     select: () => ipcRenderer.invoke(IPC.WORKSPACE_SELECT),
+    pickFolder: () => ipcRenderer.invoke(IPC.WORKSPACE_PICK_FOLDER),
+    create: (input) => ipcRenderer.invoke(IPC.WORKSPACE_CREATE, input),
     switch: (workspaceId: string) =>
       ipcRenderer.invoke(IPC.WORKSPACE_SWITCH, workspaceId),
     rename: (workspaceId: string, name: string) =>
       ipcRenderer.invoke(IPC.WORKSPACE_RENAME, workspaceId, name),
+    updateConfig: (workspaceId, update) =>
+      ipcRenderer.invoke(IPC.WORKSPACE_UPDATE_CONFIG, workspaceId, update),
+    listSkills: (workspaceId, workspacePath) =>
+      ipcRenderer.invoke(IPC.WORKSPACE_LIST_SKILLS, workspaceId, workspacePath),
     remove: (workspaceId: string) =>
       ipcRenderer.invoke(IPC.WORKSPACE_REMOVE, workspaceId),
     getCurrent: () => ipcRenderer.invoke(IPC.WORKSPACE_GET_CURRENT),
@@ -209,10 +215,12 @@ const api: MarlouesAPI = {
   },
   skill: {
     list: () => ipcRenderer.invoke(IPC.SKILL_LIST),
-    selectImportFolder: () =>
-      ipcRenderer.invoke(IPC.SKILL_SELECT_IMPORT_FOLDER),
-    importFolder: (path?: string) =>
-      ipcRenderer.invoke(IPC.SKILL_IMPORT_FOLDER, path),
+    selectImportSource: (kind) =>
+      ipcRenderer.invoke(IPC.SKILL_SELECT_IMPORT_FOLDER, kind),
+    inspectImportSource: (path) =>
+      ipcRenderer.invoke(IPC.SKILL_INSPECT_IMPORT_SOURCE, path),
+    resolveDroppedPath: (file) => webUtils.getPathForFile(file),
+    importSource: (path) => ipcRenderer.invoke(IPC.SKILL_IMPORT_FOLDER, path),
     toggle: (skillId: string, enabled: boolean) =>
       ipcRenderer.invoke(IPC.SKILL_TOGGLE, skillId, enabled),
     remove: (skillId: string) => ipcRenderer.invoke(IPC.SKILL_REMOVE, skillId),
@@ -220,8 +228,8 @@ const api: MarlouesAPI = {
       ipcRenderer.invoke(IPC.SKILL_GET_DETAIL, skillId),
     marketplaceList: (request) =>
       ipcRenderer.invoke(IPC.SKILL_MARKETPLACE_LIST, request),
-    marketplaceDetail: (slug: string, version?: string) =>
-      ipcRenderer.invoke(IPC.SKILL_MARKETPLACE_DETAIL, slug, version),
+    marketplaceDetail: (slug: string, version?: string, section?: string) =>
+      ipcRenderer.invoke(IPC.SKILL_MARKETPLACE_DETAIL, slug, version, section),
     marketplaceInstall: (slug: string, version?: string) =>
       ipcRenderer.invoke(IPC.SKILL_MARKETPLACE_INSTALL, slug, version),
     testMarketplaceEndpoint: (endpoint) =>

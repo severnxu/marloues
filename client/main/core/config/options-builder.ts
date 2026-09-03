@@ -144,8 +144,19 @@ export function buildClaudeRuntimeOptions(input: {
   canUseTool: ClaudeCanUseTool;
   sdkMcpServers?: Record<string, unknown>;
   toolAliases?: Record<string, string>;
+  pluginPaths?: string[];
+  skillNames?: string[];
 }): Record<string, unknown> {
-  const { settings, cwd, env, canUseTool, sdkMcpServers, toolAliases } = input;
+  const {
+    settings,
+    cwd,
+    env,
+    canUseTool,
+    sdkMcpServers,
+    toolAliases,
+    pluginPaths,
+    skillNames,
+  } = input;
   const thinkingBudget = Math.max(0, settings.maxThinkingTokens ?? 0);
   // Application permission modes are evaluated by SecurityHost. Passing
   // bypassPermissions to Claude would auto-approve before canUseTool runs and
@@ -181,6 +192,18 @@ export function buildClaudeRuntimeOptions(input: {
       ...enabledMcpServerConfigs(settings),
       ...sdkMcpServers,
     },
+    strictMcpConfig: true,
+    skills: skillNames ?? [],
+    ...(pluginPaths?.length
+      ? {
+          plugins: pluginPaths.map((path) => ({
+            type: "local",
+            path,
+            // Marloues owns MCP selection/auth/lifecycle independently.
+            skipMcpDiscovery: true,
+          })),
+        }
+      : {}),
     ...(toolAliases ? { toolAliases } : {}),
     permissionMode,
     allowDangerouslySkipPermissions: false,

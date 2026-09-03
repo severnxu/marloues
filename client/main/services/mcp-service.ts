@@ -133,15 +133,19 @@ export async function installMarketplaceMcpServer(
     return listMcpServers();
   }
 
-  const config = buildMcpConfigFromMarketplace(detail);
+  const { config, requiredEnvironment } = buildMcpConfigFromMarketplace(detail);
+  const needsConfiguration = requiredEnvironment.length > 0;
   const server: McpServerConfig = {
     id: `mcp-${crypto.randomUUID()}`,
     name: detail.name,
     config,
-    enabled: true,
+    enabled: !needsConfiguration,
     source: "local",
     marketplaceId: detail.id,
-    lastStatus: "untested",
+    lastStatus: needsConfiguration ? "disconnected" : "untested",
+    lastError: needsConfiguration
+      ? `启用前需要配置：${requiredEnvironment.join("、")}`
+      : undefined,
   };
   saveAgentSettings({
     ...settings,
@@ -167,15 +171,19 @@ function markMarketplaceInstalled<T extends { id: string; installed: boolean }>(
   };
 }
 
-function buildMcpConfigFromMarketplace(
-  detail: McpMarketplaceDetail,
-): Record<string, unknown> {
+function buildMcpConfigFromMarketplace(detail: McpMarketplaceDetail): {
+  config: Record<string, unknown>;
+  requiredEnvironment: string[];
+} {
   const remote = detail.remotes?.find((item) => item.url);
   if (remote) {
     return {
-      type: remote.transport,
-      url: remote.url,
-      headers: remote.headers ?? {},
+      config: {
+        type: remote.transport,
+        url: remote.url,
+        headers: remote.headers ?? {},
+      },
+      requiredEnvironment: [],
     };
   }
 
@@ -183,31 +191,68 @@ function buildMcpConfigFromMarketplace(
   if (!pkg) {
     throw new Error("该 MCP 服务没有可用的安装来源。");
   }
-  if (pkg.command) {
-    return {
-      type: "stdio",
-      command: pkg.command,
-      args: pkg.args ?? [],
-      env: pkg.environment ?? {},
-    };
-  }
+  const requiredEnvironment = (pkg.requiredEnvironment ?? []).map(
+    (variable) => variable.name,
+  );
+  const environment = {
+    ...(pkg.environment ?? {}),
+    ...Object.fromEntries(requiredEnvironment.map((name) => [name, ""])),
+  };
   if (pkg.registryType === "npm") {
     return {
-      type: "stdio",
-      command: "npx",
-      args: ["-y", packageSpec(pkg.identifier, pkg.version, "@")],
-      env: pkg.environment ?? {},
+      config: {
+        type: "stdio",
+        command: pkg.command ?? "npx",
+        args: appendPackageSpec(
+          pkg.args?.length ? pkg.args : ["-y"],
+          packageSpec(pkg.identifier, pkg.version, "@"),
+          pkg.identifier,
+        ),
+        env: environment,
+      },
+      requiredEnvironment,
     };
   }
   if (pkg.registryType === "pypi") {
     return {
-      type: "stdio",
-      command: "uvx",
-      args: [packageSpec(pkg.identifier, pkg.version, "@")],
-      env: pkg.environment ?? {},
+      config: {
+        type: "stdio",
+        command: pkg.command ?? "uvx",
+        args: appendPackageSpec(
+          pkg.args ?? [],
+          packageSpec(pkg.identifier, pkg.version, "@"),
+          pkg.identifier,
+        ),
+        env: environment,
+      },
+      requiredEnvironment,
+    };
+  }
+  if (pkg.command) {
+    return {
+      config: {
+        type: "stdio",
+        command: pkg.command,
+        args: pkg.args ?? [],
+        env: environment,
+      },
+      requiredEnvironment,
     };
   }
   throw new Error(`暂不支持安装 ${pkg.registryType} 类型的 MCP 服务。`);
+}
+
+function appendPackageSpec(
+  args: string[],
+  packageSpecValue: string,
+  identifier: string,
+): string[] {
+  return args.some(
+    (argument) =>
+      argument === identifier || argument.startsWith(`${identifier}@`),
+  )
+    ? args
+    : [...args, packageSpecValue];
 }
 
 function packageSpec(

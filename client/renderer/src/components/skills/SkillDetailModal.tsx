@@ -1,10 +1,21 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { AlertCircle, Download, Package, X } from "lucide-react";
+import {
+  AlertCircle,
+  Download,
+  FileText,
+  FolderTree,
+  History,
+  LoaderCircle,
+  Package,
+  ShieldCheck,
+  X,
+} from "lucide-react";
 import type {
   SkillDetail,
   SkillInfo,
   SkillMarketplaceDetail,
+  SkillMarketplaceDetailSection,
   SkillMarketplaceItem,
 } from "@shared/types";
 import {
@@ -17,49 +28,190 @@ import { formatDate, integrityLabel, scopeLabel } from "./skill-formatters";
 import { SkillFileTree } from "./SkillFileTree";
 
 type DetailTab = "skillmd" | "tree" | "security" | "history";
+type SkillRecord =
+  SkillMarketplaceDetail | SkillDetail | SkillMarketplaceItem | SkillInfo;
 
 export function SkillDetailModal({
   kind,
   detail,
   skill,
   installingSlug,
+  detailLoading,
   onClose,
-  onUse,
   onInstall,
 }: {
   kind: "market" | "installed";
   detail: SkillMarketplaceDetail | SkillDetail | null;
   skill: SkillMarketplaceItem | SkillInfo | null;
   installingSlug: string | null;
+  detailLoading: boolean;
   onClose: () => void;
-  onUse: () => void;
   onInstall: (slug: string, version?: string) => void;
 }) {
   const [tab, setTab] = useState<DetailTab>("skillmd");
   const [viewVersion, setViewVersion] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState("SKILL.md");
+  const [detailByVersion, setDetailByVersion] = useState<
+    Record<string, SkillMarketplaceDetail>
+  >({});
+  const [versionLoading, setVersionLoading] = useState(false);
+  const [versionError, setVersionError] = useState<string | null>(null);
+  const loadedSections = useRef(new Set<string>());
 
-  const data = normalizeSkill(detail ?? skill, kind);
-  const version = data.version ?? null;
-  const viewing = viewVersion ?? version;
-  const isHistory = !!version && !!viewing && viewing !== version;
+  // The first render only has the marketplace list item. Keep it as the
+  // fallback when a lazily loaded detail section omits fields such as version.
+  const initialData = normalizeSkill(mergeSkillRecords(skill, detail), kind);
+  const currentVersion = initialData.version ?? null;
+  const viewing = viewVersion ?? currentVersion;
+  const isHistory = !!currentVersion && !!viewing && viewing !== currentVersion;
+  const currentDetailKey = currentVersion ?? "__current";
+  const selectedDetailKey = viewing ?? currentDetailKey;
+  const baseData = normalizeSkill(
+    mergeSkillRecords(skill, detail, detailByVersion[currentDetailKey]),
+    kind,
+  );
+  const data = normalizeSkill(
+    mergeSkillRecords(skill, detail, detailByVersion[selectedDetailKey]),
+    kind,
+  );
 
-  const versions = useMemo(() => buildSkillVersions(data), [data]);
+  const versions = useMemo(() => buildSkillVersions(baseData), [baseData]);
   const security = useMemo(() => computeSkillSecurity(data), [data]);
   const fileTree = useMemo(() => buildSkillFileTree(data), [data]);
 
   const content = data.content ?? "";
+  const selectedFileEntry = data.files?.find(
+    (file) => file.path === selectedFile,
+  );
+  const selectedFileContent =
+    selectedFileEntry?.content ??
+    (selectedFile === "SKILL.md" ? content : undefined);
+  const shownVersion = viewing ?? data.version;
+  const versionLabel = viewing ?? currentVersion;
+  const versionText = versionLabel
+    ? `v${versionLabel}`
+    : kind === "market"
+      ? "最新版"
+      : "未声明版本";
   const subtitle =
     kind === "market"
-      ? `${data.ownerHandle || data.slug}${version ? ` · v${version}` : ""}`
-      : `${scopeLabel(data.scope as SkillInfo["scope"]) || "本地"}${version ? ` · v${version}` : ""}${data.integrityStatus ? ` · ${integrityLabel(data.integrityStatus)}` : ""}`;
+      ? `${data.ownerHandle || data.slug} · ${
+          shownVersion ? `v${shownVersion}` : "最新版"
+        }`
+      : `${scopeLabel(data.scope as SkillInfo["scope"]) || "本地"}${
+          shownVersion ? ` · v${shownVersion}` : ""
+        }${
+          data.integrityStatus
+            ? ` · ${integrityLabel(data.integrityStatus)}`
+            : ""
+        }`;
 
-  const tabs: Array<[DetailTab, string]> = [
-    ["skillmd", "SKILL.md"],
-    ["tree", "技能文件树"],
-    ["security", "安全检测"],
-    ["history", "历史版本"],
-  ];
+  const tabs = [
+    { key: "skillmd", label: "SKILL.md", icon: FileText },
+    {
+      key: "tree",
+      label: "文件",
+      icon: FolderTree,
+      count: data.files?.length,
+    },
+    { key: "security", label: "安全检测", icon: ShieldCheck },
+    {
+      key: "history",
+      label: "历史版本",
+      icon: History,
+      count: versions.length || undefined,
+    },
+  ] satisfies Array<{
+    key: DetailTab;
+    label: string;
+    icon: typeof FileText;
+    count?: number;
+  }>;
+
+  useEffect(() => {
+    setViewVersion(null);
+    setDetailByVersion({});
+    loadedSections.current.clear();
+    setVersionError(null);
+    setSelectedFile("SKILL.md");
+  }, [kind, initialData.slug]);
+
+  useEffect(() => {
+    if (kind !== "market" || !currentVersion || !viewing) {
+      setVersionLoading(false);
+      setVersionError(null);
+      return;
+    }
+    let section: SkillMarketplaceDetailSection | null = null;
+    let targetVersion = viewing;
+    if (tab === "tree") section = "files";
+    if (tab === "security") section = "security";
+    if (tab === "history") {
+      section = "versions";
+      targetVersion = currentVersion;
+    }
+    if (tab === "skillmd" && isHistory) section = "content";
+    if (!section) {
+      setVersionLoading(false);
+      setVersionError(null);
+      return;
+    }
+
+    const requestKey = `${targetVersion}:${section}`;
+    if (loadedSections.current.has(requestKey)) {
+      setVersionLoading(false);
+      setVersionError(null);
+      return;
+    }
+    const slug = baseData.slug ?? baseData.name;
+    const reference = slug.includes("/")
+      ? slug
+      : baseData.ownerHandle
+        ? `${baseData.ownerHandle}/${slug}`
+        : slug;
+    let cancelled = false;
+    setVersionLoading(true);
+    setVersionError(null);
+    void window.marloues.skill
+      .marketplaceDetail(reference, targetVersion, section)
+      .then((nextDetail) => {
+        if (cancelled) return;
+        setDetailByVersion((current) => ({
+          ...current,
+          [targetVersion]: mergeSkillRecords(
+            current[targetVersion],
+            nextDetail,
+          ) as SkillMarketplaceDetail,
+        }));
+        loadedSections.current.add(requestKey);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setVersionError(
+            error instanceof Error ? error.message : "详情数据加载失败。",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setVersionLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    baseData.name,
+    baseData.ownerHandle,
+    baseData.slug,
+    currentVersion,
+    isHistory,
+    kind,
+    tab,
+    viewing,
+  ]);
+
+  useEffect(() => {
+    setSelectedFile("SKILL.md");
+  }, [viewing]);
 
   return createPortal(
     <div
@@ -92,8 +244,10 @@ export function SkillDetailModal({
         <div className="skill-detail-versionbar">
           <span className="vlabel">版本</span>
           <strong>
-            v{viewing ?? version ?? "未知"}
-            {!isHistory ? " · 当前" : ""}
+            {versionText}
+            {!isHistory && (kind === "market" || currentVersion)
+              ? " · 当前"
+              : ""}
           </strong>
         </div>
 
@@ -101,8 +255,10 @@ export function SkillDetailModal({
           <div className="sd-version-note">
             <AlertCircle size={14} />
             <span>
-              正在查看历史版本 <b>v{viewing}</b>{" "}
-              的快照，切换后其余标签页同步更新。
+              正在查看历史版本 <b>v{viewing}</b> 的真实快照
+              {versionLoading
+                ? "，正在读取当前页签的真实快照…"
+                : "；其它页签将在打开时按需读取。"}
             </span>
           </div>
         ) : null}
@@ -121,7 +277,7 @@ export function SkillDetailModal({
               return;
             }
             event.preventDefault();
-            const currentIndex = tabs.findIndex(([key]) => key === tab);
+            const currentIndex = tabs.findIndex((item) => item.key === tab);
             const nextIndex =
               event.key === "Home"
                 ? 0
@@ -131,7 +287,7 @@ export function SkillDetailModal({
                       (event.key === "ArrowRight" ? 1 : -1) +
                       tabs.length) %
                     tabs.length;
-            setTab(tabs[nextIndex][0]);
+            setTab(tabs[nextIndex].key);
             requestAnimationFrame(() => {
               event.currentTarget
                 .querySelectorAll<HTMLElement>('[role="tab"]')
@@ -139,53 +295,88 @@ export function SkillDetailModal({
             });
           }}
         >
-          {tabs.map(([k, label]) => (
+          {tabs.map(({ key, label, icon: Icon, count }) => (
             <button
-              key={k}
+              key={key}
               role="tab"
-              aria-selected={tab === k}
-              tabIndex={tab === k ? 0 : -1}
-              onClick={() => setTab(k)}
+              aria-selected={tab === key}
+              tabIndex={tab === key ? 0 : -1}
+              onClick={() => setTab(key)}
               type="button"
             >
-              {label}
+              <Icon aria-hidden="true" />
+              <span>{label}</span>
+              {count !== undefined ? (
+                <span className="sd-tab-count">{count}</span>
+              ) : null}
             </button>
           ))}
         </div>
 
-        <div className="skill-detail-body">
-          {tab === "skillmd" ? (
-            content ? (
+        <div
+          className="skill-detail-body"
+          aria-busy={detailLoading || versionLoading}
+        >
+          {versionError ? (
+            <div className="sd-detail-state is-error" role="alert">
+              <AlertCircle size={16} />
+              <span>{versionError}</span>
+            </div>
+          ) : null}
+
+          {versionLoading ? (
+            <SkillDetailLoading
+              label={tabs.find((item) => item.key === tab)?.label ?? "详情"}
+            />
+          ) : null}
+
+          {!versionLoading && !versionError && tab === "skillmd" ? (
+            detailLoading && !detail ? (
+              <SkillDetailLoading label="SKILL.md" />
+            ) : content ? (
               <pre>{content}</pre>
             ) : (
               <p className="skill-detail-description">暂无 SKILL.md 内容。</p>
             )
           ) : null}
 
-          {tab === "tree" ? (
-            <div className="skill-file-browser">
-              <nav aria-label="Skill 文件">
-                <SkillFileTree
-                  nodes={fileTree}
-                  selectedPath={selectedFile}
-                  onSelect={setSelectedFile}
-                />
-              </nav>
-              <section className="skill-file-preview">
-                <header>{selectedFile}</header>
-                {selectedFile === "SKILL.md" && content ? (
-                  <pre>{content}</pre>
-                ) : (
-                  <p>当前版本未提供此文件的只读内容预览。</p>
-                )}
-              </section>
-            </div>
+          {!versionLoading && !versionError && tab === "tree" ? (
+            fileTree.length ? (
+              <div className="skill-file-browser">
+                <nav aria-label="Skill 文件">
+                  <SkillFileTree
+                    nodes={fileTree}
+                    selectedPath={selectedFile}
+                    onSelect={setSelectedFile}
+                  />
+                </nav>
+                <section className="skill-file-preview">
+                  <header>
+                    <span>{selectedFile}</span>
+                    {selectedFileEntry?.size !== undefined ? (
+                      <small>{formatFileSize(selectedFileEntry.size)}</small>
+                    ) : null}
+                  </header>
+                  {selectedFileContent ? (
+                    <pre>{selectedFileContent}</pre>
+                  ) : (
+                    <p>该市场只提供了文件清单，未提供此文件的文本预览。</p>
+                  )}
+                </section>
+              </div>
+            ) : (
+              <div className="sd-detail-state">该来源未提供文件清单。</div>
+            )
           ) : null}
 
-          {tab === "security" ? (
+          {!versionLoading && !versionError && tab === "security" ? (
             <div>
               <div
-                className={`skill-detail-security ${security.verdict !== "clean" && security.verdict !== "unknown" ? `is-${security.verdict}` : ""}`}
+                className={`skill-detail-security ${
+                  security.verdict !== "clean" && security.verdict !== "unknown"
+                    ? `is-${security.verdict}`
+                    : ""
+                }`}
               >
                 <p className="skill-detail-section-label">安全扫描结论</p>
                 <p className="skill-detail-description">{security.summary}</p>
@@ -197,7 +388,9 @@ export function SkillDetailModal({
                     {security.perms.map((p) => (
                       <span
                         key={p}
-                        className={`pill ${/write|delete|exec/i.test(p) ? "warn" : ""}`}
+                        className={`pill ${
+                          /write|delete|exec/i.test(p) ? "warn" : ""
+                        }`}
                       >
                         {p}
                       </span>
@@ -211,35 +404,55 @@ export function SkillDetailModal({
                   <dd>
                     {kind === "installed" && data.integrityStatus
                       ? integrityLabel(data.integrityStatus)
-                      : "未校验"}
+                      : data.integrityOnInstall
+                        ? "安装时逐文件校验"
+                        : data.files?.some((file) => file.sha256)
+                          ? "已提供逐文件哈希"
+                          : "未提供校验清单"}
                   </dd>
                 </div>
                 <div className="m">
                   <dt>来源</dt>
                   <dd>
-                    {scopeLabel(data.scope as SkillInfo["scope"]) || "未知"}
+                    {kind === "market"
+                      ? marketplaceSourceLabel(data.sourceUrl)
+                      : scopeLabel(data.scope as SkillInfo["scope"]) || "未知"}
                   </dd>
                 </div>
                 <div className="m">
-                  <dt>可信</dt>
-                  <dd>{data.trusted ? "是" : "未标记"}</dd>
+                  <dt>{kind === "market" ? "扫描" : "可信"}</dt>
+                  <dd>
+                    {kind === "market"
+                      ? securityVerdictLabel(security.verdict)
+                      : data.trusted
+                        ? "是"
+                        : "未标记"}
+                  </dd>
                 </div>
                 <div className="m">
                   <dt>可移除</dt>
-                  <dd>{data.removable ? "是" : "否"}</dd>
+                  <dd>
+                    {kind === "market"
+                      ? "安装后可移除"
+                      : data.removable
+                        ? "是"
+                        : "否"}
+                  </dd>
                 </div>
               </dl>
             </div>
           ) : null}
 
-          {tab === "history" ? (
+          {tab === "history" && versions.length ? (
             <div className="sd-versions">
               {versions.map((v, idx) => {
                 const active = v.version === viewing;
                 return (
                   <div
                     key={`${v.version}#${idx}`}
-                    className={`sd-version-item ${v.current ? "is-current" : ""}`}
+                    className={`sd-version-item ${
+                      v.current ? "is-current" : ""
+                    }`}
                   >
                     <div>
                       <div className="sd-version-top">
@@ -252,7 +465,7 @@ export function SkillDetailModal({
                         ) : null}
                       </div>
                       <small>
-                        {formatDate(v.date)} · @{v.author}
+                        {v.date ? formatDate(v.date) : "时间未知"} · @{v.author}
                       </small>
                       <p>{v.note}</p>
                     </div>
@@ -260,7 +473,9 @@ export function SkillDetailModal({
                       className="sd-btn sd-btn-ghost"
                       type="button"
                       disabled={active}
-                      onClick={() => setViewVersion(v.version)}
+                      onClick={() =>
+                        setViewVersion(v.current ? null : v.version)
+                      }
                     >
                       {active ? "查看中" : "切换"}
                     </button>
@@ -268,11 +483,15 @@ export function SkillDetailModal({
                 );
               })}
             </div>
+          ) : tab === "history" && !versionLoading && !versionError ? (
+            <div className="sd-detail-state">
+              该来源未提供可验证的历史版本数据。
+            </div>
           ) : null}
         </div>
 
-        <div className="skill-detail-actions">
-          {kind === "market" && !data.installed ? (
+        {kind === "market" && !data.installed ? (
+          <div className="skill-detail-actions">
             <button
               className="sd-btn sd-btn-primary"
               type="button"
@@ -284,18 +503,65 @@ export function SkillDetailModal({
               <Download size={14} />
               {installingSlug === data.slug ? "安装中" : "安装"}
             </button>
-          ) : (
-            <button
-              className="sd-btn sd-btn-primary"
-              type="button"
-              onClick={onUse}
-            >
-              去使用
-            </button>
-          )}
-        </div>
+          </div>
+        ) : null}
       </div>
     </div>,
     document.body,
   );
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function SkillDetailLoading({ label }: { label: string }) {
+  return (
+    <div className="sd-detail-state" aria-live="polite">
+      <LoaderCircle className="is-spinning" aria-hidden="true" />
+      <span>正在读取 {label}…</span>
+    </div>
+  );
+}
+
+function marketplaceSourceLabel(sourceUrl?: string): string {
+  if (!sourceUrl) return "Skill 市场";
+  try {
+    const host = new URL(sourceUrl).hostname.replace(/^www\./, "");
+    if (host === "clawhub.ai" || host.endsWith(".clawhub.ai")) {
+      return "ClawHub";
+    }
+    if (host === "skillsmp.com" || host.endsWith(".skillsmp.com")) {
+      return "SkillsMP";
+    }
+    return host;
+  } catch {
+    return "Skill 市场";
+  }
+}
+
+function securityVerdictLabel(
+  verdict: "clean" | "warning" | "suspicious" | "unknown",
+): string {
+  if (verdict === "clean") return "通过";
+  if (verdict === "warning") return "需注意";
+  if (verdict === "suspicious") return "可疑";
+  return "未扫描";
+}
+
+function mergeSkillRecords(
+  ...records: Array<SkillRecord | null | undefined>
+): SkillRecord | null {
+  const merged: Record<string, unknown> = {};
+  let found = false;
+  for (const record of records) {
+    if (!record) continue;
+    found = true;
+    for (const [key, value] of Object.entries(record)) {
+      if (value !== undefined) merged[key] = value;
+    }
+  }
+  return found ? (merged as unknown as SkillRecord) : null;
 }

@@ -112,6 +112,56 @@ describe("WorkflowThreadStore.rehydrateFromStoredMessages", () => {
     expect(snapshot.turns).toHaveLength(1);
   });
 
+  it("does not seed a duplicate while the canonical turn is already starting", () => {
+    const userMessage: StoredMessage = {
+      id: "u-skill",
+      role: "user",
+      content: "",
+      userContent: [
+        {
+          type: "skill",
+          id: "skill-1",
+          name: "selected-skill",
+          path: "/skills/selected-skill",
+        },
+      ],
+      timestamp: 1000,
+      items: [],
+    };
+
+    // Main publishes the canonical turn before the persisted message becomes
+    // visible to a concurrent readThread request.
+    workflowThreadStore.startTurn({
+      threadId: TEST_THREAD,
+      turnId: "turn-1",
+      content: "",
+      attachments: userMessage.userContent,
+      userMessageId: userMessage.id,
+      startedAt: userMessage.timestamp,
+    });
+    workflowThreadStore.rehydrateFromStoredMessages(TEST_THREAD, [userMessage]);
+
+    // Runtime adapters initialize the same turn again when execution begins.
+    workflowThreadStore.startTurn({
+      threadId: TEST_THREAD,
+      turnId: "turn-1",
+      content: "",
+      attachments: userMessage.userContent,
+      userMessageId: userMessage.id,
+      startedAt: userMessage.timestamp,
+    });
+
+    const snapshot = workflowThreadStore.readThread({
+      threadId: TEST_THREAD,
+      limit: 100,
+    });
+    expect(snapshot.turns).toHaveLength(1);
+    expect(snapshot.turns[0].id).toBe("turn-1");
+    expect(
+      snapshot.turns[0].items.filter((item) => item.type === "userMessage"),
+    ).toHaveLength(1);
+  });
+
   it("handles orphan assistant message without a preceding user", () => {
     const messages: StoredMessage[] = [
       makeAssistantMessage("a1", "I am an orphan", 1000, {

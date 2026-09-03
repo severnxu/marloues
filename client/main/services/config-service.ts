@@ -136,12 +136,12 @@ function defaultAgentSettings(): AgentSettings {
     ],
     mcpServers: [],
     skillMarketplaceEndpoint: {
-      baseUrl: "https://skillsmp.com",
+      baseUrl: "https://clawhub.ai",
       enabled: true,
       lastStatus: "untested",
     },
     mcpMarketplaceEndpoint: {
-      baseUrl: "",
+      baseUrl: "https://registry.modelcontextprotocol.io",
       enabled: true,
       lastStatus: "untested",
     },
@@ -572,6 +572,7 @@ function normalizeAgentSettings(
     mcpMarketplaceEndpoint: normalizeMcpMarketplaceEndpoint(
       settings.mcpMarketplaceEndpoint ??
         readLegacyMarketplaceEndpoint(settings, "mcp"),
+      defaultAgentSettings().mcpMarketplaceEndpoint,
     ),
     imBotBindings: normalizeImBotBindingsConfig(settings.imBotBindings),
     skillDirectories: settings.skillDirectories ?? [],
@@ -598,8 +599,9 @@ function normalizeSkillMarketplaceEndpoint(
 
 function normalizeMcpMarketplaceEndpoint(
   endpoint: McpMarketplaceEndpoint | LegacyMarketplaceEndpoint | undefined,
+  fallback?: McpMarketplaceEndpoint,
 ): McpMarketplaceEndpoint | undefined {
-  if (!endpoint || typeof endpoint !== "object") return undefined;
+  if (!endpoint || typeof endpoint !== "object") return fallback;
   return normalizeMarketplaceEndpoint(endpoint);
 }
 
@@ -614,7 +616,7 @@ function normalizeMarketplaceEndpoint(
     normalizedBaseUrl === "https:" || normalizedBaseUrl === "http:"
       ? ""
       : normalizedBaseUrl;
-  const configured = baseUrl !== "https:" && baseUrl !== "http:";
+  const configured = Boolean(baseUrl);
   return {
     baseUrl,
     enabled: endpoint.enabled !== false,

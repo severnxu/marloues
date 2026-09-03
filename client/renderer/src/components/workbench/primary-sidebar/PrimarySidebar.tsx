@@ -12,6 +12,7 @@ import { QuickAccessZone } from "./QuickAccessZone";
 import { SidebarUserDock } from "./SidebarUserDock";
 import { WorkAreaZone } from "./WorkAreaZone";
 import { SidebarMenus } from "./SidebarMenus";
+import { ProjectConfigDialog } from "./ProjectConfigDialog";
 
 export function PrimarySidebar({
   page,
@@ -37,6 +38,9 @@ export function PrimarySidebar({
     projectId: string;
   } | null>(null);
   const [projectOrder, setProjectOrder] = useState<string[]>([]);
+  const [configuringProject, setConfiguringProject] =
+    useState<WorkspaceInfo | null>(null);
+  const [addProjectOpen, setAddProjectOpen] = useState(false);
 
   const expandedWorkspaces = useWorkspaceStore(
     (state) => state.expandedWorkspaces,
@@ -94,7 +98,6 @@ export function PrimarySidebar({
   const switchWorkspace = useWorkspaceStore((state) => state.switchWorkspace);
   const renameWorkspace = useWorkspaceStore((state) => state.renameWorkspace);
   const removeWorkspace = useWorkspaceStore((state) => state.removeWorkspace);
-  const selectWorkspace = useWorkspaceStore((state) => state.select);
   const openInExplorer = useWorkspaceStore((state) => state.openInExplorer);
 
   const workspaceItems = useMemo(() => {
@@ -352,8 +355,7 @@ export function PrimarySidebar({
     }
   };
 
-  const addWorkspace = async () => {
-    await selectWorkspace();
+  const handleWorkspaceAdded = async () => {
     await loadChats();
     onPage("chat");
   };
@@ -386,7 +388,7 @@ export function PrimarySidebar({
         />
 
         <WorkAreaZone
-          onAddWorkspace={() => void addWorkspace()}
+          onAddWorkspace={() => setAddProjectOpen(true)}
           projectList={projectList}
           activeWorkspace={workspace}
           sessionsByWorkspace={sessionsByWorkspace}
@@ -435,12 +437,26 @@ export function PrimarySidebar({
         projectMenu={projectMenu}
         projectList={projectList}
         onOpenInExplorer={(project) => void openInExplorer(project.id)}
+        onConfigureProject={setConfiguringProject}
         onRenameProject={(project) => void renameProject(project)}
         onMoveToTop={(projectId) => moveProjectToTop(projectId)}
         onRemoveProject={(project) => void removeProject(project)}
         onCloseProjectMenu={() => setProjectMenu(null)}
         confirmDialog={DialogComponent}
       />
+      {configuringProject ? (
+        <ProjectConfigDialog
+          project={configuringProject}
+          onClose={() => setConfiguringProject(null)}
+        />
+      ) : null}
+      {addProjectOpen ? (
+        <ProjectConfigDialog
+          mode="create"
+          onClose={() => setAddProjectOpen(false)}
+          onAdded={() => void handleWorkspaceAdded()}
+        />
+      ) : null}
     </aside>
   );
 }

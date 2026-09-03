@@ -75,6 +75,7 @@ export interface ThreadStartOptions {
   cwd?: string;
   approvalPolicy?: string;
   permissions?: string;
+  config?: Record<string, unknown>;
 }
 
 export class CodexAppServerSession {
@@ -160,6 +161,7 @@ export class CodexAppServerSession {
           cwd: opts.cwd || process.cwd(),
           approvalPolicy: opts.approvalPolicy || "on-request",
           permissions: opts.permissions || ":read-only",
+          config: opts.config,
         },
       );
       log("[session] thread/start result threadId=", result.thread?.id);
@@ -190,6 +192,15 @@ export class CodexAppServerSession {
     await this.rpc.request(ClientMethods.TurnInterrupt, {
       threadId: this.threadId,
     });
+  }
+
+  async setSkillExtraRoots(extraRoots: string[]): Promise<void> {
+    if (!this.started) {
+      throw new Error(
+        "Codex session must be initialized before setting Skill roots",
+      );
+    }
+    await this.rpc.request("skills/extraRoots/set", { extraRoots });
   }
 
   async respondToApproval(
@@ -238,6 +249,7 @@ export class CodexAppServerSession {
         threadId,
         cwd: cwd || process.cwd(),
         permissions: this.threadStartOptions.permissions || ":read-only",
+        config: this.threadStartOptions.config,
       },
     );
     log("[session] thread/resume result threadId=", result.thread?.id);
@@ -253,6 +265,7 @@ export class CodexAppServerSession {
         sourceThreadId,
         cwd: cwd || process.cwd(),
         permissions: this.threadStartOptions.permissions || ":read-only",
+        config: this.threadStartOptions.config,
       },
     );
     const newThreadId = result.thread?.id;

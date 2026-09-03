@@ -1,8 +1,10 @@
 import type {
   SkillDetail,
+  SkillDetailFile,
   SkillInfo,
   SkillMarketplaceDetail,
   SkillMarketplaceItem,
+  SkillVersionRecord,
 } from "@shared/types";
 
 export interface NormalizedSkill {
@@ -15,8 +17,11 @@ export interface NormalizedSkill {
   ownerHandle?: string;
   updatedAt?: number;
   content?: string;
+  files?: SkillDetailFile[];
+  versions?: SkillVersionRecord[];
   permissions?: string[];
   integrityStatus?: "unchecked" | "verified" | "failed";
+  integrityOnInstall?: boolean;
   securityStatus?: "clean" | "warning" | "suspicious" | "unknown";
   securitySummary?: string | null;
   trusted?: boolean;
@@ -24,6 +29,7 @@ export interface NormalizedSkill {
   enabled?: boolean;
   installed?: boolean;
   path?: string;
+  sourceUrl?: string;
   kind: "market" | "installed";
 }
 
@@ -37,6 +43,8 @@ export function normalizeSkill(
   kind: "market" | "installed",
 ): NormalizedSkill {
   const m = (raw ?? {}) as Record<string, unknown>;
+  const install = m.install as
+    { type?: string; verification?: unknown } | undefined;
   return {
     name:
       (m.cnName as string) || (m.name as string) || (m.slug as string) || "",
@@ -48,9 +56,14 @@ export function normalizeSkill(
     ownerHandle: m.ownerHandle as string | undefined,
     updatedAt: m.updatedAt as number | undefined,
     content: m.content as string | undefined,
+    files: m.files as SkillDetailFile[] | undefined,
+    versions: m.versions as SkillVersionRecord[] | undefined,
     permissions: (m.permissions as string[] | undefined) ?? [],
     integrityStatus: m.integrityStatus as
       "unchecked" | "verified" | "failed" | undefined,
+    integrityOnInstall: Boolean(
+      install?.type === "archive" && install.verification,
+    ),
     securityStatus: m.securityStatus as
       "clean" | "warning" | "suspicious" | "unknown" | undefined,
     securitySummary: (m.securitySummary as string | null | undefined) ?? null,
@@ -59,34 +72,9 @@ export function normalizeSkill(
     enabled: m.enabled as boolean | undefined,
     installed: m.installed as boolean | undefined,
     path: m.path as string | undefined,
+    sourceUrl: m.sourceUrl as string | undefined,
     kind,
   };
-}
-
-function prevVersion(version: string | null | undefined, by: number): string {
-  const fallback = "1.0.0";
-  const v = (version ?? fallback).trim();
-  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(v);
-  if (!match) return fallback;
-  let maj = Number(match[1]);
-  let min = Number(match[2]);
-  let pat = Number(match[3]);
-  // 依次从 patch / minor / major 借位,避免 patch 已经为 0 时所有历史版本坍缩成同一个字符串。
-  for (let i = 0; i < by; i++) {
-    if (pat > 0) {
-      pat -= 1;
-    } else if (min > 0) {
-      min -= 1;
-      pat = 0;
-    } else if (maj > 0) {
-      maj -= 1;
-      min = 0;
-      pat = 0;
-    } else {
-      break; // 已是 0.0.0,无法继续下钻
-    }
-  }
-  return `${maj}.${min}.${pat}`;
 }
 
 export interface SkillVersionEntry {
@@ -98,31 +86,13 @@ export interface SkillVersionEntry {
 }
 
 export function buildSkillVersions(n: NormalizedSkill): SkillVersionEntry[] {
-  const cur = n.version ?? "1.0.0";
-  const base = n.updatedAt ?? Date.now();
-  return [
-    {
-      version: cur,
-      current: true,
-      date: base,
-      author: n.ownerHandle ?? "marloues",
-      note: "当前版本，包含最新的 Skill 内容与权限声明。",
-    },
-    {
-      version: prevVersion(cur, 1),
-      current: false,
-      date: base - 14 * 86_400_000,
-      author: n.ownerHandle ?? "marloues",
-      note: "修复权限声明并补充示例说明。",
-    },
-    {
-      version: prevVersion(cur, 2),
-      current: false,
-      date: base - 60 * 86_400_000,
-      author: n.ownerHandle ?? "marloues",
-      note: "首次发布到市场。",
-    },
-  ];
+  return (n.versions ?? []).map((version) => ({
+    version: version.version,
+    current: version.version === n.version,
+    date: version.createdAt ?? 0,
+    author: n.ownerHandle ?? "marloues",
+    note: version.changelog?.trim() || "该版本未提供更新说明。",
+  }));
 }
 
 export function computeSkillSecurity(n: NormalizedSkill): {
@@ -178,24 +148,44 @@ export interface TreeNode {
   children?: TreeNode[];
 }
 
-export function buildSkillFileTree(_n: NormalizedSkill): TreeNode[] {
-  return [
-    { type: "file", name: "SKILL.md" },
-    {
-      type: "folder",
-      name: "scripts",
-      children: [
-        { type: "file", name: "main.py" },
-        { type: "file", name: "utils.py" },
-      ],
-    },
-    {
-      type: "folder",
-      name: "references",
-      children: [{ type: "file", name: "api.md" }],
-    },
-    { type: "file", name: "README.md" },
-  ];
+export function buildSkillFileTree(n: NormalizedSkill): TreeNode[] {
+  const roots: TreeNode[] = [];
+  const paths = n.files?.map((file) => file.path) ?? [];
+  if (!paths.length && n.content) paths.push("SKILL.md");
+
+  for (const path of paths) {
+    const segments = path.split("/").filter(Boolean);
+    let level = roots;
+    segments.forEach((segment, index) => {
+      const isFile = index === segments.length - 1;
+      let node = level.find(
+        (candidate) =>
+          candidate.name === segment &&
+          candidate.type === (isFile ? "file" : "folder"),
+      );
+      if (!node) {
+        node = isFile
+          ? { type: "file", name: segment }
+          : { type: "folder", name: segment, children: [] };
+        level.push(node);
+      }
+      if (!isFile) level = node.children!;
+    });
+  }
+
+  return sortTree(roots);
+}
+
+function sortTree(nodes: TreeNode[]): TreeNode[] {
+  return nodes
+    .map((node) => ({
+      ...node,
+      children: node.children ? sortTree(node.children) : undefined,
+    }))
+    .sort((a, b) => {
+      if (a.type !== b.type) return a.type === "folder" ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
 }
 
 export function mergeMarketplaceItems(

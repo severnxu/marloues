@@ -28,6 +28,7 @@ interface SidebarMenusProps {
   projectMenu: ProjectMenu | null;
   projectList: WorkspaceInfo[];
   onOpenInExplorer: (project: WorkspaceInfo) => void;
+  onConfigureProject: (project: WorkspaceInfo) => void;
   onRenameProject: (project: WorkspaceInfo) => void;
   onMoveToTop: (projectId: string) => void;
   onRemoveProject: (project: WorkspaceInfo) => void;
@@ -48,6 +49,7 @@ export function SidebarMenus({
   projectMenu,
   projectList,
   onOpenInExplorer,
+  onConfigureProject,
   onRenameProject,
   onMoveToTop,
   onRemoveProject,
@@ -73,6 +75,7 @@ export function SidebarMenus({
           projects={projectList}
           firstProjectId={projectList[0]?.id}
           onOpen={onOpenInExplorer}
+          onConfigure={onConfigureProject}
           onRename={onRenameProject}
           onMoveToTop={(project) => onMoveToTop(project.id)}
           onRemove={onRemoveProject}

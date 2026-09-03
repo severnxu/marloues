@@ -44,6 +44,8 @@
     "test:smoke:process-sandbox": "tsx --tsconfig tsconfig.node.json ../tests/smoke/process-sandbox.smoke.ts",
     "test:smoke:live-runtime": "tsx --tsconfig tsconfig.node.json ../tests/smoke/live-runtime.smoke.ts",
     "test:smoke:binary-live": "tsx --tsconfig tsconfig.node.json ../tests/smoke/binary-live.smoke.ts",
+    "test:smoke:runtime-extensions": "tsx --tsconfig tsconfig.node.json ../tests/smoke/runtime-extensions.smoke.ts",
+    "test:smoke:marketplace-live": "tsx --tsconfig tsconfig.node.json ../tests/smoke/marketplace-live.smoke.ts",
     "test:smoke:electron-live-ui": "tsx --tsconfig tsconfig.node.json ../tests/smoke/electron-live-ui.smoke.ts",
     "test:smoke:electron-binary-live-ui": "tsx --tsconfig tsconfig.node.json ../tests/smoke/electron-live-ui.smoke.ts --binary",
     "test:smoke:packaged": "node ../tests/smoke/packaged.smoke.mjs",

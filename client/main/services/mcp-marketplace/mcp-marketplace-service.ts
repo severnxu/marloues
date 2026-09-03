@@ -14,7 +14,7 @@ import {
   requestMarketplaceJson,
 } from "../marketplace-http-client";
 
-const OFFICIAL_LIST_PATH = "/v0/servers";
+const OFFICIAL_LIST_PATH = "/v0.1/servers";
 const SMITHERY_LIST_PATH = "/servers";
 const STANDARD_LIST_PATH = "/api/v1/servers/search";
 const STANDARD_DETAIL_PATH = "/api/v1/servers";
@@ -33,6 +33,15 @@ interface OfficialServerRecord {
     registryType?: string;
     identifier?: string;
     version?: string;
+    runtimeHint?: string;
+    runtimeArguments?: Array<{ value?: string }>;
+    environmentVariables?: Array<{
+      name?: string;
+      description?: string;
+      isRequired?: boolean;
+      isSecret?: boolean;
+      default?: string;
+    }>;
     transport?: unknown;
   }>;
   remotes?: Array<{
@@ -53,6 +62,11 @@ interface OfficialServerItem {
 interface OfficialServersResponse {
   servers?: OfficialServerItem[];
   metadata?: { nextCursor?: string; count?: number };
+}
+
+interface OfficialServerResponse {
+  server?: OfficialServerRecord;
+  _meta?: OfficialServerItem["_meta"];
 }
 
 interface SmitheryServerRecord {
@@ -140,10 +154,10 @@ function isConfiguredEndpoint(endpoint: McpMarketplaceEndpoint): boolean {
   const baseUrl = endpoint.baseUrl.trim();
   return Boolean(
     baseUrl &&
-      baseUrl !== "https://" &&
-      baseUrl !== "http://" &&
-      baseUrl !== "https:" &&
-      baseUrl !== "http:",
+    baseUrl !== "https://" &&
+    baseUrl !== "http://" &&
+    baseUrl !== "https:" &&
+    baseUrl !== "http:",
   );
 }
 
@@ -154,14 +168,15 @@ export async function getRemoteMcpServerDetail(
   const baseUrl = normalizeMarketplaceBaseUrl(endpoint.baseUrl);
   const kind = resolveMarketplaceKind(baseUrl);
   if (kind === "official") {
-    const cached = remoteServerCache.get(cacheKey(baseUrl, id));
-    if (cached) return toMcpDetail(cached, false);
-    const response = await listOfficialServers(baseUrl, {
-      pageSize: MAX_PAGE_SIZE,
-    });
-    const item = response.items.find((entry) => entry.id === id);
-    if (!item) throw new MarketplaceHttpError("未找到该 MCP 服务。");
-    return item;
+    const payload = await requestMarketplaceJson<OfficialServerResponse>(
+      `${baseUrl}${OFFICIAL_LIST_PATH}/${encodeURIComponent(
+        id,
+      )}/versions/latest`,
+    );
+    const record = officialItemToRecord(payload);
+    if (!record.id) throw new MarketplaceHttpError("未找到该 MCP 服务。");
+    remoteServerCache.set(cacheKey(baseUrl, record.id), record);
+    return toMcpDetail(record, false);
   }
 
   if (kind === "smithery") {
@@ -220,8 +235,9 @@ async function listOfficialServers(
   const pageSize = normalizePageSize(request.pageSize);
   const url = new URL(`${baseUrl}${OFFICIAL_LIST_PATH}`);
   if (request.query?.trim()) {
-    url.searchParams.set("q", request.query.trim());
+    url.searchParams.set("search", request.query.trim());
   }
+  url.searchParams.set("version", "latest");
   url.searchParams.set("limit", String(pageSize));
   const cursor = request.cursor?.trim();
   if (cursor) url.searchParams.set("cursor", cursor);
@@ -240,7 +256,6 @@ async function listOfficialServers(
   const nextCursor = payload.metadata?.nextCursor;
   return {
     items: items.map((record) => toMcpDetail(record, false)),
-    total: payload.metadata?.count,
     nextCursor,
     hasMore: Boolean(nextCursor),
   };
@@ -352,6 +367,7 @@ function officialItemToRecord(item: OfficialServerItem): StandardServerRecord {
     name: server.title ?? server.name,
     description: server.description,
     version: server.version,
+    verified: true,
     homepageUrl: server.websiteUrl,
     repositoryUrl: server.repository?.url,
     packages: normalizePackages(server.packages ?? []),
@@ -364,6 +380,15 @@ function normalizePackages(
     registryType?: string;
     identifier?: string;
     version?: string;
+    runtimeHint?: string;
+    runtimeArguments?: Array<{ value?: string }>;
+    environmentVariables?: Array<{
+      name?: string;
+      description?: string;
+      isRequired?: boolean;
+      isSecret?: boolean;
+      default?: string;
+    }>;
     transport?: unknown;
   }>,
 ): McpMarketplacePackage[] {
@@ -375,9 +400,41 @@ function normalizePackages(
         registryType,
         identifier: pkg.identifier,
         version: pkg.version,
+        command: normalizeRuntimeCommand(pkg.runtimeHint),
+        args: (pkg.runtimeArguments ?? []).flatMap((argument) =>
+          argument.value ? [argument.value] : [],
+        ),
+        environment: Object.fromEntries(
+          (pkg.environmentVariables ?? []).flatMap((variable) =>
+            variable.name && variable.default !== undefined
+              ? [[variable.name, variable.default]]
+              : [],
+          ),
+        ),
+        requiredEnvironment: (pkg.environmentVariables ?? []).flatMap(
+          (variable) =>
+            variable.name &&
+            variable.isRequired &&
+            variable.default === undefined
+              ? [
+                  {
+                    name: variable.name,
+                    description: variable.description,
+                    secret: variable.isSecret,
+                  },
+                ]
+              : [],
+        ),
       },
     ];
   });
+}
+
+function normalizeRuntimeCommand(
+  value: string | undefined,
+): string | undefined {
+  if (value === "npx" || value === "uvx") return value;
+  return undefined;
 }
 
 function normalizeRegistryType(

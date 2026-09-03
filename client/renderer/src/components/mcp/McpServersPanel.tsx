@@ -11,9 +11,14 @@ import {
   X,
 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { getMarketplaceBridgeIssue } from "@/lib/marketplace-bridge";
 import { notify } from "@/lib/notifications";
 import { useSettingsStore } from "@/stores/settings-store";
-import type { McpMarketplaceItem, McpServerConfig } from "@shared/types";
+import type {
+  McpMarketplaceDetail,
+  McpMarketplaceItem,
+  McpServerConfig,
+} from "@shared/types";
 import {
   buildMcpConfigFromDraft,
   emptyMcpAddDraft,
@@ -104,7 +109,9 @@ function McpMarketplaceCard({
           </small>
         </span>
         <span
-          className={`plugin-install-status${item.installed ? " is-installed" : ""}`}
+          className={`plugin-install-status${
+            item.installed ? " is-installed" : ""
+          }`}
         >
           {item.installed ? "已安装" : item.verified ? "已验证" : "未安装"}
         </span>
@@ -164,7 +171,9 @@ function McpInstalledCard({
           </small>
         </span>
         <span
-          className={`plugin-install-status${server.lastStatus === "ok" ? " is-installed" : ""}`}
+          className={`plugin-install-status${
+            server.lastStatus === "ok" ? " is-installed" : ""
+          }`}
         >
           {status.label}
         </span>
@@ -270,6 +279,10 @@ export function McpServersPanel() {
   const [installingMarketplaceId, setInstallingMarketplaceId] = useState<
     string | null
   >(null);
+  const [pendingMarketplaceInstall, setPendingMarketplaceInstall] = useState<{
+    item: McpMarketplaceItem;
+    detail: McpMarketplaceDetail;
+  } | null>(null);
   const [view, setView] = useState<McpView>("discover");
   const [layout, setLayout] = useState<McpLayout>("grid");
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -298,6 +311,16 @@ export function McpServersPanel() {
 
   const loadMarketplace = useCallback(
     async (query: string, cursor?: string) => {
+      const bridgeIssue = getMarketplaceBridgeIssue("mcp");
+      if (bridgeIssue) {
+        setMarketplaceItems([]);
+        setMarketplaceError(bridgeIssue);
+        setMarketplaceHasMore(false);
+        setMarketplaceNextCursor(undefined);
+        setMarketplaceTotal(undefined);
+        setMarketplaceLoading(false);
+        return;
+      }
       const endpointConfigured =
         Boolean(mcpMarketplaceEndpoint?.enabled) &&
         isConfiguredMarketplaceUrl(mcpMarketplaceEndpoint?.baseUrl);
@@ -482,6 +505,22 @@ export function McpServersPanel() {
   const toolCount = new Set(servers.flatMap((server) => server.tools ?? []))
     .size;
 
+  const requestMarketplaceInstall = async (item: McpMarketplaceItem) => {
+    setInstallingMarketplaceId(item.id);
+    try {
+      const detail = await window.marloues.mcp.marketplaceDetail(item.id);
+      setPendingMarketplaceInstall({ item, detail });
+    } catch (caught) {
+      notify({
+        title: `${item.name} 详情加载失败`,
+        description: caught instanceof Error ? caught.message : String(caught),
+        tone: "error",
+      });
+    } finally {
+      setInstallingMarketplaceId(null);
+    }
+  };
+
   const installMarketplaceServer = async (item: McpMarketplaceItem) => {
     setInstallingMarketplaceId(item.id);
     try {
@@ -489,7 +528,16 @@ export function McpServersPanel() {
       setServers(nextServers);
       await load();
       await loadMarketplace(debouncedMarketplaceQuery);
-      notify({ title: `${item.name} 已安装`, tone: "success" });
+      const installed = nextServers.find(
+        (server) => server.marketplaceId === item.id,
+      );
+      notify({
+        title: `${item.name} 已安装`,
+        description: installed?.enabled
+          ? "服务已启用，可执行连通性检测。"
+          : installed?.lastError || "请先完成必填配置再启用。",
+        tone: "success",
+      });
     } catch (caught) {
       notify({
         title: `${item.name} 安装失败`,
@@ -689,7 +737,9 @@ export function McpServersPanel() {
             ) : null}
 
             <div
-              className={`plugin-card-grid${layout === "list" ? " is-list" : ""}`}
+              className={`plugin-card-grid${
+                layout === "list" ? " is-list" : ""
+              }`}
             >
               {marketplaceItems.map((item) => (
                 <McpMarketplaceCard
@@ -698,7 +748,7 @@ export function McpServersPanel() {
                   layout={layout}
                   installingId={installingMarketplaceId}
                   canInstall={canEdit}
-                  onInstall={(next) => void installMarketplaceServer(next)}
+                  onInstall={(next) => void requestMarketplaceInstall(next)}
                 />
               ))}
               {marketplaceHasMore && marketplaceNextCursor ? (
@@ -727,7 +777,9 @@ export function McpServersPanel() {
             ) : null}
 
             <div
-              className={`plugin-card-grid${layout === "list" ? " is-list" : ""}`}
+              className={`plugin-card-grid${
+                layout === "list" ? " is-list" : ""
+              }`}
             >
               {filteredServers.map((server) => (
                 <McpInstalledCard
@@ -800,6 +852,46 @@ export function McpServersPanel() {
           }}
         />
       ) : null}
+
+      {pendingMarketplaceInstall ? (
+        <ConfirmDialog
+          title={`安装 MCP 服务「${pendingMarketplaceInstall.item.name}」？`}
+          message={marketplaceInstallMessage(pendingMarketplaceInstall.detail)}
+          confirmLabel="确认安装"
+          cancelLabel="取消"
+          onCancel={() => setPendingMarketplaceInstall(null)}
+          onConfirm={() => {
+            const item = pendingMarketplaceInstall.item;
+            setPendingMarketplaceInstall(null);
+            void installMarketplaceServer(item);
+          }}
+        />
+      ) : null}
     </div>
   );
+}
+
+function marketplaceInstallMessage(detail: McpMarketplaceDetail): string {
+  const remote = detail.remotes?.find((item) => item.url);
+  if (remote) {
+    return `将添加 ${remote.transport.toUpperCase()} 远程服务 ${
+      remote.url
+    }。服务可能要求你在后续连接时完成授权。`;
+  }
+  const pkg = detail.packages?.find((item) => item.identifier);
+  if (!pkg) return "该市场条目没有可预览的安装配置。";
+  const required = (pkg.requiredEnvironment ?? []).map((item) => item.name);
+  const command =
+    pkg.registryType === "npm"
+      ? `${pkg.command ?? "npx"} ${pkg.identifier}${
+          pkg.version ? `@${pkg.version}` : ""
+        }`
+      : `${pkg.command ?? "uvx"} ${pkg.identifier}${
+          pkg.version ? `@${pkg.version}` : ""
+        }`;
+  return required.length
+    ? `将创建本地进程配置：${command}。它会先保持停用；配置 ${required.join(
+        "、",
+      )} 后才能启用。`
+    : `将创建并启用本地进程配置：${command}。首次运行会下载并执行第三方代码，请确认你信任其来源。`;
 }

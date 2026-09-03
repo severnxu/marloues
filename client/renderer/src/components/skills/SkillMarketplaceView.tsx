@@ -7,20 +7,18 @@ import {
   Upload,
   X,
 } from "lucide-react";
+import { getMarketplaceBridgeIssue } from "@/lib/marketplace-bridge";
 import { notify } from "@/lib/notifications";
+import { useSettingsStore } from "@/stores/settings-store";
+import { SKILLS_CHANGED_EVENT } from "@/components/workbench/events";
 import type {
-  AgentSettings,
   SkillDetail,
   SkillImportPreview,
   SkillInfo,
   SkillMarketplaceDetail,
   SkillMarketplaceItem,
 } from "@shared/types";
-import type {
-  SkillMarketplaceViewProps,
-  SkillSelection,
-  SkillView,
-} from "./skill-constants";
+import type { SkillSelection, SkillView } from "./skill-constants";
 import { MARKETPLACE_PAGE_SIZE, SEARCH_DEBOUNCE_MS } from "./skill-constants";
 import { formatMarketplaceResultsLabel } from "./skill-formatters";
 import { mergeMarketplaceItems } from "./skill-normalizers";
@@ -34,15 +32,18 @@ import {
   SkillMarketplaceCard,
 } from "./SkillCard";
 
-export function SkillMarketplaceView({ onClose }: SkillMarketplaceViewProps) {
+function announceSkillsChanged(): void {
+  window.dispatchEvent(new CustomEvent(SKILLS_CHANGED_EVENT));
+}
+
+export function SkillMarketplaceView() {
+  const agentSettings = useSettingsStore((state) => state.settings);
+  const skillMarketplaceEndpoint = agentSettings?.skillMarketplaceEndpoint;
   const [view, setView] = useState<SkillView>("discover");
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [marketplaceView, setMarketplaceView] = useState<"grid" | "list">(
     "grid",
-  );
-  const [agentSettings, setAgentSettings] = useState<AgentSettings | null>(
-    null,
   );
   const [skills, setSkills] = useState<SkillInfo[]>([]);
   const [marketplaceSkills, setMarketplaceSkills] = useState<
@@ -50,6 +51,7 @@ export function SkillMarketplaceView({ onClose }: SkillMarketplaceViewProps) {
   >([]);
   const [marketplaceDetail, setMarketplaceDetail] =
     useState<SkillMarketplaceDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [installedDetail, setInstalledDetail] = useState<SkillDetail | null>(
     null,
   );
@@ -65,6 +67,7 @@ export function SkillMarketplaceView({ onClose }: SkillMarketplaceViewProps) {
   const [localImportPreview, setLocalImportPreview] =
     useState<SkillImportPreview | null>(null);
   const [localImportBusy, setLocalImportBusy] = useState(false);
+  const [localImportInspecting, setLocalImportInspecting] = useState(false);
   const [localImportError, setLocalImportError] = useState<string | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -120,13 +123,6 @@ export function SkillMarketplaceView({ onClose }: SkillMarketplaceViewProps) {
   const loadInstalledSkills = useCallback(async () => {
     setSkills(await window.marloues.skill.list());
   }, []);
-  const loadAgentSettings = useCallback(async () => {
-    try {
-      setAgentSettings(await window.marloues.config.getAgentSettings());
-    } catch {
-      /* optional */
-    }
-  }, []);
   const loadMarketplace = useCallback(
     async ({
       reset,
@@ -135,6 +131,25 @@ export function SkillMarketplaceView({ onClose }: SkillMarketplaceViewProps) {
       reset: boolean;
       nextQuery?: string;
     }) => {
+      if (!skillMarketplaceEndpoint?.enabled) {
+        setMarketplaceSkills([]);
+        setCursor(undefined);
+        setTotal(undefined);
+        setHasMore(false);
+        setLoading(false);
+        setError(null);
+        return;
+      }
+      const bridgeIssue = getMarketplaceBridgeIssue("skill");
+      if (bridgeIssue) {
+        setMarketplaceSkills([]);
+        setCursor(undefined);
+        setTotal(undefined);
+        setHasMore(false);
+        setLoading(false);
+        setError(bridgeIssue);
+        return;
+      }
       setLoading(true);
       setError(null);
       try {
@@ -160,7 +175,7 @@ export function SkillMarketplaceView({ onClose }: SkillMarketplaceViewProps) {
         setLoading(false);
       }
     },
-    [cursor, debouncedQuery],
+    [cursor, debouncedQuery, skillMarketplaceEndpoint?.enabled],
   );
 
   const refreshCurrentView = useCallback(async () => {
@@ -171,27 +186,70 @@ export function SkillMarketplaceView({ onClose }: SkillMarketplaceViewProps) {
     await loadInstalledSkills();
   }, [view, loadMarketplace, loadInstalledSkills]);
 
-  const selectLocalSkill = useCallback(async () => {
+  const inspectLocalSkill = useCallback(async (path: string) => {
     setLocalImportError(null);
+    setLocalImportInspecting(true);
     try {
-      setLocalImportPreview(await window.marloues.skill.selectImportFolder());
-    } catch (caught) {
-      setLocalImportError(
-        caught instanceof Error ? caught.message : "无法读取该 Skill 目录",
+      setLocalImportPreview(
+        await window.marloues.skill.inspectImportSource(path),
       );
+    } catch (caught) {
+      setLocalImportPreview(null);
+      setLocalImportError(
+        caught instanceof Error ? caught.message : "无法读取该 Skill",
+      );
+    } finally {
+      setLocalImportInspecting(false);
     }
   }, []);
+
+  const selectLocalSkill = useCallback(async (kind: "file" | "directory") => {
+    setLocalImportError(null);
+    setLocalImportInspecting(true);
+    try {
+      const preview = await window.marloues.skill.selectImportSource(kind);
+      if (preview) setLocalImportPreview(preview);
+    } catch (caught) {
+      setLocalImportPreview(null);
+      setLocalImportError(
+        caught instanceof Error ? caught.message : "无法读取该 Skill",
+      );
+    } finally {
+      setLocalImportInspecting(false);
+    }
+  }, []);
+
+  const dropLocalSkill = useCallback(
+    async (files: File[]) => {
+      if (files.length !== 1) {
+        setLocalImportPreview(null);
+        setLocalImportError("一次只能导入一个 Skill。");
+        return;
+      }
+      try {
+        const path = window.marloues.skill.resolveDroppedPath(files[0]);
+        if (!path) throw new Error("无法读取拖入内容的本地路径。");
+        await inspectLocalSkill(path);
+      } catch (caught) {
+        setLocalImportPreview(null);
+        setLocalImportError(
+          caught instanceof Error ? caught.message : "无法读取拖入的 Skill",
+        );
+      }
+    },
+    [inspectLocalSkill],
+  );
 
   const importLocalSkill = useCallback(async () => {
     if (!localImportPreview || localImportBusy) return;
     setLocalImportBusy(true);
     setLocalImportError(null);
     try {
-      const imported = await window.marloues.skill.importFolder(
+      const imported = await window.marloues.skill.importSource(
         localImportPreview.path,
       );
-      if (!imported) return;
       await loadInstalledSkills();
+      announceSkillsChanged();
       setView("installed");
       setSelected({ kind: "installed", id: imported.id });
       setLocalImportOpen(false);
@@ -212,14 +270,23 @@ export function SkillMarketplaceView({ onClose }: SkillMarketplaceViewProps) {
 
   useEffect(() => {
     void loadInstalledSkills();
-    void loadMarketplace({ reset: true });
-    void loadAgentSettings();
-  }, [loadInstalledSkills, loadAgentSettings]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loadInstalledSkills]);
 
-  // Re-fetch marketplace when the debounced query changes.
+  // KeepAlive keeps the marketplace mounted behind Settings. Re-fetch when
+  // either the query or persisted endpoint revision changes.
   useEffect(() => {
+    if (!agentSettings) return;
     void loadMarketplace({ reset: true });
-  }, [debouncedQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+    // This reset effect intentionally keys off persisted endpoint fields. The
+    // callback also captures pagination cursor state, which must not retrigger
+    // a reset after every response.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    debouncedQuery,
+    skillMarketplaceEndpoint?.baseUrl,
+    skillMarketplaceEndpoint?.enabled,
+    skillMarketplaceEndpoint?.lastCheckedAt,
+  ]);
 
   // Escape key handler for modals
   useEffect(() => {
@@ -236,27 +303,50 @@ export function SkillMarketplaceView({ onClose }: SkillMarketplaceViewProps) {
   }, [selected]);
 
   useEffect(() => {
+    let cancelled = false;
     if (selected?.kind === "market") {
       setInstalledDetail(null);
+      setMarketplaceDetail(null);
+      setDetailLoading(true);
       void window.marloues.skill
         .marketplaceDetail(selected.slug)
-        .then(setMarketplaceDetail)
+        .then((nextDetail) => {
+          if (!cancelled) setMarketplaceDetail(nextDetail);
+        })
         .catch((err) => {
+          if (cancelled) return;
           setMarketplaceDetail(null);
           setError(err instanceof Error ? err.message : "加载 Skill 详情失败");
+        })
+        .finally(() => {
+          if (!cancelled) setDetailLoading(false);
         });
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
     if (selected?.kind === "installed") {
       setMarketplaceDetail(null);
+      setInstalledDetail(null);
+      setDetailLoading(true);
       void window.marloues.skill
         .getDetail(selected.id)
-        .then(setInstalledDetail)
+        .then((nextDetail) => {
+          if (!cancelled) setInstalledDetail(nextDetail);
+        })
         .catch((err) => {
+          if (cancelled) return;
           setInstalledDetail(null);
           setError(err instanceof Error ? err.message : "加载 Skill 详情失败");
+        })
+        .finally(() => {
+          if (!cancelled) setDetailLoading(false);
         });
+      return () => {
+        cancelled = true;
+      };
     }
+    setDetailLoading(false);
   }, [selected]);
 
   useEffect(() => {
@@ -283,6 +373,7 @@ export function SkillMarketplaceView({ onClose }: SkillMarketplaceViewProps) {
         version,
       );
       setSkills(next);
+      announceSkillsChanged();
       setMarketplaceSkills((items) =>
         items.map((i) => (i.slug === slug ? { ...i, installed: true } : i)),
       );
@@ -310,6 +401,7 @@ export function SkillMarketplaceView({ onClose }: SkillMarketplaceViewProps) {
     try {
       const next = await window.marloues.skill.remove(skill.id);
       setSkills(next);
+      announceSkillsChanged();
       setInstalledDetail(null);
       setSelected(null);
       if (skill.scope === "marketplace") {
@@ -340,12 +432,14 @@ export function SkillMarketplaceView({ onClose }: SkillMarketplaceViewProps) {
 
   const handleToggleSkill = useCallback(async (skill: SkillInfo) => {
     setSkills(await window.marloues.skill.toggle(skill.id, !skill.enabled));
+    announceSkillsChanged();
   }, []);
 
   const handleCloseModal = useCallback(() => {
     setSelected(null);
     setMarketplaceDetail(null);
     setInstalledDetail(null);
+    setDetailLoading(false);
   }, []);
 
   const list =
@@ -481,7 +575,9 @@ export function SkillMarketplaceView({ onClose }: SkillMarketplaceViewProps) {
                   }
                   installingSlug={installingSlug}
                   onSelect={(slug) => setSelected({ kind: "market", slug })}
-                  onInstall={(slug) => void installMarketplaceSkill(slug)}
+                  onInstall={(slug) =>
+                    void installMarketplaceSkill(slug, skill.version)
+                  }
                 />
               ))
             : filteredInstalledSkills.map((skill) => (
@@ -510,7 +606,9 @@ export function SkillMarketplaceView({ onClose }: SkillMarketplaceViewProps) {
         ? marketplaceDetail || selectedMarketplaceSkill
         : installedDetail || selectedInstalledSkill) ? (
         <SkillDetailModal
-          key={`${selected.kind}:${selected.kind === "market" ? selected.slug : selected.id}`}
+          key={`${selected.kind}:${
+            selected.kind === "market" ? selected.slug : selected.id
+          }`}
           kind={selected.kind}
           detail={
             selected.kind === "market" ? marketplaceDetail : installedDetail
@@ -521,8 +619,8 @@ export function SkillMarketplaceView({ onClose }: SkillMarketplaceViewProps) {
               : selectedInstalledSkill
           }
           installingSlug={installingSlug}
+          detailLoading={detailLoading}
           onClose={handleCloseModal}
-          onUse={() => onClose?.()}
           onInstall={(slug, version) =>
             void installMarketplaceSkill(slug, version)
           }
@@ -533,11 +631,13 @@ export function SkillMarketplaceView({ onClose }: SkillMarketplaceViewProps) {
         <SkillLocalImportDialog
           preview={localImportPreview}
           busy={localImportBusy}
+          inspecting={localImportInspecting}
           error={localImportError}
-          onSelect={() => void selectLocalSkill()}
+          onSelect={(kind) => void selectLocalSkill(kind)}
+          onDrop={(files) => void dropLocalSkill(files)}
           onImport={() => void importLocalSkill()}
           onClose={() => {
-            if (localImportBusy) return;
+            if (localImportBusy || localImportInspecting) return;
             setLocalImportOpen(false);
             setLocalImportPreview(null);
             setLocalImportError(null);

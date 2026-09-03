@@ -65,7 +65,11 @@ export function SessionRow({
     <div
       role="button"
       tabIndex={0}
-      className={`session-item ${active ? "active" : ""} ${session.isPinned ? "pinned" : ""} ${showPermissionStatus ? "has-permission" : ""} ${activity ? `has-activity activity-${activity}` : ""}`}
+      className={`session-item ${active ? "active" : ""} ${
+        session.isPinned ? "pinned" : ""
+      } ${showPermissionStatus ? "has-permission" : ""} ${
+        activity ? `has-activity activity-${activity}` : ""
+      }`}
       onClick={onOpen}
       onKeyDown={(event) => {
         if (event.key === "Enter") onOpen();
@@ -97,7 +101,9 @@ export function SessionRow({
               {formatSessionTitle(session.title)}
             </span>
             <span
-              className={`session-permission-status${showPermissionStatus ? " is-visible" : ""}`}
+              className={`session-permission-status${
+                showPermissionStatus ? " is-visible" : ""
+              }`}
               role={showPermissionStatus ? "status" : undefined}
               aria-hidden={!showPermissionStatus}
               title={showPermissionStatus ? "等待批准" : undefined}
@@ -117,7 +123,9 @@ export function SessionRow({
         )}
         <span className="session-actions">
           <button
-            className={`session-action session-pin ${session.isPinned ? "active" : ""}`}
+            className={`session-action session-pin ${
+              session.isPinned ? "active" : ""
+            }`}
             type="button"
             onClick={(event) => {
               event.stopPropagation();
@@ -439,6 +447,7 @@ export function ProjectContextMenu({
   projects,
   firstProjectId,
   onOpen,
+  onConfigure,
   onRename,
   onMoveToTop,
   onRemove,
@@ -448,6 +457,7 @@ export function ProjectContextMenu({
   projects: WorkspaceInfo[];
   firstProjectId?: string;
   onOpen: (project: WorkspaceInfo) => void;
+  onConfigure: (project: WorkspaceInfo) => void;
   onRename: (project: WorkspaceInfo) => void;
   onMoveToTop: (project: WorkspaceInfo) => void;
   onRemove: (project: WorkspaceInfo) => void;
@@ -460,8 +470,17 @@ export function ProjectContextMenu({
     <div
       data-project-menu
       className="session-menu project-menu"
-      style={getFloatingMenuPosition(menu.x, menu.y, 220, 170)}
+      style={getFloatingMenuPosition(menu.x, menu.y, 220, 200)}
     >
+      <button
+        onClick={() => {
+          onConfigure(project);
+          onClose();
+        }}
+      >
+        <Settings size={14} />
+        项目配置
+      </button>
       <button
         onClick={() => {
           onRename(project);

@@ -1,5 +1,10 @@
 import { create } from "zustand";
-import type { WorkspaceInfo, WorkspaceSettings } from "@shared/types";
+import type {
+  WorkspaceConfigUpdate,
+  WorkspaceCreateInput,
+  WorkspaceInfo,
+  WorkspaceSettings,
+} from "@shared/types";
 import { ipc } from "@/lib/ipc-client";
 
 interface WorkspaceStore {
@@ -7,8 +12,14 @@ interface WorkspaceStore {
   settings: WorkspaceSettings;
   load: () => Promise<void>;
   select: () => Promise<void>;
+  pickFolder: () => Promise<string | null>;
+  createWorkspace: (input: WorkspaceCreateInput) => Promise<WorkspaceInfo>;
   switchWorkspace: (workspaceId: string) => Promise<void>;
   renameWorkspace: (workspaceId: string, name: string) => Promise<void>;
+  updateConfig: (
+    workspaceId: string,
+    update: WorkspaceConfigUpdate,
+  ) => Promise<WorkspaceInfo>;
   removeWorkspace: (workspaceId: string) => Promise<void>;
   openInExplorer: (workspaceId: string) => Promise<void>;
   expandedWorkspaces: Set<string>;
@@ -34,6 +45,13 @@ export const useWorkspaceStore = create<WorkspaceStore>((set) => ({
     const settings = await ipc.workspace.getSettings();
     set({ current: workspace, settings });
   },
+  pickFolder: () => ipc.workspace.pickFolder(),
+  createWorkspace: async (input) => {
+    const workspace = await ipc.workspace.create(input);
+    const settings = await ipc.workspace.getSettings();
+    set({ current: workspace, settings });
+    return workspace;
+  },
   switchWorkspace: async (workspaceId: string) => {
     const workspace = await ipc.workspace.switch(workspaceId);
     if (!workspace) throw new Error(`Workspace not found: ${workspaceId}`);
@@ -49,6 +67,17 @@ export const useWorkspaceStore = create<WorkspaceStore>((set) => ({
         (item) => item.id === settings.currentWorkspaceId,
       ) ?? null;
     set({ current, settings });
+  },
+  updateConfig: async (workspaceId, update) => {
+    const workspace = await ipc.workspace.updateConfig(workspaceId, update);
+    if (!workspace) throw new Error(`Workspace not found: ${workspaceId}`);
+    const settings = await ipc.workspace.getSettings();
+    const current =
+      settings.workspaces.find(
+        (item) => item.id === settings.currentWorkspaceId,
+      ) ?? null;
+    set({ current, settings });
+    return workspace;
   },
   removeWorkspace: async (workspaceId: string) => {
     const current = await ipc.workspace.remove(workspaceId);

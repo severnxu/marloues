@@ -1,4 +1,4 @@
-const DEFAULT_TIMEOUT_MS = 15_000;
+const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 export class MarketplaceHttpError extends Error {
@@ -18,6 +18,7 @@ export async function requestMarketplaceJson<T>(
     headers?: Record<string, string>;
   } = {},
 ): Promise<T> {
+  normalizeMarketplaceUrl(url);
   let response: Response;
   try {
     response = await fetch(url, {
@@ -26,6 +27,7 @@ export async function requestMarketplaceJson<T>(
         "User-Agent": "Marloues-Marketplace/1.0",
         ...options.headers,
       },
+      redirect: "error",
       signal: AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS),
     });
   } catch (_error) {
@@ -39,18 +41,14 @@ export async function requestMarketplaceJson<T>(
     );
   }
 
-  const contentLength = Number(response.headers.get("content-length") ?? 0);
-  if (contentLength > MAX_RESPONSE_BYTES) {
-    throw new MarketplaceHttpError("市场端点响应数据过大。", response.status);
-  }
-
-  const body = await response.arrayBuffer();
-  if (body.byteLength > MAX_RESPONSE_BYTES) {
-    throw new MarketplaceHttpError("市场端点响应数据过大。", response.status);
-  }
+  const body = await readLimitedResponse(
+    response,
+    MAX_RESPONSE_BYTES,
+    "市场端点响应数据过大。",
+  );
 
   try {
-    return JSON.parse(new TextDecoder().decode(body)) as T;
+    return JSON.parse(body.toString("utf8")) as T;
   } catch (_error) {
     throw new MarketplaceHttpError(
       "市场端点返回的数据不是有效 JSON。",
@@ -67,6 +65,7 @@ export async function requestMarketplaceBinary(
     maxBytes?: number;
   } = {},
 ): Promise<Buffer> {
+  normalizeMarketplaceUrl(url);
   let response: Response;
   try {
     response = await fetch(url, {
@@ -75,6 +74,7 @@ export async function requestMarketplaceBinary(
         "User-Agent": "Marloues-Marketplace/1.0",
         ...options.headers,
       },
+      redirect: "error",
       signal: AbortSignal.timeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS),
     });
   } catch (_error) {
@@ -89,28 +89,63 @@ export async function requestMarketplaceBinary(
   }
 
   const maxBytes = options.maxBytes ?? 5 * 1024 * 1024;
-  const contentLength = Number(response.headers.get("content-length") ?? 0);
-  if (contentLength > maxBytes) {
-    throw new MarketplaceHttpError("市场资源超过安全限制。", response.status);
-  }
-
-  const body = await response.arrayBuffer();
-  if (body.byteLength > maxBytes) {
-    throw new MarketplaceHttpError("市场资源超过安全限制。", response.status);
-  }
-  return Buffer.from(body);
+  return readLimitedResponse(response, maxBytes, "市场资源超过安全限制。");
 }
 
 export function normalizeMarketplaceBaseUrl(value: string): string {
   const normalized = value.trim().replace(/\/+$/, "");
   if (!normalized) throw new MarketplaceHttpError("市场端点未配置。");
+  normalizeMarketplaceUrl(normalized);
+  return normalized;
+}
+
+function normalizeMarketplaceUrl(value: string): URL {
   try {
-    const parsed = new URL(normalized);
+    const parsed = new URL(value);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
       throw new Error();
     }
+    if (parsed.username || parsed.password) throw new Error();
+    return parsed;
   } catch {
     throw new MarketplaceHttpError("市场端点地址无效。");
   }
-  return normalized;
+}
+
+async function readLimitedResponse(
+  response: Response,
+  maxBytes: number,
+  tooLargeMessage: string,
+): Promise<Buffer> {
+  const rawContentLength = response.headers.get("content-length");
+  const contentLength = rawContentLength ? Number(rawContentLength) : 0;
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) {
+    throw new MarketplaceHttpError(tooLargeMessage, response.status);
+  }
+
+  if (!response.body) {
+    const body = Buffer.from(await response.arrayBuffer());
+    if (body.byteLength > maxBytes) {
+      throw new MarketplaceHttpError(tooLargeMessage, response.status);
+    }
+    return body;
+  }
+  const reader = response.body.getReader();
+  const chunks: Buffer[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > maxBytes) {
+        await reader.cancel();
+        throw new MarketplaceHttpError(tooLargeMessage, response.status);
+      }
+      chunks.push(Buffer.from(value));
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks, totalBytes);
 }

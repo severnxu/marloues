@@ -44,6 +44,10 @@ import { buildClaudeRuntimeOptions } from "../config/options-builder";
 import { configuredMcpTools } from "./mcp-tools";
 import { configuredRuntimeModels } from "./runtime-models";
 import { workflowThreadStore } from "./workflow-thread-store";
+import {
+  claudePluginPaths,
+  resolveEffectiveExtensionPlan,
+} from "../../services/extension-plan-service";
 import { ToolStormBreaker } from "./tool-storm-breaker";
 import { logInfo, logWarn } from "../logging/app-logger";
 import { SteerQueue } from "./steer-queue";
@@ -830,10 +834,16 @@ export function buildContextPolicyWarningEvent(
   const rounded = percentage !== undefined ? Math.round(percentage) : undefined;
   const message =
     decision.level === "warning"
-      ? `Context usage is ${rounded ?? "above the warning threshold"}% of ${source}; Marloues is monitoring this session.`
+      ? `Context usage is ${
+          rounded ?? "above the warning threshold"
+        }% of ${source}; Marloues is monitoring this session.`
       : decision.level === "compact"
-        ? `Context usage is ${rounded ?? "above the compact threshold"}% of ${source}; consider compacting or starting a branch.`
-        : `Context usage is ${rounded ?? "above the restart threshold"}% of ${source}; start a new session or switch to a larger context model soon.`;
+        ? `Context usage is ${
+            rounded ?? "above the compact threshold"
+          }% of ${source}; consider compacting or starting a branch.`
+        : `Context usage is ${
+            rounded ?? "above the restart threshold"
+          }% of ${source}; start a new session or switch to a larger context model soon.`;
   return {
     kind: "context-warning",
     payload: {
@@ -1267,6 +1277,11 @@ export class ClaudeRuntime implements AgentRuntime {
           model: routePlan.routes[0].model,
         }));
     const sdkEnv = buildSdkEnv(effectiveSettings, undefined, connection);
+    const extensionPlan = resolveEffectiveExtensionPlan(
+      effectiveSettings,
+      opts.cwd,
+      "sdk",
+    );
     const channel = createMessageChannel();
     const entry: ActiveTurn = {
       turnId,
@@ -1301,6 +1316,8 @@ export class ClaudeRuntime implements AgentRuntime {
         [SDK_BROWSER_SERVER_NAME]: sdkBrowserServer.server,
       },
       toolAliases: { Bash: SDK_SANDBOX_TOOL_NAME },
+      pluginPaths: claudePluginPaths(extensionPlan),
+      skillNames: extensionPlan.skills.map((skill) => skill.name),
       canUseTool: async (
         toolName: string,
         input: Record<string, unknown>,

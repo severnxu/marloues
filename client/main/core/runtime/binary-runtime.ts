@@ -213,7 +213,9 @@ export class BinaryRuntime implements AgentRuntime {
         payload: {
           turnId,
           label: "Binary runtime",
-          detail: `permission=${this.permissionMode}; sandboxOwner=codex-binary; cwd=${opts.cwd ?? process.cwd()}`,
+          detail: `permission=${
+            this.permissionMode
+          }; sandboxOwner=codex-binary; cwd=${opts.cwd ?? process.cwd()}`,
           status: "running",
         },
       };
@@ -393,7 +395,10 @@ export class BinaryRuntime implements AgentRuntime {
       const removeErrorListener = codexService.onError(onError);
       try {
         void codexService
-          .sendMessage(opts.threadId, opts.content, { cwd: opts.cwd })
+          .sendMessage(opts.threadId, opts.content, {
+            cwd: opts.cwd,
+            settings: effectiveSettings,
+          })
           .catch((err) => {
             onError(
               opts.threadId,
