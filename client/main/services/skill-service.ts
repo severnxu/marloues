@@ -6,13 +6,21 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
 } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { basename, dirname, join, resolve, sep } from "node:path";
+import { unzipSync } from "fflate";
 import type {
+  SkillInstallSource,
   SkillDetail,
   SkillInfo,
+  SkillMarketplaceEndpoint,
   SkillMarketplaceDetail,
+  SkillMarketplaceItem,
   SkillMarketplaceListResponse,
+  SkillMarketplaceListRequest,
 } from "@shared/types";
 import {
   getEnterpriseSkillsDir,
@@ -26,9 +34,35 @@ import {
   saveAgentSettings,
 } from "./config-service";
 import { getSkillRuntimePolicy } from "./skill-policy";
+import { requestMarketplaceBinary } from "./marketplace-http-client";
+import {
+  getRemoteSkillDetail,
+  listRemoteSkills,
+  testSkillMarketplaceEndpoint,
+} from "./skill-marketplace/skill-marketplace-service";
 import { getCurrentWorkspace } from "./workspace-service";
 
 const SKILL_CACHE_TTL_MS = 30_000;
+const GITHUB_API_URL = "https://api.github.com";
+const MAX_MARKETPLACE_FILE_COUNT = 100;
+const MAX_MARKETPLACE_FILE_SIZE_BYTES = 512 * 1024;
+const MAX_MARKETPLACE_TOTAL_SIZE_BYTES = 5 * 1024 * 1024;
+
+interface GithubContentEntry {
+  type: "file" | "dir" | "symlink" | "submodule";
+  name: string;
+  path: string;
+  size?: number;
+  content?: string;
+  encoding?: string;
+}
+
+interface GithubSkillSource {
+  owner: string;
+  repository: string;
+  ref: string;
+  path: string;
+}
 
 interface SkillCacheEntry {
   signature: string;
@@ -268,26 +302,358 @@ export function getSkillDetail(skillId: string): SkillDetail {
   };
 }
 
-export function listMarketplaceSkills(): SkillMarketplaceListResponse {
-  return { items: [], total: 0, hasMore: false };
-}
-
-export function getMarketplaceSkillDetail(
-  slug: string,
-): SkillMarketplaceDetail {
+export async function listMarketplaceSkills(
+  request: SkillMarketplaceListRequest = {},
+): Promise<SkillMarketplaceListResponse> {
+  const response = await listRemoteSkills(request);
   return {
-    slug,
-    name: slug,
-    installed: false,
-    sourceUrl: "",
-    content:
-      "Skill marketplace is not configured in this build. Use Import to add a local Skill folder.",
-    securityStatus: "unknown",
+    ...response,
+    items: response.items.map(markMarketplaceInstalled),
   };
 }
 
-export function installMarketplaceSkill(): SkillInfo[] {
+export async function testMarketplaceEndpoint(
+  endpoint: SkillMarketplaceEndpoint,
+): Promise<import("@shared/types").EndpointTestResult> {
+  return testSkillMarketplaceEndpoint(endpoint);
+}
+
+export async function getMarketplaceSkillDetail(
+  slug: string,
+): Promise<SkillMarketplaceDetail> {
+  const detail = await getRemoteSkillDetail(slug);
+  const installed = markMarketplaceInstalled(detail);
+  if (installed.content.trim() || installed.install?.type !== "github") {
+    return installed;
+  }
+  return {
+    ...installed,
+    content: await downloadSkillMarkdown(
+      parseGithubSkillSource(installed.install),
+    ),
+  };
+}
+
+export async function installMarketplaceSkill(
+  slug: string,
+): Promise<SkillInfo[]> {
+  assertMarketplaceInstallAllowed();
+  const detail = await getRemoteSkillDetail(slug);
+  const source = detail.install;
+  if (!source) throw new Error("该 Skill 没有可用的安装来源。");
+  const targetRoot = getUserSkillsDir();
+  const targetDir = join(targetRoot, marketplaceDirectoryName(detail.slug));
+  const temporaryDir = `${targetDir}.installing-${Date.now()}`;
+
+  mkdirSync(targetRoot, { recursive: true });
+  rmSync(temporaryDir, { recursive: true, force: true });
+  try {
+    await downloadMarketplaceSkill(source, temporaryDir);
+    if (!existsSync(join(temporaryDir, "SKILL.md"))) {
+      throw new Error("该 Skill 安装包不包含 SKILL.md。");
+    }
+    rmSync(targetDir, { recursive: true, force: true });
+    renameSync(temporaryDir, targetDir);
+  } catch (error) {
+    rmSync(temporaryDir, { recursive: true, force: true });
+    throw error;
+  }
+  skillCache = null;
+  logInfo("skill.marketplaceInstalled", {
+    skillId: detail.slug,
+    sourceUrl: detail.sourceUrl,
+    targetDir,
+  });
   return listInstalledSkills();
+}
+
+function markMarketplaceInstalled<T extends SkillMarketplaceItem>(item: T): T {
+  return {
+    ...item,
+    installed: isMarketplaceSkillInstalled(item.slug),
+  };
+}
+
+async function downloadSkillMarkdown(
+  source: GithubSkillSource,
+): Promise<string> {
+  const file = await getGithubContents(
+    source,
+    source.path ? `${source.path.replace(/\/$/, "")}/SKILL.md` : "SKILL.md",
+  );
+  if (
+    Array.isArray(file) ||
+    file.type !== "file" ||
+    file.encoding !== "base64" ||
+    !file.content
+  ) {
+    throw new Error("无法下载该 Skill 的 SKILL.md。");
+  }
+  const content = Buffer.from(
+    file.content.replace(/\n/g, ""),
+    "base64",
+  ).toString("utf8");
+  if (!content.trim()) throw new Error("该 Skill 的 SKILL.md 为空。");
+  return content;
+}
+
+async function downloadMarketplaceSkill(
+  source: SkillInstallSource,
+  targetDir: string,
+): Promise<void> {
+  if (source.type === "github") {
+    await downloadGithubDirectory(parseGithubSkillSource(source), targetDir);
+    return;
+  }
+  if (source.type === "archive") {
+    await downloadSkillArchive(source, targetDir);
+    return;
+  }
+  await downloadSkillFiles(source, targetDir);
+}
+
+function parseGithubSkillSource(
+  source: Extract<SkillInstallSource, { type: "github" }>,
+): GithubSkillSource {
+  const url = new URL(source.repositoryUrl);
+  if (url.protocol !== "https:" || url.hostname !== "github.com") {
+    throw new Error("该 Skill 使用了不支持的 GitHub 来源。");
+  }
+  const segments = url.pathname.split("/").filter(Boolean);
+  const [owner, repository, tree, urlRef, ...path] = segments;
+  if (!owner || !repository) {
+    throw new Error("该 Skill 使用了无效的 GitHub 来源。");
+  }
+  return {
+    owner,
+    repository,
+    ref: source.ref ?? (tree === "tree" ? urlRef : undefined) ?? "HEAD",
+    path: source.path ?? (tree === "tree" ? path.join("/") : ""),
+  };
+}
+
+async function downloadSkillArchive(
+  source: Extract<SkillInstallSource, { type: "archive" }>,
+  targetDir: string,
+): Promise<void> {
+  const archive = await requestMarketplaceBinary(source.url, {
+    maxBytes: MAX_MARKETPLACE_TOTAL_SIZE_BYTES,
+  });
+  if (source.sha256) {
+    const digest = createHash("sha256").update(archive).digest("hex");
+    if (digest !== source.sha256) {
+      throw new Error("Skill 安装包校验失败。");
+    }
+  }
+  const entries = unzipSync(archive);
+  const paths = Object.keys(entries);
+  const rootPrefix = inferArchiveRootPrefix(paths);
+  let fileCount = 0;
+  let totalBytes = 0;
+  for (const [archivePath, content] of Object.entries(entries)) {
+    const relativePath = removeArchiveRootPrefix(archivePath, rootPrefix);
+    if (!relativePath || !isSafeRelativePath(relativePath)) continue;
+    fileCount += 1;
+    totalBytes += content.byteLength;
+    assertSkillInstallLimits(fileCount, totalBytes);
+    const localPath = safeSkillTargetPath(targetDir, relativePath);
+    mkdirSync(dirname(localPath), { recursive: true });
+    writeFileSync(localPath, Buffer.from(content));
+  }
+}
+
+async function downloadSkillFiles(
+  source: Extract<SkillInstallSource, { type: "files" }>,
+  targetDir: string,
+): Promise<void> {
+  let totalBytes = 0;
+  if (source.files.length > MAX_MARKETPLACE_FILE_COUNT) {
+    throw new Error(
+      "Skill exceeds the marketplace installation safety limits.",
+    );
+  }
+  for (const file of source.files) {
+    if (!isSafeRelativePath(file.path)) {
+      throw new Error("Skill 文件路径不安全。");
+    }
+    const content = await requestMarketplaceBinary(file.url, {
+      maxBytes: MAX_MARKETPLACE_FILE_SIZE_BYTES,
+    });
+    if (file.sha256) {
+      const digest = createHash("sha256").update(content).digest("hex");
+      if (digest !== file.sha256) {
+        throw new Error(`Skill 文件校验失败：${file.path}`);
+      }
+    }
+    totalBytes += content.byteLength;
+    assertSkillInstallLimits(source.files.length, totalBytes);
+    const localPath = safeSkillTargetPath(targetDir, file.path);
+    mkdirSync(dirname(localPath), { recursive: true });
+    writeFileSync(localPath, content);
+  }
+}
+
+function inferArchiveRootPrefix(paths: string[]): string | undefined {
+  const nonDirectoryPaths = paths.filter((path) => !path.endsWith("/"));
+  if (!nonDirectoryPaths.length) return undefined;
+  const firstSegment = nonDirectoryPaths[0].split("/")[0];
+  if (!firstSegment) return undefined;
+  const hasRootSkill = nonDirectoryPaths.some(
+    (path) => path === "SKILL.md" || path.startsWith("SKILL.md/"),
+  );
+  if (hasRootSkill) return undefined;
+  const allShareRoot = nonDirectoryPaths.every((path) =>
+    path.startsWith(`${firstSegment}/`),
+  );
+  return allShareRoot ? firstSegment : undefined;
+}
+
+function removeArchiveRootPrefix(
+  path: string,
+  rootPrefix: string | undefined,
+): string {
+  if (!rootPrefix) return path;
+  return path.startsWith(`${rootPrefix}/`)
+    ? path.slice(rootPrefix.length + 1)
+    : path;
+}
+
+function isSafeRelativePath(path: string): boolean {
+  if (!path || path.startsWith("/") || path.includes("\\")) return false;
+  const parts = path.split("/").filter(Boolean);
+  return parts.every((part) => part !== "." && part !== "..");
+}
+
+function safeSkillTargetPath(targetDir: string, relativePath: string): string {
+  const target = resolve(targetDir, relativePath);
+  if (!target.startsWith(`${resolve(targetDir)}${sep}`)) {
+    throw new Error("Skill 文件路径不安全。");
+  }
+  return target;
+}
+
+function assertSkillInstallLimits(fileCount: number, totalBytes: number): void {
+  if (
+    fileCount > MAX_MARKETPLACE_FILE_COUNT ||
+    totalBytes > MAX_MARKETPLACE_TOTAL_SIZE_BYTES
+  ) {
+    throw new Error(
+      "Skill exceeds the marketplace installation safety limits.",
+    );
+  }
+}
+
+async function downloadGithubDirectory(
+  source: GithubSkillSource,
+  targetDir: string,
+): Promise<void> {
+  const queue = [{ remotePath: source.path, localPath: targetDir }];
+  let fileCount = 0;
+  let totalBytes = 0;
+  while (queue.length) {
+    const current = queue.shift()!;
+    const contents = await getGithubContents(source, current.remotePath);
+    if (!Array.isArray(contents)) {
+      throw new Error("The selected GitHub Skill path is not a directory.");
+    }
+    mkdirSync(current.localPath, { recursive: true });
+    for (const entry of contents) {
+      if (
+        !isSafeGithubPath(entry.name) ||
+        entry.type === "symlink" ||
+        entry.type === "submodule"
+      )
+        continue;
+      const localPath = join(current.localPath, entry.name);
+      if (entry.type === "dir") {
+        queue.push({ remotePath: entry.path, localPath });
+        continue;
+      }
+      if (entry.type !== "file") continue;
+      fileCount += 1;
+      totalBytes += entry.size ?? 0;
+      if (
+        fileCount > MAX_MARKETPLACE_FILE_COUNT ||
+        entry.size === undefined ||
+        entry.size > MAX_MARKETPLACE_FILE_SIZE_BYTES ||
+        totalBytes > MAX_MARKETPLACE_TOTAL_SIZE_BYTES
+      ) {
+        throw new Error(
+          "Skill exceeds the marketplace installation safety limits.",
+        );
+      }
+      const file = await getGithubContents(source, entry.path);
+      if (
+        Array.isArray(file) ||
+        file.type !== "file" ||
+        file.encoding !== "base64" ||
+        !file.content
+      ) {
+        throw new Error(`Unable to download ${entry.path} from GitHub.`);
+      }
+      writeFileSync(
+        localPath,
+        Buffer.from(file.content.replace(/\n/g, ""), "base64"),
+      );
+    }
+  }
+}
+
+async function getGithubContents(
+  source: GithubSkillSource,
+  path: string,
+): Promise<GithubContentEntry[] | GithubContentEntry> {
+  const url = new URL(
+    `${GITHUB_API_URL}/repos/${source.owner}/${source.repository}/contents/${path}`,
+  );
+  if (source.ref && source.ref !== "HEAD") {
+    url.searchParams.set("ref", source.ref);
+  }
+  const response = await fetch(url, {
+    headers: { Accept: "application/vnd.github+json" },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok)
+    throw new Error("Unable to download the Skill directory from GitHub.");
+  return (await response.json()) as GithubContentEntry[] | GithubContentEntry;
+}
+
+function isSafeGithubPath(name: string): boolean {
+  return (
+    Boolean(name) &&
+    name !== "." &&
+    name !== ".." &&
+    !name.includes("/") &&
+    !name.includes("\\")
+  );
+}
+
+function marketplaceDirectoryName(skillId: string): string {
+  return `marketplace-${skillId.replace(/[^A-Za-z0-9._-]/g, "-").slice(0, 120)}`;
+}
+
+function isMarketplaceSkillInstalled(skillId: string): boolean {
+  return ["marketplace", "skillsmp"].some((prefix) =>
+    existsSync(
+      join(
+        getUserSkillsDir(),
+        `${prefix}-${normaliseMarketplaceSlug(skillId)}`,
+      ),
+    ),
+  );
+}
+
+function normaliseMarketplaceSlug(skillId: string): string {
+  return skillId.replace(/[^A-Za-z0-9._-]/g, "-").slice(0, 120);
+}
+
+function assertMarketplaceInstallAllowed(): void {
+  const policy = getSkillRuntimePolicy();
+  if (policy.requireSignature) {
+    throw new Error(
+      "Marketplace installation requires a signed marketplace in this environment.",
+    );
+  }
 }
 
 export function readSkillInfo(

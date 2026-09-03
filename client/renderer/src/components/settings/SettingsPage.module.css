@@ -392,6 +392,55 @@
   color: var(--success);
 }
 
+.workbench :global(.settings-chip.error) {
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.workbench :global(.marketplace-endpoint-status) {
+  flex: 0 0 auto;
+}
+
+.workbench :global(.marketplace-endpoint-fields) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-3);
+}
+
+.workbench :global(.marketplace-endpoint-input) {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: var(--control-radius);
+  background: var(--raised-1);
+  color: var(--text-1);
+  padding: 8px 10px;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  outline: none;
+  transition:
+    border-color var(--motion-fast) var(--ease),
+    background var(--motion-fast) var(--ease),
+    box-shadow var(--motion-fast) var(--ease);
+}
+
+.workbench :global(.marketplace-endpoint-input:focus) {
+  border-color: var(--accent);
+  background: var(--raised-2);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.workbench :global(.marketplace-endpoint-error) {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--danger);
+}
+
 .workbench :global(.settings-action-row) {
   min-height: 52px;
   gap: var(--space-2);

@@ -628,6 +628,205 @@
     scrollbar-gutter: stable;
   }
 
+  .plugin-mcp-marketplace {
+    margin-bottom: 16px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    background: var(--surface-elevated);
+    padding: 14px;
+  }
+
+  .plugin-mcp-marketplace-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+
+  .plugin-mcp-marketplace-head > div {
+    display: grid;
+    min-width: 0;
+    gap: 3px;
+  }
+
+  .plugin-mcp-marketplace-head strong {
+    color: var(--text-1);
+    font-size: 13px;
+    font-weight: 650;
+  }
+
+  .plugin-mcp-marketplace-head small {
+    overflow: hidden;
+    color: var(--text-3);
+    font-size: 10.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .plugin-mcp-marketplace-search {
+    display: flex;
+    flex: 0 0 300px;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--raised-1);
+    padding: 0 8px;
+  }
+
+  .plugin-mcp-marketplace-search svg {
+    width: 14px;
+    height: 14px;
+    color: var(--text-3);
+  }
+
+  .plugin-mcp-marketplace-search input {
+    min-width: 0;
+    flex: 1 1 auto;
+    border: 0;
+    background: transparent;
+    color: var(--text-1);
+    font-size: 12px;
+    line-height: 30px;
+    outline: none;
+  }
+
+  .plugin-mcp-marketplace-search button {
+    border: 0;
+    background: transparent;
+    color: var(--text-2);
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .plugin-mcp-marketplace-search button:disabled,
+  .plugin-mcp-marketplace-search input:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .plugin-mcp-marketplace-empty,
+  .plugin-mcp-marketplace-error,
+  .plugin-mcp-marketplace-item p {
+    margin: 0;
+    color: var(--text-3);
+    font-size: 11px;
+    line-height: 1.55;
+  }
+
+  .plugin-mcp-marketplace-error {
+    color: var(--danger);
+  }
+
+  .plugin-mcp-marketplace-list {
+    display: grid;
+    gap: 7px;
+  }
+
+  .plugin-mcp-marketplace-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-workspace);
+    padding: 10px 12px;
+  }
+
+  .plugin-mcp-marketplace-identity {
+    display: grid;
+    min-width: 0;
+    gap: 3px;
+  }
+
+  .plugin-mcp-marketplace-identity strong {
+    overflow: hidden;
+    color: var(--text-1);
+    font-size: 12.5px;
+    font-weight: 630;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .plugin-mcp-marketplace-identity small {
+    overflow: hidden;
+    color: var(--text-3);
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .plugin-mcp-marketplace-install {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--raised-1);
+    color: var(--text-2);
+    padding: 5px 10px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .plugin-mcp-marketplace-install:hover:not(:disabled) {
+    border-color: var(--border-strong);
+    background: var(--raised-2);
+    color: var(--text-1);
+  }
+
+  .plugin-mcp-marketplace-install:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .plugin-mcp-marketplace-install svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .plugin-mcp-marketplace-more {
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--raised-1);
+    color: var(--text-2);
+    padding: 7px 10px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .plugin-mcp-marketplace-more:hover:not(:disabled) {
+    border-color: var(--border-strong);
+    background: var(--raised-2);
+    color: var(--text-1);
+  }
+
+  .plugin-mcp-marketplace-more:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .plugin-mcp-local-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin: 0 0 8px;
+  }
+
+  .plugin-mcp-local-title strong {
+    color: var(--text-1);
+    font-size: 13px;
+    font-weight: 650;
+  }
+
+  .plugin-mcp-local-title small {
+    color: var(--text-3);
+    font-size: 10.5px;
+  }
+
   .plugin-mcp-service {
     margin-bottom: 8px;
     border: 1px solid var(--border);

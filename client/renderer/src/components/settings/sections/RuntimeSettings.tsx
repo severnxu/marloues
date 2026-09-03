@@ -11,7 +11,14 @@ import { notify } from "@/lib/notifications";
 import { runtimePresentation } from "@/lib/runtime-presentation";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useUnifiedChatStore } from "@/stores/unified-chat-store";
-import type { AgentSettings, RuntimeKind } from "@shared/types";
+import type {
+  AgentSettings,
+  McpMarketplaceEndpoint,
+  RuntimeKind,
+  SkillMarketplaceEndpoint,
+} from "@shared/types";
+
+type MarketplaceEndpoint = SkillMarketplaceEndpoint & McpMarketplaceEndpoint;
 
 export function RuntimeSettings({
   draft,
@@ -70,6 +77,83 @@ export function RuntimeSettings({
         tone: "error",
       });
     }
+  };
+
+  const updateSkillMarketplaceEndpoint = (
+    patch: Partial<SkillMarketplaceEndpoint>,
+  ) => {
+    const endpoint = draft.skillMarketplaceEndpoint;
+    const addressChanged = patch.baseUrl !== undefined;
+    onCommitDraft({
+      ...draft,
+      skillMarketplaceEndpoint: {
+        baseUrl: endpoint?.baseUrl ?? "",
+        enabled: endpoint?.enabled ?? true,
+        lastStatus: addressChanged
+          ? "untested"
+          : (endpoint?.lastStatus ?? "untested"),
+        lastError: addressChanged ? undefined : endpoint?.lastError,
+        ...patch,
+      },
+    });
+  };
+
+  const updateMcpMarketplaceEndpoint = (
+    patch: Partial<McpMarketplaceEndpoint>,
+  ) => {
+    const endpoint = draft.mcpMarketplaceEndpoint;
+    const addressChanged = patch.baseUrl !== undefined;
+    onCommitDraft({
+      ...draft,
+      mcpMarketplaceEndpoint: {
+        baseUrl: endpoint?.baseUrl ?? "",
+        enabled: endpoint?.enabled ?? true,
+        lastStatus: addressChanged
+          ? "untested"
+          : (endpoint?.lastStatus ?? "untested"),
+        lastError: addressChanged ? undefined : endpoint?.lastError,
+        ...patch,
+      },
+    });
+  };
+
+  const testSkillMarketplaceEndpoint = async () => {
+    const endpoint = draft.skillMarketplaceEndpoint;
+    if (!endpoint || !isConfiguredMarketplaceUrl(endpoint.baseUrl)) {
+      notify({ title: "请先填写市场地址", tone: "error" });
+      return;
+    }
+    const result =
+      await window.marloues.skill.testMarketplaceEndpoint(endpoint);
+    updateSkillMarketplaceEndpoint({
+      lastStatus: result.ok ? "ok" : "error",
+      lastError: result.ok ? undefined : result.message,
+      lastCheckedAt: Date.now(),
+    });
+    notify({
+      title: result.ok ? "Skill 市场端点连接正常" : "Skill 市场端点连接失败",
+      description: result.message,
+      tone: result.ok ? "success" : "error",
+    });
+  };
+
+  const testMcpMarketplaceEndpoint = async () => {
+    const endpoint = draft.mcpMarketplaceEndpoint;
+    if (!endpoint || !isConfiguredMarketplaceUrl(endpoint.baseUrl)) {
+      notify({ title: "请先填写市场地址", tone: "error" });
+      return;
+    }
+    const result = await window.marloues.mcp.testMarketplaceEndpoint(endpoint);
+    updateMcpMarketplaceEndpoint({
+      lastStatus: result.ok ? "ok" : "error",
+      lastError: result.ok ? undefined : result.message,
+      lastCheckedAt: Date.now(),
+    });
+    notify({
+      title: result.ok ? "MCP 市场端点连接正常" : "MCP 市场端点连接失败",
+      description: result.message,
+      tone: result.ok ? "success" : "error",
+    });
   };
 
   return (
@@ -135,7 +219,104 @@ export function RuntimeSettings({
           启用思考
         </label>
       </SettingsCard>
+
+      <SettingsCard
+        title="端点配置"
+        description="分别配置 Skill 与 MCP 市场端点；可填写相同地址，也可使用不同的市场服务。"
+        icon={<TerminalSquare size={16} />}
+        surface="plain"
+      >
+        <div className="provider-list">
+          <MarketplaceEndpointRow
+            title="Skill 市场端点"
+            endpoint={draft.skillMarketplaceEndpoint}
+            onUpdate={updateSkillMarketplaceEndpoint}
+            onTest={() => void testSkillMarketplaceEndpoint()}
+          />
+          <MarketplaceEndpointRow
+            title="MCP 市场端点"
+            endpoint={draft.mcpMarketplaceEndpoint}
+            onUpdate={updateMcpMarketplaceEndpoint}
+            onTest={() => void testMcpMarketplaceEndpoint()}
+          />
+        </div>
+      </SettingsCard>
     </>
+  );
+}
+
+function MarketplaceEndpointRow({
+  title,
+  endpoint,
+  onUpdate,
+  onTest,
+}: {
+  title: string;
+  endpoint?: MarketplaceEndpoint;
+  onUpdate: (patch: Partial<MarketplaceEndpoint>) => void;
+  onTest: () => void;
+}) {
+  const enabled = endpoint?.enabled ?? true;
+  const status = isConfiguredMarketplaceUrl(endpoint?.baseUrl)
+    ? (endpoint?.lastStatus ?? "untested")
+    : "untested";
+  return (
+    <div className="provider-row marketplace-endpoint-row">
+      <div className="provider-row-head">
+        <div className="provider-row-title">
+          <div>
+            <strong>{title}</strong>
+            <span
+              className={`settings-chip marketplace-endpoint-status ${status}`}
+            >
+              {status === "ok"
+                ? "连接正常"
+                : status === "error"
+                  ? "连接失败"
+                  : "未测试"}
+            </span>
+          </div>
+        </div>
+        <div className="settings-row-actions provider-actions">
+          <label className="settings-inline-check provider-enable-check">
+            <SettingsCheckbox
+              checked={enabled}
+              onChange={(event) => onUpdate({ enabled: event.target.checked })}
+            />
+            启用
+          </label>
+          <button
+            className="settings-action-button"
+            type="button"
+            disabled={!isConfiguredMarketplaceUrl(endpoint?.baseUrl)}
+            onClick={onTest}
+          >
+            测试连接
+          </button>
+        </div>
+      </div>
+      <div className="marketplace-endpoint-fields">
+        <input
+          className="marketplace-endpoint-input"
+          type="url"
+          aria-label={`${title}地址`}
+          value={endpoint?.baseUrl ?? ""}
+          placeholder="https://market.example.com"
+          onChange={(event) => onUpdate({ baseUrl: event.target.value })}
+        />
+      </div>
+    </div>
+  );
+}
+
+function isConfiguredMarketplaceUrl(value: string | undefined): boolean {
+  const normalized = value?.trim() ?? "";
+  return Boolean(
+    normalized &&
+      normalized !== "https://" &&
+      normalized !== "http://" &&
+      normalized !== "https:" &&
+      normalized !== "http:",
   );
 }
 

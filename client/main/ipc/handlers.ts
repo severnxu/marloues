@@ -110,10 +110,14 @@ import {
   writeMemoryFile,
 } from "../services/memory-service";
 import {
+  getMarketplaceMcpServerDetail,
+  installMarketplaceMcpServer,
   listMcpServers,
+  listMarketplaceMcpServers,
   listRuntimeMcpTools,
   refreshMcpServerStatuses,
   saveMcpServers,
+  testMcpMarketplaceEndpointFromSettings,
   testMcpServer,
 } from "../services/mcp-service";
 import {
@@ -132,6 +136,7 @@ import {
   installMarketplaceSkill,
   listInstalledSkills as listInstalledSkillsFromService,
   listMarketplaceSkills,
+  testMarketplaceEndpoint as testSkillMarketplaceEndpointFromSettings,
   readSkillInfo as readSkillInfoFromService,
   removeSkill as removeSkillFromService,
   toggleSkill as toggleSkillFromService,
@@ -3403,6 +3408,19 @@ export function registerHandlers(): void {
     return listRuntimeMcpTools();
   });
 
+  ipcMain.handle(IPC.MCP_MARKETPLACE_LIST, async (_e, request) =>
+    listMarketplaceMcpServers(request),
+  );
+  ipcMain.handle(IPC.MCP_MARKETPLACE_DETAIL, async (_e, id: string) =>
+    getMarketplaceMcpServerDetail(id),
+  );
+  ipcMain.handle(IPC.MCP_MARKETPLACE_INSTALL, async (_e, id: string) =>
+    installMarketplaceMcpServer(id),
+  );
+  ipcMain.handle(IPC.MCP_TEST_MARKETPLACE_ENDPOINT, async (_e, endpoint) =>
+    testMcpMarketplaceEndpointFromSettings(endpoint),
+  );
+
   // ---------- Audit ----------
 
   ipcMain.handle(IPC.AUDIT_LIST, async (_e, limit?: number) =>
@@ -3542,8 +3560,8 @@ export function registerHandlers(): void {
       getSkillDetailFromService(skillId),
   );
 
-  ipcMain.handle(IPC.SKILL_MARKETPLACE_LIST, async () =>
-    listMarketplaceSkills(),
+  ipcMain.handle(IPC.SKILL_MARKETPLACE_LIST, async (_e, request) =>
+    listMarketplaceSkills(request),
   );
   ipcMain.handle(
     IPC.SKILL_MARKETPLACE_DETAIL,
@@ -3552,7 +3570,11 @@ export function registerHandlers(): void {
   );
   ipcMain.handle(
     IPC.SKILL_MARKETPLACE_INSTALL,
-    async (_e, _slug?: string, _version?: string) => installMarketplaceSkill(),
+    async (_e, slug: string, _version?: string) =>
+      installMarketplaceSkill(slug),
+  );
+  ipcMain.handle(IPC.SKILL_TEST_MARKETPLACE_ENDPOINT, async (_e, endpoint) =>
+    testSkillMarketplaceEndpointFromSettings(endpoint),
   );
 
   // ---------- Terminal ----------

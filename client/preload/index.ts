@@ -153,6 +153,14 @@ const api: MarlouesAPI = {
       ipcRenderer.invoke(IPC.MCP_TEST_SERVER, server),
     refreshStatus: () => ipcRenderer.invoke(IPC.MCP_REFRESH_STATUS),
     listTools: () => ipcRenderer.invoke(IPC.MCP_LIST_TOOLS),
+    marketplaceList: (request) =>
+      ipcRenderer.invoke(IPC.MCP_MARKETPLACE_LIST, request),
+    marketplaceDetail: (id: string) =>
+      ipcRenderer.invoke(IPC.MCP_MARKETPLACE_DETAIL, id),
+    marketplaceInstall: (id: string) =>
+      ipcRenderer.invoke(IPC.MCP_MARKETPLACE_INSTALL, id),
+    testMarketplaceEndpoint: (endpoint) =>
+      ipcRenderer.invoke(IPC.MCP_TEST_MARKETPLACE_ENDPOINT, endpoint),
   },
   audit: {
     list: (limit?: number) => ipcRenderer.invoke(IPC.AUDIT_LIST, limit),
@@ -216,6 +224,8 @@ const api: MarlouesAPI = {
       ipcRenderer.invoke(IPC.SKILL_MARKETPLACE_DETAIL, slug, version),
     marketplaceInstall: (slug: string, version?: string) =>
       ipcRenderer.invoke(IPC.SKILL_MARKETPLACE_INSTALL, slug, version),
+    testMarketplaceEndpoint: (endpoint) =>
+      ipcRenderer.invoke(IPC.SKILL_TEST_MARKETPLACE_ENDPOINT, endpoint),
   },
   chat: {
     listSessions: () => ipcRenderer.invoke(IPC.CHAT_LIST_SESSIONS),

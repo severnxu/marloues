@@ -523,6 +523,8 @@ export interface AgentSettings {
   activeToolProfileId: string;
   toolProfiles: ToolProfile[];
   mcpServers: McpServerConfig[];
+  skillMarketplaceEndpoint?: SkillMarketplaceEndpoint;
+  mcpMarketplaceEndpoint?: McpMarketplaceEndpoint;
   imBotBindings: ImBotBindingsConfig;
   skillDirectories?: string[];
   disabledSkills: string[];
@@ -530,6 +532,22 @@ export interface AgentSettings {
   enterpriseControlledSettings?: string[];
   sandboxEnabled?: boolean;
   sandboxMode?: AgentSandboxMode;
+}
+
+export interface SkillMarketplaceEndpoint {
+  baseUrl: string;
+  enabled: boolean;
+  lastStatus?: "untested" | "ok" | "error";
+  lastError?: string;
+  lastCheckedAt?: number;
+}
+
+export interface McpMarketplaceEndpoint {
+  baseUrl: string;
+  enabled: boolean;
+  lastStatus?: "untested" | "ok" | "error";
+  lastError?: string;
+  lastCheckedAt?: number;
 }
 
 export type AgentMemoryMode = "workspace" | "session" | "off";
@@ -629,6 +647,7 @@ export interface McpServerConfig {
   config: unknown;
   enabled: boolean;
   source?: "local" | "enterprise";
+  marketplaceId?: string;
   locked?: boolean;
   lastStatus?: "untested" | "running" | "ok" | "error" | "disconnected";
   lastError?: string;
@@ -706,13 +725,36 @@ export interface SkillMarketplaceItem {
   version?: string;
   downloads?: number;
   stars?: number;
+  tags?: string[];
   updatedAt?: number;
   installed: boolean;
   sourceUrl: string;
 }
 
+export type SkillInstallSource =
+  | {
+      type: "github";
+      repositoryUrl: string;
+      ref?: string;
+      path?: string;
+    }
+  | {
+      type: "archive";
+      url: string;
+      sha256?: string;
+    }
+  | {
+      type: "files";
+      files: Array<{
+        path: string;
+        url: string;
+        sha256?: string;
+      }>;
+    };
+
 export interface SkillMarketplaceDetail extends SkillMarketplaceItem {
   content: string;
+  install?: SkillInstallSource;
   changelog?: string;
   license?: string | null;
   securityStatus?: "clean" | "warning" | "suspicious" | "unknown";
@@ -739,6 +781,54 @@ export interface SkillMarketplaceListRequest {
 
 export interface SkillMarketplaceListResponse {
   items: SkillMarketplaceItem[];
+  nextCursor?: string;
+  total?: number;
+  hasMore: boolean;
+}
+
+export interface McpMarketplaceItem {
+  id: string;
+  name: string;
+  description?: string;
+  version?: string;
+  author?: string;
+  homepageUrl?: string;
+  repositoryUrl?: string;
+  iconUrl?: string;
+  tags?: string[];
+  verified?: boolean;
+  installed: boolean;
+}
+
+export interface McpMarketplacePackage {
+  registryType: "npm" | "pypi" | "cargo" | "mcpb" | "oci";
+  identifier: string;
+  version?: string;
+  command?: string;
+  args?: string[];
+  environment?: Record<string, string>;
+}
+
+export interface McpMarketplaceRemote {
+  transport: "http" | "sse";
+  url: string;
+  headers?: Record<string, string>;
+}
+
+export interface McpMarketplaceDetail extends McpMarketplaceItem {
+  packages?: McpMarketplacePackage[];
+  remotes?: McpMarketplaceRemote[];
+}
+
+export interface McpMarketplaceListRequest {
+  query?: string;
+  page?: number;
+  pageSize?: number;
+  cursor?: string;
+}
+
+export interface McpMarketplaceListResponse {
+  items: McpMarketplaceItem[];
   nextCursor?: string;
   total?: number;
   hasMore: boolean;
@@ -1063,6 +1153,14 @@ export interface MarlouesAPI {
     testServer(server: McpServerConfig): Promise<McpServerConfig>;
     refreshStatus(): Promise<McpServerConfig[]>;
     listTools(): Promise<string[]>;
+    marketplaceList(
+      request?: McpMarketplaceListRequest,
+    ): Promise<McpMarketplaceListResponse>;
+    marketplaceDetail(id: string): Promise<McpMarketplaceDetail>;
+    marketplaceInstall(id: string): Promise<McpServerConfig[]>;
+    testMarketplaceEndpoint(
+      endpoint: McpMarketplaceEndpoint,
+    ): Promise<EndpointTestResult>;
   };
   audit: {
     list(limit?: number): Promise<AuditEventRecord[]>;
@@ -1121,6 +1219,9 @@ export interface MarlouesAPI {
       version?: string,
     ): Promise<SkillMarketplaceDetail>;
     marketplaceInstall(slug: string, version?: string): Promise<SkillInfo[]>;
+    testMarketplaceEndpoint(
+      endpoint: SkillMarketplaceEndpoint,
+    ): Promise<EndpointTestResult>;
   };
   chat: {
     listSessions(): Promise<ChatSessionRecord[]>;
@@ -1360,6 +1461,10 @@ export const IPC = {
   MCP_TEST_SERVER: "mcp:test-server",
   MCP_REFRESH_STATUS: "mcp:refresh-status",
   MCP_LIST_TOOLS: "mcp:list-tools",
+  MCP_MARKETPLACE_LIST: "mcp:marketplace-list",
+  MCP_MARKETPLACE_DETAIL: "mcp:marketplace-detail",
+  MCP_MARKETPLACE_INSTALL: "mcp:marketplace-install",
+  MCP_TEST_MARKETPLACE_ENDPOINT: "mcp:test-marketplace-endpoint",
   AUDIT_LIST: "audit:list",
   SCHEDULE_LIST: "schedule:list",
   SCHEDULE_CREATE: "schedule:create",
@@ -1378,6 +1483,7 @@ export const IPC = {
   SKILL_MARKETPLACE_LIST: "skill:marketplace-list",
   SKILL_MARKETPLACE_DETAIL: "skill:marketplace-detail",
   SKILL_MARKETPLACE_INSTALL: "skill:marketplace-install",
+  SKILL_TEST_MARKETPLACE_ENDPOINT: "skill:test-marketplace-endpoint",
   CHAT_LIST_SESSIONS: "chat:list-sessions",
   CHAT_LIST_ALL_SESSIONS: "chat:list-all-sessions",
   CHAT_SEARCH_SESSIONS: "chat:search-sessions",
