@@ -5,6 +5,8 @@
 
 更新时间：2026-06-18
 
+专题方案：[Skill 与 MCP 市场接入](./marketplace-integration.md)
+
 ---
 
 ## 目录

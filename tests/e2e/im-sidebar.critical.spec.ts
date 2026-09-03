@@ -42,7 +42,12 @@ async function launchApp() {
   const app = await electron.launch({
     ...(executablePath ? { executablePath, args: [] } : { args: [mainEntry] }),
     cwd: repoRoot,
-    env: { ...process.env, NODE_ENV: "test", MARLOUES_HOME: testHome },
+    env: {
+      ...process.env,
+      NODE_ENV: "test",
+      MARLOUES_HOME: testHome,
+      MARLOUES_REMOTE_DEBUGGING_PORT: "0",
+    },
   });
   const window = await app.firstWindow();
   return { app, window };

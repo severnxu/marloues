@@ -28,10 +28,9 @@ export function ComposerSuggestionPopover({
   onSelect: (item: ComposerSuggestion) => void;
 }) {
   const selectedRef = useRef<HTMLButtonElement>(null);
-  useEffect(
-    () => selectedRef.current?.scrollIntoView({ block: "nearest" }),
-    [selectedIndex],
-  );
+  useEffect(() => {
+    selectedRef.current?.scrollIntoView({ block: "nearest" });
+  }, [selectedIndex]);
   if (!items.length) return null;
   return (
     <div

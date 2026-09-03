@@ -112,7 +112,7 @@
     transform: translateY(-50%) scale(1.08);
   }
 
-  .work-area-daily .work-area-row:hover + .work-area-add,
+  .work-area-daily .work-area-heading:hover .work-area-add,
   .work-area-daily .work-area-row:focus-visible + .work-area-add,
   .work-area-daily.is-actions-pinned .work-area-add,
   .work-area-add:hover,
@@ -121,7 +121,7 @@
     pointer-events: auto;
   }
 
-  .work-area-daily .work-area-row:hover .work-area-activity,
+  .work-area-daily .work-area-heading:hover .work-area-activity,
   .work-area-daily .work-area-row:focus-visible .work-area-activity,
   .work-area-daily.is-actions-pinned .work-area-activity {
     opacity: 0;

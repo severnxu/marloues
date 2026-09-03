@@ -39,6 +39,7 @@ import type {
   ContextActionRequest,
 } from "@shared/types";
 import { applySecurityMode } from "@shared/security-policy";
+import { workspacePathsEqual } from "@shared/workspace-path";
 import {
   EMPTY_PENDING_STEERS,
   SESSION_CONTENT_SETTLE_MS,
@@ -227,15 +228,30 @@ export function WorkflowChatPage({
     activeSessionId ? s.sessionInitInfo[activeSessionId] : undefined,
   );
 
-  const { slashCommands, skills: composerSkills } =
-    useComposerCatalogs(sessionInitInfo);
-
   const settings = useSettingsStore((s) => s.settings);
   const setModel = useSettingsStore((s) => s.setModel);
   const loadSettings = useSettingsStore((s) => s.load);
   const saveSettings = useSettingsStore((s) => s.save);
   const openSettings = useSettingsPageStore((state) => state.openSection);
-  const workspace = useWorkspaceStore((s) => s.current);
+  const currentWorkspace = useWorkspaceStore((s) => s.current);
+  const workspaceSettings = useWorkspaceStore((s) => s.settings);
+  const workspace = useMemo(() => {
+    const sessionWorkspacePath = activeSession?.workspacePath;
+    if (!sessionWorkspacePath) return currentWorkspace;
+    return (
+      workspaceSettings.workspaces.find((item) =>
+        workspacePathsEqual(item.path, sessionWorkspacePath),
+      ) ?? currentWorkspace
+    );
+  }, [
+    activeSession?.workspacePath,
+    currentWorkspace,
+    workspaceSettings.workspaces,
+  ]);
+  const { slashCommands, skills: composerSkills } = useComposerCatalogs(
+    sessionInitInfo,
+    workspace?.id,
+  );
   const composerEpoch = useUnifiedChatStore((s) => s.composerEpoch);
   // Keep this outside React state: a second click/Enter can arrive before a
   // render disables or clears the composer. Without it, each submission gets a

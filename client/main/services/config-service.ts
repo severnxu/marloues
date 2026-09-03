@@ -10,7 +10,8 @@ import type {
   ImBotBindingsConfig,
   ModelProviderConfig,
   McpServerConfig,
-  MarketplaceEndpoint,
+  McpMarketplaceEndpoint,
+  SkillMarketplaceEndpoint,
   ModelOption,
   ModelSelection,
   ToolProfile,
@@ -135,9 +136,12 @@ function defaultAgentSettings(): AgentSettings {
     ],
     mcpServers: [],
     skillMarketplaceEndpoint: {
-      id: "skillsmp",
-      baseUrl: "https://skillsmp.com",
-      adapter: "skillsmp",
+      baseUrl: "https://clawhub.ai",
+      enabled: true,
+      lastStatus: "untested",
+    },
+    mcpMarketplaceEndpoint: {
+      baseUrl: "https://registry.modelcontextprotocol.io",
       enabled: true,
       lastStatus: "untested",
     },
@@ -560,14 +564,15 @@ function normalizeAgentSettings(
       activeToolProfile,
     ),
     mcpServers: settings.mcpServers ?? [],
-    skillMarketplaceEndpoint: normalizeMarketplaceEndpoint(
+    skillMarketplaceEndpoint: normalizeSkillMarketplaceEndpoint(
       settings.skillMarketplaceEndpoint ??
         readLegacyMarketplaceEndpoint(settings, "skill"),
       defaultAgentSettings().skillMarketplaceEndpoint,
     ),
-    mcpMarketplaceEndpoint: normalizeMarketplaceEndpoint(
+    mcpMarketplaceEndpoint: normalizeMcpMarketplaceEndpoint(
       settings.mcpMarketplaceEndpoint ??
         readLegacyMarketplaceEndpoint(settings, "mcp"),
+      defaultAgentSettings().mcpMarketplaceEndpoint,
     ),
     imBotBindings: normalizeImBotBindingsConfig(settings.imBotBindings),
     skillDirectories: settings.skillDirectories ?? [],
@@ -581,17 +586,39 @@ function normalizeAgentSettings(
   };
 }
 
-function normalizeMarketplaceEndpoint(
-  endpoint: AgentSettings["skillMarketplaceEndpoint"] | undefined,
-  fallback?: AgentSettings["skillMarketplaceEndpoint"],
-): AgentSettings["skillMarketplaceEndpoint"] {
+function normalizeSkillMarketplaceEndpoint(
+  endpoint: SkillMarketplaceEndpoint | LegacyMarketplaceEndpoint | undefined,
+  fallback?: SkillMarketplaceEndpoint,
+): SkillMarketplaceEndpoint {
+  if (!endpoint || typeof endpoint !== "object") {
+    if (!fallback) throw new Error("Skill marketplace endpoint is required.");
+    return fallback;
+  }
+  return normalizeMarketplaceEndpoint(endpoint);
+}
+
+function normalizeMcpMarketplaceEndpoint(
+  endpoint: McpMarketplaceEndpoint | LegacyMarketplaceEndpoint | undefined,
+  fallback?: McpMarketplaceEndpoint,
+): McpMarketplaceEndpoint | undefined {
   if (!endpoint || typeof endpoint !== "object") return fallback;
-  const baseUrl = endpoint.baseUrl?.trim().replace(/\/$/, "") || "";
-  const configured = baseUrl !== "https:" && baseUrl !== "http:";
+  return normalizeMarketplaceEndpoint(endpoint);
+}
+
+function normalizeMarketplaceEndpoint(
+  endpoint:
+    | SkillMarketplaceEndpoint
+    | McpMarketplaceEndpoint
+    | LegacyMarketplaceEndpoint,
+): SkillMarketplaceEndpoint & McpMarketplaceEndpoint {
+  const normalizedBaseUrl = endpoint.baseUrl?.trim().replace(/\/+$/, "") || "";
+  const baseUrl =
+    normalizedBaseUrl === "https:" || normalizedBaseUrl === "http:"
+      ? ""
+      : normalizedBaseUrl;
+  const configured = Boolean(baseUrl);
   return {
-    id: endpoint.id?.trim() || `marketplace-${crypto.randomUUID()}`,
     baseUrl,
-    adapter: endpoint.adapter === "custom" ? "custom" : "skillsmp",
     enabled: endpoint.enabled !== false,
     lastStatus: configured ? endpoint.lastStatus : "untested",
     lastError: configured ? endpoint.lastError : undefined,
@@ -599,10 +626,18 @@ function normalizeMarketplaceEndpoint(
   };
 }
 
+interface LegacyMarketplaceEndpoint {
+  baseUrl?: string;
+  enabled?: boolean;
+  lastStatus?: "untested" | "ok" | "error";
+  lastError?: string;
+  lastCheckedAt?: number;
+}
+
 function readLegacyMarketplaceEndpoint(
   settings: Partial<AgentSettings>,
   capability: "skill" | "mcp",
-): MarketplaceEndpoint | undefined {
+): LegacyMarketplaceEndpoint | undefined {
   const legacy = (
     settings as Partial<AgentSettings> & {
       marketplaceEndpoints?: unknown;
@@ -610,7 +645,7 @@ function readLegacyMarketplaceEndpoint(
   ).marketplaceEndpoints;
   if (!Array.isArray(legacy)) return undefined;
   const endpoint = legacy.find(
-    (item): item is MarketplaceEndpoint =>
+    (item): item is LegacyMarketplaceEndpoint =>
       Boolean(item) &&
       typeof item === "object" &&
       Array.isArray((item as { capabilities?: unknown }).capabilities) &&

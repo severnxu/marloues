@@ -51,7 +51,12 @@ async function launchApp() {
   const app = await electron.launch({
     ...(executablePath ? { executablePath, args: [] } : { args: [mainEntry] }),
     cwd: repoRoot,
-    env: { ...process.env, NODE_ENV: "test", MARLOUES_HOME: testHome },
+    env: {
+      ...process.env,
+      NODE_ENV: "test",
+      MARLOUES_HOME: testHome,
+      MARLOUES_REMOTE_DEBUGGING_PORT: "0",
+    },
   });
   const window = await app.firstWindow();
   return { app, window };
@@ -209,8 +214,13 @@ test("IM settings shows feedback after a successful WeCom scan", async () => {
       bindingDialog.getByText("企业微信机器人已保存并通过连接测试"),
     ).toBeVisible();
     await expect(bindingDialog).toBeHidden({ timeout: 3_000 });
-    await expect(window.getByText("企业微信机器人 1")).toBeVisible();
     await expect(window.getByText("企业微信机器人已绑定")).toBeVisible();
+    const settings = window.getByRole("dialog", { name: "设置" });
+    await settings
+      .getByRole("navigation", { name: "设置分组" })
+      .getByRole("button", { name: "机器人实例" })
+      .click();
+    await expect(window.getByText("企业微信机器人 1")).toBeVisible();
   } finally {
     await app.close();
   }

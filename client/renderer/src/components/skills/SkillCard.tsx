@@ -54,7 +54,8 @@ export function SkillMarketplaceCard({
         <span className="plugin-card-identity">
           <strong>{name}</strong>
           <small>
-            {skill.ownerHandle || "Skill 市场"} · v{skill.version || "latest"}
+            {skill.ownerHandle || "Skill 市场"} ·{" "}
+            {skill.version ? `v${skill.version}` : "最新版"}
           </small>
         </span>
         <span
@@ -77,9 +78,10 @@ export function SkillMarketplaceCard({
             className="plugin-install-button"
             type="button"
             disabled={installingSlug === skill.slug}
+            aria-busy={installingSlug === skill.slug}
             onClick={() => onInstall(skill.slug)}
           >
-            {installingSlug === skill.slug ? "安装中..." : "安装"}
+            {installingSlug === skill.slug ? "安装中" : "安装"}
           </button>
         )}
       </footer>

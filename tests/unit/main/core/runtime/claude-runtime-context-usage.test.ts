@@ -21,6 +21,17 @@ vi.mock("../../../../../client/main/services/config-service", () => ({
 vi.mock("../../../../../client/main/services/mcp-service", () => ({
   recordMcpRuntimeStatus: vi.fn(),
 }));
+vi.mock("../../../../../client/main/services/extension-plan-service", () => ({
+  resolveEffectiveExtensionPlan: vi.fn(() => ({
+    runtimeId: "sdk",
+    workspace: null,
+    skills: [],
+    mcpServers: [],
+    skillStates: [],
+    fingerprint: "test-plan",
+  })),
+  claudePluginPaths: vi.fn(() => []),
+}));
 vi.mock("../../../../../client/main/core/context/context-policy", () => ({
   evaluateContextPolicy: vi.fn(),
 }));

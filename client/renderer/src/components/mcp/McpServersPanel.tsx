@@ -1,9 +1,24 @@
-import { useEffect, useState } from "react";
-import { PlugZap, Plus, RefreshCcw, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Download,
+  LayoutGrid,
+  List as ListIcon,
+  PlugZap,
+  Plus,
+  RefreshCcw,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { getMarketplaceBridgeIssue } from "@/lib/marketplace-bridge";
 import { notify } from "@/lib/notifications";
 import { useSettingsStore } from "@/stores/settings-store";
-import type { McpServerConfig } from "@shared/types";
+import type {
+  McpMarketplaceDetail,
+  McpMarketplaceItem,
+  McpServerConfig,
+} from "@shared/types";
 import {
   buildMcpConfigFromDraft,
   emptyMcpAddDraft,
@@ -19,6 +34,200 @@ import { McpAddDialog } from "./McpAddDialog";
 
 type DialogState =
   { kind: "create" } | { kind: "edit"; serverId: string } | null;
+
+type McpView = "discover" | "installed";
+type McpLayout = "grid" | "list";
+
+const SEARCH_DEBOUNCE_MS = 300;
+
+function transportLabel(server: McpServerConfig) {
+  const type = readMcpType(server.config);
+  if (type === "stdio") return "本地进程";
+  if (type === "http") return "HTTP";
+  if (type === "sse") return "SSE";
+  return "JSON";
+}
+
+function statusOf(server: McpServerConfig): { label: string; tone: string } {
+  if (!server.enabled || server.lastStatus === "disconnected") {
+    return { label: "已断开", tone: "off" };
+  }
+  if (server.lastStatus === "error") return { label: "异常", tone: "error" };
+  if (server.lastStatus === "running") {
+    return { label: "连接中", tone: "running" };
+  }
+  if (server.lastStatus === "ok") return { label: "正常", tone: "ok" };
+  return { label: "未测试", tone: "off" };
+}
+
+function isConfiguredMarketplaceUrl(value: string | undefined): boolean {
+  const normalized = value?.trim() ?? "";
+  return Boolean(
+    normalized &&
+    normalized !== "https://" &&
+    normalized !== "http://" &&
+    normalized !== "https:" &&
+    normalized !== "http:",
+  );
+}
+
+function activateCard(event: React.KeyboardEvent, activate: () => void) {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    activate();
+  }
+}
+
+function McpMarketplaceCard({
+  item,
+  layout,
+  installingId,
+  canInstall,
+  onInstall,
+}: {
+  item: McpMarketplaceItem;
+  layout: McpLayout;
+  installingId: string | null;
+  canInstall: boolean;
+  onInstall: (item: McpMarketplaceItem) => void;
+}) {
+  return (
+    <article
+      className={`plugin-card${layout === "list" ? " is-list" : ""}`}
+      aria-label={`${item.name} ${item.installed ? "已安装" : "未安装"}`}
+    >
+      <header className="plugin-card-head">
+        <span className="plugin-card-identity">
+          <strong>{item.name}</strong>
+          <small>
+            {[
+              item.author || "MCP 市场",
+              item.version ? `v${item.version}` : undefined,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </small>
+        </span>
+        <span
+          className={`plugin-install-status${
+            item.installed ? " is-installed" : ""
+          }`}
+        >
+          {item.installed ? "已安装" : item.verified ? "已验证" : "未安装"}
+        </span>
+      </header>
+      <p>{item.description || "暂无简介，安装后可在已安装列表中配置。"}</p>
+      <footer>
+        <span />
+        <button
+          className="plugin-install-button"
+          type="button"
+          disabled={!canInstall || item.installed || installingId === item.id}
+          onClick={() => onInstall(item)}
+        >
+          {installingId === item.id ? "安装中..." : "安装"}
+        </button>
+      </footer>
+    </article>
+  );
+}
+
+function McpInstalledCard({
+  server,
+  layout,
+  canEdit,
+  saving,
+  checkingId,
+  onEdit,
+  onToggle,
+  onTest,
+  onDelete,
+}: {
+  server: McpServerConfig;
+  layout: McpLayout;
+  canEdit: boolean;
+  saving: boolean;
+  checkingId: string | null;
+  onEdit: (server: McpServerConfig) => void;
+  onToggle: (server: McpServerConfig) => void;
+  onTest: (server: McpServerConfig) => void;
+  onDelete: (server: McpServerConfig) => void;
+}) {
+  const status = statusOf(server);
+  return (
+    <article
+      className={`plugin-card${layout === "list" ? " is-list" : ""}`}
+      role="button"
+      tabIndex={0}
+      aria-label={`编辑 ${server.name}`}
+      onClick={() => onEdit(server)}
+      onKeyDown={(event) => activateCard(event, () => onEdit(server))}
+    >
+      <header className="plugin-card-head">
+        <span className="plugin-card-identity">
+          <strong>{server.name || "未命名服务"}</strong>
+          <small>
+            {transportLabel(server)} · {server.tools?.length ?? 0} 个工具
+          </small>
+        </span>
+        <span
+          className={`plugin-install-status${
+            server.lastStatus === "ok" ? " is-installed" : ""
+          }`}
+        >
+          {status.label}
+        </span>
+      </header>
+      <p>
+        {server.lastStatus === "error" && server.lastError
+          ? server.lastError
+          : "点击卡片编辑连接配置、启用状态或执行连通性检测。"}
+      </p>
+      <footer
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
+      >
+        <button
+          className="plugin-card-icon-action"
+          type="button"
+          title="连通性检测"
+          aria-label={`检测 ${server.name} 的连通性`}
+          disabled={checkingId === server.id}
+          onClick={() => onTest(server)}
+        >
+          {checkingId === server.id ? (
+            <RefreshCcw className="is-spinning" />
+          ) : (
+            <PlugZap />
+          )}
+        </button>
+        <div className="plugin-card-actions">
+          <button
+            className="scheduled-switch"
+            type="button"
+            role="switch"
+            aria-checked={server.enabled}
+            aria-label={`${server.enabled ? "停用" : "启用"} ${server.name}`}
+            disabled={server.locked || !canEdit || saving}
+            onClick={() => onToggle(server)}
+          >
+            <span />
+          </button>
+          <button
+            className="plugin-card-icon-action is-danger"
+            type="button"
+            title="删除服务"
+            aria-label={`删除 ${server.name}`}
+            disabled={server.locked || !canEdit || saving}
+            onClick={() => onDelete(server)}
+          >
+            <Trash2 aria-hidden="true" />
+          </button>
+        </div>
+      </footer>
+    </article>
+  );
+}
 
 function draftFromServer(server: McpServerConfig): {
   mode: McpAddMode;
@@ -38,29 +247,11 @@ function draftFromServer(server: McpServerConfig): {
   };
 }
 
-function transportLabel(server: McpServerConfig) {
-  const type = readMcpType(server.config);
-  if (type === "stdio") return "本地进程";
-  if (type === "http") return "HTTP";
-  if (type === "sse") return "SSE";
-  return "JSON";
-}
-
-function statusOf(server: McpServerConfig): { label: string; tone: string } {
-  if (!server.enabled || server.lastStatus === "disconnected") {
-    return { label: "已断开", tone: "off" };
-  }
-  if (server.lastStatus === "error") return { label: "异常", tone: "error" };
-  if (server.lastStatus === "running")
-    return { label: "连接中", tone: "running" };
-  if (server.lastStatus === "ok") return { label: "正常", tone: "ok" };
-  return { label: "未测试", tone: "off" };
-}
-
 export function McpServersPanel() {
   const settings = useSettingsStore((state) => state.settings);
   const load = useSettingsStore((state) => state.load);
   const save = useSettingsStore((state) => state.save);
+  const mcpMarketplaceEndpoint = settings?.mcpMarketplaceEndpoint;
   const [servers, setServers] = useState<McpServerConfig[]>([]);
   const [mode, setMode] = useState<McpAddMode>("stdio");
   const [draft, setDraft] = useState<McpAddDraft>(() => emptyMcpAddDraft());
@@ -70,6 +261,45 @@ export function McpServersPanel() {
   const [checkingId, setCheckingId] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<McpServerConfig | null>(null);
+  const [marketplaceItems, setMarketplaceItems] = useState<
+    McpMarketplaceItem[]
+  >([]);
+  const [marketplaceQuery, setMarketplaceQuery] = useState("");
+  const [debouncedMarketplaceQuery, setDebouncedMarketplaceQuery] =
+    useState("");
+  const [marketplaceLoading, setMarketplaceLoading] = useState(false);
+  const [marketplaceError, setMarketplaceError] = useState<string | null>(null);
+  const [marketplaceTotal, setMarketplaceTotal] = useState<
+    number | undefined
+  >();
+  const [marketplaceHasMore, setMarketplaceHasMore] = useState(false);
+  const [marketplaceNextCursor, setMarketplaceNextCursor] = useState<
+    string | undefined
+  >();
+  const [installingMarketplaceId, setInstallingMarketplaceId] = useState<
+    string | null
+  >(null);
+  const [pendingMarketplaceInstall, setPendingMarketplaceInstall] = useState<{
+    item: McpMarketplaceItem;
+    detail: McpMarketplaceDetail;
+  } | null>(null);
+  const [view, setView] = useState<McpView>("discover");
+  const [layout, setLayout] = useState<McpLayout>("grid");
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMarketplaceQueryChange = useCallback((value: string) => {
+    setMarketplaceQuery(value);
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedMarketplaceQuery(value);
+    }, SEARCH_DEBOUNCE_MS);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!settings) void load();
@@ -78,6 +308,78 @@ export function McpServersPanel() {
   useEffect(() => {
     if (settings) setServers(settings.mcpServers ?? []);
   }, [settings]);
+
+  const loadMarketplace = useCallback(
+    async (query: string, cursor?: string) => {
+      const bridgeIssue = getMarketplaceBridgeIssue("mcp");
+      if (bridgeIssue) {
+        setMarketplaceItems([]);
+        setMarketplaceError(bridgeIssue);
+        setMarketplaceHasMore(false);
+        setMarketplaceNextCursor(undefined);
+        setMarketplaceTotal(undefined);
+        setMarketplaceLoading(false);
+        return;
+      }
+      const endpointConfigured =
+        Boolean(mcpMarketplaceEndpoint?.enabled) &&
+        isConfiguredMarketplaceUrl(mcpMarketplaceEndpoint?.baseUrl);
+      if (!endpointConfigured) {
+        setMarketplaceItems([]);
+        setMarketplaceError(null);
+        setMarketplaceHasMore(false);
+        setMarketplaceNextCursor(undefined);
+        setMarketplaceTotal(undefined);
+        return;
+      }
+      setMarketplaceLoading(true);
+      setMarketplaceError(null);
+      try {
+        const response = await window.marloues.mcp.marketplaceList({
+          query,
+          page: cursor ? Number(cursor) || 1 : 1,
+          cursor,
+          pageSize: 20,
+        });
+        setMarketplaceItems((previous) =>
+          cursor
+            ? [
+                ...previous,
+                ...response.items.filter(
+                  (item) => !previous.some((current) => current.id === item.id),
+                ),
+              ]
+            : response.items,
+        );
+        setMarketplaceHasMore(response.hasMore);
+        setMarketplaceNextCursor(response.nextCursor);
+        setMarketplaceTotal(response.total);
+      } catch (caught) {
+        setMarketplaceItems([]);
+        setMarketplaceTotal(undefined);
+        setMarketplaceError(
+          caught instanceof Error ? caught.message : "MCP 市场加载失败。",
+        );
+      } finally {
+        setMarketplaceLoading(false);
+      }
+    },
+    [mcpMarketplaceEndpoint],
+  );
+
+  useEffect(() => {
+    void loadMarketplace(debouncedMarketplaceQuery);
+  }, [loadMarketplace, debouncedMarketplaceQuery]);
+
+  const filteredServers = useMemo(() => {
+    const normalized = marketplaceQuery.trim().toLowerCase();
+    if (!normalized) return servers;
+    return servers.filter((server) =>
+      [server.name, JSON.stringify(server.config ?? {})]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(normalized)),
+    );
+  }, [marketplaceQuery, servers]);
 
   if (!settings) {
     return (
@@ -88,6 +390,9 @@ export function McpServersPanel() {
   }
 
   const canEdit = settings.enterprisePolicy?.allowLocalMcpServers !== false;
+  const marketplaceConfigured =
+    Boolean(mcpMarketplaceEndpoint?.enabled) &&
+    isConfiguredMarketplaceUrl(mcpMarketplaceEndpoint?.baseUrl);
 
   const commit = async (next: McpServerConfig[], message?: string) => {
     setServers(next);
@@ -200,136 +505,306 @@ export function McpServersPanel() {
   const toolCount = new Set(servers.flatMap((server) => server.tools ?? []))
     .size;
 
+  const requestMarketplaceInstall = async (item: McpMarketplaceItem) => {
+    setInstallingMarketplaceId(item.id);
+    try {
+      const detail = await window.marloues.mcp.marketplaceDetail(item.id);
+      setPendingMarketplaceInstall({ item, detail });
+    } catch (caught) {
+      notify({
+        title: `${item.name} 详情加载失败`,
+        description: caught instanceof Error ? caught.message : String(caught),
+        tone: "error",
+      });
+    } finally {
+      setInstallingMarketplaceId(null);
+    }
+  };
+
+  const installMarketplaceServer = async (item: McpMarketplaceItem) => {
+    setInstallingMarketplaceId(item.id);
+    try {
+      const nextServers = await window.marloues.mcp.marketplaceInstall(item.id);
+      setServers(nextServers);
+      await load();
+      await loadMarketplace(debouncedMarketplaceQuery);
+      const installed = nextServers.find(
+        (server) => server.marketplaceId === item.id,
+      );
+      notify({
+        title: `${item.name} 已安装`,
+        description: installed?.enabled
+          ? "服务已启用，可执行连通性检测。"
+          : installed?.lastError || "请先完成必填配置再启用。",
+        tone: "success",
+      });
+    } catch (caught) {
+      notify({
+        title: `${item.name} 安装失败`,
+        description: caught instanceof Error ? caught.message : String(caught),
+        tone: "error",
+      });
+    } finally {
+      setInstallingMarketplaceId(null);
+    }
+  };
+
+  const loadMoreMarketplace = async () => {
+    if (!marketplaceNextCursor || marketplaceLoading) return;
+    await loadMarketplace(debouncedMarketplaceQuery, marketplaceNextCursor);
+  };
+
+  const refreshCurrentView = async () => {
+    if (view === "discover") {
+      await loadMarketplace(debouncedMarketplaceQuery);
+      return;
+    }
+    await refreshStatus();
+  };
+
+  const resultLabel =
+    view === "discover"
+      ? `${marketplaceItems.length}${
+          marketplaceTotal !== undefined ? ` / ${marketplaceTotal}` : ""
+        } 个 MCP 服务`
+      : `${filteredServers.length} 个 · ${enabledCount} 启用 · ${toolCount} 工具`;
+
   return (
-    <div className="mcp-provider-page">
-      <div className="plugin-mcp-summary">
-        <dl>
-          <div>
-            <dt>服务</dt>
-            <dd>{servers.length}</dd>
-          </div>
-          <div>
-            <dt>启用服务</dt>
-            <dd>
-              {enabledCount}/{servers.length}
-            </dd>
-          </div>
-          <div>
-            <dt>可用工具</dt>
-            <dd>{toolCount}</dd>
-          </div>
-        </dl>
-        <div className="plugin-mcp-summary-actions">
+    <div data-testid="mcp-marketplace-page" className="skill-marketplace-page">
+      <div className="toolbar">
+        <form
+          className="search"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (searchTimeoutRef.current) {
+              clearTimeout(searchTimeoutRef.current);
+              searchTimeoutRef.current = null;
+            }
+            setDebouncedMarketplaceQuery(marketplaceQuery);
+            setView("discover");
+          }}
+        >
+          <Search aria-hidden="true" />
+          <input
+            value={marketplaceQuery}
+            placeholder={
+              view === "discover" ? "搜索 MCP 市场" : "搜索已安装 MCP"
+            }
+            onChange={(event) =>
+              handleMarketplaceQueryChange(event.target.value)
+            }
+          />
+          {marketplaceQuery ? (
+            <button
+              type="button"
+              aria-label="清除搜索"
+              onClick={() => {
+                if (searchTimeoutRef.current) {
+                  clearTimeout(searchTimeoutRef.current);
+                  searchTimeoutRef.current = null;
+                }
+                setMarketplaceQuery("");
+                setDebouncedMarketplaceQuery("");
+              }}
+            >
+              <X size={14} />
+            </button>
+          ) : null}
           <button
-            className={`plugin-mcp-secondary-action${refreshing ? " is-loading" : ""}`}
-            type="button"
-            disabled={refreshing || servers.length === 0}
-            onClick={() => void refreshStatus()}
+            type="submit"
+            aria-label="搜索"
+            disabled={view === "discover" && !marketplaceConfigured}
           >
-            <RefreshCcw aria-hidden="true" />
-            {refreshing ? "刷新中" : "刷新状态"}
+            <Search />
+          </button>
+        </form>
+
+        <div className="subseg" role="tablist" aria-label="MCP 视图">
+          <button
+            role="tab"
+            aria-selected={view === "discover"}
+            type="button"
+            className={view === "discover" ? "active" : ""}
+            onClick={() => setView("discover")}
+          >
+            发现
           </button>
           <button
-            className="plugin-mcp-primary-action"
+            role="tab"
+            aria-selected={view === "installed"}
             type="button"
-            disabled={!canEdit}
-            onClick={openCreate}
+            className={view === "installed" ? "active" : ""}
+            onClick={() => setView("installed")}
           >
-            <Plus aria-hidden="true" />
-            添加 MCP 服务
+            已安装
           </button>
         </div>
+
+        <button
+          className="plugin-refresh-button"
+          type="button"
+          aria-label="刷新当前 MCP 视图"
+          disabled={marketplaceLoading || refreshing}
+          onClick={() => void refreshCurrentView()}
+        >
+          <RefreshCcw
+            className={
+              marketplaceLoading || refreshing ? "is-spinning" : undefined
+            }
+          />
+        </button>
+
+        <button
+          className="plugin-local-import-button"
+          type="button"
+          disabled={!canEdit}
+          onClick={openCreate}
+        >
+          <Plus /> 添加 MCP 服务
+        </button>
       </div>
 
-      <div className="plugin-mcp-service-scroll">
-        {servers.length === 0 ? (
-          <div className="plugin-mcp-state">
-            还没有 MCP 服务，点击右上角添加第一个服务。
-          </div>
-        ) : (
-          servers.map((server) => {
-            const status = statusOf(server);
-            return (
-              <article
-                className={`plugin-mcp-service${server.enabled ? " is-enabled" : ""}`}
-                key={server.id}
-              >
-                <div className="plugin-mcp-service-row">
+      {marketplaceError && view === "discover" ? (
+        <div className="plugin-inline-message" role="alert">
+          <span>{marketplaceError}</span>
+          <button
+            type="button"
+            aria-label="关闭错误提示"
+            onClick={() => setMarketplaceError(null)}
+          >
+            <X aria-hidden="true" />
+          </button>
+        </div>
+      ) : null}
+
+      <div className="plugin-results-scroll" aria-busy={marketplaceLoading}>
+        <div className="resbar">
+          <span>
+            {view === "discover" ? "发现" : "已安装"} · {resultLabel}
+          </span>
+          <span className="view">
+            <button
+              aria-pressed={layout === "list"}
+              className="viewbtn"
+              type="button"
+              title="列表视图"
+              aria-label="列表视图"
+              onClick={() => setLayout("list")}
+            >
+              <ListIcon />
+            </button>
+            <button
+              aria-pressed={layout === "grid"}
+              className="viewbtn"
+              type="button"
+              title="卡片视图"
+              aria-label="卡片视图"
+              onClick={() => setLayout("grid")}
+            >
+              <LayoutGrid />
+            </button>
+          </span>
+        </div>
+
+        {view === "discover" ? (
+          <>
+            {marketplaceLoading && marketplaceItems.length === 0 ? (
+              <div className="plugin-mcp-state" role="status">
+                正在加载 MCP 市场...
+              </div>
+            ) : null}
+
+            {!marketplaceLoading && !marketplaceConfigured ? (
+              <div className="plugin-empty-state">
+                <span>
+                  <Search aria-hidden="true" />
+                </span>
+                <strong>未配置 MCP 市场端点</strong>
+                <p>在设置 → 运行时中配置端点后，可在这里发现 MCP 服务。</p>
+              </div>
+            ) : null}
+
+            {!marketplaceLoading &&
+            marketplaceConfigured &&
+            marketplaceItems.length === 0 ? (
+              <div className="plugin-empty-state">
+                <span>
+                  <Search aria-hidden="true" />
+                </span>
+                <strong>没有找到符合条件的 MCP 服务</strong>
+                <p>尝试更换搜索词。</p>
+              </div>
+            ) : null}
+
+            <div
+              className={`plugin-card-grid${
+                layout === "list" ? " is-list" : ""
+              }`}
+            >
+              {marketplaceItems.map((item) => (
+                <McpMarketplaceCard
+                  key={item.id}
+                  item={item}
+                  layout={layout}
+                  installingId={installingMarketplaceId}
+                  canInstall={canEdit}
+                  onInstall={(next) => void requestMarketplaceInstall(next)}
+                />
+              ))}
+              {marketplaceHasMore && marketplaceNextCursor ? (
+                <div className="skill-market-load-more">
                   <button
-                    className="plugin-mcp-service-main"
                     type="button"
-                    aria-label={`编辑 ${server.name}`}
-                    onClick={() => openEdit(server)}
+                    disabled={marketplaceLoading}
+                    onClick={() => void loadMoreMarketplace()}
                   >
-                    <span
-                      className={`plugin-mcp-status-dot is-${status.tone}`}
-                      aria-hidden="true"
-                    />
-                    <span className="plugin-mcp-service-identity">
-                      <strong>{server.name || "未命名服务"}</strong>
-                      <small>
-                        {transportLabel(server)} · {server.tools?.length ?? 0}{" "}
-                        个工具
-                      </small>
-                    </span>
-                    <span
-                      className={`plugin-mcp-status-label is-${status.tone}`}
-                    >
-                      {status.label}
-                    </span>
+                    {marketplaceLoading ? "加载中..." : "加载更多"}
                   </button>
-                  <div className="plugin-mcp-service-actions">
-                    <button
-                      className="scheduled-switch"
-                      type="button"
-                      role="switch"
-                      aria-checked={server.enabled}
-                      aria-label={`${server.enabled ? "停用" : "启用"} ${server.name}`}
-                      disabled={server.locked || !canEdit || saving}
-                      onClick={() =>
-                        void commit(
-                          servers.map((item) =>
-                            item.id === server.id
-                              ? { ...item, enabled: !item.enabled }
-                              : item,
-                          ),
-                        )
-                      }
-                    >
-                      <span />
-                    </button>
-                    <button
-                      className="plugin-mcp-icon-action"
-                      type="button"
-                      title="连通性检测"
-                      aria-label={`检测 ${server.name} 的连通性`}
-                      disabled={checkingId === server.id}
-                      onClick={() => void testServer(server)}
-                    >
-                      {checkingId === server.id ? (
-                        <RefreshCcw className="is-spinning" />
-                      ) : (
-                        <PlugZap />
-                      )}
-                    </button>
-                    <button
-                      className="plugin-mcp-icon-action is-danger"
-                      type="button"
-                      title="删除服务"
-                      aria-label={`删除 ${server.name}`}
-                      disabled={server.locked || !canEdit || saving}
-                      onClick={() => setDeleting(server)}
-                    >
-                      <Trash2 aria-hidden="true" />
-                    </button>
-                  </div>
                 </div>
-                {server.lastStatus === "error" && server.lastError ? (
-                  <p className="plugin-mcp-row-error">{server.lastError}</p>
-                ) : null}
-              </article>
-            );
-          })
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <>
+            {filteredServers.length === 0 ? (
+              <div className="plugin-empty-state">
+                <span>
+                  <Download aria-hidden="true" />
+                </span>
+                <strong>暂无已安装的 MCP 服务</strong>
+                <p>切换到发现页安装服务，或点击右上角手动添加。</p>
+              </div>
+            ) : null}
+
+            <div
+              className={`plugin-card-grid${
+                layout === "list" ? " is-list" : ""
+              }`}
+            >
+              {filteredServers.map((server) => (
+                <McpInstalledCard
+                  key={server.id}
+                  server={server}
+                  layout={layout}
+                  canEdit={canEdit}
+                  saving={saving}
+                  checkingId={checkingId}
+                  onEdit={openEdit}
+                  onToggle={(next) =>
+                    void commit(
+                      servers.map((item) =>
+                        item.id === next.id
+                          ? { ...item, enabled: !item.enabled }
+                          : item,
+                      ),
+                    )
+                  }
+                  onTest={(next) => void testServer(next)}
+                  onDelete={setDeleting}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
 
@@ -377,6 +852,46 @@ export function McpServersPanel() {
           }}
         />
       ) : null}
+
+      {pendingMarketplaceInstall ? (
+        <ConfirmDialog
+          title={`安装 MCP 服务「${pendingMarketplaceInstall.item.name}」？`}
+          message={marketplaceInstallMessage(pendingMarketplaceInstall.detail)}
+          confirmLabel="确认安装"
+          cancelLabel="取消"
+          onCancel={() => setPendingMarketplaceInstall(null)}
+          onConfirm={() => {
+            const item = pendingMarketplaceInstall.item;
+            setPendingMarketplaceInstall(null);
+            void installMarketplaceServer(item);
+          }}
+        />
+      ) : null}
     </div>
   );
+}
+
+function marketplaceInstallMessage(detail: McpMarketplaceDetail): string {
+  const remote = detail.remotes?.find((item) => item.url);
+  if (remote) {
+    return `将添加 ${remote.transport.toUpperCase()} 远程服务 ${
+      remote.url
+    }。服务可能要求你在后续连接时完成授权。`;
+  }
+  const pkg = detail.packages?.find((item) => item.identifier);
+  if (!pkg) return "该市场条目没有可预览的安装配置。";
+  const required = (pkg.requiredEnvironment ?? []).map((item) => item.name);
+  const command =
+    pkg.registryType === "npm"
+      ? `${pkg.command ?? "npx"} ${pkg.identifier}${
+          pkg.version ? `@${pkg.version}` : ""
+        }`
+      : `${pkg.command ?? "uvx"} ${pkg.identifier}${
+          pkg.version ? `@${pkg.version}` : ""
+        }`;
+  return required.length
+    ? `将创建本地进程配置：${command}。它会先保持停用；配置 ${required.join(
+        "、",
+      )} 后才能启用。`
+    : `将创建并启用本地进程配置：${command}。首次运行会下载并执行第三方代码，请确认你信任其来源。`;
 }

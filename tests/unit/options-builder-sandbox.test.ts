@@ -73,4 +73,25 @@ describe("buildClaudeRuntimeOptions sandbox adapter", () => {
     expect(ACTION_EXECUTION_GUARDRAIL).toContain("reopen");
     expect(ACTION_EXECUTION_GUARDRAIL).toContain("current turn");
   });
+
+  it("limits Claude to the project-selected Skills", () => {
+    const options = buildClaudeRuntimeOptions({
+      settings: settings(),
+      cwd: process.cwd(),
+      env: {},
+      canUseTool: async () => ({ behavior: "allow" }),
+      pluginPaths: ["/tmp/demo-skill"],
+      skillNames: ["demo-skill"],
+    });
+
+    expect(options.plugins).toEqual([
+      {
+        type: "local",
+        path: "/tmp/demo-skill",
+        skipMcpDiscovery: true,
+      },
+    ]);
+    expect(options.skills).toEqual(["demo-skill"]);
+    expect(options.strictMcpConfig).toBe(true);
+  });
 });

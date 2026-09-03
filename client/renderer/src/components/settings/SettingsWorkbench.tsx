@@ -117,7 +117,9 @@ export function SettingsWorkbench({ section }: { section: SettingsSection }) {
                 <strong>企业配置已启用</strong>
                 <small>
                   {enterpriseControlledSettings.size > 0
-                    ? `受控字段：${Array.from(enterpriseControlledSettings).join(", ")}`
+                    ? `受控字段：${Array.from(
+                        enterpriseControlledSettings,
+                      ).join(", ")}`
                     : "当前只下发了策略限制"}
                 </small>
               </div>
@@ -209,7 +211,7 @@ export function SettingsWorkbench({ section }: { section: SettingsSection }) {
           {section === "runtimes" ? (
             <RuntimeSettings
               draft={draft}
-              onCommitDraft={(nextDraft) => void commitDraft(nextDraft)}
+              onCommitDraft={(nextDraft) => commitDraft(nextDraft)}
             />
           ) : null}
 

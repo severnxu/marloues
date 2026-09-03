@@ -8,7 +8,6 @@ export type PluginsTab = "skills" | "mcp";
 interface PluginsViewProps {
   tab?: PluginsTab;
   onTabChange?: (tab: PluginsTab) => void;
-  onClose?: () => void;
 }
 
 const TABS: Array<{
@@ -35,7 +34,6 @@ const TABS: Array<{
 export function PluginsView({
   tab: controlledTab,
   onTabChange,
-  onClose,
 }: PluginsViewProps) {
   const [internalTab, setInternalTab] = useState<PluginsTab>("skills");
   const tab = controlledTab ?? internalTab;
@@ -107,7 +105,7 @@ export function PluginsView({
         id="plugin-skills-panel"
         role="tabpanel"
       >
-        <SkillMarketplaceView onClose={onClose} />
+        <SkillMarketplaceView />
       </div>
       <div
         className={`plugin-mcp-panel${tab === "mcp" ? "" : " is-hidden"}`}

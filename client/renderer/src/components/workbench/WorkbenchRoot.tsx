@@ -351,11 +351,7 @@ export function WorkbenchRoot({
             active={page === "plugins"}
             className="quick-page-overlay-host plugins-page-host"
           >
-            <PluginsView
-              tab={pluginsTab}
-              onTabChange={setPluginsTab}
-              onClose={() => onPage("chat")}
-            />
+            <PluginsView tab={pluginsTab} onTabChange={setPluginsTab} />
           </KeepAliveWorkbenchView>
         </WorkbenchMainColumns>
       </WorkbenchLayout>

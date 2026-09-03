@@ -8,6 +8,7 @@ import { useState, useEffect, useMemo } from "react";
 import type { SlashCommandItem } from "../types";
 import type { SessionInitInfo } from "@/stores/unified-chat-store";
 import type { SkillInfo } from "@shared/types";
+import { SKILLS_CHANGED_EVENT } from "@/components/workbench/events";
 
 // Local UI-side commands always available (runtime doesn't report these).
 // Hoisted to module scope so the array is stable across renders.
@@ -27,14 +28,24 @@ export interface ComposerCatalogs {
 
 export function useComposerCatalogs(
   sessionInitInfo: SessionInitInfo | undefined,
+  workspaceId?: string,
 ): ComposerCatalogs {
-  // Fetch installed skills from the skill-service so the / menu is populated
-  // immediately on app start — without waiting for the first SDK init event.
+  // Fetch the workspace's effective inventory so custom project allowlists are
+  // reflected in both the slash menu and the Skill picker. Fall back to the
+  // global inventory for projectless sessions.
   const [installedSkills, setInstalledSkills] = useState<SkillInfo[]>([]);
+  const [skillRevision, setSkillRevision] = useState(0);
+  useEffect(() => {
+    const refresh = () => setSkillRevision((revision) => revision + 1);
+    window.addEventListener(SKILLS_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(SKILLS_CHANGED_EVENT, refresh);
+  }, []);
   useEffect(() => {
     let cancelled = false;
-    window.marloues.skill
-      .list()
+    const request = workspaceId
+      ? window.marloues.workspace.listSkills(workspaceId)
+      : window.marloues.skill.list();
+    request
       .then((skills) => {
         if (!cancelled)
           setInstalledSkills(skills.filter((skill) => skill.enabled));
@@ -43,11 +54,16 @@ export function useComposerCatalogs(
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [skillRevision, workspaceId]);
 
   const slashCommands = useMemo<SlashCommandItem[]>(() => {
     const init = sessionInitInfo;
-    const runtimeSkills = new Set(init?.skills ?? []);
+    const effectiveSkillNames = new Set(
+      installedSkills.map((skill) => skill.name),
+    );
+    const runtimeSkills = (init?.skills ?? []).filter((name) =>
+      effectiveSkillNames.has(name),
+    );
     // Merge skill-service names (available immediately, no SDK round-trip)
     // with runtime-reported skills so the / menu is never empty on app start.
     const skills = Array.from(

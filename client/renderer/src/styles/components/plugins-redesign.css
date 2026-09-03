@@ -311,11 +311,34 @@
   }
 
   .plugin-card.is-list {
+    --plugin-list-action-width: 116px;
     display: grid;
     height: 68px;
-    grid-template-columns: minmax(180px, 0.9fr) minmax(220px, 1.7fr) auto;
+    grid-template-columns:
+      minmax(220px, 0.9fr)
+      76px
+      minmax(240px, 1.7fr)
+      var(--plugin-list-action-width);
     align-items: center;
     gap: 16px;
+    padding-inline: 16px;
+  }
+
+  #plugin-skills-panel .plugin-card.is-list {
+    --plugin-list-action-width: 76px;
+  }
+
+  .plugin-card.is-list > .plugin-card-head {
+    display: contents;
+  }
+
+  .plugin-card.is-list .plugin-card-identity {
+    grid-column: 1;
+  }
+
+  .plugin-card.is-list .plugin-install-status {
+    grid-column: 2;
+    justify-self: start;
   }
 
   .plugin-card-head {
@@ -388,25 +411,35 @@
   }
 
   .plugin-card.is-list > p {
+    grid-column: 3;
     min-height: 0;
     margin: 0;
     -webkit-line-clamp: 1;
   }
 
   .plugin-card.is-list > footer {
+    grid-column: 4;
+    width: 100%;
     margin: 0;
   }
 
   .plugin-install-button {
+    display: inline-flex;
+    width: 70px;
     min-width: 70px;
     height: 26px;
-    padding: 0 12px;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
     border: 1px solid var(--border);
     border-radius: 6px;
     background: var(--raised-1);
     color: var(--text-1);
     font-size: 11px;
     font-weight: 620;
+    line-height: 1;
+    white-space: nowrap;
   }
 
   .plugin-install-button:hover {
@@ -628,6 +661,205 @@
     scrollbar-gutter: stable;
   }
 
+  .plugin-mcp-marketplace {
+    margin-bottom: 16px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    background: var(--surface-elevated);
+    padding: 14px;
+  }
+
+  .plugin-mcp-marketplace-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+
+  .plugin-mcp-marketplace-head > div {
+    display: grid;
+    min-width: 0;
+    gap: 3px;
+  }
+
+  .plugin-mcp-marketplace-head strong {
+    color: var(--text-1);
+    font-size: 13px;
+    font-weight: 650;
+  }
+
+  .plugin-mcp-marketplace-head small {
+    overflow: hidden;
+    color: var(--text-3);
+    font-size: 10.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .plugin-mcp-marketplace-search {
+    display: flex;
+    flex: 0 0 300px;
+    align-items: center;
+    gap: 7px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--raised-1);
+    padding: 0 8px;
+  }
+
+  .plugin-mcp-marketplace-search svg {
+    width: 14px;
+    height: 14px;
+    color: var(--text-3);
+  }
+
+  .plugin-mcp-marketplace-search input {
+    min-width: 0;
+    flex: 1 1 auto;
+    border: 0;
+    background: transparent;
+    color: var(--text-1);
+    font-size: 12px;
+    line-height: 30px;
+    outline: none;
+  }
+
+  .plugin-mcp-marketplace-search button {
+    border: 0;
+    background: transparent;
+    color: var(--text-2);
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .plugin-mcp-marketplace-search button:disabled,
+  .plugin-mcp-marketplace-search input:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .plugin-mcp-marketplace-empty,
+  .plugin-mcp-marketplace-error,
+  .plugin-mcp-marketplace-item p {
+    margin: 0;
+    color: var(--text-3);
+    font-size: 11px;
+    line-height: 1.55;
+  }
+
+  .plugin-mcp-marketplace-error {
+    color: var(--danger);
+  }
+
+  .plugin-mcp-marketplace-list {
+    display: grid;
+    gap: 7px;
+  }
+
+  .plugin-mcp-marketplace-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-workspace);
+    padding: 10px 12px;
+  }
+
+  .plugin-mcp-marketplace-identity {
+    display: grid;
+    min-width: 0;
+    gap: 3px;
+  }
+
+  .plugin-mcp-marketplace-identity strong {
+    overflow: hidden;
+    color: var(--text-1);
+    font-size: 12.5px;
+    font-weight: 630;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .plugin-mcp-marketplace-identity small {
+    overflow: hidden;
+    color: var(--text-3);
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .plugin-mcp-marketplace-install {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--raised-1);
+    color: var(--text-2);
+    padding: 5px 10px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .plugin-mcp-marketplace-install:hover:not(:disabled) {
+    border-color: var(--border-strong);
+    background: var(--raised-2);
+    color: var(--text-1);
+  }
+
+  .plugin-mcp-marketplace-install:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .plugin-mcp-marketplace-install svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .plugin-mcp-marketplace-more {
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--raised-1);
+    color: var(--text-2);
+    padding: 7px 10px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .plugin-mcp-marketplace-more:hover:not(:disabled) {
+    border-color: var(--border-strong);
+    background: var(--raised-2);
+    color: var(--text-1);
+  }
+
+  .plugin-mcp-marketplace-more:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .plugin-mcp-local-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin: 0 0 8px;
+  }
+
+  .plugin-mcp-local-title strong {
+    color: var(--text-1);
+    font-size: 13px;
+    font-weight: 650;
+  }
+
+  .plugin-mcp-local-title small {
+    color: var(--text-3);
+    font-size: 10.5px;
+  }
+
   .plugin-mcp-service {
     margin-bottom: 8px;
     border: 1px solid var(--border);
@@ -770,6 +1002,7 @@
   .skill-detail-modal {
     width: min(920px, calc(100% - 48px));
     height: min(620px, calc(100% - 48px));
+    gap: 0;
   }
 
   .skill-detail-head,
@@ -840,11 +1073,15 @@
 
   .skill-detail-versionbar {
     display: flex;
-    min-height: 48px;
+    min-height: 36px;
     flex: 0 0 auto;
     align-items: center;
     justify-content: space-between;
-    padding: 0 16px;
+    margin: 0 16px 8px;
+    padding: 0 10px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 7px;
+    background: var(--raised-1);
   }
 
   .skill-detail-versionbar .vlabel {
@@ -852,12 +1089,12 @@
     font-size: 11px;
   }
   .skill-detail-versionbar strong {
-    padding: 7px 10px;
+    padding: 4px 8px;
     border: 1px solid var(--border);
-    border-radius: 7px;
-    background: var(--raised-1);
+    border-radius: 6px;
+    background: var(--surface-popover);
     color: var(--text-1);
-    font-size: 11px;
+    font-size: 10.5px;
   }
 
   .sd-version-note {
@@ -874,49 +1111,107 @@
     display: flex;
     min-height: 42px;
     flex: 0 0 auto;
-    align-items: flex-end;
-    gap: 2px;
-    padding: 4px 16px 0;
-    border-top: 1px solid var(--border-subtle);
-    border-bottom: 1px solid var(--border-subtle);
+    align-items: center;
+    gap: 4px;
+    margin: 0 16px 8px;
+    padding: 4px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 9px;
+    background: var(--raised-1);
   }
 
   .skill-detail-tabs button {
     position: relative;
-    height: 36px;
-    padding: 0 12px;
-    border-radius: 6px 6px 0 0;
+    display: inline-flex;
+    height: 32px;
+    flex: 1 1 0;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 10px;
+    border: 1px solid transparent;
+    border-radius: 6px;
     color: var(--text-3);
     font-size: 11px;
     font-weight: 560;
+    transition:
+      border-color var(--motion-fast) var(--ease),
+      background var(--motion-fast) var(--ease),
+      box-shadow var(--motion-fast) var(--ease),
+      color var(--motion-fast) var(--ease);
+  }
+
+  .skill-detail-tabs button svg {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
   }
 
   .skill-detail-tabs button:hover {
-    background: var(--raised-1);
+    background: var(--raised-2);
     color: var(--text-1);
   }
   .skill-detail-tabs button[aria-selected="true"] {
-    background: var(--raised-1);
+    border-color: var(--border);
+    background: var(--surface-popover);
+    box-shadow: 0 1px 3px color-mix(in srgb, #000 12%, transparent);
     color: var(--text-1);
     font-weight: 630;
   }
   .skill-detail-tabs button[aria-selected="true"]::after {
-    position: absolute;
-    right: 10px;
-    bottom: 0;
-    left: 10px;
-    height: 2px;
-    border-radius: 999px 999px 0 0;
-    background: var(--accent);
-    content: "";
+    display: none;
+  }
+
+  .skill-detail-tabs button:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--accent) 65%, transparent);
+    outline-offset: 1px;
+  }
+
+  .sd-tab-count {
+    display: inline-flex;
+    min-width: 17px;
+    height: 17px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--raised-2);
+    color: var(--text-3);
+    font-size: 9px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .skill-detail-tabs button[aria-selected="true"] .sd-tab-count {
+    background: var(--accent-soft);
+    color: var(--accent);
   }
 
   .skill-detail-body {
+    display: block;
     min-height: 0;
     flex: 1 1 auto;
     overflow: auto;
     padding: 12px 16px;
     scrollbar-gutter: stable;
+  }
+
+  .sd-detail-state {
+    display: flex;
+    min-height: 120px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: 1px dashed var(--border);
+    border-radius: 7px;
+    background: var(--surface-workspace);
+    color: var(--text-3);
+    font-size: 11px;
+  }
+
+  .sd-detail-state.is-error {
+    border-color: color-mix(in srgb, var(--danger) 28%, var(--border));
+    background: var(--danger-soft);
+    color: var(--danger);
   }
 
   .skill-detail-body > pre,
@@ -956,15 +1251,21 @@
   }
 
   .sd-meta-grid .m {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    align-items: baseline;
+    column-gap: 8px;
     padding: 10px;
     background: var(--surface-workspace);
   }
   .sd-meta-grid dt {
     color: var(--text-3);
     font-size: 10px;
+    white-space: nowrap;
   }
   .sd-meta-grid dd {
-    margin: 3px 0 0;
+    min-width: 0;
+    margin: 0;
     color: var(--text-1);
     font-size: 12px;
   }
@@ -987,11 +1288,12 @@
 
   .sd-versions {
     display: grid;
+    align-content: start;
     gap: 8px;
   }
   .sd-version-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
     padding: 10px 12px;
@@ -1001,6 +1303,7 @@
   }
   .sd-version-item > div {
     min-width: 0;
+    flex: 1 1 auto;
   }
   .sd-version-top {
     display: flex;
@@ -1016,6 +1319,18 @@
     margin: 3px 0 0;
     color: var(--text-3);
     font-size: 10.5px;
+  }
+  .sd-version-item p {
+    display: -webkit-box;
+    overflow: hidden;
+    line-height: 1.5;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+  .sd-version-item > .sd-btn {
+    min-width: 64px;
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
   .sd-version-pill {
     padding: 2px 6px;
@@ -1065,8 +1380,10 @@
 
   .skill-file-browser {
     display: grid;
-    min-height: 100%;
-    grid-template-columns: 180px minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+    grid-template-columns: minmax(220px, 26%) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
     overflow: hidden;
     border: 1px solid var(--border);
     border-radius: 7px;
@@ -1075,8 +1392,9 @@
 
   .skill-file-browser > nav {
     min-width: 0;
+    min-height: 0;
     overflow: auto;
-    padding: 8px;
+    padding: 6px;
     border-right: 1px solid var(--border-subtle);
   }
 
@@ -1085,17 +1403,23 @@
   }
 
   .sd-filetree .sd-filetree {
-    padding-left: 14px;
+    margin-left: 7px;
+    padding-left: 9px;
+    border-left: 1px solid var(--border-subtle);
+  }
+
+  .sd-filetree .ft-file::before {
+    content: none;
   }
 
   .sd-tree-row {
     display: grid;
     width: 100%;
-    height: 28px;
+    height: 26px;
     grid-template-columns: 14px 16px minmax(0, 1fr);
     align-items: center;
-    gap: 5px;
-    padding: 0 7px;
+    gap: 4px;
+    padding: 0 6px;
     border-radius: 5px;
     color: inherit;
     text-align: left;
@@ -1134,11 +1458,20 @@
   }
 
   .skill-file-preview > header {
+    display: flex;
     flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
     padding: 9px 12px;
     border-bottom: 1px solid var(--border-subtle);
     color: var(--text-2);
     font: 600 11px/1.4 var(--font-mono, monospace);
+  }
+
+  .skill-file-preview > header small {
+    color: var(--text-3);
+    font: 500 9px/1.4 var(--font-sans, sans-serif);
   }
 
   .skill-file-preview > pre {
@@ -1236,8 +1569,7 @@
   }
 
   .mcp-service-field input,
-  .mcp-service-field textarea,
-  .plugin-import-type {
+  .mcp-service-field textarea {
     width: 100%;
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -1356,7 +1688,7 @@
 
   /* Local Skill import */
   .plugin-import-dialog {
-    width: min(500px, calc(100% - 24px));
+    width: min(560px, calc(100% - 24px));
   }
   .plugin-import-dialog > header {
     display: flex;
@@ -1394,42 +1726,85 @@
     gap: 13px;
     padding: 16px;
   }
-  .plugin-import-field {
-    display: grid;
+
+  .plugin-import-dropzone {
+    display: flex;
+    min-height: 180px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     gap: 7px;
+    padding: 20px;
+    border: 1px dashed var(--border-strong);
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--raised-1) 72%, transparent);
     color: var(--text-2);
-    font-size: 11px;
+    text-align: center;
+    transition:
+      border-color 120ms ease,
+      background 120ms ease,
+      transform 120ms ease;
   }
-  .plugin-import-type {
-    display: flex;
-    height: 36px;
-    align-items: center;
-    padding: 0 10px;
+  .plugin-import-dropzone.is-dragging {
+    transform: scale(1.005);
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, var(--raised-1));
   }
-  .plugin-path-picker {
+  .plugin-import-dropzone.is-ready {
+    min-height: 148px;
+  }
+  .plugin-import-dropzone-icon {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--raised-2);
+    color: var(--text-2);
+  }
+  .plugin-import-dropzone-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+  .plugin-import-dropzone > strong {
+    color: var(--text-1);
+    font-size: 12px;
+    font-weight: 650;
+  }
+  .plugin-import-dropzone > p {
+    margin: 0;
+    color: var(--text-3);
+    font-size: 10px;
+    line-height: 1.5;
+  }
+  .plugin-import-pickers {
     display: flex;
-    height: 36px;
-    align-items: center;
     gap: 8px;
-    padding: 0 10px;
-    overflow: hidden;
+    margin-top: 7px;
+  }
+  .plugin-import-pickers button {
+    display: inline-flex;
+    height: 32px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 11px;
     border: 1px solid var(--border);
     border-radius: 6px;
-    background: var(--raised-1);
+    background: var(--raised-3);
+    color: var(--text-2);
+    font-size: 10.5px;
+  }
+  .plugin-import-pickers button:hover:not(:disabled) {
+    border-color: var(--border-strong);
     color: var(--text-1);
-    font-size: 11.5px;
-    text-align: left;
   }
-  .plugin-path-picker svg {
-    width: 15px;
-    height: 15px;
-    flex: 0 0 auto;
-    color: var(--text-3);
+  .plugin-import-pickers button:disabled {
+    opacity: 0.45;
   }
-  .plugin-path-picker span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .plugin-import-pickers svg {
+    width: 13px;
+    height: 13px;
   }
 
   .plugin-manifest-preview {
@@ -1452,6 +1827,29 @@
   .plugin-manifest-preview > header small {
     color: var(--text-3);
     font-size: 10px;
+  }
+  .plugin-import-source-path {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 7px;
+    margin-top: 10px;
+    padding: 7px 8px;
+    border-radius: 5px;
+    background: var(--raised-2);
+    color: var(--text-3);
+    font-size: 9.5px;
+  }
+  .plugin-import-source-path svg {
+    width: 13px;
+    height: 13px;
+    flex: 0 0 auto;
+  }
+  .plugin-import-source-path span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .plugin-manifest-preview dl {
     display: grid;
@@ -1528,6 +1926,15 @@
     }
     .plugin-card-grid {
       grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+    }
+    .plugin-card.is-list {
+      grid-template-columns:
+        minmax(160px, 0.9fr)
+        68px
+        minmax(160px, 1.5fr)
+        var(--plugin-list-action-width);
+      gap: 10px;
+      padding-inline: 12px;
     }
     .plugin-mcp-summary,
     .plugin-mcp-service-scroll {

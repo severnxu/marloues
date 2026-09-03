@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Cpu, Gauge, TerminalSquare } from "lucide-react";
 import {
   SettingRow,
@@ -7,22 +8,40 @@ import {
   SettingsTextField,
 } from "@/components/settings";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
+import { getMarketplaceBridgeIssue } from "@/lib/marketplace-bridge";
 import { notify } from "@/lib/notifications";
 import { runtimePresentation } from "@/lib/runtime-presentation";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useUnifiedChatStore } from "@/stores/unified-chat-store";
 import type {
   AgentSettings,
-  MarketplaceEndpoint,
+  McpMarketplaceEndpoint,
   RuntimeKind,
+  SkillMarketplaceEndpoint,
 } from "@shared/types";
+
+type MarketplaceEndpoint = SkillMarketplaceEndpoint & McpMarketplaceEndpoint;
+const MIN_ENDPOINT_TEST_FEEDBACK_MS = 400;
+
+const SKILL_MARKETPLACE_PRESETS = [
+  { value: "https://clawhub.ai", label: "ClawHub" },
+  { value: "https://skillsmp.com", label: "SkillsMP" },
+];
+
+const MCP_MARKETPLACE_PRESETS = [
+  {
+    value: "https://registry.modelcontextprotocol.io",
+    label: "MCP 官方 Registry",
+  },
+  { value: "https://registry.smithery.ai", label: "Smithery" },
+];
 
 export function RuntimeSettings({
   draft,
   onCommitDraft,
 }: {
   draft: AgentSettings;
-  onCommitDraft: (nextDraft: AgentSettings) => void;
+  onCommitDraft: (nextDraft: AgentSettings) => Promise<void>;
 }) {
   const runtimeState = useSettingsStore((state) => state.runtimeState);
   const switchingRuntimeId = useSettingsStore(
@@ -31,6 +50,9 @@ export function RuntimeSettings({
   const switchRuntime = useSettingsStore((state) => state.switchRuntime);
   const hasRunningTask = useUnifiedChatStore((state) => state.isStreaming);
   const { showConfirm, DialogComponent } = useConfirmDialog();
+  const [testingMarketplace, setTestingMarketplace] = useState<
+    "skill" | "mcp" | null
+  >(null);
   const activeRuntimeId =
     runtimeState?.activeRuntimeId ?? draft.activeRuntimeId ?? "sdk";
   const activeRuntime = runtimePresentation(activeRuntimeId);
@@ -76,18 +98,15 @@ export function RuntimeSettings({
     }
   };
 
-  const updateMarketplaceEndpoint = (
-    kind: "skillMarketplaceEndpoint" | "mcpMarketplaceEndpoint",
-    patch: Partial<MarketplaceEndpoint>,
+  const updateSkillMarketplaceEndpoint = async (
+    patch: Partial<SkillMarketplaceEndpoint>,
   ) => {
-    const endpoint = draft[kind];
+    const endpoint = draft.skillMarketplaceEndpoint;
     const addressChanged = patch.baseUrl !== undefined;
-    onCommitDraft({
+    await onCommitDraft({
       ...draft,
-      [kind]: {
-        id: endpoint?.id ?? crypto.randomUUID(),
+      skillMarketplaceEndpoint: {
         baseUrl: endpoint?.baseUrl ?? "",
-        adapter: endpoint?.adapter ?? "custom",
         enabled: endpoint?.enabled ?? true,
         lastStatus: addressChanged
           ? "untested"
@@ -98,26 +117,121 @@ export function RuntimeSettings({
     });
   };
 
-  const testMarketplaceEndpoint = async (
-    kind: "skillMarketplaceEndpoint" | "mcpMarketplaceEndpoint",
+  const updateMcpMarketplaceEndpoint = async (
+    patch: Partial<McpMarketplaceEndpoint>,
   ) => {
-    const endpoint = draft[kind];
+    const endpoint = draft.mcpMarketplaceEndpoint;
+    const addressChanged = patch.baseUrl !== undefined;
+    await onCommitDraft({
+      ...draft,
+      mcpMarketplaceEndpoint: {
+        baseUrl: endpoint?.baseUrl ?? "",
+        enabled: endpoint?.enabled ?? true,
+        lastStatus: addressChanged
+          ? "untested"
+          : (endpoint?.lastStatus ?? "untested"),
+        lastError: addressChanged ? undefined : endpoint?.lastError,
+        ...patch,
+      },
+    });
+  };
+
+  const testSkillMarketplaceEndpoint = async () => {
+    const endpoint = draft.skillMarketplaceEndpoint;
     if (!endpoint || !isConfiguredMarketplaceUrl(endpoint.baseUrl)) {
       notify({ title: "请先填写市场地址", tone: "error" });
       return;
     }
-    const result =
-      await window.marloues.config.testMarketplaceEndpoint(endpoint);
-    updateMarketplaceEndpoint(kind, {
-      lastStatus: result.ok ? "ok" : "error",
-      lastError: result.ok ? undefined : result.message,
-      lastCheckedAt: Date.now(),
-    });
-    notify({
-      title: result.ok ? "市场端点连接正常" : "市场端点连接失败",
-      description: result.message,
-      tone: result.ok ? "success" : "error",
-    });
+    const bridgeIssue = getMarketplaceBridgeIssue("skill");
+    if (bridgeIssue) {
+      notify({
+        title: "Skill 市场暂不可用",
+        description: bridgeIssue,
+        tone: "error",
+      });
+      return;
+    }
+
+    const startedAt = Date.now();
+    setTestingMarketplace("skill");
+    try {
+      const result =
+        await window.marloues.skill.testMarketplaceEndpoint(endpoint);
+      await updateSkillMarketplaceEndpoint({
+        lastStatus: result.ok ? "ok" : "error",
+        lastError: result.ok ? undefined : result.message,
+        lastCheckedAt: Date.now(),
+      });
+      notify({
+        title: result.ok ? "Skill 市场端点连接正常" : "Skill 市场端点连接失败",
+        description: result.message,
+        tone: result.ok ? "success" : "error",
+      });
+    } catch (error) {
+      const message = marketplaceActionError(error, "Skill 市场端点连接失败。");
+      await updateSkillMarketplaceEndpoint({
+        lastStatus: "error",
+        lastError: message,
+        lastCheckedAt: Date.now(),
+      }).catch(() => undefined);
+      notify({
+        title: "Skill 市场端点连接失败",
+        description: message,
+        tone: "error",
+      });
+    } finally {
+      await waitForMinimumFeedback(startedAt);
+      setTestingMarketplace(null);
+    }
+  };
+
+  const testMcpMarketplaceEndpoint = async () => {
+    const endpoint = draft.mcpMarketplaceEndpoint;
+    if (!endpoint || !isConfiguredMarketplaceUrl(endpoint.baseUrl)) {
+      notify({ title: "请先填写市场地址", tone: "error" });
+      return;
+    }
+    const bridgeIssue = getMarketplaceBridgeIssue("mcp");
+    if (bridgeIssue) {
+      notify({
+        title: "MCP 市场暂不可用",
+        description: bridgeIssue,
+        tone: "error",
+      });
+      return;
+    }
+
+    const startedAt = Date.now();
+    setTestingMarketplace("mcp");
+    try {
+      const result =
+        await window.marloues.mcp.testMarketplaceEndpoint(endpoint);
+      await updateMcpMarketplaceEndpoint({
+        lastStatus: result.ok ? "ok" : "error",
+        lastError: result.ok ? undefined : result.message,
+        lastCheckedAt: Date.now(),
+      });
+      notify({
+        title: result.ok ? "MCP 市场端点连接正常" : "MCP 市场端点连接失败",
+        description: result.message,
+        tone: result.ok ? "success" : "error",
+      });
+    } catch (error) {
+      const message = marketplaceActionError(error, "MCP 市场端点连接失败。");
+      await updateMcpMarketplaceEndpoint({
+        lastStatus: "error",
+        lastError: message,
+        lastCheckedAt: Date.now(),
+      }).catch(() => undefined);
+      notify({
+        title: "MCP 市场端点连接失败",
+        description: message,
+        tone: "error",
+      });
+    } finally {
+      await waitForMinimumFeedback(startedAt);
+      setTestingMarketplace(null);
+    }
   };
 
   return (
@@ -194,22 +308,18 @@ export function RuntimeSettings({
           <MarketplaceEndpointRow
             title="Skill 市场端点"
             endpoint={draft.skillMarketplaceEndpoint}
-            onUpdate={(patch) =>
-              updateMarketplaceEndpoint("skillMarketplaceEndpoint", patch)
-            }
-            onTest={() =>
-              void testMarketplaceEndpoint("skillMarketplaceEndpoint")
-            }
+            presets={SKILL_MARKETPLACE_PRESETS}
+            testing={testingMarketplace === "skill"}
+            onUpdate={(patch) => void updateSkillMarketplaceEndpoint(patch)}
+            onTest={() => void testSkillMarketplaceEndpoint()}
           />
           <MarketplaceEndpointRow
             title="MCP 市场端点"
             endpoint={draft.mcpMarketplaceEndpoint}
-            onUpdate={(patch) =>
-              updateMarketplaceEndpoint("mcpMarketplaceEndpoint", patch)
-            }
-            onTest={() =>
-              void testMarketplaceEndpoint("mcpMarketplaceEndpoint")
-            }
+            presets={MCP_MARKETPLACE_PRESETS}
+            testing={testingMarketplace === "mcp"}
+            onUpdate={(patch) => void updateMcpMarketplaceEndpoint(patch)}
+            onTest={() => void testMcpMarketplaceEndpoint()}
           />
         </div>
       </SettingsCard>
@@ -220,18 +330,29 @@ export function RuntimeSettings({
 function MarketplaceEndpointRow({
   title,
   endpoint,
+  presets,
+  testing,
   onUpdate,
   onTest,
 }: {
   title: string;
   endpoint?: MarketplaceEndpoint;
+  presets: Array<{ value: string; label: string }>;
+  testing: boolean;
   onUpdate: (patch: Partial<MarketplaceEndpoint>) => void;
   onTest: () => void;
 }) {
   const enabled = endpoint?.enabled ?? true;
+  const normalizedBaseUrl = endpoint?.baseUrl.trim().replace(/\/+$/, "") ?? "";
+  const presetValue = presets.some(
+    (preset) => preset.value === normalizedBaseUrl,
+  )
+    ? normalizedBaseUrl
+    : "custom";
   const status = isConfiguredMarketplaceUrl(endpoint?.baseUrl)
     ? (endpoint?.lastStatus ?? "untested")
     : "untested";
+  const displayedStatus = testing ? "running" : status;
   return (
     <div className="provider-row marketplace-endpoint-row">
       <div className="provider-row-head">
@@ -239,13 +360,15 @@ function MarketplaceEndpointRow({
           <div>
             <strong>{title}</strong>
             <span
-              className={`settings-chip marketplace-endpoint-status ${status}`}
+              className={`settings-chip marketplace-endpoint-status ${displayedStatus}`}
             >
-              {status === "ok"
-                ? "连接正常"
-                : status === "error"
-                  ? "连接失败"
-                  : "未测试"}
+              {testing
+                ? "测试中"
+                : status === "ok"
+                  ? "连接正常"
+                  : status === "error"
+                    ? "连接失败"
+                    : "未测试"}
             </span>
           </div>
         </div>
@@ -260,14 +383,27 @@ function MarketplaceEndpointRow({
           <button
             className="settings-action-button"
             type="button"
-            disabled={!isConfiguredMarketplaceUrl(endpoint?.baseUrl)}
+            aria-busy={testing}
+            disabled={testing || !isConfiguredMarketplaceUrl(endpoint?.baseUrl)}
             onClick={onTest}
           >
-            测试连接
+            {testing ? "测试中..." : "测试连接"}
           </button>
         </div>
       </div>
       <div className="marketplace-endpoint-fields">
+        <SettingsSelect
+          ariaLabel={`${title}来源`}
+          value={presetValue}
+          options={[...presets, { value: "custom", label: "自定义端点" }]}
+          onChange={(value) => {
+            if (value !== "custom") {
+              onUpdate({ baseUrl: value });
+            } else if (presetValue !== "custom") {
+              onUpdate({ baseUrl: "" });
+            }
+          }}
+        />
         <input
           className="marketplace-endpoint-input"
           type="url"
@@ -281,10 +417,25 @@ function MarketplaceEndpointRow({
   );
 }
 
+function marketplaceActionError(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message;
+  return fallback;
+}
+
+async function waitForMinimumFeedback(startedAt: number): Promise<void> {
+  const remaining = MIN_ENDPOINT_TEST_FEEDBACK_MS - (Date.now() - startedAt);
+  if (remaining <= 0) return;
+  await new Promise((resolve) => window.setTimeout(resolve, remaining));
+}
+
 function isConfiguredMarketplaceUrl(value: string | undefined): boolean {
   const normalized = value?.trim() ?? "";
   return Boolean(
-    normalized && normalized !== "https://" && normalized !== "http://",
+    normalized &&
+    normalized !== "https://" &&
+    normalized !== "http://" &&
+    normalized !== "https:" &&
+    normalized !== "http:",
   );
 }
 

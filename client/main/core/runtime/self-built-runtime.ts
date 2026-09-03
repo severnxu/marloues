@@ -37,6 +37,7 @@ import { validatePathBoundary } from "../permissions/path-boundary-validator";
 import { terminalService } from "../../services/terminal-service";
 import { cdpBrowserService } from "../../services/cdp-browser-service";
 import { workflowThreadStore } from "./workflow-thread-store";
+import { resolveEffectiveExtensionPlan } from "../../services/extension-plan-service";
 
 function genId(): string {
   return crypto.randomUUID();
@@ -210,6 +211,12 @@ export class SelfBuiltRuntime implements AgentRuntime {
     const displayContent = opts.displayContent ?? opts.content;
     const userMessageId = opts.messageId ?? genId();
     const startedAt = now();
+    const effectiveSettings = opts.settingsSnapshot ?? getAgentSettings();
+    const extensionPlan = resolveEffectiveExtensionPlan(
+      effectiveSettings,
+      opts.cwd,
+      "self-built",
+    );
     pushMessage(opts.threadId, {
       id: userMessageId,
       role: "user",
@@ -237,8 +244,33 @@ export class SelfBuiltRuntime implements AgentRuntime {
         payload: {
           turnId,
           label: "Self-built loop",
-          detail: `model=${this.modelId}; permission=${this.permissionMode}; cwd=${opts.cwd ?? process.cwd()}`,
+          detail: `model=${this.modelId}; permission=${
+            this.permissionMode
+          }; skills=${extensionPlan.skills.length}; mcp=${
+            extensionPlan.mcpServers.length
+          }; cwd=${opts.cwd ?? process.cwd()}`,
           status: "running",
+        },
+      };
+      yield {
+        kind: "session-info",
+        payload: {
+          turnId,
+          skills: extensionPlan.skills.map((skill) => skill.name),
+          slashCommands: [],
+          agents: [],
+        },
+      };
+      yield {
+        kind: "mcp-status",
+        payload: {
+          turnId,
+          servers: extensionPlan.mcpServers.map((server) => ({
+            id: server.id,
+            name: server.name,
+            enabled: server.enabled,
+          })),
+          tools: configuredMcpTools(effectiveSettings).map((tool) => tool.name),
         },
       };
 
@@ -1065,7 +1097,9 @@ export class SelfBuiltRuntime implements AgentRuntime {
         done: true,
         result: "error",
         error: error instanceof Error ? error.message : String(error),
-        assistantText: `Self-built loop failed: ${error instanceof Error ? error.message : String(error)}`,
+        assistantText: `Self-built loop failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       };
     }
     return { done: false, result: "success", assistantText: "" };
@@ -1177,7 +1211,10 @@ export class SelfBuiltRuntime implements AgentRuntime {
     if (!stat.isFile()) throw new Error("Path is not a file");
     if (stat.size > MAX_READ_BYTES)
       throw new Error("File is too large to read");
-    return `Read ${relative(cwd, absPath)}:\n\n${readFileSync(absPath, "utf-8")}`;
+    return `Read ${relative(cwd, absPath)}:\n\n${readFileSync(
+      absPath,
+      "utf-8",
+    )}`;
   }
 
   private patchWorkspaceFile(
@@ -1196,7 +1233,10 @@ export class SelfBuiltRuntime implements AgentRuntime {
       filePath: absPath,
       previousContent,
     });
-    return `Patched ${relative(cwd, absPath)} (${Buffer.byteLength(content, "utf-8")} bytes).`;
+    return `Patched ${relative(cwd, absPath)} (${Buffer.byteLength(
+      content,
+      "utf-8",
+    )} bytes).`;
   }
 
   private undoLastPatch(cwd: string, authorizedPath: string): string {
@@ -1216,7 +1256,10 @@ export class SelfBuiltRuntime implements AgentRuntime {
     const [entry] = this.undoStack.splice(entryIndex, 1);
     if (entry.previousContent === null) {
       if (existsSync(entry.filePath)) unlinkSync(entry.filePath);
-      return `Undid patch for ${relative(root, entry.filePath)} by removing newly created file.`;
+      return `Undid patch for ${relative(
+        root,
+        entry.filePath,
+      )} by removing newly created file.`;
     }
     writeFileSync(entry.filePath, entry.previousContent, "utf-8");
     return `Restored ${relative(root, entry.filePath)} from undo snapshot.`;
