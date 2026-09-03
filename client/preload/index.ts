@@ -137,6 +137,8 @@ const api: MarlouesAPI = {
       ),
     listEndpointModels: (profile: ModelProviderConfig, endpointId?: string) =>
       ipcRenderer.invoke(IPC.CONFIG_LIST_ENDPOINT_MODELS, profile, endpointId),
+    testMarketplaceEndpoint: (endpoint) =>
+      ipcRenderer.invoke(IPC.CONFIG_TEST_MARKETPLACE_ENDPOINT, endpoint),
   },
   runtime: {
     getState: () => ipcRenderer.invoke(IPC.RUNTIME_GET_STATE),

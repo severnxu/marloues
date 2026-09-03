@@ -523,6 +523,8 @@ export interface AgentSettings {
   activeToolProfileId: string;
   toolProfiles: ToolProfile[];
   mcpServers: McpServerConfig[];
+  skillMarketplaceEndpoint?: MarketplaceEndpoint;
+  mcpMarketplaceEndpoint?: MarketplaceEndpoint;
   imBotBindings: ImBotBindingsConfig;
   skillDirectories?: string[];
   disabledSkills: string[];
@@ -530,6 +532,16 @@ export interface AgentSettings {
   enterpriseControlledSettings?: string[];
   sandboxEnabled?: boolean;
   sandboxMode?: AgentSandboxMode;
+}
+
+export interface MarketplaceEndpoint {
+  id: string;
+  baseUrl: string;
+  adapter: "skillsmp" | "custom";
+  enabled: boolean;
+  lastStatus?: "untested" | "ok" | "error";
+  lastError?: string;
+  lastCheckedAt?: number;
 }
 
 export type AgentMemoryMode = "workspace" | "session" | "off";
@@ -1050,6 +1062,9 @@ export interface MarlouesAPI {
       profile: ModelProviderConfig,
       endpointId?: string,
     ): Promise<EndpointModelsResult>;
+    testMarketplaceEndpoint(
+      endpoint: MarketplaceEndpoint,
+    ): Promise<EndpointTestResult>;
   };
   runtime: {
     getState(): Promise<RuntimeState>;
@@ -1351,6 +1366,7 @@ export const IPC = {
   CONFIG_TEST_ENDPOINT_PROFILE: "config:test-endpoint-profile",
   CONFIG_TEST_ENDPOINT_MODEL: "config:test-endpoint-model",
   CONFIG_LIST_ENDPOINT_MODELS: "config:list-endpoint-models",
+  CONFIG_TEST_MARKETPLACE_ENDPOINT: "config:test-marketplace-endpoint",
   RUNTIME_GET_STATE: "runtime:get-state",
   RUNTIME_SWITCH: "runtime:switch",
   RUNTIME_LIST_MODELS: "runtime:list-models",

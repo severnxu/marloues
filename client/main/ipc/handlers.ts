@@ -132,6 +132,7 @@ import {
   installMarketplaceSkill,
   listInstalledSkills as listInstalledSkillsFromService,
   listMarketplaceSkills,
+  testMarketplaceEndpoint,
   readSkillInfo as readSkillInfoFromService,
   removeSkill as removeSkillFromService,
   toggleSkill as toggleSkillFromService,
@@ -3144,6 +3145,9 @@ export function registerHandlers(): void {
     async (_e, profile: ModelProviderConfig, endpointId?: string) =>
       listEndpointModels(profile, endpointId),
   );
+  ipcMain.handle(IPC.CONFIG_TEST_MARKETPLACE_ENDPOINT, async (_e, endpoint) =>
+    testMarketplaceEndpoint(endpoint),
+  );
 
   ipcMain.handle(IPC.RUNTIME_GET_STATE, async () => getRuntimeState());
 
@@ -3542,8 +3546,8 @@ export function registerHandlers(): void {
       getSkillDetailFromService(skillId),
   );
 
-  ipcMain.handle(IPC.SKILL_MARKETPLACE_LIST, async () =>
-    listMarketplaceSkills(),
+  ipcMain.handle(IPC.SKILL_MARKETPLACE_LIST, async (_e, request) =>
+    listMarketplaceSkills(request),
   );
   ipcMain.handle(
     IPC.SKILL_MARKETPLACE_DETAIL,
@@ -3552,7 +3556,8 @@ export function registerHandlers(): void {
   );
   ipcMain.handle(
     IPC.SKILL_MARKETPLACE_INSTALL,
-    async (_e, _slug?: string, _version?: string) => installMarketplaceSkill(),
+    async (_e, slug: string, _version?: string) =>
+      installMarketplaceSkill(slug),
   );
 
   // ---------- Terminal ----------

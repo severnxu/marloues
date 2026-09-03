@@ -10,6 +10,7 @@ import type {
   ImBotBindingsConfig,
   ModelProviderConfig,
   McpServerConfig,
+  MarketplaceEndpoint,
   ModelOption,
   ModelSelection,
   ToolProfile,
@@ -133,6 +134,13 @@ function defaultAgentSettings(): AgentSettings {
       },
     ],
     mcpServers: [],
+    skillMarketplaceEndpoint: {
+      id: "skillsmp",
+      baseUrl: "https://skillsmp.com",
+      adapter: "skillsmp",
+      enabled: true,
+      lastStatus: "untested",
+    },
     imBotBindings: defaultImBotBindingsConfig(),
     skillDirectories: [],
     disabledSkills: [],
@@ -552,6 +560,15 @@ function normalizeAgentSettings(
       activeToolProfile,
     ),
     mcpServers: settings.mcpServers ?? [],
+    skillMarketplaceEndpoint: normalizeMarketplaceEndpoint(
+      settings.skillMarketplaceEndpoint ??
+        readLegacyMarketplaceEndpoint(settings, "skill"),
+      defaultAgentSettings().skillMarketplaceEndpoint,
+    ),
+    mcpMarketplaceEndpoint: normalizeMarketplaceEndpoint(
+      settings.mcpMarketplaceEndpoint ??
+        readLegacyMarketplaceEndpoint(settings, "mcp"),
+    ),
     imBotBindings: normalizeImBotBindingsConfig(settings.imBotBindings),
     skillDirectories: settings.skillDirectories ?? [],
     disabledSkills: settings.disabledSkills ?? [],
@@ -562,6 +579,44 @@ function normalizeAgentSettings(
         ? "workspace-write"
         : normalizedSandboxMode,
   };
+}
+
+function normalizeMarketplaceEndpoint(
+  endpoint: AgentSettings["skillMarketplaceEndpoint"] | undefined,
+  fallback?: AgentSettings["skillMarketplaceEndpoint"],
+): AgentSettings["skillMarketplaceEndpoint"] {
+  if (!endpoint || typeof endpoint !== "object") return fallback;
+  const baseUrl = endpoint.baseUrl?.trim().replace(/\/$/, "") || "";
+  const configured = baseUrl !== "https:" && baseUrl !== "http:";
+  return {
+    id: endpoint.id?.trim() || `marketplace-${crypto.randomUUID()}`,
+    baseUrl,
+    adapter: endpoint.adapter === "custom" ? "custom" : "skillsmp",
+    enabled: endpoint.enabled !== false,
+    lastStatus: configured ? endpoint.lastStatus : "untested",
+    lastError: configured ? endpoint.lastError : undefined,
+    lastCheckedAt: endpoint.lastCheckedAt,
+  };
+}
+
+function readLegacyMarketplaceEndpoint(
+  settings: Partial<AgentSettings>,
+  capability: "skill" | "mcp",
+): MarketplaceEndpoint | undefined {
+  const legacy = (
+    settings as Partial<AgentSettings> & {
+      marketplaceEndpoints?: unknown;
+    }
+  ).marketplaceEndpoints;
+  if (!Array.isArray(legacy)) return undefined;
+  const endpoint = legacy.find(
+    (item): item is MarketplaceEndpoint =>
+      Boolean(item) &&
+      typeof item === "object" &&
+      Array.isArray((item as { capabilities?: unknown }).capabilities) &&
+      (item as { capabilities: unknown[] }).capabilities.includes(capability),
+  );
+  return endpoint;
 }
 
 function normalizeImBotBindingsConfig(
@@ -1143,6 +1198,8 @@ function preserveEnterpriseControlledScalars(
     "thinkingEnabled",
     "maxThinkingTokens",
     "activeToolProfileId",
+    "skillMarketplaceEndpoint",
+    "mcpMarketplaceEndpoint",
     "imBotBindings",
     "skillDirectories",
   ] as const) {
